@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אלגוריתם YOLO - You Only Look Once</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .presentation-container {
+            width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .slide {
+            width: 95%;
+            max-width: 1600px;
+            min-height: 85vh;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            display: none;
+            overflow-y: auto;
+        }
+        
+        .slide.active {
+            display: block;
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(45deg, #fff, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-align: center;
+        }
+        
+        h3 {
+            font-size: 1.6em;
+            color: #ecf0f1;
+            margin-bottom: 15px;
+        }
+        
+        .yolo-title {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 4em;
+            font-weight: bold;
+            text-align: center;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .concept-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            text-align: center;
+        }
+        
+        .concept-card:hover {
+            border-color: #667eea;
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+        
+        .speed-card {
+            border-color: #ff6b6b;
+        }
+        
+        .accuracy-card {
+            border-color: #feca57;
+        }
+        
+        .simplicity-card {
+            border-color: #48dbfb;
+        }
+        
+        .grid-demo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .image-grid {
+            display: inline-block;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            position: relative;
+            margin: 20px;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(7, 1fr);
+            gap: 1px;
+        }
+        
+        .grid-cell {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .grid-cell:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .grid-cell.active {
+            background: rgba(255, 107, 107, 0.8);
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.6);
+        }
+        
+        .grid-cell.object-detected {
+            background: rgba(39, 174, 96, 0.8);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .demo-image {
+            width: 350px;
+            height: 350px;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            font-size: 4em;
+            position: relative;
+            border-radius: 10px;
+        }
+        
+        .object-in-scene {
+            position: absolute;
+            font-size: 3em;
+            transition: all 0.3s ease;
+        }
+        
+        .dog { top: 80px; left: 60px; }
+        .car { top: 200px; left: 200px; }
+        .tree { top: 50px; right: 40px; }
+        
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .method-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .old-method {
+            border: 3px solid #e74c3c;
+        }
+        
+        .yolo-method {
+            border: 3px solid #27ae60;
+        }
+        
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 150px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+        
+        .step:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+        
+        .step.active {
+            border-color: #feca57;
+            background: rgba(254, 202, 87, 0.3);
+        }
+        
+        .arrow {
+            font-size: 2.5em;
+            color: #feca57;
+            margin: 0 10px;
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .demo-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .demo-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .speed-demo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .speed-bar {
+            background: #34495e;
+            border-radius: 10px;
+            height: 30px;
+            position: relative;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .speed-fill {
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-box {
+            background: rgba(102, 126, 234, 0.2);
+            border: 2px dashed #667eea;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: right;
+        }
+        
+        .highlight-text {
+            background: rgba(254, 202, 87, 0.8);
+            color: #2c3e50;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .version-timeline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        
+        .version-item {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .version-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .grid-explanation {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 30px;
+            align-items: center;
+            margin: 30px 0;
+        }
+        
+        .responsibility-indicator {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .cell-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .performance-chart {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .chart-bar {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+        
+        .chart-label {
+            width: 150px;
+            font-weight: bold;
+        }
+        
+        .chart-fill {
+            height: 25px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            color: white;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .rcnn-bar {
+            background: #e74c3c;
+            width: 20%;
+        }
+        
+        .fast-rcnn-bar {
+            background: #f39c12;
+            width: 50%;
+        }
+        
+        .yolo-bar {
+            background: #27ae60;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">6</span>
+        </div>
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>⚡ אלגוריתם YOLO</h1>
+            <div class="yolo-title">You Only Look Once</div>
+            <div style="text-align: center; margin: 40px 0;">
+                <div style="font-size: 5em; margin: 30px 0;">👁️</div>
+                <div class="info-box">
+                    <p style="font-size: 1.5em;">מהפכה בזיהוי עצמים - בדיקה אחת, תוצאות מושלמות!</p>
+                    <p style="font-size: 1.2em; color: #667eea;">⏱️ זמן: 15 דקות | 🚀 מהירות זיהוי בזמן אמת</p>
+                </div>
+                
+                <div class="speed-demo">
+                    <h3>🏃‍♂️ מהירות זיהוי:</h3>
+                    <div class="speed-bar">
+                        <div class="speed-fill" style="width: 0%;" id="speedFill">45 FPS</div>
+                    </div>
+                    <p>45 תמונות בשנייה = זיהוי בזמן אמת!</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 2: השוואה - לפני ואחרי YOLO -->
+        <div class="slide">
+            <h2>🔄 מהפכת YOLO - לפני ואחרי</h2>
+            <div class="comparison-container">
+                <div class="method-card old-method">
+                    <h3>❌ שיטות מסורתיות</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">🐌</div>
+                    <p><strong>R-CNN, Fast R-CNN</strong></p>
+                    <div class="steps-container" style="flex-direction: column; gap: 10px;">
+                        <div class="step">1️⃣ הצעת אזורים</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">2️⃣ סיווג כל אזור</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">3️⃣ חיזוי מיקום</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">4️⃣ איחוד תוצאות</div>
+                    </div>
+                    <div class="info-box" style="background: rgba(231, 76, 60, 0.2);">
+                        <p>⏱️ <strong>איטי:</strong> 2000+ אזורים לבדיקה</p>
+                        <p>🔄 <strong>מורכב:</strong> 4 שלבים נפרדים</p>
+                        <p>📊 <strong>מדויק:</strong> אבל לא מהיר מספיק</p>
+                    </div>
+                </div>
+                
+                <div class="method-card yolo-method">
+                    <h3>✅ YOLO - מהפכה</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">⚡</div>
+                    <p><strong>You Only Look Once</strong></p>
+                    <div class="steps-container" style="flex-direction: column; gap: 10px;">
+                        <div class="step">1️⃣ רשת אחת</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">2️⃣ מעבר אחד</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">3️⃣ תוצאות מיידיות</div>
+                    </div>
+                    <div class="info-box" style="background: rgba(39, 174, 96, 0.2);">
+                        <p>⚡ <strong>מהיר:</strong> בדיקה אחת בלבד</p>
+                        <p>🎯 <strong>פשוט:</strong> שלב אחד</p>
+                        <p>🚀 <strong>זמן אמת:</strong> 45+ FPS</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="performance-chart">
+                <h3>📊 השוואת ביצועים:</h3>
+                <div class="chart-bar">
+                    <div class="chart-label">R-CNN</div>
+                    <div class="chart-fill rcnn-bar">0.05 FPS</div>
+                </div>
+                <div class="chart-bar">
+                    <div class="chart-label">Fast R-CNN</div>
+                    <div class="chart-fill fast-rcnn-bar">0.5 FPS</div>
+                </div>
+                <div class="chart-bar">
+                    <div class="chart-label">YOLO</div>
+                    <div class="chart-fill yolo-bar">45 FPS</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 3: העיקרון - רשת (Grid) -->
+        <div class="slide">
+            <h2>🔳 העיקרון: חלוקת התמונה לרשת</h2>
+            <div class="grid-demo">
+                <h3>📐 התמונה מחולקת לרשת של 7×7 תאים</h3>
+                <div class="grid-explanation">
+                    <div>
+                        <h4>🎯 כל תא אחראי על:</h4>
+                        <div class="responsibility-indicator">
+                            🎯 זיהוי עצמים שמרכזם בתא
+                        </div>
+                        <div class="responsibility-indicator">
+                            📦 חיזוי Bounding Box
+                        </div>
+                        <div class="responsibility-indicator">
+                            🏷️ סיווג סוג העצם
+                        </div>
+                        <div class="responsibility-indicator">
+                            📊 רמת ביטחון
+                        </div>
+                    </div>
+                    
+                    <div class="arrow">→</div>
+                    
+                    <div>
+                        <div class="image-grid">
+                            <div class="demo-image">
+                                <div class="object-in-scene dog">🐕</div>
+                                <div class="object-in-scene car">🚗</div>
+                                <div class="object-in-scene tree">🌳</div>
+                            </div>
+                            <div class="grid-overlay" id="gridOverlay">
+                                <!-- תאי הרשת יתווספו ב-JavaScript -->
+                            </div>
+                        </div>
+                        <p>לחצו על התאים לראות אחריות כל תא</p>
+                    </div>
+                </div>
+                
+                <div class="demo-controls">
+                    <button class="demo-btn" onclick="highlightGrid()">🔍 הדגש רשת</button>
+                    <button class="demo-btn" onclick="showDetection()">🎯 הצג זיהויים</button>
+                    <button class="demo-btn" onclick="resetGrid()">🔄 איפוס</button>
+                </div>
+                
+                <div id="gridInfo" class="cell-info" style="display: none;">
+                    <h4>📊 מידע על התא:</h4>
+                    <div id="cellDetails"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 4: מה כל תא מחזיר -->
+        <div class="slide">
+            <h2>📤 מה כל תא מחזיר?</h2>
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3>📦 Bounding Box</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">📐</div>
+                    <p><strong>5 פרמטרים לכל קופסה:</strong></p>
+                    <div class="cell-info">
+                        x, y: מרכז הקופסה<br>
+                        w, h: רוחב וגובה<br>
+                        confidence: רמת ביטחון
+                    </div>
+                    <p>כל תא מחזיר 2 הצעות Bounding Box</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3>🏷️ סיווג</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">📊</div>
+                    <p><strong>הסתברויות לכל מחלקה:</strong></p>
+                    <div class="cell-info">
+                        P(כלב) = 0.8<br>
+                        P(חתול) = 0.1<br>
+                        P(אדם) = 0.05<br>
+                        P(רכב) = 0.05
+                    </div>
+                    <p>20 מחלקות שונות (ב-YOLO הבסיסי)</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3>🎯 ביטחון כולל</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">💯</div>
+                    <p><strong>נוסחת הביטחון:</strong></p>
+                    <div class="cell-info">
+                        Final Score = <br>
+                        Confidence × Class_Probability
+                    </div>
+                    <p>רק תוצאות עם ציון גבוה מוצגות</p>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                🧮 <strong>חישוב מהיר:</strong><br>
+                7×7 תאים × 2 קופסאות × 5 פרמטרים = 490 חיזויי מיקום<br>
+                7×7 תאים × 20 מחלקות = 980 חיזויי סיווג<br>
+                <span class="highlight-text">סך הכל: 1,470 תוצאות בבת אחת!</span>
+            </div>
+        </div>
+        
+        <!-- Slide 5: יתרונות YOLO -->
+        <div class="slide">
+            <h2>🏆 יתרונות YOLO</h2>
+            <div class="concept-grid">
+                <div class="concept-card speed-card">
+                    <h3>⚡ מהירות גבוהה</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">🏃‍♂️</div>
+                    <div class="speed-demo">
+                        <p><strong>45+ תמונות בשנייה</strong></p>
+                        <div class="speed-bar">
+                            <div class="speed-fill" style="width: 90%;">זמן אמת!</div>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <p>✅ זיהוי בווידיאו חי</p>
+                        <p>✅ יישומים בזמן אמת</p>
+                        <p>✅ מתאים לנייד וחומרה מוגבלת</p>
+                    </div>
+                </div>
+                
+                <div class="concept-card accuracy-card">
+                    <h3>🎯 דיוק טוב</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">📊</div>
+                    <div class="performance-chart">
+                        <p><strong>דיוק זיהוי:</strong></p>
+                        <div class="chart-bar">
+                            <div class="chart-label">דיוק כללי</div>
+                            <div class="chart-fill" style="background: #27ae60; width: 76%;">76%</div>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="chart-label">עצמים גדולים</div>
+                            <div class="chart-fill" style="background: #f39c12; width: 85%;">85%</div>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <p>✅ טוב לעצמים גדולים</p>
+                        <p>⚠️ פחות טוב לעצמים קטנים</p>
+                        <p>✅ מאזן מצוין בין מהירות לדיוק</p>
+                    </div>
+                </div>
+                
+                <div class="concept-card simplicity-card">
+                    <h3>🔧 פשטות יחסית</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">⚙️</div>
+                    <div class="steps-container" style="flex-direction: column;">
+                        <div class="step">📸 קלט: תמונה</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">🧠 רשת CNN אחת</div>
+                        <div class="arrow">⬇️</div>
+                        <div class="step">📤 פלט: זיהויים</div>
+                    </div>
+                    <div class="info-box">
+                        <p>✅ ארכיטקטורה פשוטה</p>
+                        <p>✅ קל להטמעה</p>
+                        <p>✅ אימון end-to-end</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="version-timeline">
+                <div class="version-item">
+                    <h4>YOLOv1</h4>
+                    <p>2016</p>
+                    <small>המקור</small>
+                </div>
+                <div class="arrow">→</div>
+                <div class="version-item">
+                    <h4>YOLOv2</h4>
+                    <p>2017</p>
+                    <small>שיפורים</small>
+                </div>
+                <div class="arrow">→</div>
+                <div class="version-item">
+                    <h4>YOLOv3</h4>
+                    <p>2018</p>
+                    <small>עמוק יותר</small>
+                </div>
+                <div class="arrow">→</div>
+                <div class="version-item">
+                    <h4>YOLOv5-8</h4>
+                    <p>2020+</p>
+                    <small>מתקדם ביותר</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 6: סיכום -->
+        <div class="slide">
+            <h2>📋 סיכום - YOLO Revolution</h2>
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3>🎯 מה למדנו?</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">📚</div>
+                    <p>• YOLO = You Only Look Once</p>
+                    <p>• חלוקה לרשת 7×7</p>
+                    <p>• כל תא אחראי על עצמים</p>
+                    <p>• מעבר אחד דרך הרשת</p>
+                    <p>• מהירות + דיוק ביחד</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3>🚀 מדוע זה מהפכני?</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">💥</div>
+                    <p>• <span class="highlight-text">מהירות:</span> 45+ FPS</p>
+                    <p>• <span class="highlight-text">פשטות:</span> רשת אחת</p>
+                    <p>• <span class="highlight-text">יעילות:</span> זמן אמת</p>
+                    <p>• <span class="highlight-text">נגישות:</span> קל יחסית</p>
+                    <p>• <span class="highlight-text">חדשנות:</span> שינה את התחום</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3>🌍 יישומים בעולם האמיתי</h3>
+                    <div style="font-size: 3em; margin: 20px 0;">🏙️</div>
+                    <p>• <strong>רכבים אוטונומיים:</strong> זיהוי בזמן אמת</p>
+                    <p>• <strong>מצלמות אבטחה:</strong> ניטור חכם</p>
+                    <p>• <strong>רפואה:</strong> זיהוי בסריקות</p>
+                    <p>• <strong>ספורט:</strong> ניתוח משחקים</p>
+                    <p>• <strong>תעשייה:</strong> בקרת איכות</p>
+                </div>
+            </div>
+            
+            <div class="grid-demo">
+                <h3>🎮 הדגמה אחרונה - YOLO בפעולה</h3>
+                <div class="demo-controls">
+                    <button class="demo-btn" onclick="runYoloDemo()">▶️ הרץ זיהוי YOLO</button>
+                    <button class="demo-btn" onclick="pauseYoloDemo()" id="pauseBtn" disabled>⏸️ השהה</button>
+                    <button class="demo-btn" onclick="resetYoloDemo()">🔄 איפוס</button>
+                </div>
+                
+                <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin: 30px 0;">
+                    <div class="image-grid">
+                        <div class="demo-image" id="finalDemo">
+                            <div class="object-in-scene dog">🐕</div>
+                            <div class="object-in-scene car">🚗</div>
+                            <div class="object-in-scene tree">🌳</div>
+                        </div>
+                        <div class="grid-overlay" id="finalGridOverlay">
+                            <!-- תאי הרשת -->
+                        </div>
+                    </div>
+                    
+                    <div class="arrow">→</div>
+                    
+                    <div style="text-align: center;">
+                        <h4>📊 תוצאות YOLO:</h4>
+                        <div id="yoloResults" class="cell-info">
+                            <div style="background: rgba(39, 174, 96, 0.8); padding: 10px; margin: 5px; border-radius: 5px;">
+                                🐕 כלב: 92% ביטחון
+                            </div>
+                            <div style="background: rgba(52, 152, 219, 0.8); padding: 10px; margin: 5px; border-radius: 5px;">
+                                🚗 מכונית: 88% ביטחון
+                            </div>
+                            <div style="background: rgba(39, 174, 96, 0.8); padding: 10px; margin: 5px; border-radius: 5px;">
+                                🌳 עץ: 76% ביטחון
+                            </div>
+                            <div style="background: rgba(243, 156, 18, 0.8); padding: 10px; margin: 5px; border-radius: 5px;">
+                                ⏱️ זמן עיבוד: 22ms
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    🎉 <strong>זהו הקסם של YOLO:</strong> בדיקה אחת, זיהוי מושלם, מהירות מדהימה!
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="font-size: 4em;">🎯</div>
+                <p style="font-size: 1.4em; color: #667eea;">עכשיו אתם מבינים למה YOLO שינה את עולם זיהוי העצמים!</p>
+            </div>
+        </div>
+        
+        <div class="navigation">
+            <button class="nav-btn" onclick="previousSlide()" id="prevBtn">⏮️ הקודם</button>
+            <button class="nav-btn" onclick="nextSlide()" id="nextBtn">הבא ⏭️</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        let demoRunning = false;
+        let demoInterval = null;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = index + 1;
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').disabled = index === totalSlides - 1;
+            
+            // אתחול מיוחד לכל שקף
+            if (index === 0) {
+                animateSpeedBar();
+            } else if (index === 2) {
+                initializeGrid();
+            } else if (index === 5) {
+                initializeFinalDemo();
+            }
+        }
+        
+        function nextSlide() {
+            if (currentSlideIndex < totalSlides - 1) {
+                currentSlideIndex++;
+                showSlide(currentSlideIndex);
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlideIndex > 0) {
+                currentSlideIndex--;
+                showSlide(currentSlideIndex);
+            }
+        }
+        
+        function animateSpeedBar() {
+            setTimeout(() => {
+                const speedFill = document.getElementById('speedFill');
+                if (speedFill) {
+                    speedFill.style.width = '90%';
+                }
+            }, 1000);
+        }
+        
+        function initializeGrid() {
+            const gridOverlay = document.getElementById('gridOverlay');
+            if (!gridOverlay) return;
+            
+            gridOverlay.innerHTML = '';
+            
+            // יצירת 49 תאים (7x7)
+            for (let i = 0; i < 49; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.dataset.index = i;
+                
+                const row = Math.floor(i / 7);
+                const col = i % 7;
+                
+                // הוספת אירוע לחיצה
+                cell.addEventListener('click', () => showCellInfo(row, col, i));
+                
+                gridOverlay.appendChild(cell);
+            }
+        }
+        
+        function showCellInfo(row, col, index) {
+            const gridInfo = document.getElementById('gridInfo');
+            const cellDetails = document.getElementById('cellDetails');
+            
+            // איפוס כל התאים
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.classList.remove('active');
+            });
+            
+            // הדגשת התא הנוכחי
+            document.querySelector(`[data-index="${index}"]`).classList.add('active');
+            
+            // הצגת מידע
+            let cellContent = "ריק";
+            let responsibility = "ללא עצמים";
+            
+            // בדיקה אם יש עצמים בתא (קואורדינטות משוערות)
+            if ((row >= 1 && row <= 3) && (col >= 1 && col <= 2)) {
+                cellContent = "🐕 כלב";
+                responsibility = "אחראי על זיהוי הכלב";
+            } else if ((row >= 4 && row <= 6) && (col >= 4 && col <= 6)) {
+                cellContent = "🚗 מכונית";
+                responsibility = "אחראי על זיהוי המכונית";
+            } else if ((row >= 0 && row <= 2) && (col >= 5 && col <= 6)) {
+                cellContent = "🌳 עץ";
+                responsibility = "אחראי על זיהוי העץ";
+            }
+            
+            cellDetails.innerHTML = `
+                <strong>תא (${row}, ${col}):</strong><br>
+                תוכן: ${cellContent}<br>
+                אחריות: ${responsibility}<br>
+                פלט: 2 Bounding Boxes + 20 הסתברויות מחלקה
+            `;
+            
+            gridInfo.style.display = 'block';
+        }
+        
+        function highlightGrid() {
+            const cells = document.querySelectorAll('.grid-cell');
+            let index = 0;
+            
+            function highlightNext() {
+                if (index < cells.length) {
+                    cells[index].style.background = 'rgba(255, 255, 255, 0.4)';
+                    index++;
+                    setTimeout(() => {
+                        if (index <= cells.length) {
+                            cells[index - 1].style.background = 'rgba(255, 255, 255, 0.1)';
+                        }
+                        highlightNext();
+                    }, 50);
+                }
+            }
+            
+            highlightNext();
+        }
+        
+        function showDetection() {
+            const cells = document.querySelectorAll('.grid-cell');
+            
+            // תאים עם עצמים
+            const objectCells = [
+                {indices: [8, 9, 15, 16], label: '🐕'},  // כלב
+                {indices: [32, 33, 39, 40], label: '🚗'}, // מכונית
+                {indices: [5, 6, 12, 13], label: '🌳'}    // עץ
+            ];
+            
+            objectCells.forEach(obj => {
+                obj.indices.forEach(index => {
+                    cells[index].classList.add('object-detected');
+                    cells[index].textContent = obj.label;
+                });
+            });
+        }
+        
+        function resetGrid() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('active', 'object-detected');
+                cell.textContent = '';
+                cell.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+            
+            document.getElementById('gridInfo').style.display = 'none';
+        }
+        
+        function initializeFinalDemo() {
+            const finalGridOverlay = document.getElementById('finalGridOverlay');
+            if (!finalGridOverlay) return;
+            
+            finalGridOverlay.innerHTML = '';
+            
+            // יצירת רשת 7x7
+            for (let i = 0; i < 49; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.dataset.index = i;
+                finalGridOverlay.appendChild(cell);
+            }
+        }
+        
+        function runYoloDemo() {
+            if (demoRunning) return;
+            
+            demoRunning = true;
+            document.querySelector('#pauseBtn').disabled = false;
+            
+            const cells = document.querySelectorAll('#finalGridOverlay .grid-cell');
+            let step = 0;
+            
+            demoInterval = setInterval(() => {
+                // איפוס
+                cells.forEach(cell => {
+                    cell.classList.remove('active');
+                    cell.style.background = 'rgba(255, 255, 255, 0.1)';
+                });
+                
+                if (step < 49) {
+                    // הדגשת התא הנוכחי
+                    cells[step].classList.add('active');
+                    step++;
+                } else {
+                    // הצגת תוצאות סופיות
+                    const objectCells = [
+                        {indices: [8, 9, 15, 16], color: 'rgba(39, 174, 96, 0.8)'},
+                        {indices: [32, 33, 39, 40], color: 'rgba(52, 152, 219, 0.8)'},
+                        {indices: [5, 6, 12, 13], color: 'rgba(39, 174, 96, 0.8)'}
+                    ];
+                    
+                    objectCells.forEach(obj => {
+                        obj.indices.forEach(index => {
+                            cells[index].style.background = obj.color;
+                        });
+                    });
+                    
+                    pauseYoloDemo();
+                }
+            }, 100);
+        }
+        
+        function pauseYoloDemo() {
+            demoRunning = false;
+            if (demoInterval) {
+                clearInterval(demoInterval);
+                demoInterval = null;
+            }
+            document.querySelector('#pauseBtn').disabled = true;
+        }
+        
+        function resetYoloDemo() {
+            pauseYoloDemo();
+            
+            const cells = document.querySelectorAll('#finalGridOverlay .grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('active');
+                cell.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+        }
+        
+        // ניווט מקלדת
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                previousSlide();
+            }
+        });
+        
+        // אתחול
+        showSlide(0);
+    </script>
+</body>
+</html>

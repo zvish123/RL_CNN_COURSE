@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>זיהוי קצוות - סובל Filter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #ff6b6b 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .presentation-container {
+            width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .slide {
+            width: 95%;
+            max-width: 1500px;
+            min-height: 85vh;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            display: none;
+            overflow-y: auto;
+        }
+        
+        .slide.active {
+            display: block;
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(45deg, #fff, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+            text-align: center;
+        }
+        
+        h3 {
+            font-size: 1.6em;
+            color: #ecf0f1;
+            margin-bottom: 15px;
+        }
+        
+        .sobel-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .filter-demo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .matrix {
+            display: inline-block;
+            margin: 20px;
+            vertical-align: top;
+        }
+        
+        .matrix-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ff6b6b;
+        }
+        
+        .matrix-grid {
+            display: grid;
+            gap: 3px;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .matrix-3x3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .matrix-7x7 {
+            grid-template-columns: repeat(7, 1fr);
+        }
+        
+        .matrix-5x5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        
+        .matrix-cell {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .matrix-cell-small {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9em;
+        }
+        
+        .matrix-cell.negative {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .matrix-cell.zero {
+            background: #34495e;
+            color: #bdc3c7;
+        }
+        
+        .matrix-cell.positive {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .matrix-cell.highlighted {
+            background: #f39c12;
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.7);
+            z-index: 10;
+            position: relative;
+        }
+        
+        .matrix-cell.input {
+            background: #3498db;
+            color: white;
+        }
+        
+        .matrix-cell.result {
+            background: #9b59b6;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .workshop-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        
+        .team-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .team-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .team-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.4);
+        }
+        
+        .team-btn.active {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            transform: scale(1.05);
+        }
+        
+        .calculation-workspace {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            justify-items: center;
+            margin: 30px 0;
+        }
+        
+        .operator {
+            font-size: 3em;
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .step-by-step {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-right: 5px solid #27ae60;
+        }
+        
+        .calculation-detail {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: right;
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .demo-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
+        }
+        
+        .demo-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .result-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .result-card:hover {
+            border-color: #f39c12;
+            transform: translateY(-5px);
+        }
+        
+        .timer {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 107, 107, 0.8);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+            backdrop-filter: blur(10px);
+        }
+        
+        .instructions {
+            background: rgba(241, 196, 15, 0.2);
+            border: 2px dashed #f1c40f;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: right;
+        }
+        
+        .highlight-box {
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">7</span>
+        </div>
+        
+        <div class="timer" id="timer" style="display: none;">
+            ⏱️ <span id="timeLeft">20:00</span>
+        </div>
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🔍 זיהוי קצוות באמצעות קונבולוציה</h1>
+            <h2>מסנן סובל (Sobel Filter)</h2>
+            <div style="text-align: center; margin: 40px 0;">
+                <div style="font-size: 5em; margin: 30px 0;">📐</div>
+                <div class="highlight-box">
+                    <p style="font-size: 1.5em;">איך המחשב מזהה קווים וגבולות בתמונה?</p>
+                    <p style="font-size: 1.2em; color: #f39c12;">⏱️ זמן: 20 דקות | 👥 עבודה בזוגות</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 2: מה זה זיהוי קצוות -->
+        <div class="slide">
+            <h2>🎯 מה זה זיהוי קצוות?</h2>
+            <div class="comparison-grid">
+                <div class="result-card">
+                    <h3>🖼️ תמונה מקורית</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">🏠</div>
+                    <p>תמונה רגילה עם צבעים ופרטים</p>
+                </div>
+                <div class="result-card">
+                    <h3>📐 זיהוי קצוות</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">⬜</div>
+                    <p>רק הקווים והגבולות של החפצים</p>
+                </div>
+                <div class="result-card">
+                    <h3>🎯 המטרה</h3>
+                    <div style="font-size: 4em; margin: 20px 0;">🔍</div>
+                    <p>לזהות צורות ומבנים בתמונה</p>
+                </div>
+            </div>
+            <div class="instructions">
+                💡 <strong>למה זה חשוב?</strong> זיהוי קצוות הוא הבסיס לזיהוי צורות מורכבות כמו פנים, מכוניות, בניינים ועוד!
+            </div>
+        </div>
+        
+        <!-- Slide 3: מסננים של סובל -->
+        <div class="slide">
+            <h2>🔧 מסננים של סובל (Sobel Filters)</h2>
+            <div class="sobel-container">
+                <div class="filter-demo">
+                    <h3>📏 זיהוי קצוות אנכיים</h3>
+                    <p>מזהה קווים אנכיים (↕️)</p>
+                    <div class="matrix">
+                        <div class="matrix-grid matrix-3x3" id="verticalSobel">
+                            <div class="matrix-cell negative">-1</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell positive">1</div>
+                            <div class="matrix-cell negative">-2</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell positive">2</div>
+                            <div class="matrix-cell negative">-1</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell positive">1</div>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.9em;">שמאל: ערכים שליליים | ימין: ערכים חיוביים</p>
+                </div>
+                
+                <div class="filter-demo">
+                    <h3>📐 זיהוי קצוות אופקיים</h3>
+                    <p>מזהה קווים אופקיים (↔️)</p>
+                    <div class="matrix">
+                        <div class="matrix-grid matrix-3x3" id="horizontalSobel">
+                            <div class="matrix-cell negative">-1</div>
+                            <div class="matrix-cell negative">-2</div>
+                            <div class="matrix-cell negative">-1</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell zero">0</div>
+                            <div class="matrix-cell positive">1</div>
+                            <div class="matrix-cell positive">2</div>
+                            <div class="matrix-cell positive">1</div>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.9em;">למעלה: ערכים שליליים | למטה: ערכים חיוביים</p>
+                </div>
+            </div>
+            <div class="highlight-box">
+                🧠 <strong>עקרון הפעולה:</strong> המסנן מחפש הבדלים חדים בבהירות בין פיקסלים סמוכים
+            </div>
+        </div>
+        
+        <!-- Slide 4: הדגמה -->
+        <div class="slide">
+            <h2>🎮 הדגמה: זיהוי קו אנכי</h2>
+            <div class="calculation-workspace">
+                <div class="matrix">
+                    <div class="matrix-title">📸 תמונה (7×7)</div>
+                    <div class="matrix-grid matrix-7x7" id="demoImage">
+                        <!-- תמולא ב-JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="operator">×</div>
+                
+                <div class="matrix">
+                    <div class="matrix-title">🔍 מסנן סובל אנכי</div>
+                    <div class="matrix-grid matrix-3x3">
+                        <div class="matrix-cell negative">-1</div>
+                        <div class="matrix-cell zero">0</div>
+                        <div class="matrix-cell positive">1</div>
+                        <div class="matrix-cell negative">-2</div>
+                        <div class="matrix-cell zero">0</div>
+                        <div class="matrix-cell positive">2</div>
+                        <div class="matrix-cell negative">-1</div>
+                        <div class="matrix-cell zero">0</div>
+                        <div class="matrix-cell positive">1</div>
+                    </div>
+                </div>
+                
+                <div class="operator">=</div>
+                
+                <div class="matrix">
+                    <div class="matrix-title">✨ תוצאה (5×5)</div>
+                    <div class="matrix-grid matrix-5x5" id="demoResult">
+                        <!-- תמולא ב-JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-controls">
+                <button class="demo-btn" onclick="startDetectionDemo()">▶️ הרץ הדגמה</button>
+                <button class="demo-btn" onclick="nextDetectionStep()" id="nextDetectionBtn" disabled>➡️ צעד הבא</button>
+                <button class="demo-btn" onclick="resetDetectionDemo()">🔄 איפוס</button>
+            </div>
+            
+            <div id="detectionSteps"></div>
+        </div>
+        
+        <!-- Slide 5: פעילות קבוצתית -->
+        <div class="slide">
+            <h2>👥 פעילות קבוצתית - חישוב ידני</h2>
+            <div class="instructions">
+                <h3>📋 הוראות:</h3>
+                <p>1. התחלקו לזוגות</p>
+                <p>2. בחרו קבוצה (A/B/C/D)</p>
+                <p>3. חשבו את הקונבולוציה במיקום שנבחר</p>
+                <p>4. השוו תוצאות עם קבוצות אחרות</p>
+            </div>
+            
+            <div class="team-selector">
+                <button class="team-btn" onclick="selectTeam('A')">קבוצה A</button>
+                <button class="team-btn" onclick="selectTeam('B')">קבוצה B</button>
+                <button class="team-btn" onclick="selectTeam('C')">קבוצה C</button>
+                <button class="team-btn" onclick="selectTeam('D')">קבוצה D</button>
+            </div>
+            
+            <div class="workshop-area">
+                <div id="teamTask" style="text-align: center; font-size: 1.3em; margin-bottom: 30px;">
+                    בחרו קבוצה כדי לראות את המשימה שלכם
+                </div>
+                
+                <div id="teamWorkspace" style="display: none;">
+                    <div class="calculation-workspace">
+                        <div class="matrix">
+                            <div class="matrix-title">תמונה (7×7)</div>
+                            <div class="matrix-grid matrix-7x7" id="teamImage">
+                                <!-- תמולא לפי הקבוצה -->
+                            </div>
+                        </div>
+                        
+                        <div class="operator">×</div>
+                        
+                        <div class="matrix">
+                            <div class="matrix-title">מסנן סובל</div>
+                            <div class="matrix-grid matrix-3x3" id="teamFilter">
+                                <!-- תמולא לפי הקבוצה -->
+                            </div>
+                        </div>
+                        
+                        <div class="operator">=</div>
+                        
+                        <div class="matrix">
+                            <div class="matrix-title">התוצאה שלכם</div>
+                            <div class="matrix-grid matrix-5x5" id="teamResult">
+                                <!-- יחושב על ידי הקבוצה -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-by-step" id="teamInstructions">
+                        <!-- הוראות ספציפיות לקבוצה -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-controls">
+                <button class="demo-btn" onclick="startTimer()" id="timerBtn">⏱️ התחל טיימר (10 דקות)</button>
+                <button class="demo-btn" onclick="showSolution()" id="solutionBtn" disabled>✅ הצג פתרון</button>
+            </div>
+        </div>
+        
+        <!-- Slide 6: השוואת תוצאות -->
+        <div class="slide">
+            <h2>📊 השוואת תוצאות הקבוצות</h2>
+            <div class="comparison-grid">
+                <div class="result-card" id="resultA">
+                    <h3>👥 קבוצה A</h3>
+                    <div style="font-size: 2em; margin: 15px 0;">📍</div>
+                    <p>מיקום: (0,0)</p>
+                    <div class="calculation-detail" id="calcA">חישוב יוצג כאן</div>
+                </div>
+                
+                <div class="result-card" id="resultB">
+                    <h3>👥 קבוצה B</h3>
+                    <div style="font-size: 2em; margin: 15px 0;">📍</div>
+                    <p>מיקום: (0,2)</p>
+                    <div class="calculation-detail" id="calcB">חישוב יוצג כאן</div>
+                </div>
+                
+                <div class="result-card" id="resultC">
+                    <h3>👥 קבוצה C</h3>
+                    <div style="font-size: 2em; margin: 15px 0;">📍</div>
+                    <p>מיקום: (2,0)</p>
+                    <div class="calculation-detail" id="calcC">חישוב יוצג כאן</div>
+                </div>
+                
+                <div class="result-card" id="resultD">
+                    <h3>👥 קבוצה D</h3>
+                    <div style="font-size: 2em; margin: 15px 0;">📍</div>
+                    <p>מיקום: (2,2)</p>
+                    <div class="calculation-detail" id="calcD">חישוב יוצג כאן</div>
+                </div>
+            </div>
+            
+            <div class="demo-controls">
+                <button class="demo-btn" onclick="revealAllSolutions()">🔍 הצג את כל הפתרונות</button>
+                <button class="demo-btn" onclick="analyzeResults()">📈 נתח תוצאות</button>
+            </div>
+            
+            <div id="analysis" style="display: none;" class="highlight-box">
+                <h3>🧠 ניתוח התוצאות:</h3>
+                <p id="analysisText"></p>
+            </div>
+        </div>
+        
+        <!-- Slide 7: סיכום -->
+        <div class="slide">
+            <h2>📋 סיכום - זיהוי קצוות</h2>
+            <div class="comparison-grid">
+                <div class="result-card">
+                    <h3>🎯 מה למדנו?</h3>
+                    <p>• מסנן סובל לזיהוי קצוות</p>
+                    <p>• הבדל בין קצוות אנכיים ואופקיים</p>
+                    <p>• חישוב ידני של קונבולוציה</p>
+                    <p>• עבודה בצוות ושיתוף תוצאות</p>
+                </div>
+                
+                <div class="result-card">
+                    <h3>🔑 נקודות מפתח</h3>
+                    <p>• ערכים גבוהים = קצוות חזקים</p>
+                    <p>• ערכים נמוכים = אזורים חלקים</p>
+                    <p>• כיוון המסנן קובע סוג הקצה</p>
+                    <p>• בסיס לזיהוי צורות מורכבות</p>
+                </div>
+                
+                <div class="result-card">
+                    <h3>🚀 הבא בתור</h3>
+                    <p>• רשתות CNN מלאות</p>
+                    <p>• שכבות pooling</p>
+                    <p>• אימון על נתונים אמיתיים</p>
+                    <p>• יישומים מעשיים</p>
+                </div>
+            </div>
+            
+            <div class="highlight-box">
+                🎉 <strong>כל הכבוד!</strong> עכשיו אתם יודעים איך המחשב "רואה" קצוות בתמונות!
+            </div>
+        </div>
+        
+        <div class="navigation">
+            <button class="nav-btn" onclick="previousSlide()" id="prevBtn">⏮️ הקודם</button>
+            <button class="nav-btn" onclick="nextSlide()" id="nextBtn">הבא ⏭️</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        let demoStep = 0;
+        let selectedTeam = null;
+        let timerInterval = null;
+        
+        // נתוני הדגמה - תמונה עם קו אנכי
+        const demoImageData = [
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200],
+            [50, 50, 50, 200, 200, 200, 200]
+        ];
+        
+        // נתוני קבוצות
+        const teamData = {
+            A: { position: [0, 0], filter: 'vertical' },
+            B: { position: [0, 2], filter: 'vertical' },
+            C: { position: [2, 0], filter: 'horizontal' },
+            D: { position: [2, 2], filter: 'horizontal' }
+        };
+        
+        const sobelFilters = {
+            vertical: [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+            horizontal: [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+        };
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = index + 1;
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').disabled = index === totalSlides - 1;
+            
+            // אתחול מטריצות בשקף ההדגמה
+            if (index === 3) {
+                initializeDemoMatrices();
+            }
+        }
+        
+        function nextSlide() {
+            if (currentSlideIndex < totalSlides - 1) {
+                currentSlideIndex++;
+                showSlide(currentSlideIndex);
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlideIndex > 0) {
+                currentSlideIndex--;
+                showSlide(currentSlideIndex);
+            }
+        }
+        
+        function initializeDemoMatrices() {
+            // יצירת מטריצת התמונה להדגמה
+            const demoImage = document.getElementById('demoImage');
+            demoImage.innerHTML = '';
+            for (let i = 0; i < 7; i++) {
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell matrix-cell-small input';
+                    cell.textContent = demoImageData[i][j];
+                    cell.id = `demo-${i}-${j}`;
+                    cell.style.background = `rgb(${demoImageData[i][j]}, ${demoImageData[i][j]}, ${demoImageData[i][j]})`;
+                    cell.style.color = demoImageData[i][j] > 125 ? 'black' : 'white';
+                    demoImage.appendChild(cell);
+                }
+            }
+            
+            // יצירת מטריצת התוצאה
+            const demoResult = document.getElementById('demoResult');
+            demoResult.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell result';
+                    cell.textContent = '?';
+                    cell.id = `demo-result-${i}-${j}`;
+                    demoResult.appendChild(cell);
+                }
+            }
+        }
+        
+        function startDetectionDemo() {
+            demoStep = 0;
+            document.getElementById('nextDetectionBtn').disabled = false;
+            document.getElementById('detectionSteps').innerHTML = '<h3>🧮 שלבי זיהוי הקצוות:</h3>';
+            resetDemoHighlights();
+        }
+        
+        function nextDetectionStep() {
+            if (demoStep < 25) {
+                performDetectionStep(demoStep);
+                demoStep++;
+            } else {
+                document.getElementById('nextDetectionBtn').disabled = true;
+            }
+        }
+        
+        function performDetectionStep(step) {
+            resetDemoHighlights();
+            
+            const row = Math.floor(step / 5);
+            const col = step % 5;
+            
+            // הדגשת התאים הרלוונטיים בתמונה
+            let sum = 0;
+            let calculation = '';
+            const verticalFilter = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+            
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const imgCell = document.getElementById(`demo-${row + i}-${col + j}`);
+                    if (imgCell) {
+                        imgCell.classList.add('highlighted');
+                        
+                        const imgValue = demoImageData[row + i][col + j];
+                        const filterValue = verticalFilter[i][j];
+                        const product = imgValue * filterValue;
+                        sum += product;
+                        
+                        if (calculation) calculation += ' + ';
+                        calculation += `(${imgValue} × ${filterValue})`;
+                    }
+                }
+            }
+            
+            // עדכון התוצאה
+            const resultCell = document.getElementById(`demo-result-${row}-${col}`);
+            if (resultCell) {
+                resultCell.textContent = sum;
+                resultCell.classList.add('highlighted');
+                
+                // צבע לפי עוצמת הקצה
+                const intensity = Math.abs(sum);
+                if (intensity > 200) {
+                    resultCell.style.background = '#e74c3c';
+                } else if (intensity > 100) {
+                    resultCell.style.background = '#f39c12';
+                } else {
+                    resultCell.style.background = '#27ae60';
+                }
+            }
+            
+            // הוספת שלב החישוב
+            const stepsDiv = document.getElementById('detectionSteps');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'calculation-detail';
+            stepDiv.innerHTML = `
+                <strong>מיקום (${row}, ${col}):</strong><br>
+                ${calculation} = <span style="color: #f39c12; font-weight: bold;">${sum}</span>
+                ${Math.abs(sum) > 150 ? ' <span style="color: #e74c3c;">← קצה חזק!</span>' : ''}
+            `;
+            stepsDiv.appendChild(stepDiv);
+        }
+        
+        function resetDemoHighlights() {
+            document.querySelectorAll('.matrix-cell').forEach(cell => {
+                cell.classList.remove('highlighted');
+            });
+        }
+        
+        function resetDetectionDemo() {
+            demoStep = 0;
+            document.getElementById('nextDetectionBtn').disabled = true;
+            document.getElementById('detectionSteps').innerHTML = '';
+            initializeDemoMatrices();
+        }
+        
+        function selectTeam(team) {
+            selectedTeam = team;
+            
+            // עדכון כפתורי הקבוצות
+            document.querySelectorAll('.team-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // הצגת המשימה
+            const teamData = getTeamData(team);
+            document.getElementById('teamTask').innerHTML = `
+                <h3>👥 קבוצה ${team}</h3>
+                <p>המשימה שלכם: חשבו את הקונבולוציה במיקום (${teamData.position[0]}, ${teamData.position[1]})</p>
+                <p>מסנן: ${teamData.filter === 'vertical' ? 'זיהוי קצוות אנכיים' : 'זיהוי קצוות אופקיים'}</p>
+            `;
+            
+            document.getElementById('teamWorkspace').style.display = 'block';
+            setupTeamWorkspace(team);
+        }
+        
+        function getTeamData(team) {
+            return teamData[team];
+        }
+        
+        function setupTeamWorkspace(team) {
+            const data = getTeamData(team);
+            const filter = sobelFilters[data.filter];
+            
+            // הגדרת מטריצת התמונה
+            const teamImage = document.getElementById('teamImage');
+            teamImage.innerHTML = '';
+            for (let i = 0; i < 7; i++) {
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell matrix-cell-small input';
+                    cell.textContent = demoImageData[i][j];
+                    
+                    // הדגשת האזור הרלוונטי לקבוצה
+                    if (i >= data.position[0] && i < data.position[0] + 3 && 
+                        j >= data.position[1] && j < data.position[1] + 3) {
+                        cell.style.border = '3px solid #f39c12';
+                        cell.style.background = '#3498db';
+                        cell.style.color = 'white';
+                    } else {
+                        cell.style.background = `rgb(${demoImageData[i][j]}, ${demoImageData[i][j]}, ${demoImageData[i][j]})`;
+                        cell.style.color = demoImageData[i][j] > 125 ? 'black' : 'white';
+                    }
+                    
+                    teamImage.appendChild(cell);
+                }
+            }
+            
+            // הגדרת מסנן
+            const teamFilter = document.getElementById('teamFilter');
+            teamFilter.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    cell.textContent = filter[i][j];
+                    
+                    if (filter[i][j] < 0) {
+                        cell.classList.add('negative');
+                    } else if (filter[i][j] === 0) {
+                        cell.classList.add('zero');
+                    } else {
+                        cell.classList.add('positive');
+                    }
+                    
+                    teamFilter.appendChild(cell);
+                }
+            }
+            
+            // יצירת מטריצת התוצאה הריקה
+            const teamResult = document.getElementById('teamResult');
+            teamResult.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell result';
+                    
+                    if (i === data.position[0] && j === data.position[1]) {
+                        cell.textContent = '?';
+                        cell.style.background = '#e74c3c';
+                        cell.style.fontSize = '1.5em';
+                    } else {
+                        cell.textContent = '';
+                        cell.style.background = 'rgba(255,255,255,0.1)';
+                    }
+                    
+                    teamResult.appendChild(cell);
+                }
+            }
+            
+            // הוראות ספציפיות
+            document.getElementById('teamInstructions').innerHTML = `
+                <h3>📝 הוראות לקבוצה ${team}:</h3>
+                <p>1. קחו את התאים המודגשים בכחול במטריצת התמונה</p>
+                <p>2. כפלו כל תא במספר המתאים במסנן</p>
+                <p>3. חברו את כל התוצאות</p>
+                <p>4. רשמו את התוצאה הסופית</p>
+                <div class="calculation-detail">
+                    דוגמה: (50×(-1)) + (50×0) + (50×1) + (50×(-2)) + (50×0) + (50×2) + ... = ?
+                </div>
+            `;
+        }
+        
+        function startTimer() {
+            let timeLeft = 10 * 60; // 10 דקות בשניות
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('timerBtn').disabled = true;
+            
+            timerInterval = setInterval(() => {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById('timeLeft').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('solutionBtn').disabled = false;
+                    document.getElementById('timer').style.background = 'rgba(231, 76, 60, 0.8)';
+                    alert('⏰ הזמן נגמר! אתם יכולים לראות את הפתרון');
+                }
+                
+                if (timeLeft <= 60) {
+                    document.getElementById('timer').style.background = 'rgba(231, 76, 60, 0.8)';
+                }
+                
+                timeLeft--;
+            }, 1000);
+            
+            // אפשרות לראות פתרון אחרי 5 דקות
+            setTimeout(() => {
+                document.getElementById('solutionBtn').disabled = false;
+            }, 5 * 60 * 1000);
+        }
+        
+        function showSolution() {
+            if (!selectedTeam) {
+                alert('בחרו קבוצה תחילה!');
+                return;
+            }
+            
+            const data = getTeamData(selectedTeam);
+            const filter = sobelFilters[data.filter];
+            const result = calculateConvolution(data.position[0], data.position[1], filter);
+            
+            // עדכון התוצאה
+            const resultCells = document.getElementById('teamResult').children;
+            const targetIndex = data.position[0] * 5 + data.position[1];
+            if (resultCells[targetIndex]) {
+                resultCells[targetIndex].textContent = result.sum;
+                resultCells[targetIndex].style.background = '#27ae60';
+            }
+            
+            // הצגת החישוב המפורט
+            document.getElementById('teamInstructions').innerHTML += `
+                <div class="calculation-detail" style="background: rgba(39, 174, 96, 0.2); border: 2px solid #27ae60;">
+                    <h4>✅ הפתרון הנכון:</h4>
+                    <p>${result.calculation}</p>
+                    <p><strong>תוצאה סופית: ${result.sum}</strong></p>
+                </div>
+            `;
+        }
+        
+        function calculateConvolution(row, col, filter) {
+            let sum = 0;
+            let calculation = '';
+            
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const imgValue = demoImageData[row + i][col + j];
+                    const filterValue = filter[i][j];
+                    const product = imgValue * filterValue;
+                    sum += product;
+                    
+                    if (calculation) calculation += ' + ';
+                    calculation += `(${imgValue}×${filterValue})`;
+                }
+            }
+            
+            return { sum, calculation };
+        }
+        
+        function revealAllSolutions() {
+            Object.keys(teamData).forEach(team => {
+                const data = getTeamData(team);
+                const filter = sobelFilters[data.filter];
+                const result = calculateConvolution(data.position[0], data.position[1], filter);
+                
+                document.getElementById(`calc${team}`).innerHTML = `
+                    <strong>תוצאה: ${result.sum}</strong><br>
+                    <small>${result.calculation}</small>
+                `;
+                
+                const card = document.getElementById(`result${team}`);
+                card.style.borderColor = '#27ae60';
+                card.style.background = 'rgba(39, 174, 96, 0.1)';
+            });
+        }
+        
+        function analyzeResults() {
+            document.getElementById('analysis').style.display = 'block';
+            
+            const analysisText = `
+                🔍 <strong>ניתוח התוצאות:</strong><br><br>
+                • <strong>קבוצות A ו-B</strong> (מסנן אנכי): קיבלו ערכים גבוהים כי יש קו אנכי בתמונה<br>
+                • <strong>קבוצות C ו-D</strong> (מסנן אופקי): קיבלו ערכים נמוכים כי אין קווים אופקיים<br>
+                • ככל שהערך גבוה יותר, הקצה חזק יותר בכיוון הספציפי<br>
+                • שילוב של שני המסננים נותן תמונה מלאה של כל הקצוות
+            `;
+            
+            document.getElementById('analysisText').innerHTML = analysisText;
+        }
+        
+        // ניווט מקלדת
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                previousSlide();
+            }
+        });
+        
+        // אתחול
+        showSlide(0);
+    </script>
+</body>
+</html>
+        
+        

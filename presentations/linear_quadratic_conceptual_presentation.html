@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשתות נוירונים לזיהוי פונקציות</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .presentation {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .slide {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-height: 600px;
+            position: relative;
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide h1 {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #fff, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide h2 {
+            font-size: 2.5em;
+            margin-bottom: 25px;
+            color: #ffd700;
+            text-align: center;
+        }
+
+        .slide h3 {
+            font-size: 1.8em;
+            margin: 20px 0 15px 0;
+            color: #87ceeb;
+        }
+
+        .slide p, .slide li {
+            font-size: 1.4em;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+
+        .slide ul {
+            padding-right: 30px;
+        }
+
+        .analogy-box {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .analogy-box::before {
+            content: "💡";
+            font-size: 2em;
+            position: absolute;
+            top: -15px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 5px 10px;
+            border-radius: 50%;
+        }
+
+        .function-demo {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .function-box {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px;
+            min-width: 200px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .function-box:hover {
+            transform: scale(1.05);
+        }
+
+        .neuron-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .neuron {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 0 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #ffd700;
+            margin: 0 10px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 1.1em;
+        }
+
+        .interactive-demo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .demo-input {
+            margin: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 1.2em;
+            width: 100px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .comparison-table th {
+            background: rgba(255, 215, 0, 0.3);
+            font-size: 1.3em;
+        }
+
+        .formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.6em;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            border: 2px solid #87ceeb;
+        }
+
+        .highlight {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            flex: 1;
+            margin: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid rgba(135, 206, 235, 0.5);
+            min-width: 200px;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ffd700;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 0 auto 15px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">10</span>
+        </div>
+
+        <!-- שקף 1: כותרת -->
+        <div class="slide active">
+            <h1>🧠 רשתות נוירונים</h1>
+            <h2>איך מחשבים לומדים לזהות פונקציות מתמטיות?</h2>
+            
+            <div class="analogy-box">
+                <h3>דמיינו שאתם רוצים ללמד חבר לזהות איזה פיצה הכי טעימה...</h3>
+                <p>אתם נותנים לו לטעום הרבה פיצות שונות ואומרים לו איזה טעימה ואיזה לא.</p>
+                <p>אחרי הרבה דוגמאות, הוא יתחיל לזהות לבד מה עושה פיצה טעימה!</p>
+            </div>
+
+            <p style="text-align: center; font-size: 1.6em; margin-top: 40px;">
+                כך בדיוק עובדות רשתות נוירונים - הן לומדות מדוגמאות! 🎯
+            </p>
+        </div>
+
+        <!-- שקף 2: מה זה פונקציה -->
+        <div class="slide">
+            <h2>מה זה פונקציה מתמטית? 📊</h2>
+            
+            <div class="analogy-box">
+                <h3>פונקציה היא כמו מכונת קפה ☕</h3>
+                <p>אתם מכניסים <span class="highlight">קלט</span> (מספר) ומקבלים <span class="highlight">פלט</span> (מספר אחר)</p>
+            </div>
+
+            <div class="function-demo">
+                <div class="function-box">
+                    <h3>פונקציה לינארית</h3>
+                    <div class="formula">y = 2x + 1</div>
+                    <p>x = 3 → y = 7</p>
+                    <p>קו ישר! 📈</p>
+                </div>
+
+                <div class="function-box">
+                    <h3>פונקציה ריבועית</h3>
+                    <div class="formula">y = x²</div>
+                    <p>x = 3 → y = 9</p>
+                    <p>עקומה! 🌙</p>
+                </div>
+
+                <div class="function-box">
+                    <h3>פונקציה מורכבת</h3>
+                    <div class="formula">y = sin(x)</div>
+                    <p>x = π/2 → y = 1</p>
+                    <p>גלים! 🌊</p>
+                </div>
+            </div>
+
+            <p style="text-align: center; font-size: 1.4em; margin-top: 30px;">
+                <strong>המטרה:</strong> הרשת תלמד לחזות את הפלט רק לפי הקלט!
+            </p>
+        </div>
+
+        <!-- שקף 3: איך רשת נוירונים עובדת -->
+        <div class="slide">
+            <h2>איך רשת נוירונים עובדת? 🧠</h2>
+            
+            <div class="analogy-box">
+                <h3>כמו המוח שלנו!</h3>
+                <p>המוח מורכב מנוירונים (תאי עצב) שמחוברים ביניהם</p>
+                <p>כל נוירון מקבל מידע, מעבד אותו, ומעביר הלאה</p>
+            </div>
+
+            <div class="neuron-visual">
+                <div style="text-align: center;">
+                    <div>קלט</div>
+                    <div style="font-size: 2em;">5</div>
+                </div>
+                <div class="arrow">←</div>
+                <div class="neuron">N1</div>
+                <div class="arrow">←</div>
+                <div class="neuron">N2</div>
+                <div class="arrow">←</div>
+                <div class="neuron">N3</div>
+                <div class="arrow">←</div>
+                <div style="text-align: center;">
+                    <div>פלט</div>
+                    <div style="font-size: 2em;">25</div>
+                </div>
+            </div>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h4>קבלת קלט</h4>
+                    <p>הרשת מקבלת מספר (למשל: x = 5)</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h4>עיבוד</h4>
+                    <p>כל נוירון מבצע חישוב (משקולות + הטיה)</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h4>תוצאה</h4>
+                    <p>הרשת מנחשת את התשובה (y = 25)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- שקף 4: התהליך למידה -->
+        <div class="slide">
+            <h2>איך הרשת לומדת? 📚</h2>
+
+            <div class="analogy-box">
+                <h3>כמו לימוד לבחינה!</h3>
+                <p>תלמיד פותר הרבה תרגילים עם התשובות הנכונות</p>
+                <p>אם הוא טועה - הוא מתקן ומשפר</p>
+                <p>עד שהוא מצליח לענות נכון גם על שאלות חדשות!</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h4>נתוני אימון</h4>
+                    <p>נותנים לרשת הרבה דוגמאות:<br>
+                    x=1→y=3<br>x=2→y=7<br>x=3→y=13</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h4>ניגון</h4>
+                    <p>הרשת מנחשת והשוות לתשובה הנכונה</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h4>שיפור</h4>
+                    <p>הרשת מתקנת את עצמה ומשפרת</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h4>חזרה</h4>
+                    <p>התהליך חוזר אלפי פעמים!</p>
+                </div>
+            </div>
+
+            <p style="text-align: center; font-size: 1.4em; margin-top: 30px;">
+                <strong>אחרי האימון:</strong> הרשת יכולה לחזות ערכים גם על נקודות שלא ראתה! ✨
+            </p>
+        </div>
+
+        <!-- שקף 5: דוגמה פשוטה - פונקציה לינארית -->
+        <div class="slide">
+            <h2>דוגמה פשוטה: פונקציה לינארית 📈</h2>
+
+            <div class="formula">y = 2x + 1</div>
+
+            <div class="interactive-demo">
+                <h3>בואו נבדוק!</h3>
+                <p>אם x = <input type="number" class="demo-input" id="linearInput" value="3" onchange="calculateLinear()">
+                אז y = <span id="linearOutput" style="font-size: 1.5em; color: #ffd700;">7</span></p>
+            </div>
+
+            <table class="comparison-table">
+                <tr>
+                    <th>קלט (x)</th>
+                    <th>פלט אמיתי (y)</th>
+                    <th>חיזוי הרשת</th>
+                    <th>שגיאה</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>3</td>
+                    <td>2.9</td>
+                    <td>0.1</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>5</td>
+                    <td>5.1</td>
+                    <td>0.1</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>7</td>
+                    <td>6.98</td>
+                    <td>0.02</td>
+                </tr>
+            </table>
+
+            <p style="text-align: center; color: #87ceeb;">
+                <strong>מעולה!</strong> הרשת למדה לחזות כמעט בדיוק! 🎯
+            </p>
+        </div>
+
+        <!-- שקף 6: דוגמה מורכבת יותר -->
+        <div class="slide">
+            <h2>דוגמה מורכבת יותר: פונקציה ריבועית 🌙</h2>
+
+            <div class="formula">y = x² + 2x + 1</div>
+
+            <div class="analogy-box">
+                <h3>למה זה יותר קשה?</h3>
+                <p>פונקציה לינארית = קו ישר (פשוט!)</p>
+                <p>פונקציה ריבועית = עקומה (מורכב יותר!)</p>
+                <p><strong>פתרון:</strong> נוסיף יותר נוירונים ושכבות! 🧠</p>
+            </div>
+
+            <div class="neuron-visual">
+                <div style="text-align: center;">
+                    <div>קלט</div>
+                    <div style="font-size: 1.5em;">x</div>
+                </div>
+                <div class="arrow">←</div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="neuron" style="margin: 5px;">N1</div>
+                    <div class="neuron" style="margin: 5px;">N2</div>
+                    <div class="neuron" style="margin: 5px;">N3</div>
+                    <div style="font-size: 0.9em;">שכבה נסתרת</div>
+                </div>
+                <div class="arrow">←</div>
+                <div class="neuron">פלט</div>
+                <div class="arrow">←</div>
+                <div style="text-align: center;">
+                    <div>תוצאה</div>
+                    <div style="font-size: 1.5em;">y</div>
+                </div>
+            </div>
+
+            <p style="text-align: center; font-size: 1.3em;">
+                <span class="highlight">יותר נוירונים = יכולת ללמוד פונקציות מורכבות יותר!</span>
+            </p>
+        </div>
+
+        <!-- שקף 7: היפרפרמטרים -->
+        <div class="slide">
+            <h2>היפרפרמטרים - הגדרות הרשת ⚙️</h2>
+
+            <div class="analogy-box">
+                <h3>כמו הגדרות במשחק מחשב!</h3>
+                <p>רמת קושי, מהירות, גרפיקה... כל הגדרה משפיעה על החוויה</p>
+                <p>ברשת נוירונים: כל הגדרה משפיעה על הלמידה!</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step">
+                    <h4>מספר שכבות</h4>
+                    <p>יותר שכבות = פונקציות מורכבות יותר</p>
+                    <p>אבל: לוקח יותר זמן ללמוד</p>
+                </div>
+                <div class="step">
+                    <h4>מספר נוירונים</h4>
+                    <p>יותר נוירונים = יכולת למידה גדולה יותר</p>
+                    <p>אבל: יכול להוביל ל"זכירת לב"</p>
+                </div>
+                <div class="step">
+                    <h4>מהירות למידה</h4>
+                    <p>מהר = לומד מהר אבל יכול לפספס</p>
+                    <p>לאט = לומד טוב אבל לוקח זמן</p>
+                </div>
+            </div>
+
+            <p style="text-align: center; font-size: 1.4em; margin-top: 30px;">
+                <span class="highlight">המטרה: למצוא את האיזון המושלם! ⚖️</span>
+            </p>
+        </div>
+
+        <!-- שקף 8: בעיות נפוצות -->
+        <div class="slide">
+            <h2>בעיות נפוצות ופתרונות 🔧</h2>
+
+            <div class="function-demo">
+                <div class="function-box" style="border-color: #ff6b6b;">
+                    <h3 style="color: #ff6b6b;">Overfitting</h3>
+                    <p><strong>הבעיה:</strong> הרשת "זוכרת בעל פה" את נתוני האימון</p>
+                    <p><strong>התוצאה:</strong> לא מצליחה על נתונים חדשים</p>
+                    <p><strong>הפתרון:</strong> פחות נוירונים, או Dropout</p>
+                </div>
+
+                <div class="function-box" style="border-color: #ffd93d;">
+                    <h3 style="color: #ffd93d;">Underfitting</h3>
+                    <p><strong>הבעיה:</strong> הרשת פשוט מדי</p>
+                    <p><strong>התוצאה:</strong> לא לומדת כלום</p>
+                    <p><strong>הפתרון:</strong> יותר נוירונים או שכבות</p>
+                </div>
+
+                <div class="function-box" style="border-color: #4ecdc4;">
+                    <h3 style="color: #4ecdc4;">Just Right! ✨</h3>
+                    <p><strong>התוצאה:</strong> לומדת טוב על נתוני אימון</p>
+                    <p><strong>וגם:</strong> מצליחה על נתונים חדשים</p>
+                    <p><strong>זה המטרה!</strong> 🎯</p>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h3>כמו לימוד לבחינה:</h3>
+                <p><strong>זכירת לב:</strong> זוכר בדיוק את הדוגמאות אבל לא מבין</p>
+                <p><strong>לא מספיק לימוד:</strong> לא זוכר כלום</p>
+                <p><strong>לימוד נכון:</strong> מבין את העקרונות ומצליח גם על שאלות חדשות!</p>
+            </div>
+        </div>
+
+        <!-- שקף 9: יישומים בחיים האמיתיים -->
+        <div class="slide">
+            <h2>איפה משתמשים בזה בחיים האמיתיים? 🌟</h2>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">🎵</div>
+                    <h4>זיהוי מוזיקה</h4>
+                    <p>Shazam מזהה שירים מתוך קטע קצר</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">📱</div>
+                    <h4>זיהוי פרצופים</h4>
+                    <p>הטלפון מזהה מי בתמונה</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">🚗</div>
+                    <h4>רכבים אוטונומיים</h4>
+                    <p>מזהים מכוניות, הולכי רגל, תמרורים</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">🎮</div>
+                    <h4>משחקים</h4>
+                    <p>בינה מלאכותית שמשחקת נגדכם</p>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h3>הקשר לפונקציות מתמטיות:</h3>
+                <p><strong>זיהוי תמונה:</strong> פיקסלים (קלט) → "חתול" או "כלב" (פלט)</p>
+                <p><strong>תחזית מזג אויר:</strong> נתוני חיישנים (קלט) → "יירד גשם" (פלט)</p>
+                <p><strong>המלצות:</strong> הרגלי צפייה (קלט) → "סרט מומלץ" (פלט)</p>
+            </div>
+
+            <p style="text-align: center; font-size: 1.4em; margin-top: 30px;">
+                <span class="highlight">בעצם, זה בכל מקום סביבנו! 🤖</span>
+            </p>
+        </div>
+
+        <!-- שקף 10: סיכום -->
+        <div class="slide">
+            <h1>🎯 סיכום</h1>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">🧠</div>
+                    <h4>רשת נוירונים</h4>
+                    <p>מחקה את המוח האנושי</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">📊</div>
+                    <h4>לומדת פונקציות</h4>
+                    <p>מקלט לפלט, מדוגמאות</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">⚙️</div>
+                    <h4>היפרפרמטרים</h4>
+                    <p>הגדרות שמשפיעות על הלמידה</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">🌟</div>
+                    <h4>יישומים</h4>
+                    <p>בכל מקום בחיי היומיום</p>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h3>מה למדנו היום?</h3>
+                <p>🔹 רשתות נוירונים לומדות כמו התלמיד הטוב ביותר - מדוגמאות!</p>
+                <p>🔹 הן יכולות לזהות קשרים מורכבים בין קלט לפלט</p>
+                <p>🔹 עם ההגדרות הנכונות, הן מצליחות על בעיות אמיתיות</p>
+                <p>🔹 הטכנולוגיה הזו כבר משנה את העולם סביבנו!</p>
+            </div>
+
+            <p style="text-align: center; font-size: 2em; margin-top: 40px;">
+                <span class="highlight">🚀 עכשיו אתם מוכנים להתחיל לתכנת! 🚀</span>
+            </p>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <p style="font-size: 1.2em;">תודה על ההקשבה! יש שאלות? 🙋‍♀️🙋‍♂️</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="prevBtn" onclick="changeSlide(-1)">◀ הקודם</button>
+        <button class="btn" id="nextBtn" onclick="changeSlide(1)">הבא ▶</button>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === index);
+            });
+            
+            document.getElementById('currentSlide').textContent = index + 1;
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').disabled = index === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            const newIndex = currentSlideIndex + direction;
+            if (newIndex >= 0 && newIndex < totalSlides) {
+                currentSlideIndex = newIndex;
+                showSlide(currentSlideIndex);
+            }
+        }
+
+        function calculateLinear() {
+            const x = parseFloat(document.getElementById('linearInput').value) || 0;
+            const y = 2 * x + 1;
+            document.getElementById('linearOutput').textContent = y;
+        }
+
+        // מקשים למעבר בין שקפים
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                event.preventDefault();
+                changeSlide(1);
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                changeSlide(-1);
+            }
+        });
+
+        // אתחול
+        showSlide(0);
+        calculateLinear();
+
+        // אנימציות נוספות לנוירונים
+        setInterval(() => {
+            const neurons = document.querySelectorAll('.neuron');
+            neurons.forEach((neuron, index) => {
+                setTimeout(() => {
+                    neuron.style.boxShadow = '0 5px 25px rgba(255, 215, 0, 0.8)';
+                    setTimeout(() => {
+                        neuron.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+                    }, 200);
+                }, index * 100);
+            });
+        }, 3000);
+    </script>
+</body>
+</html>

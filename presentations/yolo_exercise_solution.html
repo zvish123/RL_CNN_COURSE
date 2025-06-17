@@ -1,0 +1,2106 @@
+<button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+<pre class="language-markup">import os
+import json
+import cv2
+import numpy as np
+from pathlib import Path
+from typing import Dict, List, Tuple
+import matplotlib.pyplot as plt
+
+def setup_directories(output_dir: str):
+    """יצירת תיקיות נדרשות"""
+    directories = [
+        output_dir,
+        os.path.join(output_dir, 'images'),
+        os.path.join(output_dir, 'reports'),
+        os.path.join(output_dir, 'annotations')
+    ]
+
+    for directory in directories:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        print(f"📁 נוצרה תיקייה: {directory}")
+
+def load_config(config_path: str) -&gt; Dict:
+    """טעינת קובץ הגדרות"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        # הגדרות ברירת מחדל
+        default_config = {
+            "model_path": "yolov8n.pt",
+            "confidence_threshold": 0.5,
+            "iou_threshold": 0.45,
+            "max_detections": 100,
+            "input_size": 640,
+            "supported_formats": [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+        }
+        save_config(default_config, config_path)
+        return default_config
+
+def save_config(config: Dict, config_path: str):
+    """שמירת קובץ הגדרות"""
+    with open(config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+def validate_image(image_path: str) -&gt; bool:
+    """בדיקת תקינות תמונה"""
+    if not os.path.exists(image_path):
+        return False
+
+    try:
+        image = cv2.imread(image_path)
+        return image is not None and image.size &gt; 0
+    except:
+        return False
+
+def resize_image(image: np.ndarray, target_size: int = 640) -&gt; np.ndarray:
+    """שינוי גודל תמונה תוך שמירה על יחס גובה-רוחב"""
+    height, width = image.shape[:2]
+
+    # חישוב גודל חדש
+    if width &gt; height:
+        new_width = target_size
+        new_height = int(height * target_size / width)
+    else:
+        new_height = target_size
+        new_width = int(width * target_size / height)
+
+    resized = cv2.resize(image, (new_width, new_height))
+    return resized
+
+def calculate_iou(box1: Dict, box2: Dict) -&gt; float:
+    """חישוב IoU (Intersection over Union) בין שני Bounding Boxes"""
+    # קואורדינטות ההחפפה
+    x1 = max(box1['x1'], box2['x1'])
+    y1 = max(box1['y1'], box2['y1'])
+    x2 = min(box1['x2'], box2['x2'])
+    y2 = min(box1['y2'], box2['y2'])
+
+    # אם אין חפיפה
+    if x2 &lt;= x1 or y2 &lt;= y1:
+        return 0.0
+
+    # שטח החפיפה
+    intersection = (x2 - x1) * (y2 - y1)
+
+    # שטח האיחוד
+    area1 = (box1['x2'] - box1['x1']) * (box1['y2'] - box1['y1'])
+    area2 = (box2['x2'] - box2['x1']) * (box2['y2'] - box2['y1'])
+    union = area1 + area2 - intersection
+
+    return intersection / union if union &gt; 0 else 0.0
+
+def filter_overlapping_boxes(detections: List[Dict], iou_threshold: float = 0.5) -&gt; List[Dict]:
+    """סינון קופסאות חופפות (Non-Maximum Suppression פשוט)"""
+    if not detections:
+        return []
+
+    # מיון לפי ביטחון
+    sorted_detections = sorted(detections, key=lambda x: x['confidence'], reverse=True)
+
+    filtered = []
+    for detection in sorted_detections:
+        # בדיקה אם הקופסה חופפת לקופסה שכבר נבחרה
+        should_keep = True
+        for kept_detection in filtered:
+            if (detection['class_id'] == kept_detection['class_id'] and
+                calculate_iou(detection['bbox'], kept_detection['bbox']) &gt; iou_threshold):
+                should_keep = False
+                break
+
+        if should_keep:
+            filtered.append(detection)
+
+    return filtered
+
+def create_detection_summary(results_list: List[Dict]) -&gt; Dict:
+    """יצירת סיכום מספר זיהויים"""
+    if not results_list:
+        return {}
+
+    total_detections = 0
+    total_time = 0
+    class_counts = {}
+    confidence_scores = []
+
+    for results in results_list:
+        total_detections += results['num_detections']
+        total_time += results['detection_time']
+
+        for detection in results['detections']:
+            class_name = detection['class_name']
+            confidence = detection['confidence']
+
+            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+            confidence_scores.append(confidence)
+
+    summary = {
+        'total_images': len(results_list),
+        'total_detections': total_detections,
+        'average_detections_per_image': total_detections / len(results_list),
+        'total_processing_time': total_time,
+        'average_processing_time': total_time / len(results_list),
+        'class_distribution': dict(sorted(class_counts.items())),
+        'average_confidence': np.mean(confidence_scores) if confidence_scores else 0,
+        'confidence_std': np.std(confidence_scores) if confidence_scores else 0
+    }
+
+    return summary
+
+def plot_detection_statistics(summary: Dict, output_path: str):
+    """יצירת גרפים של סטטיסטיקות זיהוי"""
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('📊 סטטיסטיקות זיהוי עצמים - YOLO', fontsize=16, fontweight='bold')
+
+    # גרף 1: התפלגות מחלקות
+    if summary['class_distribution']:
+        classes = list(summary['class_distribution'].keys())
+        counts = list(summary['class_distribution'].values())
+
+        ax1.bar(range(len(classes)), counts, color='skyblue', alpha=0.7)
+        ax1.set_xlabel('מחלקות עצמים')
+        ax1.set_ylabel('מספר זיהויים')
+        ax1.set_title('התפלגות עצמים שזוהו')
+        ax1.set_xticks(range(len(classes)))
+        ax1.set_xticklabels(classes, rotation=45, ha='right')
+
+    # גרף 2: זמני עיבוד
+    ax2.bar(['זמן ממוצע', 'זמן כולל'], 
+           [summary['average_processing_time'], summary['total_processing_time']],
+           color=['orange', 'red'], alpha=0.7)
+    ax2.set_ylabel('זמן (שניות)')
+    ax2.set_title('זמני עיבוד')
+
+    # גרף 3: סטטיסטיקות כלליות
+    stats_labels = ['תמונות', 'זיהויים כולל', 'ממוצע לתמונה']
+    stats_values = [summary['total_images'], 
+                   summary['total_detections'],
+                   summary['average_detections_per_image']]
+
+    bars = ax3.bar(stats_labels, stats_values, color='green', alpha=0.7)
+    ax3.set_title('סטטיסטיקות כלליות')
+    ax3.set_ylabel('כמות')
+
+    # הוספת ערכים על הבארים
+    for bar, value in zip(bars, stats_values):
+        height = bar.get_height()
+        ax3.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                f'{value:.1f}', ha='center', va='bottom')
+
+    # גרף 4: התפלגות ביטחון
+    ax4.text(0.5, 0.6, f'ביטחון ממוצע: {summary["average_confidence"]:.3f}', 
+            ha='center', va='center', transform=ax4.transAxes, fontsize=14)
+    ax4.text(0.5, 0.4, f'סטיית תקן: {summary["confidence_std"]:.3f}', 
+            ha='center', va='center', transform=ax4.transAxes, fontsize=14)
+    ax4.set_title('סטטיסטיקות ביטחון')
+    ax4.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def export_annotations_yolo_format(detections: List[Dict], 
+                                 image_size: Tuple[int, int], 
+                                 output_path: str):
+    """ייצוא אנוטציות בפורמט YOLO"""
+    width, height = image_size
+
+    with open(output_path, 'w') as f:
+        for detection in detections:
+            bbox = detection['bbox']
+            class_id = detection['class_id']
+
+            # המרה לפורמט YOLO (ערכים נורמליזים)
+            center_x = bbox['center_x'] / width
+            center_y = bbox['center_y'] / height
+            box_width = bbox['width'] / width
+            box_height = bbox['height'] / height
+
+            f.write(f"{class_id} {center_x:.6f} {center_y:.6f} {box_width:.6f} {box_height:.6f}\n")
+
+def benchmark_model_performance(detector, test_images: List[str]) -&gt; Dict:
+    """בדיקת ביצועי המודל"""
+    print("🚀 מתחיל בדיקת ביצועים...")
+
+    results = []
+    total_time = 0
+
+    for i, image_path in enumerate(test_images, 1):
+        print(f"  עיבוד תמונה {i}/{len(test_images)}: {Path(image_path).name}")
+
+        try:
+            result = detector.detect_objects(image_path)
+            results.append(result)
+            total_time += result['detection_time']
+        except Exception as e:
+            print(f"  ❌ שגיאה בעיבוד {image_path}: {str(e)}")
+            continue
+
+    if not results:
+        return {}
+
+    # חישוב מדדי ביצועים
+    fps = len(results) / total_time if total_time &gt; 0 else 0
+    avg_detections = np.mean([r['num_detections'] for r in results])
+
+    benchmark = {
+        'total_images_processed': len(results),
+        'total_processing_time': total_time,
+        'average_fps': fps,
+        'average_detections_per_image': avg_detections,
+        'fastest_detection': min(r['detection_time'] for r in results),
+        'slowest_detection': max(r['detection_time'] for r in results),
+        'results': results
+    }
+
+    return benchmark</pre>
+        <!-- חלק 3: הרצת התרגיל -->
+<div class="exercise-section">
+  <h2>🚀 חלק 3: הרצת התרגיל</h2>
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <h3>הכנת תמונות לבדיקה</h3>
+    <p>צרו תיקיית 
+      <code>images/</code> והוסיפו תמונות לבדיקה:
+    </p>
+    <div class="code-block">
+      <div class="code-header">📁 דוגמאות תמונות</div>
+      <pre class="language-markup">images/
+├── street_scene.jpg      # תמונת רחוב עם מכוניות ואנשים
+├── animals.jpg           # תמונה עם חיות
+├── indoor_scene.jpg      # תמונה מבית עם רהיטים
+└── sports.jpg           # תמונת ספורט</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <h3>הרצה בסיסית</h3>
+    <div class="code-block">
+      <div class="code-header">💻 פקודות הרצה</div>
+      <pre class="language-markup"># הרצה עם תמונה אחת
+python main.py --input images/street_scene.jpg --output output/
+
+# הרצה עם סף ביטחון גבוה
+python main.py -i images/animals.jpg -o output/ -c 0.7
+
+# הרצה עם מודל מתקדם יותר
+python main.py -i images/indoor_scene.jpg -o output/ -m yolov8s.pt</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <h3>עיבוד מספר תמונות</h3>
+    <div class="code-block">
+      <div class="code-header">🔄 batch_process.py</div>
+      <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+      <pre class="language-markup">#!/usr/bin/env python3
+"""עיבוד מספר תמונות בבת אחת"""
+
+import os
+import glob
+from pathlib import Path
+from src.yolo_detector import YOLODetector
+from src.utils import create_detection_summary, plot_detection_statistics
+
+def batch_process(input_dir: str, output_dir: str, model_path: str = 'yolov8n.pt'):
+    """עיבוד כל התמונות בתיקייה"""
+
+    # חיפוש תמונות
+    image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
+    image_files = []
+
+    for ext in image_extensions:
+        image_files.extend(glob.glob(os.path.join(input_dir, ext)))
+        image_files.extend(glob.glob(os.path.join(input_dir, ext.upper())))
+
+    if not image_files:
+        print(f"❌ לא נמצאו תמונות בתיקייה: {input_dir}")
+        return
+
+    print(f"📸 נמצאו {len(image_files)} תמונות לעיבוד")
+
+    # יצירת מזהה
+    detector = YOLODetector(model_path)
+
+    # עיבוד התמונות
+    all_results = []
+    for i, image_path in enumerate(image_files, 1):
+        print(f"🔍 מעבד תמונה {i}/{len(image_files)}: {Path(image_path).name}")
+
+        try:
+            results = detector.detect_objects(image_path)
+            detector.save_results(results, image_path, output_dir)
+            all_results.append(results)
+        except Exception as e:
+            print(f"❌ שגיאה בעיבוד {image_path}: {str(e)}")
+            continue
+
+    # יצירת סיכום
+    if all_results:
+        summary = create_detection_summary(all_results)
+
+        # שמירת סיכום
+        summary_path = os.path.join(output_dir, 'batch_summary.txt')
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write("📊 סיכום עיבוד אצווה - YOLO\n")
+            f.write("=" * 50 + "\n\n")
+
+            f.write(f"📸 מספר תמונות: {summary['total_images']}\n")
+            f.write(f"🔍 סך זיהויים: {summary['total_detections']}\n")
+            f.write(f"📈 ממוצע לתמונה: {summary['average_detections_per_image']:.2f}\n")
+            f.write(f"⏱️ זמן כולל: {summary['total_processing_time']:.2f} שניות\n")
+            f.write(f"⚡ FPS ממוצע: {summary['total_images'] / summary['total_processing_time']:.2f}\n\n")
+
+            f.write("📋 התפלגות עצמים:\n")
+            for class_name, count in summary['class_distribution'].items():
+                f.write(f"   {class_name}: {count}\n")
+
+        # יצירת גרפים
+        plot_path = os.path.join(output_dir, 'statistics.png')
+        plot_detection_statistics(summary, plot_path)
+
+        print(f"✅ עיבוד הושלם! סיכום נשמר ב: {summary_path}")
+        print(f"📊 גרפים נשמרו ב: {plot_path}")
+
+if __name__ == "__main__":
+    batch_process('images/', 'output/')</pre>
+    </div>
+  </div>
+</div>
+        <!-- פתרון והסברים -->
+<div class="solution-section">
+  <h2>✅ פתרון מלא והסברים</h2>
+  <div class="info-box">
+    <h3>🎯 מטרות התרגיל שהושגו:</h3>
+    <ul>
+      <li>הבנת עבודה עם ספריית Ultralytics YOLO</li>
+      <li>עיבוד תמונות ועבודה עם OpenCV</li>
+      <li>יישום מערכת זיהוי עצמים מלאה</li>
+      <li>ניתוח תוצאות ויצירת דוחות</li>
+      <li>אופטימיזציה וניהול ביצועים</li>
+    </ul>
+  </div>
+  <h3>🔍 הסברים מפורטים:</h3>
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <h3>טעינת מודל YOLO</h3>
+    <p>המחלקה 
+      <code>YOLODetector</code> טוענת מודל YOLO מאומן מראש. ניתן להשתמש במודלים שונים:
+    </p>
+    <ul>
+      <li>
+        <strong>yolov8n.pt:</strong> מודל קל ומהיר (nano)
+      </li>
+      <li>
+        <strong>yolov8s.pt:</strong> מודל קטן עם דיוק טוב יותר
+      </li>
+      <li>
+        <strong>yolov8m.pt:</strong> מודל בינוני
+      </li>
+      <li>
+        <strong>yolov8l.pt:</strong> מודל גדול עם דיוק גבוה
+      </li>
+      <li>
+        <strong>yolov8x.pt:</strong> המודל הגדול והמדויק ביותר
+      </li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <h3>עיבוד תוצאות</h3>
+    <p>YOLO מחזיר תוצאות בפורמט טנזורים של PyTorch. הקוד ממיר אותם לפורמט נוח:</p>
+    <div class="code-block">
+      <pre class="language-markup"># המרת תוצאות YOLO
+boxes = results[0].boxes.xyxy.cpu().numpy()  # קואורדינטות x1,y1,x2,y2
+scores = results[0].boxes.conf.cpu().numpy()  # ציוני ביטחון 0-1
+classes = results[0].boxes.cls.cpu().numpy()  # מזהי מחלקות</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <h3>ציור Bounding Boxes</h3>
+    <p>הפונקציה 
+      <code>draw_detections</code> מציירת מלבנים צבעוניים עם תוויות על העצמים שזוהו:
+    </p>
+    <ul>
+      <li>כל מחלקה מקבלת צבע ייחודי</li>
+      <li>התווית כוללת שם העצם וציון הביטחון</li>
+      <li>הטקסט מוצג על רקע צבעוני לקריאות טובה</li>
+    </ul>
+  </div>
+</div>
+        <!-- תוצאות צפויות -->
+<div class="exercise-section">
+  <h2>📊 תוצאות צפויות</h2>
+  <div class="demo-image">🚗 🚶‍♂️ 🏠
+    <div class="bounding-box" style="left: 50px; top: 120px; width: 80px; height: 60px;">
+      <div class="box-label">car: 0.92</div>
+    </div>
+    <div class="bounding-box" style="left: 180px; top: 100px; width: 50px; height: 120px;">
+      <div class="box-label">person: 0.87</div>
+    </div>
+    <div class="bounding-box" style="left: 280px; top: 80px; width: 90px; height: 100px;">
+      <div class="box-label">house: 0.76</div>
+    </div>
+  </div>
+  <div class="output-box">
+    <h4>📋 דוגמת פלט טקסט:</h4>
+    <pre class="language-markup">🎯 דוח זיהוי עצמים - YOLO
+========================================
+
+📸 תמונה: images/street_scene.jpg
+📐 גודל: (640, 480)
+⏱️ זמן זיהוי: 0.023 שניות
+🔍 מספר עצמים: 8
+
+📋 רשימת עצמים שזוהו:
+------------------------------
+1. car
+   ביטחון: 0.924
+   מיקום: (120, 200) - (280, 320)
+   גודל: 160 × 120
+
+2. person
+   ביטחון: 0.871
+   מיקום: (350, 180) - (400, 380)
+   גודל: 50 × 200
+
+3. traffic light
+   ביטחון: 0.756
+   מיקום: (480, 50) - (510, 120)
+   גודל: 30 × 70</pre>
+  </div>
+</div>
+        <!-- שיפורים ותוספות -->
+<div class="exercise-section">
+  <h2>🚀 שיפורים מתקדמים</h2>
+  <div class="exercise-grid">
+    <div class="task-card">
+      <div class="task-icon">📹</div>
+      <h3>זיהוי בווידיאו</h3>
+      <p>הוספת תמיכה בעיבוד קובצי וידיאו בזמן אמת</p>
+      <div class="code-block">
+        <pre class="language-markup"># דוגמה לעיבוד וידיאו
+def process_video(video_path, output_path):
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # זיהוי עצמים בפריים
+        results = detector.detect_objects_in_frame(frame)
+        annotated_frame = detector.draw_detections(frame, results)
+
+        # שמירה או הצגה
+        cv2.imshow('YOLO Detection', annotated_frame)</pre>
+      </div>
+    </div>
+    <div class="task-card">
+      <div class="task-icon">🎯</div>
+      <h3>מעקב אחר עצמים</h3>
+      <p>הוספת יכולת מעקב אחר עצמים בין פריימים</p>
+      <div class="code-block">
+        <pre class="language-markup"># אלגוריתם מעקב פשוט
+class ObjectTracker:
+    def __init__(self):
+        self.tracks = {}
+        self.next_id = 0
+
+    def update(self, detections):
+        # התאמת זיהויים לעקבות קיימות
+        # יצירת עקבות חדשות
+        # עדכון מיקומים</pre>
+      </div>
+    </div>
+    <div class="task-card">
+      <div class="task-icon">📊</div>
+      <h3>ניתוח מתקדם</h3>
+      <p>הוספת מדדי ביצועים מתקדמים ויצירת דוחות מפורטים</p>
+      <div class="code-block">
+        <pre class="language-markup"># מדדי ביצועים מתקדמים
+def calculate_advanced_metrics(results):
+    # חישוב mAP (mean Average Precision)
+    # ניתוח התפלגות גדלי עצמים
+    # זמני תגובה לפי סוג עצם
+    # דיוק לפי מיקום בתמונה</pre>
+      </div>
+    </div>
+  </div>
+</div>
+        <!-- הערכה ובדיקה -->
+<div class="success-box">
+  <h2>✅ קריטריוני הצלחה</h2>
+  <div class="progress-bar">
+    <div class="progress-fill" style="width: 100%;">השלמת התרגיל</div>
+  </div>
+  <h3>📋 רשימת בדיקה:</h3>
+  <ul>
+    <li>✅ המערכת מזהה עצמים בתמונות בהצלחה</li>
+    <li>✅ Bounding Boxes מוצגים עם תוויות נכונות</li>
+    <li>✅ דוחות טקסט נוצרים ומכילים מידע מדויק</li>
+    <li>✅ עיבוד אצווה עובד עם מספר תמונות</li>
+    <li>✅ סטטיסטיקות וגרפים נוצרים בהצלחה</li>
+    <li>✅ הקוד מטפל בשגיאות בצורה נאותה</li>
+    <li>✅ ביצועים סבירים (מתחת ל-100ms לתמונה)</li>
+  </ul>
+</div>
+        <!-- סיכום -->
+<div class="info-box">
+  <h2>🎓 מה למדתם?</h2>
+  <p>תרגיל זה חשף אתכם לעולם זיהוי העצמים המעשי עם YOLO. למדתם:</p>
+  <ul>
+    <li>
+      <strong>יישום מעשי:</strong> איך להשתמש ב-YOLO בפרויקט אמיתי
+    </li>
+    <li>
+      <strong>עיבוד תמונות:</strong> טכניקות בסיסיות עם OpenCV
+    </li>
+    <li>
+      <strong>ניהול נתונים:</strong> ארגון תוצאות ויצירת דוחות
+    </li>
+    <li>
+      <strong>אופטימיזציה:</strong> שיפור ביצועים ודיוק
+    </li>
+    <li>
+      <strong>התמודדות עם שגיאות:</strong> טיפול במקרי קצה
+    </li>
+  </ul>
+  <p>
+    <strong>הצעד הבא:</strong> נסו להתאים את הקוד לצרכים ספציפיים - זיהוי עצמים מותאמים, שילוב עם מצלמת רשת, או בניית יישום מובייל!
+  </p>
+</div>
+<script>// פונקציות JavaScript לתפעול המצגת
+        function showTab(tabName) {
+            // הסתרת כל התוכן
+            const allContent = document.querySelectorAll('.tab-content');
+            allContent.forEach(content => {
+                content.classList.remove('active');
+            });
+            // הסרת active מכל הכפתורים
+            const allButtons = document.querySelectorAll('.tab-btn');
+            allButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            // הצגת התוכן הנבחר
+            document.getElementById(tabName).classList.add('active');
+            // הדגשת הכפתור הנבחר
+            event.target.classList.add('active');
+        }
+        function copyCode(button) {
+            // מציאת הקוד בתוך ה-pre הקרוב
+            const preElement = button.parentElement.querySelector('pre');
+            const code = preElement.textContent;
+            // העתקה ללוח
+            navigator.clipboard.writeText(code).then(() => {
+                // שינוי טקסט הכפתור לזמן קצר
+                const originalText = button.textContent;
+                button.textContent = '✅ הועתק';
+                button.style.background = 'rgba(39, 174, 96, 0.8)';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'rgba(52, 152, 219, 0.8)';
+                }, 2000);
+            }).catch(err => {
+                console.error('שגיאה בהעתקה:', err);
+                button.textContent = '❌ שגיאה';
+                setTimeout(() => {
+                    button.textContent = '📋 העתק';
+                }, 2000);
+            });
+        }
+        // אנימציה לפס התקדמות
+        function animateProgressBar() {
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                let width = 0;
+                const interval = setInterval(() => {
+                    if (width >= 100) {
+                        clearInterval(interval);
+                    } else {
+                        width += 2;
+                        progressFill.style.width = width + '%';
+                    }
+                }, 50);
+            }
+        }
+        // הוספת אפקטים לכרטיסי המשימות
+        function addHoverEffects() {
+            const taskCards = document.querySelectorAll('.task-card');
+            taskCards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-10px) scale(1.02)';
+                    card.style.boxShadow = '0 15px 30px rgba(0, 0, 0, 0.3)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0) scale(1)';
+                    card.style.boxShadow = 'none';
+                });
+            });
+        }
+        // הוספת אנימציה לכפתורים
+        function addButtonAnimations() {
+            const buttons = document.querySelectorAll('.btn, .copy-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        btn.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            });
+        }
+        // פונקציה לסימולציה של הרצת YOLO
+        function simulateYoloRun() {
+            const outputBox = document.querySelector('.output-box pre');
+            if (outputBox) {
+                const lines = [
+                    '🎯 התחלת זיהוי עצמים עם YOLO',
+                    '📸 תמונת קלט: images/street_scene.jpg',
+                    '🚀 טוען מודל YOLO: yolov8n.pt',
+                    '✅ מודל נטען בהצלחה',
+                    '🔍 מזהה עצמים בתמונה...',
+                    '📊 נמצאו 8 עצמים',
+                    '✨ מציר Bounding Boxes...',
+                    '💾 שומר תוצאות...',
+                    '✅ זיהוי הושלם בהצלחה!'
+                ];
+                let i = 0;
+                outputBox.textContent = '';
+                const typeInterval = setInterval(() => {
+                    if (i < lines.length) {
+                        outputBox.textContent += lines[i] + '\n';
+                        i++;
+                    } else {
+                        clearInterval(typeInterval);
+                    }
+                }, 800);
+            }
+        }
+        // פונקציה להוספת tooltip למונחים טכניים
+        function addTooltips() {
+            const technicalTerms = {
+                'YOLO': 'You Only Look Once - אלגוריתם זיהוי עצמים מהיר',
+                'Bounding Box': 'מלבן המסמן את מיקום העצם בתמונה',
+                'CNN': 'Convolutional Neural Network - רשת נוירונים קונבולוציונית',
+                'IoU': 'Intersection over Union - מדד להערכת דיוק זיהוי',
+                'mAP': 'mean Average Precision - מדד ביצועים לזיהוי עצמים'
+            };
+            Object.keys(technicalTerms).forEach(term => {
+                const regex = new RegExp(`\\b${term}\\b`, 'gi');
+                document.body.innerHTML = document.body.innerHTML.replace(
+                    regex, 
+                    `<span class="tooltip" title="${technicalTerms[term]}">${term}</span>`
+                );
+            });
+        }
+        // פונקציה ליצירת אפקט "typing"
+        function typewriterEffect(element, text, speed = 50) {
+            let i = 0;
+            element.textContent = '';
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+        // פונקציה להוספת מונה זמן לתרגיל
+        function startExerciseTimer() {
+            const startTime = new Date();
+            const timerElement = document.createElement('div');
+            timerElement.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 10px;
+                font-family: 'Courier New', monospace;
+                font-size: 1.1em;
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+            `;
+            document.body.appendChild(timerElement);
+            function updateTimer() {
+                const now = new Date();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                timerElement.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+        // פונקציה ליצירת confetti בסיום התרגיל
+        function celebrateCompletion() {
+            // יצירת אלמנטים של confetti
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.cssText = `
+                    position: fixed;
+                    top: -10px;
+                    left: ${Math.random() * 100}%;
+                    width: 10px;
+                    height: 10px;
+                    background: hsl(${Math.random() * 360}, 70%, 60%);
+                    border-radius: 50%;
+                    animation: confetti-fall 3s linear forwards;
+                    z-index: 10000;
+                `;
+                document.body.appendChild(confetti);
+                // הסרת האלמנט לאחר האנימציה
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }
+        }
+        // הוספת CSS לאנימציית confetti
+        function addConfettiCSS() {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes confetti-fall {
+                    to {
+                        transform: translateY(100vh) rotate(720deg);
+                        opacity: 0;
+                    }
+                }
+                .tooltip {
+                    border-bottom: 1px dotted #feca57;
+                    cursor: help;
+                    position: relative;
+                }
+                .tooltip:hover::after {
+                    content: attr(title);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0, 0, 0, 0.9);
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 5px;
+                    font-size: 0.9em;
+                    white-space: nowrap;
+                    z-index: 1000;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        // אתחול כל הפונקציות כשהדף נטען
+        document.addEventListener('DOMContentLoaded', () => {
+            addButtonAnimations();
+            addHoverEffects();
+            addConfettiCSS();
+            startExerciseTimer();
+            // אנימציה ראשונית
+            setTimeout(() => {
+                animateProgressBar();
+            }, 1000);
+            // הוספת אירוע לחיצה על כפתור "השלמת התרגיל"
+            const successBox = document.querySelector('.success-box');
+            if (successBox) {
+                successBox.addEventListener('click', () => {
+                    celebrateCompletion();
+                    setTimeout(() => {
+                        alert('🎉 כל הכבוד! סיימתם את התרגיל בהצלחה!');
+                    }, 1000);
+                });
+            }
+            // הוספת smooth scroll לקישורים פנימיים
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+        // הוספת מקשי קיצור
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+C להעתקת קוד מהבלוק הפעיל
+            if (e.ctrlKey && e.key === 'c') {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab) {
+                    const codeBlock = activeTab.querySelector('pre');
+                    if (codeBlock) {
+                        navigator.clipboard.writeText(codeBlock.textContent);
+                        console.log('קוד הועתק!');
+                    }
+                }
+            }
+            // Ctrl+Enter להרצת סימולציה
+            if (e.ctrlKey && e.key === 'Enter') {
+                simulateYoloRun();
+            }
+        });</script>
+<div class="tab-content" id="utils-code">
+  <div class="code-block">
+    <div class="code-header">🛠️ utils.py - פונקציות עזר</div>
+    <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+    <pre class="language-markup">import os
+import json
+import cv2
+import numpy as np
+from pathlib import Path
+from typing import Dict, List, Tuple
+import matplotlib.pyplot as plt
+
+def setup_directories(output_dir: str):
+    """יצירת תיקיות נדרשות"""
+    directories = [
+        output_dir,
+        os.path.join(output_dir, 'images'),
+        os.path.join(output_dir, 'reports'),
+        os.path.join(output_dir, 'annotations')
+    ]
+
+    for directory in directories:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        print(f"📁 נוצרה תיקייה: {directory}")
+
+def load_config(config_path: str) -&gt; Dict:
+    """טעינת קובץ הגדרות"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        # הגדרות ברירת מחדל
+        default_config = {
+            "model_path": "yolov8n.pt",
+            "confidence_threshold": 0.5,
+            "iou_threshold": 0.45,
+            "max_detections": 100,
+            "input_size": 640,
+            "supported_formats": [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+        }
+        save_config(default_config, config_path)
+        return default_config
+
+def save_config(config: Dict, config_path: str):
+    """שמירת קובץ הגדרות"""
+    with open(config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+def validate_image(image_path: str) -&gt; bool:
+    """בדיקת תקינות תמונה"""
+    if not os.path.exists(image_path):
+        return False
+
+    try:
+        image = cv2.imread(image_path)
+        return image is not None and image.size &gt; 0
+    except:
+        return False
+
+def resize_image(image: np.ndarray, target_size: int = 640) -&gt; np.ndarray:
+    """שינוי גודל תמונה תוך שמירה על יחס גובה-רוחב"""
+    height, width = image.shape[:2]
+
+    # חישוב גודל חדש
+    if width &gt; height:
+        new_width = target_size
+        new_height = int(height * target_size / width)
+    else:
+        new_height = target_size
+        new_width = int(width * target_size / height)
+
+    resized = cv2.resize(image, (new_width, new_height))
+    return resized
+
+def calculate_iou(box1: Dict, box2: Dict) -&gt; float:
+    """חישוב IoU (Intersection over Union) בין שני Bounding Boxes"""
+    # קואורדינטות ההחפפה
+    x1 = max(box1['x1'], box2['x1'])
+    y1 = max(box1['y1'], box2['y1'])
+    x2 = min(box1['x2'], box2['x2'])
+    y2 = min(box1['y2'], box2['y2'])
+
+    # אם אין חפיפה
+    if x2 &lt;= x1 or y2 &lt;= y1:
+        return 0.0
+
+    # שטח החפיפה
+    intersection = (x2 - x1) * (y2 - y1)
+
+    # שטח האיחוד
+    area1 = (box1['x2'] - box1['x1']) * (box1['y2'] - box1['y1'])
+    area2 = (box2['x2'] - box2['x1']) * (box2['y2'] - box2['y1'])
+    union = area1 + area2 - intersection
+
+    return intersection / union if union &gt; 0 else 0.0
+
+def filter_overlapping_boxes(detections: List[Dict], iou_threshold: float = 0.5) -&gt; List[Dict]:
+    """סינון קופסאות חופפות (Non-Maximum Suppression פשוט)"""
+    if not detections:
+        return []
+
+    # מיון לפי ביטחון
+    sorted_detections = sorted(detections, key=lambda x: x['confidence'], reverse=True)
+
+    filtered = []
+    for detection in sorted_detections:
+        # בדיקה אם הקופסה חופפת לקופסה שכבר נבחרה
+        should_keep = True
+        for kept_detection in filtered:
+            if (detection['class_id'] == kept_detection['class_id'] and
+                calculate_iou(detection['bbox'], kept_detection['bbox']) &gt; iou_threshold):
+                should_keep = False
+                break
+
+        if should_keep:
+            filtered.append(detection)
+
+    return filtered
+
+def create_detection_summary(results_list: List[Dict]) -&gt; Dict:
+    """יצירת סיכום מספר זיהויים"""
+    if not results_list:
+        return {}
+
+    total_detections = 0
+    total_time = 0
+    class_counts = {}
+    confidence_scores = []
+
+    for results in results_list:
+        total_detections += results['num_detections']
+        total_time += results['detection_time']
+
+        for detection in results['detections']:
+            class_name = detection['class_name']
+            confidence = detection['confidence']
+
+            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+            confidence_scores.append(confidence)
+
+    summary = {
+        'total_images': len(results_list),
+        'total_detections': total_detections,
+        'average_detections_per_image': total_detections / len(results_list),
+        'total_processing_time': total_time,
+        'average_processing_time': total_time / len(results_list),
+        'class_distribution': dict(sorted(class_counts.items())),
+        'average_confidence': np.mean(confidence_scores) if confidence_scores else 0,
+        'confidence_std': np.std(confidence_scores) if confidence_scores else 0
+    }
+
+    return summary
+
+def plot_detection_statistics(summary: Dict, output_path: str):
+    """יצירת גרפים של סטטיסטיקות זיהוי"""
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('📊 סטטיסטיקות זיהוי עצמים - YOLO', fontsize=16, fontweight='bold')
+
+    # גרף 1: התפלגות מחלקות
+    if summary['class_distribution']:
+        classes = list(summary['class_distribution'].keys())
+        counts = list(summary['class_distribution'].values())
+
+        ax1.bar(range(len(classes)), counts, color='skyblue', alpha=0.7)
+        ax1.set_xlabel('מחלקות עצמים')
+        ax1.set_ylabel('מספר זיהויים')
+        ax1.set_title('התפלגות עצמים שזוהו')
+        ax1.set_xticks(range(len(classes)))
+        ax1.set_xticklabels(classes, rotation=45, ha='right')
+
+    # גרף 2: זמני עיבוד
+    ax2.bar(['זמן ממוצע', 'זמן כולל'], 
+           [summary['average_processing_time'], summary['total_processing_time']],
+           color=['orange', 'red'], alpha=0.7)
+    ax2.set_ylabel('זמן (שניות)')
+    ax2.set_title('זמני עיבוד')
+
+    # גרף 3: סטטיסטיקות כלליות
+    stats_labels = ['תמונות', 'זיהויים כולל', 'ממוצע לתמונה']
+    stats_values = [summary['total_images'], 
+                   summary['total_detections'],
+                   summary['average_detections_per_image']]
+
+    bars = ax3.bar(stats_labels, stats_values, color='green', alpha=0.7)
+    ax3.set_title('סטטיסטיקות כלליות')
+    ax3.set_ylabel('כמות')
+
+    # הוספת ערכים על הבארים
+    for bar, value in zip(bars, stats_values):
+        height = bar.get_height()
+        ax3.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                f'{value:.1f}', ha='center', va='bottom')
+
+    # גרף 4: התפלגות ביטחון
+    ax4.text(0.5, 0.6, f'ביטחון ממוצע: {summary["average_confidence"]:.3f}', 
+            ha='center', va='center', transform=ax4.transAxes, fontsize=14)
+    ax4.text(0.5, 0.4, f'סטיית תקן: {summary["confidence_std"]:.3f}', 
+            ha='center', va='center', transform=ax4.transAxes, fontsize=14)
+    ax4.set_title('סטטיסטיקות ביטחון')
+    ax4.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def export_annotations_yolo_format(detections: List[Dict], 
+                                 image_size: Tuple[int, int], 
+                                 output_path: str):
+    """ייצוא אנוטציות בפורמט YOLO"""
+    width, height = image_size
+
+    with open(output_path, 'w') as f:
+        for detection in detections:
+            bbox = detection['bbox']
+            class_id = detection['class_id']
+
+            # המרה לפורמט YOLO (ערכים נורמליזים)
+            center_x = bbox['center_x'] / width
+            center_y = bbox['center_y'] / height
+            box_width = bbox['width'] / width
+            box_height = bbox['height'] / height
+
+            f.write(f"{class_id} {center_x:.6f} {center_y:.6f} {box_width:.6f} {box_height:.6f}\n")
+
+def benchmark_model_performance(detector, test_images: List[str]) -&gt; Dict:
+    """בדיקת ביצועי המודל"""
+    print("🚀 מתחיל בדיקת ביצועים...")
+
+    results = []
+    total_time = 0
+
+    for i, image_path in enumerate(test_images, 1):
+        print(f"  עיבוד תמונה {i}/{len(test_images)}: {Path(image_path).name}")
+
+        try:
+            result = detector.detect_objects(image_path)
+            results.append(result)
+            total_time += result['detection_time']
+        except Exception as e:
+            print(f"  ❌ שגיאה בעיבוד {image_path}: {str(e)}")
+            continue
+
+    if not results:
+        return {}
+
+    # חישוב מדדי ביצועים
+    fps = len(results) / total_time if total_time &gt; 0 else 0
+    avg_detections = np.mean([r['num_detections'] for r in results])
+
+    benchmark = {
+        'total_images_processed': len(results),
+        'total_processing_time': total_time,
+        'average_fps': fps,
+        'average_detections_per_image': avg_detections,
+        'fastest_detection': min(r['detection_time'] for r in results),
+        'slowest_detection': max(r['detection_time'] for r in results),
+        'results': results
+    }
+
+    return benchmark</pre>
+  </div>
+</div>
+        <!-- חלק 3: הרצת התרגיל -->
+<div class="exercise-section">
+  <h2>🚀 חלק 3: הרצת התרגיל</h2>
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <h3>הכנת תמונות לבדיקה</h3>
+    <p>צרו תיקיית 
+      <code>images/</code> והוסיפו תמונות לבדיקה:
+    </p>
+    <div class="code-block">
+      <div class="code-header">📁 דוגמאות תמונות</div>
+      <pre class="language-markup">images/
+├── street_scene.jpg      # תמונת רחוב עם מכוניות ואנשים
+├── animals.jpg           # תמונה עם חיות
+├── indoor_scene.jpg      # תמונה מבית עם רהיטים
+└── sports.jpg           # תמונת ספורט</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <h3>הרצה בסיסית</h3>
+    <div class="code-block">
+      <div class="code-header">💻 פקודות הרצה</div>
+      <pre class="language-markup"># הרצה עם תמונה אחת
+python main.py --input images/street_scene.jpg --output output/
+
+# הרצה עם סף ביטחון גבוה
+python main.py -i images/animals.jpg -o output/ -c 0.7
+
+# הרצה עם מודל מתקדם יותר
+python main.py -i images/indoor_scene.jpg -o output/ -m yolov8s.pt</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <h3>עיבוד מספר תמונות</h3>
+    <div class="code-block">
+      <div class="code-header">🔄 batch_process.py</div>
+      <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+      <pre class="language-markup">#!/usr/bin/env python3
+"""עיבוד מספר תמונות בבת אחת"""
+
+import os
+import glob
+from pathlib import Path
+from src.yolo_detector import YOLODetector
+from src.utils import create_detection_summary, plot_detection_statistics
+
+def batch_process(input_dir: str, output_dir: str, model_path: str = 'yolov8n.pt'):
+    """עיבוד כל התמונות בתיקייה"""
+
+    # חיפוש תמונות
+    image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
+    image_files = []
+
+    for ext in image_extensions:
+        image_files.extend(glob.glob(os.path.join(input_dir, ext)))
+        image_files.extend(glob.glob(os.path.join(input_dir, ext.upper())))
+
+    if not image_files:
+        print(f"❌ לא נמצאו תמונות בתיקייה: {input_dir}")
+        return
+
+    print(f"📸 נמצאו {len(image_files)} תמונות לעיבוד")
+
+    # יצירת מזהה
+    detector = YOLODetector(model_path)
+
+    # עיבוד התמונות
+    all_results = []
+    for i, image_path in enumerate(image_files, 1):
+        print(f"🔍 מעבד תמונה {i}/{len(image_files)}: {Path(image_path).name}")
+
+        try:
+            results = detector.detect_objects(image_path)
+            detector.save_results(results, image_path, output_dir)
+            all_results.append(results)
+        except Exception as e:
+            print(f"❌ שגיאה בעיבוד {image_path}: {str(e)}")
+            continue
+
+    # יצירת סיכום
+    if all_results:
+        summary = create_detection_summary(all_results)
+
+        # שמירת סיכום
+        summary_path = os.path.join(output_dir, 'batch_summary.txt')
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write("📊 סיכום עיבוד אצווה - YOLO\n")
+            f.write("=" * 50 + "\n\n")
+
+            f.write(f"📸 מספר תמונות: {summary['total_images']}\n")
+            f.write(f"🔍 סך זיהויים: {summary['total_detections']}\n")
+            f.write(f"📈 ממוצע לתמונה: {summary['average_detections_per_image']:.2f}\n")
+            f.write(f"⏱️ זמן כולל: {summary['total_processing_time']:.2f} שניות\n")
+            f.write(f"⚡ FPS ממוצע: {summary['total_images'] / summary['total_processing_time']:.2f}\n\n")
+
+            f.write("📋 התפלגות עצמים:\n")
+            for class_name, count in summary['class_distribution'].items():
+                f.write(f"   {class_name}: {count}\n")
+
+        # יצירת גרפים
+        plot_path = os.path.join(output_dir, 'statistics.png')
+        plot_detection_statistics(summary, plot_path)
+
+        print(f"✅ עיבוד הושלם! סיכום נשמר ב: {summary_path}")
+        print(f"📊 גרפים נשמרו ב: {plot_path}")
+
+if __name__ == "__main__":
+    batch_process('images/', 'output/')</pre>
+    </div>
+  </div>
+</div>
+        <!-- פתרון והסברים -->
+<div class="solution-section">
+  <h2>✅ פתרון מלא והסברים</h2>
+  <div class="info-box">
+    <h3>🎯 מטרות התרגיל שהושגו:</h3>
+    <ul>
+      <li>הבנת עבודה עם ספריית Ultralytics YOLO</li>
+      <li>עיבוד תמונות ועבודה עם OpenCV</li>
+      <li>יישום מערכת זיהוי עצמים מלאה</li>
+      <li>ניתוח תוצאות ויצירת דוחות</li>
+      <li>אופטימיזציה וניהול ביצועים</li>
+    </ul>
+  </div>
+  <h3>🔍 הסברים מפורטים:</h3>
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <h3>טעינת מודל YOLO</h3>
+    <p>המחלקה 
+      <code>YOLODetector</code> טוענת מודל YOLO מאומן מראש. ניתן להשתמש במודלים שונים:
+    </p>
+    <ul>
+      <li>
+        <strong>yolov8n.pt:</strong> מודל קל ומהיר (nano)
+      </li>
+      <li>
+        <strong>yolov8s.pt:</strong> מודל קטן עם דיוק טוב יותר
+      </li>
+      <li>
+        <strong>yolov8m.pt:</strong> מודל בינוני
+      </li>
+      <li>
+        <strong>yolov8l.pt:</strong> מודל גדול עם דיוק גבוה
+      </li>
+      <li>
+        <strong>yolov8x.pt:</strong> המודל הגדול והמדויק ביותר
+      </li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <h3>עיבוד תוצאות</h3>
+    <p>YOLO מחזיר תוצאות בפורמט טנזורים של PyTorch. הקוד ממיר אותם לפורמט נוח:</p>
+    <div class="code-block">
+      <pre class="language-markup"># המרת תוצאות YOLO
+boxes = results[0].boxes.xyxy.cpu().numpy()  # קואורדינטות x1,y1,x2,y2
+scores = results[0].boxes.conf.cpu().numpy()  # ציוני ביטחון 0-1
+classes = results[0].boxes.cls.cpu().numpy()  # מזהי מחלקות</pre>
+    </div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <h3>ציור Bounding Boxes</h3>
+    <p>הפונקציה 
+      <code>draw_detections</code> מציירת מלבנים צבעוניים עם תוויות על העצמים שזוהו:
+    </p>
+    <ul>
+      <li>כל מחלקה מקבלת צבע ייחודי</li>
+      <li>התווית כוללת שם העצם וציון הביטחון</li>
+      <li>הטקסט מוצג על רקע צבעוני לקריאות טובה</li>
+    </ul>
+  </div>
+</div>
+        <!-- תוצאות צפויות -->
+<div class="exercise-section">
+  <h2>📊 תוצאות צפויות</h2>
+  <div class="demo-image">🚗 🚶‍♂️ 🏠
+    <div class="bounding-box" style="left: 50px; top: 120px; width: 80px; height: 60px;">
+      <div class="box-label">car: 0.92</div>
+    </div>
+    <div class="bounding-box" style="left: 180px; top: 100px; width: 50px; height: 120px;">
+      <div class="box-label">person: 0.87</div>
+    </div>
+    <div class="bounding-box" style="left: 280px; top: 80px; width: 90px; height: 100px;">
+      <div class="box-label">house: 0.76</div>
+    </div>
+  </div>
+  <div class="output-box">
+    <h4>📋 דוגמת פלט טקסט:</h4>
+    <pre class="language-markup">🎯 דוח זיהוי עצמים - YOLO
+========================================
+
+📸 תמונה: images/street_scene.jpg
+📐 גודל: (640, 480)
+⏱️ זמן זיהוי: 0.023 שניות
+🔍 מספר עצמים: 8
+
+📋 רשימת עצמים שזוהו:
+------------------------------
+1. car
+   ביטחון: 0.924
+   מיקום: (120, 200) - (280, 320)
+   גודל: 160 × 120
+
+2. person
+   ביטחון: 0.871
+   מיקום: (350, 180) - (400, 380)
+   גודל: 50 × 200
+
+3. traffic light
+   ביטחון: 0.756
+   מיקום: (480, 50) - (510, 120)
+   גודל: 30 × 70</pre>
+  </div>
+</div>
+        <!-- שיפורים ותוספות -->
+<div class="exercise-section">
+  <h2>🚀 שיפורים מתקדמים</h2>
+  <div class="task-card">
+    <div class="task-icon">📹</div>
+    <h3>זיהוי בווידיאו</h3>
+    <p>הוספת תמיכה בעיבוד קובצי וידיאו בזמן אמת</p>
+    <div class="code-block">
+      <pre class="language-markup"># דוגמה לעיבוד וידיאו
+def process_video(video_path, output_path):
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # זיהוי עצמים בפריים
+        results = detector.detect_objects_in_frame(frame)
+        annotated_frame = detector.draw_detections(frame, results)
+
+        # שמירה או הצגה
+        cv2.imshow('YOLO Detection', annotated_frame)</pre>
+    </div>
+  </div>
+  <div class="task-card">
+    <div class="task-icon">🎯</div>
+    <h3>מעקב אחר עצמים</h3>
+    <p>הוספת יכולת מעקב אחר עצמים בין פריימים</p>
+    <div class="code-block">
+      <pre class="language-markup"># אלגוריתם מעקב פשוט
+class ObjectTracker:
+    def __init__(self):
+        self.tracks = {}
+        self.next_id = 0
+
+    def update(self, detections):
+        # התאמת זיהויים לעקבות קיימות
+        # יצירת עקבות חדשות
+        # עדכון מיקומים</pre>
+    </div>
+  </div>
+  <div class="task-card">
+    <div class="task-icon">📊</div>
+    <h3>ניתוח מתקדם</h3>
+    <p>הוספת מדדי ביצועים מתקדמים ויצירת דוחות מפורטים</p>
+    <div class="code-block">
+      <pre class="language-markup"># מדדי ביצועים מתקדמים
+def calculate_advanced_metrics(results):
+    # חישוב mAP (mean Average Precision)
+    # ניתוח התפלגות גדלי עצמים
+    # זמני תגובה לפי סוג עצם
+    # דיוק לפי מיקום בתמונה</pre>
+    </div>
+  </div>
+</div>
+        <!-- הערכה ובדיקה -->
+<div class="success-box">
+  <h2>✅ קריטריוני הצלחה</h2>
+  <div class="progress-bar">
+    <div class="progress-fill" style="width: 100%;">השלמת התרגיל</div>
+  </div>
+  <h3>📋 רשימת בדיקה:</h3>
+  <ul>
+    <li>✅ המערכת מזהה עצמים בתמונות בהצלחה</li>
+    <li>✅ Bounding Boxes מוצגים עם תוויות נכונות</li>
+    <li>✅ דוחות טקסט נוצרים ומכילים מידע מדויק</li>
+    <li>✅ עיבוד אצווה עובד עם מספר תמונות</li>
+    <li>✅ סטטיסטיקות וגרפים נוצרים בהצלחה</li>
+    <li>✅ הקוד מטפל בשגיאות בצורה נאותה</li>
+    <li>✅ ביצועים סבירים (מתחת ל-100ms לתמונה)</li>
+  </ul>
+</div>
+        <!-- סיכום -->
+<div class="info-box">
+  <h2>🎓 מה למדתם?</h2>
+  <p>תרגיל זה חשף אתכם לעולם זיהוי העצמים המעשי עם YOLO. למדתם:</p>
+  <ul>
+    <li>
+      <strong>יישום מעשי:</strong> איך להשתמש ב-YOLO בפרויקט אמיתי
+    </li>
+    <li>
+      <strong>עיבוד תמונות:</strong> טכניקות בסיסיות עם OpenCV
+    </li>
+    <li>
+      <strong>ניהול נתונים:</strong> ארגון תוצאות ויצירת דוחות
+    </li>
+    <li>
+      <strong>אופטימיזציה:</strong> שיפור ביצועים ודיוק
+    </li>
+    <li>
+      <strong>התמודדות עם שגיאות:</strong> טיפול במקרי קצה
+    </li>
+  </ul>
+  <p>
+    <strong>הצעד הבא:</strong> נסו להתאים את הקוד לצרכים ספציפיים - זיהוי עצמים מותאמים, שילוב עם מצלמת רשת, או בניית יישום מובייל!
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תרגיל YOLO - זיהוי עצמים</title>
+    <style>body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            line-height: 1.6;
+        }
+        pre {
+            direction: ltr;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5em;
+            text-align: center;
+            background: linear-gradient(45deg, #fff, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 30px;
+        }
+        h2 {
+            font-size: 2em;
+            color: #feca57;
+            border-bottom: 2px solid #feca57;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        h3 {
+            font-size: 1.4em;
+            color: #48dbfb;
+        }
+        .exercise-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            border-right: 5px solid #667eea;
+        }
+        .solution-section {
+            background: rgba(39, 174, 96, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            border-right: 5px solid #27ae60;
+        }
+        .code-block {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        .code-header {
+            background: rgba(255, 255, 255, 0.1);
+            color: #feca57;
+            padding: 8px 15px;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+            margin: -20px -20px 15px -20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(52, 152, 219, 0.8);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+        .copy-btn:hover {
+            background: rgba(52, 152, 219, 1);
+            transform: scale(1.05);
+        }
+        .step-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-right: 3px solid #ff6b6b;
+        }
+        .step-number {
+            background: #ff6b6b;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .exercise-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .task-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .task-card:hover {
+            border-color: #48dbfb;
+            transform: translateY(-5px);
+        }
+        .task-icon {
+            font-size: 3em;
+            margin: 15px 0;
+        }
+        .info-box {
+            background: rgba(254, 202, 87, 0.2);
+            border: 2px dashed #feca57;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning-box {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px dashed #e74c3c;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success-box {
+            background: rgba(39, 174, 96, 0.2);
+            border: 2px dashed #27ae60;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .output-box {
+            background: rgba(44, 62, 80, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            border-right: 4px solid #3498db;
+        }
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .demo-image {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            font-size: 3em;
+            margin: 20px auto;
+            position: relative;
+            border: 3px solid #667eea;
+        }
+        .bounding-box {
+            position: absolute;
+            border: 3px solid #e74c3c;
+            border-radius: 5px;
+            background: rgba(231, 76, 60, 0.2);
+        }
+        .box-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #e74c3c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .progress-bar {
+            background: #34495e;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .tab-container {
+            margin: 20px 0;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px 10px 0 0;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background: rgba(102, 126, 234, 0.8);
+        }
+        .tab-content {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0 10px 10px 10px;
+            padding: 20px;
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }</style>
+  </p>
+  <div class="container">
+    <h1>🎯 תרגיל מעשי: יישום YOLO לזיהוי עצמים</h1>
+        <!-- הקדמה -->
+    <div class="exercise-section">
+      <h2>📋 סקירת התרגיל</h2>
+      <p>
+        <strong>מטרה:</strong> בניית מערכת זיהוי עצמים באמצעות אלגוריתם YOLO
+      </p>
+      <p>
+        <strong>רמת קושי:</strong> בינונית-מתקדמת
+      </p>
+      <p>
+        <strong>זמן משוער:</strong> 2-3 שעות
+      </p>
+      <div class="exercise-grid">
+        <div class="task-card">
+          <div class="task-icon">📸</div>
+          <h3>עיבוד תמונות</h3>
+          <p>הכנת תמונות לעיבוד YOLO</p>
+        </div>
+        <div class="task-card">
+          <div class="task-icon">🧠</div>
+          <h3>רשת נוירונים</h3>
+          <p>טעינה ושימוש במודל YOLO</p>
+        </div>
+        <div class="task-card">
+          <div class="task-icon">📦</div>
+          <h3>זיהוי עצמים</h3>
+          <p>זיהוי וסימון Bounding Boxes</p>
+        </div>
+        <div class="task-card">
+          <div class="task-icon">📊</div>
+          <h3>ניתוח תוצאות</h3>
+          <p>הצגה ושמירת תוצאות</p>
+        </div>
+      </div>
+    </div>
+        <!-- חלק 1: הכנת הסביבה -->
+    <div class="exercise-section">
+      <h2>🛠️ חלק 1: הכנת הסביבה</h2>
+      <div class="step-card">
+        <span class="step-number">1</span>
+        <h3>התקנת ספריות נדרשות</h3>
+        <div class="code-block">
+          <div class="code-header">📦 requirements.txt</div>
+          <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+          <pre class="language-markup">opencv-python==4.8.0.74
+ultralytics==8.0.120
+Pillow==9.5.0
+numpy==1.24.3
+matplotlib==3.7.1
+torch==2.0.1
+torchvision==0.15.2</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">💻 פקודת התקנה</div>
+          <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+          <pre class="language-markup">pip install -r requirements.txt</pre>
+        </div>
+      </div>
+      <div class="step-card">
+        <span class="step-number">2</span>
+        <h3>מבנה התיקיות</h3>
+        <div class="code-block">
+          <div class="code-header">📁 מבנה הפרויקט</div>
+          <pre class="language-markup">yolo_project/
+├── images/           # תמונות לעיבוד
+├── output/           # תוצאות
+├── models/           # מודלים מאומנים
+├── src/             # קוד המקור
+│   ├── yolo_detector.py
+│   └── utils.py
+└── main.py          # קובץ הראשי</pre>
+        </div>
+      </div>
+    </div>
+        <!-- חלק 2: יישום הקוד -->
+    <div class="exercise-section">
+      <h2>💻 חלק 2: יישום מזהה YOLO</h2>
+      <div class="tab-container">
+        <div class="tab-buttons">
+          <button class="tab-btn active" onclick="showTab('main-code')">main.py</button>
+          <button class="tab-btn" onclick="showTab('detector-code')">yolo_detector.py</button>
+          <button class="tab-btn" onclick="showTab('utils-code')">utils.py</button>
+        </div>
+        <div class="tab-content active" id="main-code">
+          <div class="code-block">
+            <div class="code-header">🚀 main.py - קובץ הראשי</div>
+            <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+            <pre class="language-markup">#!/usr/bin/env python3
+"""
+תרגיל YOLO - זיהוי עצמים בתמונות
+מטרה: יישום מערכת זיהוי עצמים מלאה
+"""
+
+import os
+import sys
+from pathlib import Path
+import argparse
+from src.yolo_detector import YOLODetector
+from src.utils import setup_directories, load_config
+
+def main():
+    """פונקציה ראשית"""
+    # הגדרת ארגומנטים
+    parser = argparse.ArgumentParser(description='YOLO Object Detection')
+    parser.add_argument('--input', '-i', 
+                       default='images/test_image.jpg',
+                       help='נתיב לתמונת הקלט')
+    parser.add_argument('--output', '-o',
+                       default='output/',
+                       help='תיקיית הפלט')
+    parser.add_argument('--model', '-m',
+                       default='yolov8n.pt',
+                       help='מודל YOLO')
+    parser.add_argument('--confidence', '-c',
+                       type=float, default=0.5,
+                       help='סף ביטחון לזיהוי')
+
+    args = parser.parse_args()
+
+    print("🎯 התחלת זיהוי עצמים עם YOLO")
+    print(f"📸 תמונת קלט: {args.input}")
+    print(f"📁 תיקיית פלט: {args.output}")
+    print(f"🧠 מודל: {args.model}")
+    print(f"📊 סף ביטחון: {args.confidence}")
+
+    # בדיקת קיום קבצים
+    if not os.path.exists(args.input):
+        print(f"❌ שגיאה: קובץ {args.input} לא קיים")
+        return
+
+    # הכנת תיקיות
+    setup_directories(args.output)
+
+    try:
+        # יצירת מזהה YOLO
+        detector = YOLODetector(model_path=args.model)
+
+        # זיהוי עצמים
+        results = detector.detect_objects(
+            image_path=args.input,
+            confidence_threshold=args.confidence
+        )
+
+        # שמירת תוצאות
+        output_path = detector.save_results(
+            results, args.input, args.output
+        )
+
+        print(f"✅ זיהוי הושלם בהצלחה!")
+        print(f"📁 תוצאות נשמרו ב: {output_path}")
+
+        # הצגת סטטיסטיקות
+        detector.print_statistics(results)
+
+    except Exception as e:
+        print(f"❌ שגיאה בזיהוי: {str(e)}")
+        return 1
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())</pre>
+          </div>
+        </div>
+        <div class="tab-content" id="detector-code">
+          <div class="code-block">
+            <div class="code-header">🔍 yolo_detector.py - מחלקת הזיהוי</div>
+            <button class="copy-btn" onclick="copyCode(this)">📋 העתק</button>
+            <pre class="language-markup">import cv2
+import numpy as np
+from ultralytics import YOLO
+from pathlib import Path
+import time
+from typing import List, Dict, Tuple
+
+class YOLODetector:
+    """מחלקה לזיהוי עצמים באמצעות YOLO"""
+
+    def __init__(self, model_path: str = 'yolov8n.pt'):
+        """
+        אתחול מזהה YOLO
+
+        Args:
+            model_path: נתיב למודל YOLO
+        """
+        print(f"🚀 טוען מודל YOLO: {model_path}")
+        try:
+            self.model = YOLO(model_path)
+            print("✅ מודל נטען בהצלחה")
+        except Exception as e:
+            raise Exception(f"שגיאה בטעינת המודל: {str(e)}")
+
+        # שמות המחלקות ב-COCO dataset
+        self.class_names = [
+            'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+            'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+            'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+            'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+            'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+            'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+            'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+            'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+            'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+            'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+            'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+            'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+            'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
+            'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+        ]
+
+        # צבעים אקראיים לכל מחלקה
+        np.random.seed(42)
+        self.colors = np.random.randint(0, 255, size=(len(self.class_names), 3))
+
+    def detect_objects(self, image_path: str, 
+                      confidence_threshold: float = 0.5) -&gt; Dict:
+        """
+        זיהוי עצמים בתמונה
+
+        Args:
+            image_path: נתיב לתמונה
+            confidence_threshold: סף ביטחון מינימלי
+
+        Returns:
+            מילון עם תוצאות הזיהוי
+        """
+        print(f"🔍 מזהה עצמים בתמונה: {image_path}")
+
+        # טעינת התמונה
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"לא ניתן לטעון את התמונה: {image_path}")
+
+        original_height, original_width = image.shape[:2]
+
+        # זיהוי עצמים
+        start_time = time.time()
+        results = self.model(image, conf=confidence_threshold)
+        detection_time = time.time() - start_time
+
+        # עיבוד התוצאות
+        detections = []
+        if len(results) &gt; 0 and results[0].boxes is not None:
+            boxes = results[0].boxes.xyxy.cpu().numpy()  # קואורדינטות
+            scores = results[0].boxes.conf.cpu().numpy()  # ציוני ביטחון
+            classes = results[0].boxes.cls.cpu().numpy().astype(int)  # מחלקות
+
+            for i in range(len(boxes)):
+                x1, y1, x2, y2 = boxes[i]
+                confidence = scores[i]
+                class_id = classes[i]
+                class_name = self.class_names[class_id]
+
+                # חישוב מרכז ורוחב/גובה
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                width = x2 - x1
+                height = y2 - y1
+
+                detection = {
+                    'class_id': class_id,
+                    'class_name': class_name,
+                    'confidence': float(confidence),
+                    'bbox': {
+                        'x1': int(x1), 'y1': int(y1),
+                        'x2': int(x2), 'y2': int(y2),
+                        'center_x': center_x, 'center_y': center_y,
+                        'width': width, 'height': height
+                    }
+                }
+                detections.append(detection)
+
+        return {
+            'image_path': image_path,
+            'image_size': (original_width, original_height),
+            'detection_time': detection_time,
+            'num_detections': len(detections),
+            'detections': detections
+        }
+
+    def draw_detections(self, image: np.ndarray, detections: List[Dict]) -&gt; np.ndarray:
+        """
+        ציור Bounding Boxes על התמונה
+
+        Args:
+            image: התמונה המקורית
+            detections: רשימת זיהויים
+
+        Returns:
+            תמונה עם זיהויים מסומנים
+        """
+        result_image = image.copy()
+
+        for detection in detections:
+            bbox = detection['bbox']
+            class_name = detection['class_name']
+            confidence = detection['confidence']
+            class_id = detection['class_id']
+
+            # צבע הקופסה
+            color = tuple(map(int, self.colors[class_id]))
+
+            # ציור Bounding Box
+            cv2.rectangle(result_image,
+                         (bbox['x1'], bbox['y1']),
+                         (bbox['x2'], bbox['y2']),
+                         color, 2)
+
+            # הכנת הטקסט
+            label = f"{class_name}: {confidence:.2f}"
+
+            # חישוב גודל הטקסט
+            (text_width, text_height), baseline = cv2.getTextSize(
+                label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1
+            )
+
+            # ציור רקע לטקסט
+            cv2.rectangle(result_image,
+                         (bbox['x1'], bbox['y1'] - text_height - 10),
+                         (bbox['x1'] + text_width, bbox['y1']),
+                         color, -1)
+
+            # ציור הטקסט
+            cv2.putText(result_image, label,
+                       (bbox['x1'], bbox['y1'] - 5),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                       (255, 255, 255), 1)
+
+        return result_image
+
+    def save_results(self, results: Dict, input_path: str, 
+                    output_dir: str) -&gt; str:
+        """
+        שמירת התוצאות
+
+        Args:
+            results: תוצאות הזיהוי
+            input_path: נתיב התמונה המקורית
+            output_dir: תיקיית הפלט
+
+        Returns:
+            נתיב התמונה השמורה
+        """
+        # טעינת התמונה המקורית
+        image = cv2.imread(input_path)
+
+        # ציור הזיהויים
+        result_image = self.draw_detections(image, results['detections'])
+
+        # יצירת שם קובץ הפלט
+        input_name = Path(input_path).stem
+        output_path = Path(output_dir) / f"{input_name}_detected.jpg"
+
+        # שמירת התמונה
+        cv2.imwrite(str(output_path), result_image)
+
+        # שמירת דוח טקסט
+        report_path = Path(output_dir) / f"{input_name}_report.txt"
+        self.save_text_report(results, report_path)
+
+        return str(output_path)
+
+    def save_text_report(self, results: Dict, output_path: str):
+        """שמירת דוח טקסט"""
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write("🎯 דוח זיהוי עצמים - YOLO\n")
+            f.write("=" * 40 + "\n\n")
+
+            f.write(f"📸 תמונה: {results['image_path']}\n")
+            f.write(f"📐 גודל: {results['image_size']}\n")
+            f.write(f"⏱️ זמן זיהוי: {results['detection_time']:.3f} שניות\n")
+            f.write(f"🔍 מספר עצמים: {results['num_detections']}\n\n")
+
+            if results['detections']:
+                f.write("📋 רשימת עצמים שזוהו:\n")
+                f.write("-" * 30 + "\n")
+
+                for i, detection in enumerate(results['detections'], 1):
+                    f.write(f"{i}. {detection['class_name']}\n")
+                    f.write(f"   ביטחון: {detection['confidence']:.3f}\n")
+                    bbox = detection['bbox']
+                    f.write(f"   מיקום: ({bbox['x1']}, {bbox['y1']}) - ({bbox['x2']}, {bbox['y2']})\n")
+                    f.write(f"   גודל: {bbox['width']:.0f} × {bbox['height']:.0f}\n\n")
+
+    def print_statistics(self, results: Dict):
+        """הדפסת סטטיסטיקות"""
+        print("\n" + "="*50)
+        print("📊 סטטיסטיקות זיהוי")
+        print("="*50)
+
+        print(f"⏱️ זמן זיהוי: {results['detection_time']:.3f} שניות")
+        print(f"🔍 עצמים שזוהו: {results['num_detections']}")
+
+        if results['detections']:
+            # ספירת עצמים לפי סוג
+            class_counts = {}
+            total_confidence = 0
+
+            for detection in results['detections']:
+                class_name = detection['class_name']
+                confidence = detection['confidence']
+
+                class_counts[class_name] = class_counts.get(class_name, 0) + 1
+                total_confidence += confidence
+
+            print(f"📈 ביטחון ממוצע: {total_confidence / len(results['detections']):.3f}")
+
+            print("\n📋 עצמים לפי סוג:")
+            for class_name, count in sorted(class_counts.items()):
+                print(f"   {class_name}: {count}")
+
+        print("="*50)</pre>
+          </div>
+        </div>
+        <div class="tab-content" id="utils-code">
+          <div class="code-block">
+            <div class="code-header">🛠️ utils.py - פונקציות עזר</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

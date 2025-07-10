@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מודל MVC - מצגת אינטראקטיבית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide {
+            flex: 1;
+            padding: 40px;
+            display: none;
+            background: white;
+            margin: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        h1 {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 25px;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.8em;
+            color: #555;
+            margin: 20px 0 15px 0;
+        }
+
+        .mvc-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .mvc-component {
+            padding: 30px;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            min-width: 180px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .mvc-component:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .model {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .view {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+        }
+
+        .controller {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #333;
+            margin: 0 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .code-example {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+            border: 2px solid #667eea;
+            direction: ltr;
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .analogy-box {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 2px solid #2196F3;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .analogy-box h4 {
+            color: #1565C0;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .benefit-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .benefit-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            border: 2px solid #28a745;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .demo-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+
+        .demo-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+            min-height: 50px;
+        }
+
+        .key-point {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-right: 5px solid #ff6b35;
+        }
+
+        .key-point::before {
+            content: "💡 ";
+            font-size: 1.5em;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .comparison-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+        }
+
+        .comparison-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.8em; }
+            
+            .mvc-diagram {
+                flex-direction: column;
+            }
+
+            .mvc-component {
+                min-width: 150px;
+                min-height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+
+        <!-- שקף 1: כותרת -->
+        <div class="slide active">
+            <h1>🎯 מודל MVC</h1>
+            <h2>Model-View-Controller</h2>
+            <div style="text-align: center; margin: 50px 0;">
+                <div style="font-size: 1.5em; margin-bottom: 30px;">
+                    📚 <strong>לתלמידי תיכון - מדעי המחשב</strong>
+                </div>
+                <div style="font-size: 1.2em; color: #666;">
+                    למה צריך לארגן קוד? איך בונים תוכנה מקצועית?
+                </div>
+            </div>
+            
+            <div class="analogy-box">
+                <h4>🏗️ בדיוק כמו בניית בית</h4>
+                <p>אדריכל, קבלן, ומעצב פנים - כל אחד עם התפקיד שלו!</p>
+            </div>
+        </div>
+
+        <!-- שקף 2: הבעיה -->
+        <div class="slide">
+            <h2>😵 הבעיה: קוד מבולגן</h2>
+            
+            <h3>מה קורה כשכל הקוד במקום אחד?</h3>
+            
+            <pre class="code-example">
+# קוד מבולגן - הכל ביחד! 😱
+def game():
+    board = [[' ']*7 for _ in range(6)]  # נתונים
+    current_player = 'X'                # נתונים
+    
+    while True:
+        # הצגה
+        print("לוח המשחק:")
+        for row in board:
+            print(row)
+        
+        # קלט
+        col = int(input(f"שחקן {current_player}, בחר עמודה: "))
+        
+        # לוגיקה
+        if board[0][col] != ' ':
+            print("עמודה מלאה!")
+            continue
+            
+        # עוד לוגיקה...
+        # עוד הצגה...
+        # הכל מעורבב! 😵‍💫
+            </pre>
+
+            <div class="key-point">
+                <strong>בעיות:</strong> קשה לשנות, קשה לבדוק, קשה להבין, קשה לעבוד בצוות
+            </div>
+        </div>
+
+        <!-- שקף 3: הפתרון -->
+        <div class="slide">
+            <h2>💡 הפתרון: MVC</h2>
+            
+            <div class="mvc-diagram">
+                <div class="mvc-component model" onclick="highlightComponent('model')">
+                    <div style="font-size: 2em;">🧠</div>
+                    <div>MODEL</div>
+                    <div style="font-size: 0.8em; margin-top: 10px;">הנתונים והלוגיקה</div>
+                </div>
+                
+                <div class="arrow">↔️</div>
+                
+                <div class="mvc-component controller" onclick="highlightComponent('controller')">
+                    <div style="font-size: 2em;">🎮</div>
+                    <div>CONTROLLER</div>
+                    <div style="font-size: 0.8em; margin-top: 10px;">הבקר והתיאום</div>
+                </div>
+                
+                <div class="arrow">↔️</div>
+                
+                <div class="mvc-component view" onclick="highlightComponent('view')">
+                    <div style="font-size: 2em;">👁️</div>
+                    <div>VIEW</div>
+                    <div style="font-size: 0.8em; margin-top: 10px;">התצוגה והממשק</div>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h4>🍕 כמו פיצרייה</h4>
+                <p><strong>Model:</strong> המטבח והמתכונים | <strong>Controller:</strong> המלצר | <strong>View:</strong> הלקוח והתפריט</p>
+            </div>
+        </div>
+
+        <!-- שקף 4: Model -->
+        <div class="slide">
+            <h2>🧠 Model - המוח של התוכנה</h2>
+            
+            <h3>מה זה Model?</h3>
+            <ul style="font-size: 1.2em; margin: 20px 0;">
+                <li>💾 <strong>נתונים</strong> - כל המידע של התוכנה</li>
+                <li>⚙️ <strong>לוגיקה עסקית</strong> - החוקים והפעולות</li>
+                <li>🔒 <strong>עצמאי</strong> - לא תלוי בממשק או קלט</li>
+            </ul>
+
+            <pre class="code-example">
+# דוגמה: Model למשחק 4 בשורה
+class ConnectFourModel:
+    def __init__(self):
+        self.board = [[' ']*7 for _ in range(6)]  # הלוח
+        self.current_player = 'X'                # השחקן הנוכחי
+        self.winner = None                       # המנצח
+    
+    def make_move(self, column):
+        """לוגיקת ביצוע מהלך"""
+        if self.is_valid_move(column):
+            # מצא שורה פנויה
+            for row in range(5, -1, -1):
+                if self.board[row][column] == ' ':
+                    self.board[row][column] = self.current_player
+                    break
+            
+            # בדוק ניצחון
+            if self.check_winner():
+                self.winner = self.current_player
+            else:
+                self.switch_player()
+            return True
+        return False
+            </pre>
+
+            <div class="key-point">
+                Model לא יודע ולא אכפת לו איך מציגים אותו או איך מקבלים קלט!
+            </div>
+        </div>
+
+        <!-- שקף 5: View -->
+        <div class="slide">
+            <h2>👁️ View - מה שהמשתמש רואה</h2>
+            
+            <h3>מה זה View?</h3>
+            <ul style="font-size: 1.2em; margin: 20px 0;">
+                <li>🖼️ <strong>תצוגה</strong> - איך מציגים את המידע</li>
+                <li>🖱️ <strong>קלט</strong> - איך מקבלים פעולות מהמשתמש</li>
+                <li>🎨 <strong>עיצוב</strong> - צבעים, פונטים, פריסה</li>
+            </ul>
+
+            <pre class="code-example">
+# דוגמה: View קונסולה
+class ConsoleView:
+    def display_board(self, board):
+        """הצגת הלוח"""
+        print("\n  1 2 3 4 5 6 7")
+        print(" ---------------")
+        for row in board:
+            print("|", end="")
+            for cell in row:
+                print(f"{cell}|", end="")
+            print()
+        print(" ---------------")
+    
+    def get_user_input(self):
+        """קבלת קלט מהמשתמש"""
+        return input("בחר עמודה (1-7): ")
+    
+    def show_winner(self, winner):
+        """הצגת המנצח"""
+        print(f"🎉 שחקן {winner} ניצח! 🎉")
+            </pre>
+
+            <div class="interactive-demo">
+                <h4>🎮 דמו אינטראקטיבי</h4>
+                <button class="demo-btn" onclick="demoView('console')">View קונסולה</button>
+                <button class="demo-btn" onclick="demoView('web')">View אתר</button>
+                <button class="demo-btn" onclick="demoView('mobile')">View מובייל</button>
+                <pre class="demo-output" id="viewDemo">לחץ על כפתור לראות סוגי View שונים...</pre>
+            </div>
+        </div>
+
+        <!-- שקף 6: Controller -->
+        <div class="slide">
+            <h2>🎮 Controller - הבקר והמתאם</h2>
+            
+            <h3>מה זה Controller?</h3>
+            <ul style="font-size: 1.2em; margin: 20px 0;">
+                <li>🔄 <strong>תיאום</strong> - מחבר בין Model ל-View</li>
+                <li>🎯 <strong>מעבד קלט</strong> - לוקח פעולות מהמשתמש</li>
+                <li>📋 <strong>מנהל זרימה</strong> - קובע מה קורה אחר כך</li>
+            </ul>
+
+            <pre class="code-example">
+# דוגמה: Controller
+class GameController:
+    def __init__(self, model, view):
+        self.model = model    # המודל
+        self.view = view      # התצוגה
+    
+    def start_game(self):
+        """התחלת המשחק"""
+        while not self.model.winner:
+            # הצג מצב נוכחי
+            self.view.display_board(self.model.board)
+            
+            # קבל קלט מהמשתמש
+            user_input = self.view.get_user_input()
+            
+            # עבד את הקלט
+            column = int(user_input) - 1
+            
+            # בצע פעולה במודל
+            if not self.model.make_move(column):
+                self.view.show_error("מהלך לא חוקי!")
+        
+        # הצג תוצאה
+        self.view.show_winner(self.model.winner)
+            </pre>
+
+            <div class="key-point">
+                Controller כמו מנהל - מקבל החלטות ומתאם בין כל הצדדים
+            </div>
+        </div>
+
+        <!-- שקף 7: איך זה עובד ביחד -->
+        <div class="slide">
+            <h2>🔄 איך זה עובד ביחד?</h2>
+            
+            <div style="display: flex; justify-content: center; margin: 30px 0;">
+                <div style="background: #f8f9fa; border-radius: 15px; padding: 30px; max-width: 800px;">
+                    <div style="font-size: 1.3em; text-align: center; margin-bottom: 20px;">
+                        <strong>זרימת המידע:</strong>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 15px;">
+                        <div style="background: #2196F3; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <strong>1. View</strong><br/>
+                            משתמש לוחץ כפתור
+                        </div>
+                        
+                        <div style="font-size: 2em; color: #FF9800;">→</div>
+                        
+                        <div style="background: #FF9800; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <strong>2. Controller</strong><br/>
+                            מעבד את הפעולה
+                        </div>
+                        
+                        <div style="font-size: 2em; color: #4CAF50;">→</div>
+                        
+                        <div style="background: #4CAF50; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <strong>3. Model</strong><br/>
+                            מעדכן נתונים
+                        </div>
+                        
+                        <div style="font-size: 2em; color: #2196F3;">→</div>
+                        
+                        <div style="background: #2196F3; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                            <strong>4. View</strong><br/>
+                            מציג מצב חדש
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h4>🎯 סימולציה</h4>
+                <button class="demo-btn" onclick="simulateFlow()">הפעל סימולציה</button>
+                <div class="demo-output" id="flowDemo">לחץ להפעלת סימולציה של זרימת MVC...</div>
+            </div>
+        </div>
+
+        <!-- שקף 8: יתרונות -->
+        <div class="slide">
+            <h2>🌟 למה MVC זה כל כך טוב?</h2>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔧</div>
+                    <h4>קל לתחזק</h4>
+                    <p>שינוי בחלק אחד לא משפיע על השאר</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔄</div>
+                    <h4>גמישות</h4>
+                    <p>אפשר להחליף View בלי לשנות Model</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">👥</div>
+                    <h4>עבודת צוות</h4>
+                    <p>כל מתכנת יכול לעבוד על חלק אחר</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">🧪</div>
+                    <h4>בדיקות</h4>
+                    <p>קל לבדוק כל חלק בנפרד</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">♻️</div>
+                    <h4>שימוש חוזר</h4>
+                    <p>אותו Model עם Views שונים</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">📱</div>
+                    <h4>פלטפורמות</h4>
+                    <p>web, mobile, desktop - אותה לוגיקה</p>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h4>🎵 כמו להקה</h4>
+                <p>כל נגן מנגן את החלק שלו, אבל יחד יוצרים מוזיקה יפה!</p>
+            </div>
+        </div>
+
+        <!-- שקף 9: דוגמה מעשית -->
+        <div class="slide">
+            <h2>💻 דוגמה מעשית: רשימת משימות</h2>
+            
+            <h3>בואו נבנה Todo List עם MVC:</h3>
+            
+            <pre class="code-example">
+# Model - נתוני המשימות
+class TodoModel:
+    def __init__(self):
+        self.tasks = []
+    
+    def add_task(self, task):
+        self.tasks.append({"text": task, "done": False})
+    
+    def complete_task(self, index):
+        if 0 <= index < len(self.tasks):
+            self.tasks[index]["done"] = True
+    
+    def get_tasks(self):
+        return self.tasks.copy()
+
+# View - הצגת המשימות  
+class TodoView:
+    def display_tasks(self, tasks):
+        print("\n📋 רשימת המשימות:")
+        for i, task in enumerate(tasks):
+            status = "✅" if task["done"] else "❌"
+            print(f"{i+1}. {status} {task['text']}")
+    
+    def get_new_task(self):
+        return input("🆕 הוסף משימה חדשה: ")
+
+# Controller - ניהול הלוגיקה
+class TodoController:
+    def __init__(self, model, view):
+        self.model = model
+        self.view = view
+    
+    def run(self):
+        while True:
+            self.view.display_tasks(self.model.get_tasks())
+            new_task = self.view.get_new_task()
+            if new_task:
+                self.model.add_task(new_task)
+            </pre>
+
+            <div class="key-point">
+                כל רכיב עם אחריות ברורה - קל להבין ולשנות!
+            </div>
+        </div>
+
+        <!-- שקף 10: השוואה -->
+        <div class="slide">
+            <h2>⚖️ לפני ואחרי MVC</h2>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>היבט</th>
+                        <th style="background: #f44336;">🚫 בלי MVC</th>
+                        <th style="background: #4CAF50;">✅ עם MVC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ארגון קוד</strong></td>
+                        <td>הכל במקום אחד 😵</td>
+                        <td>מחולק לתחומי אחריות 🎯</td>
+                    </tr>
+                    <tr>
+                        <td><strong>שינוי ממשק</strong></td>
+                        <td>צריך לשנות הכל 😰</td>
+                        <td>רק את ה-View 😊</td>
+                    </tr>
+                    <tr>
+                        <td><strong>בדיקות</strong></td>
+                        <td>קשה לבדוק 🤯</td>
+                        <td>כל חלק בנפרד 🧪</td>
+                    </tr>
+                    <tr>
+                        <td><strong>עבודת צוות</strong></td>
+                        <td>קונפליקטים 😡</td>
+                        <td>כל אחד בתחום שלו 👥</td>
+                    </tr>
+                    <tr>
+                        <td><strong>הוספת תכונות</strong></td>
+                        <td>מפחד לשבור 😨</td>
+                        <td>בטוח ומובנה 🔧</td>
+                    </tr>
+                    <tr>
+                        <td><strong>פלטפורמות</strong></td>
+                        <td>צריך לכתוב הכל מחדש 😭</td>
+                        <td>שימוש חוזר בלוגיקה ♻️</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="key-point">
+                MVC זה לא רק תיאוריה - זה הדרך שבה חברות הטכנולוגיה הגדולות בונות תוכנה!
+            </div>
+        </div>
+
+        <!-- שקף 11: דוגמאות מהעולם האמיתי -->
+        <div class="slide">
+            <h2>🌍 דוגמאות מהעולם האמיתי</h2>
+            
+            <h3>איפה רואים MVC היום?</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0;">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 3em; margin-bottom: 15px;">🌐</div>
+                    <h4>אתרי אינטרנט</h4>
+                    <p><strong>Model:</strong> בסיס נתונים<br/>
+                    <strong>View:</strong> HTML + CSS<br/>
+                    <strong>Controller:</strong> שרת</p>
+                    <div style="margin-top: 10px; font-size: 0.9em;">
+                        Django, Flask, Ruby on Rails
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 3em; margin-bottom: 15px;">📱</div>
+                    <h4>אפליקציות מובייל</h4>
+                    <p><strong>Model:</strong> נתוני המשתמש<br/>
+                    <strong>View:</strong> מסכים<br/>
+                    <strong>Controller:</strong> לוגיקת האפליקציה</p>
+                    <div style="margin-top: 10px; font-size: 0.9em;">
+                        Android, iOS, React Native
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #FF9800, #F57C00); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 3em; margin-bottom: 15px;">🎮</div>
+                    <h4>משחקי מחשב</h4>
+                    <p><strong>Model:</strong> מצב המשחק<br/>
+                    <strong>View:</strong> גרפיקה<br/>
+                    <strong>Controller:</strong> קלט שחקן</p>
+                    <div style="margin-top: 10px; font-size: 0.9em;">
+                        Unity, Unreal Engine
+                    </div>
+                </div>
+            </div>
+
+            <div class="analogy-box">
+                <h4>🏪 כמו רשת חנויות</h4>
+                <p><strong>Model:</strong> המחסן והמוצרים | <strong>View:</strong> העיצוב של כל סניף | <strong>Controller:</strong> המנהלים</p>
+            </div>
+
+            <div class="interactive-demo">
+                <h4>🔍 חקור דוגמאות</h4>
+                <button class="demo-btn" onclick="showExample('instagram')">Instagram</button>
+                <button class="demo-btn" onclick="showExample('netflix')">Netflix</button>
+                <button class="demo-btn" onclick="showExample('whatsapp')">WhatsApp</button>
+                <pre class="demo-output" id="exampleDemo">בחר אפליקציה לראות איך היא משתמשת ב-MVC...</pre>
+            </div>
+        </div>
+
+        <!-- שקף 12: איך מתחילים -->
+        <div class="slide">
+            <h2>🚀 איך מתחילים לכתוב MVC?</h2>
+            
+            <h3>שלבים ליצירת MVC בפייתון:</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px; margin: 30px 0;">
+                <div style="background: #4CAF50; color: white; padding: 20px; border-radius: 10px; position: relative;">
+                    <div style="position: absolute; right: -10px; top: -10px; background: white; color: #4CAF50; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">1</div>
+                    <h4>🧠 התחל מה-Model</h4>
+                    <p>חשוב מה הנתונים ומה הפעולות. צור מחלקה עם המידע והפונקציות.</p>
+                </div>
+                
+                <div style="background: #2196F3; color: white; padding: 20px; border-radius: 10px; position: relative;">
+                    <div style="position: absolute; right: -10px; top: -10px; background: white; color: #2196F3; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">2</div>
+                    <h4>👁️ צור View פשוט</h4>
+                    <p>התחל עם print() ו-input(). אחר כך אפשר לשדרג לממשק גרפי.</p>
+                </div>
+                
+                <div style="background: #FF9800; color: white; padding: 20px; border-radius: 10px; position: relative;">
+                    <div style="position: absolute; right: -10px; top: -10px; background: white; color: #FF9800; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">3</div>
+                    <h4>🎮 בנה Controller</h4>
+                    <p>חבר בין Model ל-View. הוא מקבל פעולות ומעדכן את המודל.</p>
+                </div>
+            </div>
+
+            <pre class="code-example">
+# תבנית בסיסית ל-MVC
+class Model:
+    def __init__(self):
+        self.data = {}  # הנתונים שלך כאן
+    
+    def do_something(self):
+        pass  # הלוגיקה שלך כאן
+
+class View:
+    def show_data(self, data):
+        print(data)  # הצגה פשוטה
+    
+    def get_input(self):
+        return input("בחר פעולה: ")
+
+class Controller:
+    def __init__(self):
+        self.model = Model()
+        self.view = View()
+    
+    def run(self):
+        while True:
+            self.view.show_data(self.model.data)
+            action = self.view.get_input()
+            # עבד את הפעולה...
+
+# הפעלה
+controller = Controller()
+controller.run()
+            </pre>
+        </div>
+
+        <!-- שקף 13: תרגילים -->
+        <div class="slide">
+            <h2>💪 תרגילים לתרגול</h2>
+            
+            <h3>בואו נתרגל יחד!</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0;">
+                <div style="background: linear-gradient(135deg, #e8f5e8, #c8e6c9); border: 2px solid #4CAF50; border-radius: 15px; padding: 20px;">
+                    <h4 style="color: #2e7d32;">🧮 מחשבון</h4>
+                    <p><strong>Model:</strong> פעולות חשבון</p>
+                    <p><strong>View:</strong> תצוגת מספרים</p>
+                    <p><strong>Controller:</strong> קלט מהמשתמש</p>
+                    <div style="background: #4CAF50; color: white; padding: 5px 10px; border-radius: 15px; text-align: center; margin-top: 10px; font-size: 0.9em;">רמה: קל</div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #fff3e0, #ffcc02); border: 2px solid #FF9800; border-radius: 15px; padding: 20px;">
+                    <h4 style="color: #e65100;">📚 ספר טלפונים</h4>
+                    <p><strong>Model:</strong> רשימת אנשי קשר</p>
+                    <p><strong>View:</strong> הצגת רשימה</p>
+                    <p><strong>Controller:</strong> הוספה/מחיקה</p>
+                    <div style="background: #FF9800; color: white; padding: 5px 10px; border-radius: 15px; text-align: center; margin-top: 10px; font-size: 0.9em;">רמה: בינוני</div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #fce4ec, #f8bbd9); border: 2px solid #e91e63; border-radius: 15px; padding: 20px;">
+                    <h4 style="color: #ad1457;">🎵 נגן מוזיקה</h4>
+                    <p><strong>Model:</strong> רשימת שירים</p>
+                    <p><strong>View:</strong> ממשק נגן</p>
+                    <p><strong>Controller:</strong> פקדי נגינה</p>
+                    <div style="background: #e91e63; color: white; padding: 5px 10px; border-radius: 15px; text-align: center; margin-top: 10px; font-size: 0.9em;">רמה: מתקדם</div>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h4>🎯 בוחן ידע</h4>
+                <button class="demo-btn" onclick="startQuiz()">התחל בוחן</button>
+                <div class="demo-output" id="quizDemo">לחץ להתחיל בוחן MVC...</div>
+            </div>
+        </div>
+
+        <!-- שקף 14: סיכום -->
+        <div class="slide">
+            <h2>🎯 סיכום</h2>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <h3 style="color: #667eea;">מה למדנו היום?</h3>
+            </div>
+            
+            <div class="benefits-grid">
+                <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 2.5em; margin-bottom: 10px;">🧠</div>
+                    <h4>Model</h4>
+                    <p>הנתונים והלוגיקה<br/>העסקית של התוכנה</p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 2.5em; margin-bottom: 10px;">👁️</div>
+                    <h4>View</h4>
+                    <p>הממשק והתצוגה<br/>שהמשתמש רואה</p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #FF9800, #F57C00); color: white; padding: 25px; border-radius: 15px; text-align: center;">
+                    <div style="font-size: 2.5em; margin-bottom: 10px;">🎮</div>
+                    <h4>Controller</h4>
+                    <p>הבקר שמתאם<br/>בין הכל</p>
+                </div>
+            </div>
+
+            <div class="key-point" style="font-size: 1.2em; text-align: center;">
+                <strong>MVC = קוד מאורגן + קל לתחזוקה + עבודת צוות + גמישות</strong>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 30px 0;">
+                <h3>🚀 המשך ללמוד!</h3>
+                <p style="font-size: 1.1em; margin: 15px 0;">
+                    עכשיו אתם מוכנים לבנות תוכנות מקצועיות!<br/>
+                    תתחילו מפרויקטים קטנים ותעבדו למעלה.
+                </p>
+                <div style="font-size: 0.9em; opacity: 0.9;">
+                    זכרו: כל מתכנת מקצועי השתמש ב-MVC!
+                </div>
+            </div>
+        </div>
+
+        <!-- ניווט -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◀ הקודם</button>
+            <div class="slide-counter">
+                <span id="currentSlide">1</span> / <span id="totalSlides">14</span>
+            </div>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ▶</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.toggle('active', index === currentSlideIndex);
+            });
+            
+            document.getElementById('currentSlide').textContent = currentSlideIndex + 1;
+            document.getElementById('prevBtn').disabled = currentSlideIndex === 0;
+            document.getElementById('nextBtn').disabled = currentSlideIndex === totalSlides - 1;
+            
+            // עדכון פס התקדמות
+            const progress = ((currentSlideIndex + 1) / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function changeSlide(direction) {
+            const newIndex = currentSlideIndex + direction;
+            if (newIndex >= 0 && newIndex < totalSlides) {
+                currentSlideIndex = newIndex;
+                updateSlide();
+            }
+        }
+
+        function highlightComponent(component) {
+            alert(`נלחצת על ${component}! 
+${component === 'model' ? '🧠 Model: הנתונים והלוגיקה העסקית' : 
+  component === 'view' ? '👁️ View: הממשק והתצוגה' : 
+  '🎮 Controller: הבקר והתיאום'}`);
+        }
+
+        function demoView(type) {
+            const demo = document.getElementById('viewDemo');
+            const demos = {
+                console: '💻 View קונסולה:\n> הדפס "שלום עולם"\n> קלט: בחר אפשרות (1-3)\n> פשוט ויעיל!',
+                web: '🌐 View אתר:\n<button>שלום עולם</button>\n<input placeholder="הכנס טקסט">\nיפה ואינטראקטיבי!',
+                mobile: '📱 View מובייל:\n[כפתור] שלום עולם\n[שדה טקסט] הכנס...\nידידותי למגע!'
+            };
+            demo.textContent = demos[type] || 'View לא ידוע';
+        }
+
+        function simulateFlow() {
+            const demo = document.getElementById('flowDemo');
+            const steps = [
+                '1️⃣ משתמש לוחץ כפתור "הוסף"...',
+                '2️⃣ View שולח לController...',
+                '3️⃣ Controller קורא ל-Model.add()...',
+                '4️⃣ Model מוסיף נתון חדש...',
+                '5️⃣ Model מודיע ל-View על השינוי...',
+                '6️⃣ View מתעדכן ומציג את הרשימה החדשה!',
+                '✨ זה זה! זרימת MVC מושלמת!'
+            ];
+            
+            let step = 0;
+            demo.textContent = 'מתחיל סימולציה...';
+            
+            const interval = setInterval(() => {
+                if (step < steps.length) {
+                    demo.textContent = steps[step];
+                    step++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 3000);
+        }
+
+        function showExample(app) {
+            const demo = document.getElementById('exampleDemo');
+            const examples = {
+                instagram: '📸 Instagram:\n🧠 Model: תמונות, פוסטים, משתמשים\n👁️ View: פיד, סטוריז, פרופיל\n🎮 Controller: עליכה, העלאה, לייקים',
+                netflix: '🎬 Netflix:\n🧠 Model: סרטים, משתמשים, המלצות\n👁️ View: דף בית, נגן, חיפוש\n🎮 Controller: נגינה, המלצות, חיפוש',
+                whatsapp: '💬 WhatsApp:\n🧠 Model: הודעות, אנשי קשר, קבוצות\n👁️ View: צ\'אט, רשימת שיחות\n🎮 Controller: שליחה, התראות'
+            };
+            demo.textContent = examples[app] || 'דוגמה לא נמצאה';
+        }
+
+        let quizStep = 0;
+        const quizQuestions = [
+            { q: 'מה האחריות של Model?', a: 'נתונים ולוגיקה עסקית' },
+            { q: 'איך View מקבל מידע?', a: 'דרך Controller' },
+            { q: 'מי מתאם בין Model ל-View?', a: 'Controller' },
+            { q: 'מה היתרון הגדול של MVC?', a: 'הפרדת אחריות' }
+        ];
+
+        function startQuiz() {
+            const demo = document.getElementById('quizDemo');
+            quizStep = 0;
+            
+            function nextQuestion() {
+                if (quizStep < quizQuestions.length) {
+                    demo.innerHTML = `
+                        <strong>שאלה ${quizStep + 1}:</strong> ${quizQuestions[quizStep].q}<br>
+                        <button class="demo-btn" onclick="showAnswer(${quizStep})">הצג תשובה</button>
+                    `;
+                } else {
+                    demo.innerHTML = '🎉 כל הכבוד! סיימת את הבוחן בהצלחה!<br>אתה מבין MVC!';
+                }
+            }
+            
+            nextQuestion();
+        }
+
+        function showAnswer(step) {
+            const demo = document.getElementById('quizDemo');
+            demo.innerHTML = `
+                <strong>תשובה:</strong> ${quizQuestions[step].a}<br>
+                <button class="demo-btn" onclick="nextQuizQuestion()">שאלה הבאה</button>
+            `;
+        }
+
+        function nextQuizQuestion() {
+            quizStep++;
+            startQuiz();
+        }
+
+        // טיפול במקלדת
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                changeSlide(1);
+            }
+        });
+
+        // אתחול
+        updateSlide();
+    </script>
+</body>
+</html>

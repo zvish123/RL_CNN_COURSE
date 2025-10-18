@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket לעומת WebSocket בפייתון</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body { 
+      font-family: "Heebo", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .presentation {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .slide {
+      display: none;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 60px;
+      max-width: 1200px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: slideIn 0.5s ease-out;
+      direction: rtl;
+      text-align: right;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 { 
+      color: #667eea; 
+      font-size: 2.8em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h2 { 
+      color: #764ba2; 
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+      font-size: 2em;
+    }
+
+    h3 { 
+      color: #667eea;
+      font-size: 1.5em;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    
+    .emoji-big { 
+      font-size: 4em;
+      margin: 30px 0;
+      text-align: center;
+    }
+    
+    .analogy-box {
+      background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 15px;
+      margin: 25px 0;
+      font-size: 1.3em;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      line-height: 1.8;
+    }
+
+    .analogy-box strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    
+    .compare-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      font-size: 1em;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin: 30px 0;
+    }
+
+    .compare-table th { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      font-size: 1.2em;
+    }
+
+    .compare-table td { 
+      border: 1px solid #ddd; 
+      padding: 15px; 
+      text-align: center;
+    }
+
+    .compare-table tr:nth-child(even) { 
+      background-color: #f8f9fa;
+    }
+    
+    .question-box { 
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+      padding: 25px;
+      border-radius: 15px;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .question-box:hover { 
+      transform: scale(1.02);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    .question-box strong { 
+      color: #d63031;
+      font-size: 1.3em;
+      display: block;
+      margin-bottom: 10px;
+    }
+    
+    .answer { 
+      display: none; 
+      margin-top: 15px; 
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border-right: 5px solid #00b894;
+      color: #2d3436;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    .answer.show {
+      display: block;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .animation-container { 
+      text-align: center; 
+      margin: 50px 0;
+      background: #f8f9fa;
+      padding: 40px;
+      border-radius: 15px;
+    }
+
+    .node { 
+      display: inline-block; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; 
+      padding: 25px 35px;
+      border-radius: 15px;
+      margin: 0 20px;
+      font-weight: bold;
+      font-size: 1.3em;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .arrow { 
+      display: inline-block; 
+      font-size: 2.5em;
+      vertical-align: middle;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: translateX(0); opacity: 1; }
+      50% { transform: translateX(15px); opacity: 0.6; }
+    }
+    
+    .real-world {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      padding: 25px;
+      border-radius: 15px;
+      margin: 25px 0;
+      border-right: 5px solid #6c5ce7;
+    }
+
+    .real-world strong {
+      display: block;
+      margin-bottom: 15px;
+      font-size: 1.2em;
+      color: #2d3436;
+    }
+    
+    .code-block {
+      background: #2d3436;
+      color: #dfe6e9;
+      padding: 25px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+      direction: ltr;
+      text-align: left;
+      overflow-x: auto;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      line-height: 1.6;
+    }
+
+    .code-block .comment {
+      color: #74b9ff;
+    }
+
+    .code-block .keyword {
+      color: #fd79a8;
+    }
+
+    .code-block .string {
+      color: #55efc4;
+    }
+
+    .code-block .function {
+      color: #ffeaa7;
+    }
+    
+    .code-explanation {
+      background: #f1f3f5;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      border-right: 4px solid #667eea;
+      font-size: 1.1em;
+    }
+
+    .code-explanation strong {
+      color: #667eea;
+      display: block;
+      margin-bottom: 10px;
+    }
+    
+    .highlight-box {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2em;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+
+    ul { 
+      font-size: 1.2em;
+      line-height: 2;
+      margin: 20px 0;
+      padding-right: 30px;
+    }
+
+    li { 
+      margin: 15px 0;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 1000;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s;
+      font-family: 'Heebo', Arial, sans-serif;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .slide-counter {
+      position: fixed;
+      top: 30px;
+      left: 30px;
+      background: rgba(255,255,255,0.9);
+      padding: 15px 25px;
+      border-radius: 30px;
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1em;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    code {
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #e74c3c;
+    }
+
+    p {
+      font-size: 1.2em;
+      line-height: 1.8;
+      margin: 15px 0;
+    }
+
+    /* Scrollbar styling */
+    .slide::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .slide::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .slide::-webkit-scrollbar-thumb {
+      background: #667eea;
+      border-radius: 10px;
+    }
+
+    .slide::-webkit-scrollbar-thumb:hover {
+      background: #764ba2;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="presentation">
+    <div class="slide-counter">
+      <span id="current-slide">1</span> / <span id="total-slides">17</span>
+    </div>
+
+    <!-- Slide 1 -->
+    <div class="slide active">
+      <h1>🌐 Socket לעומת WebSocket</h1>
+      <h3>איך מחשבים מדברים ביניהם?</h3>
+      <div class="emoji-big">💬 📱 🖥️</div>
+      <p style="font-size: 1.4em; text-align: center;">מצגת מותאמת לתלמידי תיכון - מגמת סייבר</p>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="slide">
+      <h2>📞 בואו נתחיל עם אנלוגיה פשוטה</h2>
+      <div class="analogy-box">
+        <strong>Socket רגיל = שיחת טלפון</strong>
+        אתם מתקשרים לחבר, מדברים איתו ישירות.<br>
+        צריך לדעת את המספר המדויק ולנהל את השיחה בעצמכם.
+      </div>
+      <div class="analogy-box">
+        <strong>WebSocket = קבוצת וואטסאפ</strong>
+        כולם מחוברים כל הזמן!<br>
+        כל הודעה שאתם שולחים מגיעה לכולם מיד.
+      </div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="slide">
+      <h2>🔌 מה זה Socket? (בעברית: "שקע")</h2>
+      <ul>
+        <li><strong>הגדרה פשוטה:</strong> נקודת חיבור בין שני מחשבים</li>
+        <li>כמו שקע חשמל שמחבר מכשיר לחשמל - רק שכאן מחברים מחשבים</li>
+        <li>עובד עם פרוטוקולים בסיסיים: TCP (אמין) או UDP (מהיר)</li>
+      </ul>
+      <div class="real-world">
+        <strong>🎮 דוגמה מהחיים:</strong>
+        משחק רשת מקומי (LAN Party) בין מחשבים באותו בית
+      </div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="slide">
+      <h2>🌐 מהו WebSocket?</h2>
+      <ul>
+        <li><strong>גרסה משודרגת</strong> שעובדת דרך האינטרנט (HTTP)</li>
+        <li>מתאים במיוחד לדפדפנים (כרום, פיירפוקס וכו')</li>
+        <li>תקשורת בזמן אמת - כמו שיחת וידאו או משחק אונליין</li>
+      </ul>
+      <div class="real-world">
+        <strong>📱 דוגמאות מוכרות:</strong>
+        <ul>
+          <li>דיסקורד - צ'אט בזמן אמת</li>
+          <li>משחקים אונליין - Fortnite, Roblox</li>
+          <li>מסמכי Google - רואים שינויים של אחרים בזמן אמת</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Slide 5 -->
+    <div class="slide">
+      <h2>📨 איך זה עובד? (אנימציה)</h2>
+      <div class="animation-container">
+        <div class="node">המחשב שלך 💻</div>
+        <div class="arrow">➡️</div>
+        <div class="node">שרת 🖥️</div>
+        <div class="arrow">➡️</div>
+        <div class="node">משתמשים אחרים 👥</div>
+      </div>
+      <div class="highlight-box">
+        כל הודעה שאתם שולחים עוברת דרך השרת ומגיעה לכל המשתמשים המחוברים! 🎯
+      </div>
+    </div>
+
+    <!-- Slide 6 -->
+    <div class="slide">
+      <h2>⚖️ מה ההבדלים? (טבלת השוואה)</h2>
+      <table class="compare-table">
+        <tr>
+          <th>מאפיין</th>
+          <th>Socket רגיל 🔌</th>
+          <th>WebSocket 🌐</th>
+        </tr>
+        <tr>
+          <td><strong>איפה משתמשים?</strong></td>
+          <td>תוכניות שולחן עבודה</td>
+          <td>אתרי אינטרנט ואפליקציות</td>
+        </tr>
+        <tr>
+          <td><strong>קל לתכנת?</strong></td>
+          <td>קצת מסובך 😰</td>
+          <td>יחסית פשוט 😊</td>
+        </tr>
+        <tr>
+          <td><strong>עובד בדפדפן?</strong></td>
+          <td>❌ לא</td>
+          <td>✅ כן!</td>
+        </tr>
+        <tr>
+          <td><strong>סוג המידע</strong></td>
+          <td>Bytes (מידע גולמי)</td>
+          <td>טקסט / JSON</td>
+        </tr>
+        <tr>
+          <td><strong>מהירות</strong></td>
+          <td>🚀 מהיר מאוד</td>
+          <td>⚡ מהיר</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Slide 7 -->
+    <div class="slide">
+      <h2>💻 דוגמה 1: צ'אט עם Socket רגיל - השרת</h2>
+      <pre class="code-block"># server_socket_chat.py
+<span class="keyword">import</span> socket, threading
+
+clients = []  <span class="comment"># רשימה של כל המשתמשים המחוברים</span>
+
+<span class="keyword">def</span> <span class="function">handle_client</span>(conn, addr):
+    <span class="function">print</span>(<span class="string">f"😊 {addr} הצטרף לצ'אט!"</span>)
+    <span class="keyword">while</span> True:
+        msg = conn.recv(1024)  <span class="comment"># מקבל הודעה</span>
+        <span class="keyword">if not</span> msg:
+            <span class="keyword">break</span>
+        <span class="comment"># שולח את ההודעה לכל השאר</span>
+        <span class="keyword">for</span> c <span class="keyword">in</span> clients:
+            <span class="keyword">if</span> c != conn:
+                c.sendall(msg)
+    conn.close()
+
+<span class="comment"># יצירת השרת</span>
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((<span class="string">'localhost'</span>, 5000))
+server.listen()
+<span class="function">print</span>(<span class="string">"✅ שרת הצ'אט מוכן ומאזין בפורט 5000..."</span>)
+
+<span class="comment"># מאזין למשתמשים חדשים</span>
+<span class="keyword">while</span> True:
+    conn, addr = server.accept()
+    clients.append(conn)
+    threading.Thread(target=handle_client, args=(conn, addr)).start()</pre>
+      <div class="code-explanation">
+        <strong>מה קורה כאן?</strong>
+        השרת מחכה למשתמשים, וכשמישהו שולח הודעה - השרת מעביר אותה לכל השאר
+      </div>
+    </div>
+
+    <!-- Slide 8 -->
+    <div class="slide">
+      <h2>💬 דוגמה 1: צ'אט עם Socket רגיל - הלקוח</h2>
+      <pre class="code-block"># client_socket_chat.py
+<span class="keyword">import</span> socket, threading
+
+<span class="keyword">def</span> <span class="function">receive</span>(sock):
+    <span class="string">"""פונקציה שמקבלת הודעות כל הזמן"""</span>
+    <span class="keyword">while</span> True:
+        <span class="keyword">try</span>:
+            data = sock.recv(1024).decode()
+            <span class="keyword">if</span> data:
+                <span class="function">print</span>(<span class="string">"\n📩 הודעה חדשה:"</span>, data)
+        <span class="keyword">except</span>:
+            <span class="keyword">break</span>
+
+<span class="comment"># התחברות לשרת</span>
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect((<span class="string">'localhost'</span>, 5000))
+<span class="function">print</span>(<span class="string">"✅ התחברת לצ'אט!"</span>)
+
+<span class="comment"># תהליך נפרד לקבלת הודעות</span>
+threading.Thread(target=receive, args=(client,), daemon=True).start()
+
+<span class="comment"># לולאה לשליחת הודעות</span>
+<span class="keyword">while</span> True:
+    msg = <span class="function">input</span>(<span class="string">"👤 כתוב הודעה: "</span>)
+    client.sendall(msg.encode())</pre>
+      <div class="code-explanation">
+        <strong>איך זה עובד?</strong>
+        התוכנית מתחברת לשרת, שולחת הודעות ומקבלת הודעות מאחרים בו-זמנית
+      </div>
+    </div>
+
+    <!-- Slide 9 -->
+    <div class="slide">
+      <h2>🌐 דוגמה 2: צ'אט עם WebSocket - השרת</h2>
+      <pre class="code-block"># server_ws_chat.py
+<span class="keyword">import</span> asyncio, websockets
+
+clients = set()  <span class="comment"># קבוצה של כל המשתמשים</span>
+
+<span class="keyword">async def</span> <span class="function">chat</span>(websocket):
+    <span class="string">"""פונקציה שמטפלת בכל משתמש"""</span>
+    clients.add(websocket)
+    <span class="function">print</span>(<span class="string">f"👤 משתמש חדש! סה״כ: {len(clients)}"</span>)
+    
+    <span class="keyword">try</span>:
+        <span class="comment"># מאזין להודעות מהמשתמש</span>
+        <span class="keyword">async for</span> msg <span class="keyword">in</span> websocket:
+            <span class="function">print</span>(<span class="string">f"📨 הודעה התקבלה: {msg}"</span>)
+            <span class="comment"># שולח לכל השאר</span>
+            <span class="keyword">for</span> c <span class="keyword">in</span> clients:
+                <span class="keyword">if</span> c != websocket:
+                    <span class="keyword">await</span> c.send(msg)
+    <span class="keyword">finally</span>:
+        clients.remove(websocket)
+        <span class="function">print</span>(<span class="string">f"👋 משתמש התנתק. נשארו: {len(clients)}"</span>)
+
+<span class="keyword">async def</span> <span class="function">main</span>():
+    <span class="keyword">async with</span> websockets.serve(chat, <span class="string">"localhost"</span>, 6789):
+        <span class="function">print</span>(<span class="string">"✅ שרת WebSocket רץ על ws://localhost:6789"</span>)
+        <span class="keyword">await</span> asyncio.Future()  <span class="comment"># רץ לנצח</span>
+
+asyncio.run(main())</pre>
+      <div class="code-explanation">
+        <strong>שימו לב:</strong>
+        הקוד פה יותר פשוט וקריא! async/await עוזרים לנו לנהל הרבה משתמשים בקלות
+      </div>
+    </div>
+
+    <!-- Slide 10 -->
+    <div class="slide">
+      <h2>💻 דוגמה 2: צ'אט עם WebSocket - בדפדפן!</h2>
+      <pre class="code-block">&lt;!-- client_ws_chat.html --&gt;
+&lt;!DOCTYPE html&gt;
+&lt;html dir="rtl"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;צ'אט WebSocket&lt;/title&gt;
+  &lt;style&gt;
+    #chat { border: 2px solid #667eea; padding: 15px; 
+            height: 300px; overflow-y: scroll; }
+    input { width: 70%; padding: 10px; }
+    button { padding: 10px 20px; background: #667eea; 
+             color: white; border: none; cursor: pointer; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;💬 צ'אט בזמן אמת&lt;/h1&gt;
+  &lt;div id="chat"&gt;&lt;/div&gt;
+  &lt;input id="msg" placeholder="כתוב הודעה..."&gt;
+  &lt;button onclick="sendMsg()"&gt;שלח 📤&lt;/button&gt;
+
+  &lt;script&gt;
+    const ws = new WebSocket("ws://localhost:6789");
+    
+    ws.onmessage = e =&gt; {
+      document.getElementById("chat").innerHTML += 
+        "&lt;div&gt;👤 " + e.data + "&lt;/div&gt;";
+    };
+    
+    function sendMsg() {
+      const txt = document.getElementById("msg").value;
+      if (txt) {
+        ws.send(txt);
+        document.getElementById("msg").value = "";
+      }
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+      <div class="highlight-box">
+        🎉 פשוט פותחים את הקובץ בדפדפן - ומיד יש לנו צ'אט!
+      </div>
+    </div>
+
+    <!-- Slide 11 -->
+    <div class="slide">
+      <h2>❓ בואו נבדוק שהבנתם (לחצו על כל שאלה)</h2>
+
+      <div class="question-box" onclick="toggleAnswer(1)">
+        <strong>שאלה 1:</strong> למה WebSocket יותר מתאים לאתרי אינטרנט?
+        <div id="answer1" class="answer">
+          ✅ <strong>כי WebSocket עובד ישירות בדפדפן!</strong><br>
+          Socket רגיל דורש תוכנת לקוח מיוחדת. WebSocket משתמש ב-JavaScript שכל דפדפן מכיר.<br>
+          בנוסף, WebSocket מבוסס על HTTP - הפרוטוקול שהאינטרנט כולו משתמש בו.
+        </div>
+      </div>
+
+      <div class="question-box" onclick="toggleAnswer(2)">
+        <strong>שאלה 2:</strong> תנו דוגמה לאפליקציה שבה עדיף להשתמש ב-Socket רגיל
+        <div id="answer2" class="answer">
+          ✅ <strong>משחק רשת מקומי (LAN) או תקשורת בין שרתים</strong><br>
+          כשאין צורך בדפדפן ורוצים ביצועים מקסימליים, Socket רגיל הוא הבחירה הנכונה.<br>
+          דוגמאות: העברת קבצים גדולים, משחקים תחרותיים, מערכות ניטור ובקרה.
+        </div>
+      </div>
+
+      <div class="question-box" onclick="toggleAnswer(3)">
+        <strong>שאלה 3:</strong> מה עושה השרת כשמשתמש שולח הודעה?
+        <div id="answer3" class="answer">
+          ✅ <strong>השרת מעביר את ההודעה לכל המשתמשים האחרים</strong><br>
+          השרת שומר רשימה של כל המשתמשים המחוברים. כשמגיעה הודעה, הוא עובר על הרשימה ושולח לכולם (חוץ מהשולח המקורי).
+        </div>
+      </div>
+
+      <div class="question-box" onclick="toggleAnswer(4)">
+        <strong>שאלה 4:</strong> באיזה פורמט שולחים הודעות ב-WebSocket?
+        <div id="answer4" class="answer">
+          ✅ <strong>טקסט רגיל או JSON</strong><br>
+          JSON זה פורמט נפוץ שנראה כך: {"user": "שם", "message": "הודעה"}<br>
+          זה מאוד נוח לעבודה עם JavaScript ופייתון.
+        </div>
+      </div>
+
+      <div class="question-box" onclick="toggleAnswer(5)">
+        <strong>שאלה 5:</strong> מה היתרון של async/await בקוד WebSocket?
+        <div id="answer5" class="answer">
+          ✅ <strong>מאפשר לשרת לטפל בהרבה משתמשים בו-זמנית!</strong><br>
+          במקום ליצור thread נפרד לכל משתמש (כמו ב-Socket רגיל), async/await מאפשר קוד יותר פשוט ויעיל.<br>
+          זה כמו מלצר שמשרת כמה שולחנות במקביל במקום מלצר אחד לכל שולחן.
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 12 -->
+    <div class="slide">
+      <h2>🌍 איפה רואים את זה בפועל?</h2>
+      
+      <div class="real-world">
+        <strong>🎮 WebSocket בפעולה:</strong>
+        <ul>
+          <li><strong>משחקים אונליין:</strong> Fortnite, Among Us - כל שחקן רואה תנועות של השאר בזמן אמת</li>
+          <li><strong>אפליקציות צ'אט:</strong> WhatsApp Web, Discord, Slack</li>
+          <li><strong>שיתוף פעולה:</strong> Google Docs - רואים מה חברים כותבים בזמן אמת</li>
+          <li><strong>עדכוני ספורט:</strong> תוצאות משחקים חיות ללא רענון דף</li>
+        </ul>
+      </div>
+
+      <div class="real-world">
+        <strong>🔌 Socket רגיל בפעולה:</strong>
+        <ul>
+          <li><strong>מסדי נתונים:</strong> MySQL, PostgreSQL משתמשים ב-Socket</li>
+          <li><strong>שרתי משחקים:</strong> Minecraft Server</li>
+          <li><strong>העברת קבצים:</strong> FTP, BitTorrent</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Slide 13 -->
+    <div class="slide">
+      <h2>💡 טיפים לתכנות</h2>
+      
+      <div class="highlight-box">
+        <strong>מתי להשתמש ב-Socket רגיל?</strong><br>
+        ✅ תוכניות שולחן עבודה<br>
+        ✅ ביצועים קריטיים<br>
+        ✅ תקשורת בין שרתים
+      </div>
+
+      <div class="highlight-box">
+        <strong>מתי להשתמש ב-WebSocket?</strong><br>
+        ✅ אתרי אינטרנט ואפליקציות Web<br>
+        ✅ צ'אטים ועדכונים בזמן אמת<br>
+        ✅ כשרוצים משהו פשוט וקל ליישום
+      </div>
+
+      <div class="code-explanation">
+        <strong>💻 רוצים לנסות?</strong>
+        <ol>
+          <li>התקינו את ספריית websockets: <code>pip install websockets</code></li>
+          <li>הריצו את קובץ השרת</li>
+          <li>פתחו את קובץ ה-HTML במספר טאבים</li>
+          <li>נסו לשלוח הודעות - תראו אותן בכל הטאבים! 🎉</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Slide 14 -->
+    <div class="slide">
+      <h2>🏆 אתגר סיום - בואו נבנה!</h2>
+      
+      <div class="analogy-box">
+        <strong>פרויקט מומלץ למגמת סייבר:</strong><br><br>
+        📌 <strong>שלב 1:</strong> בנו צ'אט WebSocket פשוט (העתיקו את הקוד מהמצגת)<br>
+        📌 <strong>שלב 2:</strong> הוסיפו שמות משתמש - כל אחד יכניס שם כשנכנס<br>
+        📌 <strong>שלב 3:</strong> הוסיפו צבעים שונים לכל משתמש<br>
+        📌 <strong>שלב 4:</strong> הוסיפו חותמת זמן לכל הודעה (שעה:דקה)<br>
+        📌 <strong>בונוס:</strong> הוסיפו אימוג'ים והודעת "X מקליד..." 💬
+      </div>
+
+      <div class="code-explanation">
+        <strong>רעיונות נוספים לפרויקטים:</strong>
+        <ul>
+          <li>🎲 משחק טריוויה מרובה משתתפים</li>
+          <li>📊 לוח תוצאות חי למשחק</li>
+          <li>🎨 לוח ציור משותף</li>
+          <li>📍 מעקב מיקום בזמן אמת (כמו Waze)</li>
+          <li>🔔 מערכת התראות לאתר</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Slide 15 -->
+    <div class="slide">
+      <h2>📝 סיכום</h2>
+      <table class="compare-table">
+        <tr>
+          <th></th>
+          <th>Socket 🔌</th>
+          <th>WebSocket 🌐</th>
+        </tr>
+        <tr>
+          <td><strong>במשפט אחד</strong></td>
+          <td>שיחת טלפון ישירה בין מחשבים</td>
+          <td>קבוצת וואטסאפ דרך הדפדפן</td>
+        </tr>
+        <tr>
+          <td><strong>קל ללמוד?</strong></td>
+          <td>קצת מאתגר</td>
+          <td>יחסית פשוט</td>
+        </tr>
+        <tr>
+          <td><strong>היכן נפוץ?</strong></td>
+          <td>תוכניות מקצועיות</td>
+          <td>אתרים ואפליקציות</td>
+        </tr>
+        <tr>
+          <td><strong>עתיד הטכנולוגיה</strong></td>
+          <td>קיים ונשאר</td>
+          <td>הולך וגדל! 🚀</td>
+        </tr>
+      </table>
+
+      <div class="highlight-box" style="margin-top: 30px;">
+        <strong>🎯 המסר המרכזי:</strong><br>
+        שני הכלים חשובים! Socket = כוח וביצועים, WebSocket = נוחות ונגישות
+      </div>
+    </div>
+
+    <!-- Slide 16 -->
+    <div class="slide">
+      <h2>📚 משאבים להמשך למידה</h2>
+      
+      <div class="real-world">
+        <strong>📖 מקורות מומלצים:</strong>
+        <ul>
+          <li><strong>תיעוד Python Socket:</strong> docs.python.org/3/library/socket.html</li>
+          <li><strong>ספריית websockets:</strong> websockets.readthedocs.io</li>
+          <li><strong>MDN WebSocket API:</strong> developer.mozilla.org/en-US/docs/Web/API/WebSocket</li>
+        </ul>
+      </div>
+
+      <div class="real-world">
+        <strong>🎥 מה כדאי לראות?</strong>
+        <ul>
+          <li>חפשו ביוטיוב: "WebSocket tutorial Python"</li>
+          <li>חפשו ביוטיוב: "Socket programming Python"</li>
+          <li>נסו לבנות פרויקט קטן בעצמכם - זה הדרך הטובה ביותר ללמוד!</li>
+        </ul>
+      </div>
+
+      <div class="highlight-box">
+        💪 זכרו: טעויות זה חלק מהתהליך! כל מתכנת מתחיל עושה טעויות - זה איך לומדים.
+      </div>
+    </div>
+
+    <!-- Slide 17 -->
+    <div class="slide">
+      <h1>🎓 סיימנו!</h1>
+      <div class="emoji-big">🎉 👏 🚀</div>
+      
+      <div class="analogy-box">
+        <strong>מה למדנו היום?</strong><br><br>
+        ✅ Socket רגיל - תקשורת ישירה ומהירה<br>
+        ✅ WebSocket - תקשורת בזמן אמת לאינטרנט<br>
+        ✅ איך לבנות צ'אט פשוט בשתי השיטות<br>
+        ✅ מתי להשתמש בכל אחד מהם
+      </div>
+
+      <div class="highlight-box" style="font-size: 1.3em; margin-top: 30px;">
+        🌟 עכשיו אתם יודעים איך Discord, WhatsApp Web<br>
+        ומשחקים אונליין עובדים מאחורי הקלעים!
+      </div>
+
+      <p style="font-size: 1.5em; margin-top: 40px; color: #667eea; text-align: center;">
+        <strong>יש שאלות? בואו נדבר! 💬</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="prev-btn" onclick="prevSlide()">⏮️ הקודם</button>
+    <button class="btn" id="next-btn" onclick="nextSlide()">הבא ⏭️</button>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+
+    document.getElementById('total-slides').textContent = totalSlides;
+
+    function showSlide(n) {
+      slides[currentSlide].classList.remove('active');
+      currentSlide = (n + totalSlides) % totalSlides;
+      slides[currentSlide].classList.add('active');
+      
+      document.getElementById('current-slide').textContent = currentSlide + 1;
+      
+      // Update button states
+      document.getElementById('prev-btn').disabled = currentSlide === 0;
+      document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+      
+      // Scroll to top of slide
+      slides[currentSlide].scrollTop = 0;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        showSlide(currentSlide + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        showSlide(currentSlide - 1);
+      }
+    }
+
+    function toggleAnswer(n) {
+      const answer = document.getElementById('answer' + n);
+      if (answer) {
+        answer.classList.toggle('show');
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        if (e.key === 'ArrowRight') {
+          prevSlide(); // RTL so right arrow goes back
+        } else {
+          nextSlide(); // RTL so left arrow goes forward
+        }
+      }
+    });
+
+    // Initialize
+    showSlide(0);
+  </script>
+</body>
+</html>

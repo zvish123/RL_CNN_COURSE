@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Socket לעומת WebSocket בפייתון</title>
+
+  <!-- Reveal.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+
+  <!-- Highlight.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+
+  <!-- Anime.js לאנימציה -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+  <style>
+    body { font-family: "Heebo", sans-serif; }
+    section { direction: rtl; text-align: right; }
+    h1, h2, h3 { color: #0078b7; }
+    pre { direction: ltr; text-align: left; font-size: 0.9em; }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 1.1em; }
+    .compare-table th, .compare-table td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    .discussion, .question-box { padding: 15px; border-radius: 10px; margin-top: 10px; }
+    .discussion { background-color: #e8f4f8; }
+    .question-box { background-color: #fefae0; border: 2px solid #f4d35e; cursor: pointer; }
+    .question-box strong { color: #d62828; }
+    .answer { display: none; margin-top: 10px; background-color: #dff5e1; padding: 10px; border-radius: 8px; }
+    .animation-container { text-align: center; margin-top: 40px; }
+    .node { display: inline-block; background: #0078b7; color: white; padding: 10px 20px; border-radius: 10px; margin: 0 20px; font-weight: bold; }
+    .arrow { display: inline-block; font-size: 1.5em; color: #333; vertical-align: middle; }
+  </style>
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- Slide 1 -->
+      <section>
+        <h1>Socket לעומת WebSocket בפייתון</h1>
+        <h3>הבנה תיאורטית, השוואה ודוגמאות צ׳אט בזמן אמת</h3>
+        <p>מגיש: צוות מגמת סייבר 🧠</p>
+      </section>
+
+      <!-- Slide 2 -->
+      <section>
+        <h2>מה זה Socket?</h2>
+        <ul>
+          <li>Socket הוא "שקע תקשורת" בין שני מחשבים.</li>
+          <li>משמש להעברת נתונים דרך פרוטוקול TCP או UDP.</li>
+          <li>דורש ניהול ידני של חיבור ושליחת הודעות.</li>
+        </ul>
+      </section>
+
+      <!-- Slide 3 -->
+      <section>
+        <h2>מהו WebSocket?</h2>
+        <ul>
+          <li>WebSocket הוא פרוטוקול חדש המבוסס על HTTP.</li>
+          <li>מאפשר תקשורת דו־כיוונית בזמן אמת בין שרת ללקוח.</li>
+          <li>מתאים לצ׳אטים, משחקים, עדכונים חיים ולוחות בקרה.</li>
+        </ul>
+      </section>
+
+      <!-- Slide 4: Animation -->
+      <section id="animation">
+        <h2>אנימציה: זרימת ההודעות 📨</h2>
+        <div class="animation-container">
+          <div class="node" id="client">Client</div>
+          <div class="arrow" id="arrow1">➡️</div>
+          <div class="node" id="server">Server</div>
+          <div class="arrow" id="arrow2">➡️</div>
+          <div class="node" id="browser">Browser</div>
+        </div>
+
+        <script>
+          Reveal.on('slidechanged', (event) => {
+            if (event.currentSlide.id === 'animation') {
+              anime({
+                targets: ['#arrow1', '#arrow2'],
+                translateX: [
+                  { value: 20, duration: 800 },
+                  { value: 0, duration: 800 }
+                ],
+                direction: 'alternate',
+                loop: true,
+                easing: 'easeInOutSine'
+              });
+            }
+          });
+        </script>
+
+        <p>💡 WebSocket מאפשר תקשורת חיה – כל הודעה מהלקוח מגיעה לכל המשתמשים המחוברים.</p>
+      </section>
+
+      <!-- Slide 5: Comparison -->
+      <section>
+        <h2>Socket לעומת WebSocket</h2>
+        <table class="compare-table">
+          <tr><th>מאפיין</th><th>Socket רגיל</th><th>WebSocket</th></tr>
+          <tr><td>שכבה במודל OSI</td><td>Transport Layer</td><td>Application Layer</td></tr>
+          <tr><td>מבוסס על</td><td>TCP/UDP</td><td>HTTP → WebSocket</td></tr>
+          <tr><td>דו־כיווניות</td><td>כן, ניהול ידני</td><td>כן, בזמן אמת</td></tr>
+          <tr><td>תמיכה בדפדפן</td><td>❌</td><td>✅</td></tr>
+          <tr><td>פורמט נתונים</td><td>bytes</td><td>טקסט/JSON</td></tr>
+        </table>
+      </section>
+
+      <!-- Slide 6: Socket Chat Server -->
+      <section>
+        <h2>💻 צ׳אט Socket – צד שרת</h2>
+        <pre><code class="language-python">
+# server_socket_chat.py
+import socket, threading
+
+clients = []
+
+def handle_client(conn, addr):
+    print(f"{addr} joined the chat")
+    while True:
+        msg = conn.recv(1024)
+        if not msg:
+            break
+        for c in clients:
+            if c != conn:
+                c.sendall(msg)
+    conn.close()
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('localhost', 5000))
+server.listen()
+print("Chat server started on port 5000...")
+
+while True:
+    conn, addr = server.accept()
+    clients.append(conn)
+    threading.Thread(target=handle_client, args=(conn, addr)).start()
+        </code></pre>
+      </section>
+
+      <!-- Slide 7: Socket Chat Client -->
+      <section>
+        <h2>💬 צ׳אט Socket – צד לקוח</h2>
+        <pre><code class="language-python">
+# client_socket_chat.py
+import socket, threading
+
+def receive(sock):
+    while True:
+        try:
+            data = sock.recv(1024).decode()
+            if data:
+                print("\n📩", data)
+        except:
+            break
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('localhost', 5000))
+print("Connected to chat server!")
+
+threading.Thread(target=receive, args=(client,), daemon=True).start()
+
+while True:
+    msg = input("👤 אני: ")
+    client.sendall(msg.encode())
+        </code></pre>
+        <p>✅ כל הודעה נשלחת לשרת – השרת משדר אותה לכל שאר המשתתפים.</p>
+      </section>
+
+      <!-- Slide 8: WebSocket Chat -->
+      <section>
+        <h2>🌐 צ׳אט עם WebSocket – צד שרת</h2>
+        <pre><code class="language-python">
+# server_ws_chat.py
+import asyncio, websockets
+
+clients = set()
+
+async def chat(websocket):
+    clients.add(websocket)
+    try:
+        async for msg in websocket:
+            for c in clients:
+                if c != websocket:
+                    await c.send(msg)
+    finally:
+        clients.remove(websocket)
+
+async def main():
+    async with websockets.serve(chat, "localhost", 6789):
+        print("WebSocket chat running on ws://localhost:6789")
+        await asyncio.Future()
+
+asyncio.run(main())
+        </code></pre>
+      </section>
+
+      <!-- Slide 9: WebSocket Browser Client -->
+      <section>
+        <h2>💻 צד לקוח (דפדפן)</h2>
+        <pre><code class="language-javascript">
+<!-- client_ws_chat.html -->
+<input id="msg" placeholder="כתוב הודעה...">
+<button onclick="sendMsg()">שלח</button>
+<div id="chat"></div>
+
+<script>
+const ws = new WebSocket("ws://localhost:6789");
+ws.onmessage = e => {
+  document.getElementById("chat").innerHTML += "<div>" + e.data + "</div>";
+};
+function sendMsg() {
+  const txt = document.getElementById("msg").value;
+  ws.send(txt);
+  document.getElementById("msg").value = "";
+}
+</script>
+        </code></pre>
+        <p>✅ פותחים את הקובץ בדפדפן, ומתחברים בזמן אמת לכל משתמשי השרת.</p>
+      </section>
+
+      <!-- Slide 10: Interactive Questions -->
+      <section>
+        <h2>שאלות סיכום 💡 (לחצו כדי לראות תשובה)</h2>
+
+        <div class="question-box" onclick="toggleAnswer(1)">
+          <strong>1.</strong> מה היתרון המרכזי של WebSocket לעומת Socket רגיל?
+          <div id="answer1" class="answer">
+            WebSocket פועל מעל HTTP ותומך בתקשורת דו־כיוונית בזמן אמת.
+            מאפשר לאפליקציות אינטרנט לשלוח ולקבל נתונים מידית.
+          </div>
+        </div>
+
+        <div class="question-box" onclick="toggleAnswer(2)">
+          <strong>2.</strong> באילו מצבים Socket רגיל עדיף?
+          <div id="answer2" class="answer">
+            כשאין דפדפן – לדוגמה תקשורת בין שרתים, רובוטים, או משחקים מקומיים (LAN).
+          </div>
+        </div>
+
+        <div class="question-box" onclick="toggleAnswer(3)">
+          <strong>3.</strong> כיצד ניתן לממש צ׳אט בין משתמשים עם WebSocket?
+          <div id="answer3" class="answer">
+            השרת מאזין לכל הודעה ושולח אותה לכל המשתמשים המחוברים.
+            בצד הלקוח משתמשים ב־JavaScript וב־WebSocket API.
+          </div>
+        </div>
+
+        <div class="question-box" onclick="toggleAnswer(4)">
+          <strong>4.</strong> מהו הפורמט העיקרי של הודעות ב־WebSocket?
+          <div id="answer4" class="answer">
+            הודעות טקסט או JSON, נוחות להעברה וקריאה.
+          </div>
+        </div>
+
+        <div class="question-box" onclick="toggleAnswer(5)">
+          <strong>5.</strong> לאיזו שכבה במודל OSI שייך כל אחד?
+          <div id="answer5" class="answer">
+            Socket רגיל – שכבת התעבורה (Transport).
+            WebSocket – שכבת היישום (Application).
+          </div>
+        </div>
+
+        <script>
+          function toggleAnswer(n) {
+            const ans = document.getElementById('answer' + n);
+            ans.style.display = ans.style.display === 'block' ? 'none' : 'block';
+          }
+        </script>
+      </section>
+
+      <!-- Slide 11 -->
+      <section>
+        <h2>סיכום</h2>
+        <ul>
+          <li><strong>Socket:</strong> תקשורת ישירה ושליטה מלאה, אך ללא דפדפן.</li>
+          <li><strong>WebSocket:</strong> ערוץ חי ומיידי דרך HTTP – מושלם לאפליקציות Web.</li>
+          <li>שניהם כלים חשובים להבנת תקשורת רשת ופרוטוקולים מודרניים.</li>
+        </ul>
+        <p>💡 WebSocket = Socket של עידן ה־Web!</p>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: true,
+      transition: 'fade',
+    });
+  </script>
+</body>
+</html>

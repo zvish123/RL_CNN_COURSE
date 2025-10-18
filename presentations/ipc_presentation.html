@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תקשורת בין תהליכים - IPC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1200px;
+            width: 100%;
+            min-height: 700px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            display: none;
+            padding: 60px;
+            min-height: 700px;
+            animation: fadeIn 0.5s;
+        }
+        
+        .slide.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        
+        h3 {
+            color: #667eea;
+            font-size: 1.5em;
+            margin: 20px 0 15px 0;
+        }
+        
+        p, li {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        ul {
+            margin-right: 30px;
+        }
+        
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .code-block code {
+            font-size: 1.2em;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .icon {
+            font-size: 3em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .comparison-table th, .comparison-table td {
+            border: 2px solid #667eea;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .navigation {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+        
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .slide-counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .interactive-box {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-right: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .example-box {
+            background: #d4edda;
+            border-right: 5px solid #28a745;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .diagram {
+            text-align: center;
+            margin: 30px 0;
+            font-size: 2em;
+        }
+        
+        .flex-container {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .flex-item {
+            flex: 1;
+            min-width: 250px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="slide-counter">
+            <span id="current-slide">1</span> / <span id="total-slides">15</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🖥️ תקשורת בין תהליכים</h1>
+            <h2 style="text-align: center; color: #764ba2;">Inter-Process Communication (IPC)</h2>
+            <div class="icon">🤝</div>
+            <div class="interactive-box">
+                <h3>למה בעצם צריך IPC?</h3>
+                <p><strong>שאלה לדיון:</strong> דמיינו שני אנשים שעובדים על אותו פרויקט אבל יושבים בחדרים נפרדים. איך הם יכולים לתאם ביניהם?</p>
+                <p><strong>אנלוגיה מהחיים:</strong></p>
+                <ul>
+                    <li>תהליכים במחשב = עובדים בחדרים נפרדים</li>
+                    <li>IPC = אמצעי התקשורת ביניהם (טלפון, מייל, פתקים)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is IPC -->
+        <div class="slide">
+            <h2>מהי תקשורת בין תהליכים?</h2>
+            <p>מערכת ההפעלה מספקת <span class="highlight">מנגנונים למימוש תקשורת ושיתוף מידע</span> בין אפליקציות (תהליכים) שונות.</p>
+            
+            <h3>מניעה הדדית (Mutual Exclusion)</h3>
+            <div class="warning-box">
+                <p><strong>⚠️ הבעיה:</strong> מצב שבו שני תהליכים ניגשים לאותו משאב בו-זמנית</p>
+                <p><strong>התסריט הלא רצוי:</strong></p>
+                <ul>
+                    <li>תהליך אחד מתחיל לבצע פעולה על המשאב</li>
+                    <li>הוא מופסק ע"י פסיקה מבלי שיספיק לסיים</li>
+                    <li>תהליך שני מקבל את המשאב במצב לא תקין</li>
+                </ul>
+            </div>
+            
+            <div class="interactive-box">
+                <h3>💡 פעילות חווייתית</h3>
+                <p>נבקש משני תלמידים לכתוב במקביל על אותו דף. מה קורה?</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: IPC Mechanisms -->
+        <div class="slide">
+            <h2>מנגנוני IPC קיימים</h2>
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>📁 Files</h3>
+                    <p>העברת מידע דרך קבצים</p>
+                </div>
+                <div class="flex-item">
+                    <h3>🔌 Sockets</h3>
+                    <p>תקשורת רשת בין תהליכים</p>
+                </div>
+                <div class="flex-item">
+                    <h3>🔔 Events</h3>
+                    <p>איתות "דולק"/"כבוי"</p>
+                </div>
+            </div>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>🔒 Mutex</h3>
+                    <p>נעילה הדדית</p>
+                </div>
+                <div class="flex-item">
+                    <h3>🎫 Semaphore</h3>
+                    <p>הגבלת גישה מספרית</p>
+                </div>
+                <div class="flex-item">
+                    <h3>🚰 Pipes</h3>
+                    <p>צינור העברת נתונים</p>
+                </div>
+            </div>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>🔄 Spin Lock</h3>
+                    <p>המתנה פעילה</p>
+                </div>
+                <div class="flex-item">
+                    <h3>📬 Message Queue</h3>
+                    <p>תור הודעות</p>
+                </div>
+                <div class="flex-item">
+                    <h3>💾 Shared Memory</h3>
+                    <p>זיכרון משותף</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Files -->
+        <div class="slide">
+            <h2>📁 IPC באמצעות קבצים</h2>
+            <div class="example-box">
+                <h3>איך זה עובד?</h3>
+                <ul>
+                    <li>העברת המידע בין התהליכים מתבצעת באמצעות קבצים</li>
+                    <li>צריך למצוא דרך לסמן שיש מידע חדש או עדכני</li>
+                </ul>
+            </div>
+            
+            <h3>דוגמת קוד - כתיבה לקובץ</h3>
+            <pre class="code-block">
+<code># Process A - Writer
+with open('shared_data.txt', 'w') as f:
+    f.write('Hello from Process A')
+    
+# Process B - Reader
+import time
+while True:
+    try:
+        with open('shared_data.txt', 'r') as f:
+            data = f.read()
+            print(f'Received: {data}')
+    except FileNotFoundError:
+        time.sleep(0.1)
+</code>
+            </pre>
+            
+            <div class="warning-box">
+                <p><strong>⚠️ חסרונות:</strong></p>
+                <ul>
+                    <li>איטי - צריך גישה לדיסק</li>
+                    <li>צריך לבדוק כל הזמן אם יש מידע חדש</li>
+                    <li>בעיות סנכרון אפשריות</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 5: Mutex -->
+        <div class="slide">
+            <h2>🔒 Mutex - מניעה הדדית</h2>
+            <div class="icon">🔐</div>
+            
+            <div class="interactive-box">
+                <h3>💡 משחק תפקידים</h3>
+                <p>תלמיד אחד = מנעול, שאר התלמידים = תהליכים</p>
+                <ul>
+                    <li>רק מי שמחזיק את ה"מפתח" יכול לדבר</li>
+                    <li>כשמסיים - מעביר לבא בתור</li>
+                </ul>
+            </div>
+            
+            <h3>דוגמת קוד - Python</h3>
+            <pre class="code-block">
+<code>import threading
+
+# יצירת mutex (lock)
+lock = threading.Lock()
+counter = 0
+
+def increment():
+    global counter
+    lock.acquire()  # נועל את המשאב
+    try:
+        temp = counter
+        temp += 1
+        counter = temp
+        thread_name = threading.current_thread().name
+        print(f'Thread: {thread_name} | Counter: {counter}')
+    finally:
+        lock.release()  # משחרר את המשאב
+
+# יצירת threads
+threads = []
+for i in range(5):
+    t = threading.Thread(target=increment)
+    threads.append(t)
+    t.start()
+
+for t in threads:
+    t.join()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 6: Semaphore -->
+        <div class="slide">
+            <h2>🎫 Semaphore - הסדרן במועדון</h2>
+            
+            <div class="interactive-box">
+                <h3>💡 סימולציה בכיתה</h3>
+                <p>רק 3 תלמידים יכולים להיות ב"אזור המחשב" בו-זמנית</p>
+                <ul>
+                    <li>כשמישהו יוצא, הבא בתור נכנס</li>
+                    <li>זה בדיוק איך Semaphore עובד!</li>
+                </ul>
+                <p><strong>שאלה:</strong> במה זה שונה מ-Mutex?</p>
+            </div>
+            
+            <h3>דוגמת קוד</h3>
+            <pre class="code-block">
+<code>import threading
+import time
+
+# Semaphore שמאפשר ל-3 threads בו-זמנית
+semaphore = threading.Semaphore(3)
+
+def access_resource(thread_id):
+    print(f'Thread {thread_id} מחכה...')
+    semaphore.acquire()
+    try:
+        print(f'Thread {thread_id} נכנס!')
+        time.sleep(2)  # סימולציה של עבודה
+        print(f'Thread {thread_id} יוצא!')
+    finally:
+        semaphore.release()
+
+# יצירת 10 threads
+threads = []
+for i in range(10):
+    t = threading.Thread(target=access_resource, args=(i,))
+    threads.append(t)
+    t.start()
+
+for t in threads:
+    t.join()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 7: Comparison Table -->
+        <div class="slide">
+            <h2>השוואה כללית</h2>
+            <table class="comparison-table">
+                <tr>
+                    <th>מנגנון</th>
+                    <th>תיאור</th>
+                    <th>יתרונות</th>
+                    <th>חסרונות</th>
+                </tr>
+                <tr>
+                    <td><strong>Lock</strong></td>
+                    <td>נעילה פשוטה לאחד בלבד</td>
+                    <td>פשוט וקל לשימוש</td>
+                    <td>בעיות עם Deadlock אפשריות</td>
+                </tr>
+                <tr>
+                    <td><strong>Mutex</strong></td>
+                    <td>מנעול הדדי עם תכונות מתקדמות</td>
+                    <td>מתאים לסינכרון תהליכים, מנעול חזק</td>
+                    <td>מורכב יותר, עלול לגרום ל-deadlocks</td>
+                </tr>
+                <tr>
+                    <td><strong>Semaphore</strong></td>
+                    <td>סינכרון עבור מספר משאבים</td>
+                    <td>אפשר גישה מרובה עם רבי גישות, ניהול מספר תהליכים במקביל</td>
+                    <td>מורכב לתכנון ולניהול, פוטנציאל לניצול יתר</td>
+                </tr>
+            </table>
+            
+            <h3 style="margin-top: 30px;">מתי להשתמש?</h3>
+            <div class="flex-container">
+                <div class="flex-item">
+                    <strong>Lock</strong>
+                    <p>מתאים לפעולות פשוטות עם מעט אשכולות או תהליכים.</p>
+                </div>
+                <div class="flex-item">
+                    <strong>Mutex</strong>
+                    <p>מתאים יותר במקרים בהם נדרש סינכרון הדוק בין תהליכים או אשכולות, במיוחד במערכת גדולה יותר.</p>
+                </div>
+                <div class="flex-item">
+                    <strong>Semaphore</strong>
+                    <p>הוא הבחירה הנכונה כשיש צורך בניהול של גישה מרובה לאותו משאב, עם הגבלת כמות האשכולות ששיכולים לגשת בו-זמנית.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Events -->
+        <div class="slide">
+            <h2>🔔 Events - איתות בין תהליכים</h2>
+            <div class="example-box">
+                <h3>איך זה עובד?</h3>
+                <ul>
+                    <li>שימוש באובייקט של מערכת ההפעלה שאומר "דולק" או "כבוי"</li>
+                    <li>בהתאם למצב האובייקט קוראים/כותבים את ההודעה</li>
+                </ul>
+            </div>
+            
+            <h3>דוגמת קוד</h3>
+            <pre class="code-block">
+<code>import threading
+import time
+
+# יצירת Event
+event = threading.Event()
+
+def waiter():
+    print('מחכה לאירוע...')
+    event.wait()  # ממתין עד שהאירוע יקרה
+    print('האירוע קרה! ממשיך...')
+
+def setter():
+    time.sleep(3)
+    print('מפעיל את האירוע...')
+    event.set()  # מפעיל את האירוע
+
+# הרצת threads
+t1 = threading.Thread(target=waiter)
+t2 = threading.Thread(target=setter)
+
+t1.start()
+t2.start()
+
+t1.join()
+t2.join()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 9: Pipes -->
+        <div class="slide">
+            <h2>🚰 Pipes - צינור העברת נתונים</h2>
+            <div class="diagram">
+                Process A ➡️ 🚰 Pipe 🚰 ➡️ Process B
+            </div>
+            
+            <div class="example-box">
+                <h3>מושגי יסוד</h3>
+                <ul>
+                    <li>העברת המידע מתבצעת דרך צינור pipe</li>
+                    <li>תהליך שבו הפלט של תהליך אחד הוא הקלט לתהליך אחר</li>
+                    <li>זוהי השיטה להעברת מידע ותאום הנפוצה ביותר</li>
+                </ul>
+            </div>
+            
+            <h3>דוגמה מ-Command Line</h3>
+            <pre class="code-block">
+<code># בטרמינל של Windows
+dir | more
+
+# הפלט של dir נשלח ל-more
+# more מציג את הפלט עם אפשרות גלילה
+</code>
+            </pre>
+            
+            <div class="interactive-box">
+                <h3>💡 הדגמה מעשית</h3>
+                <p>פתחו טרמינל והריצו: <code>dir | more</code></p>
+                <p>שימו לב איך המידע עובר בין הפקודות!</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Pipes Python Example -->
+        <div class="slide">
+            <h2>🚰 Pipes - דוגמת Python</h2>
+            
+            <h3>parent.py</h3>
+            <pre class="code-block">
+<code>import os
+import subprocess
+import sys
+
+child = os.path.join(os.path.dirname(__file__), "./child.py")
+word = 'stdin'
+files = ['./parent.py','./child.py']
+
+pipes = []
+for i in range(0,2):
+    command = [sys.executable, child]
+    pipe = subprocess.Popen(command, stdin=subprocess.PIPE)
+    pipes.append(pipe)
+    pipe.stdin.write(word.encode("utf8") + b"\n")
+    pipe.stdin.write(files[i].encode("utf8") + b"\n")
+    pipe.stdin.close()
+
+while pipes:
+    pipe = pipes.pop()
+    pipe.wait()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 11: Pipes Child Process -->
+        <div class="slide">
+            <h2>🚰 Pipes - תהליך הבן</h2>
+            
+            <h3>child.py</h3>
+            <pre class="code-block">
+<code>import sys
+
+word = sys.stdin.readline().rstrip()
+filename = sys.stdin.readline().rstrip()
+
+try:
+    with open(filename, "rb") as fh:
+        while True:
+            current = fh.readline()
+            if not current:
+                break
+            if word.encode() in current:
+                print(f"find: {filename} {word}")
+except:
+    pass
+</code>
+            </pre>
+            
+            <div class="example-box">
+                <h3>מה קורה כאן?</h3>
+                <ol>
+                    <li>parent.py מפעיל שני תהליכים של child.py</li>
+                    <li>מעביר לכל תהליך שם קובץ ומילה לחיפוש דרך pipe</li>
+                    <li>התהליכים פותחים את הקבצים ומחפשים את המילה</li>
+                    <li>מדפיסים את התוצאות</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 12: Deadlock Problem -->
+        <div class="slide">
+            <h2>☠️ בעיות בתקשורת - Deadlock</h2>
+            <div class="icon">⚠️</div>
+            
+            <div class="warning-box">
+                <h3>מהו Deadlock (קיפאון)?</h3>
+                <p>מצב בו שני תהליכים (או יותר) מחכים האחד לשחרור משאב של השני, אך אף אחד לא משחרר!</p>
+            </div>
+            
+            <h3>דוגמה קלאסית</h3>
+            <div class="diagram">
+                🔴 תהליך A מחזיק במשאב 1 ← מחכה למשאב 2<br>
+                🔵 תהליך B מחזיק במשאב 2 ← מחכה למשאב 1<br>
+                <strong>⚠️ קיפאון!</strong>
+            </div>
+            
+            <pre class="code-block">
+<code># דוגמת קוד שעלולה להוביל ל-Deadlock
+import threading
+
+lock1 = threading.Lock()
+lock2 = threading.Lock()
+
+def process_a():
+    lock1.acquire()
+    print('Process A: קיבלתי lock1')
+    time.sleep(0.1)
+    lock2.acquire()  # מחכה ל-lock2
+    print('Process A: קיבלתי lock2')
+    lock2.release()
+    lock1.release()
+
+def process_b():
+    lock2.acquire()
+    print('Process B: קיבלתי lock2')
+    time.sleep(0.1)
+    lock1.acquire()  # מחכה ל-lock1
+    print('Process B: קיבלתי lock1')
+    lock1.release()
+    lock2.release()
+
+# ⚠️ זה עלול להוביל ל-Deadlock!
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 13: Dining Philosophers -->
+        <div class="slide">
+            <h2>🍝 בעיית הפילוסופים הסועדים</h2>
+            
+            <div class="interactive-box">
+                <h3>💡 המשחק</h3>
+                <p><strong>5 פילוסופים יושבים מסביב לשולחן עגול:</strong></p>
+                <ul>
+                    <li>במרכז השולחן: קערת ספגטי גדולה</li>
+                    <li>בין כל שני פילוסופים: מזלג אחד (5 מזלגות בסך הכל)</li>
+                    <li>לאכול ספגטי צריך שני מזלגות!</li>
+                    <li>אין תקשורת בין הפילוסופים</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <h3>⚠️ התרחיש הבעייתי</h3>
+                <p>אם כל הפילוסופים ירימו את המזלג שמימינם בו-זמנית:</p>
+                <ul>
+                    <li>כולם מחכים למזלג שמשמאל</li>
+                    <li>אף אחד לא יכול להמשיך</li>
+                    <li><strong>קיפאון!</strong></li>
+                </ul>
+            </div>
+            
+            <div class="example-box">
+                <h3>✅ פתרונות אפשריים</h3>
+                <ol>
+                    <li><strong>פתרון המלצר:</strong> פילוסוף חייב לבקש רשות להרים מזלג</li>
+                    <li><strong>פתרון האסימון:</strong> רק פילוסוף אחד יכול לנסות לאכול בכל רגע</li>
+                    <li><strong>מספור מזלגות:</strong> תמיד להרים את המזלג בעל המספר הנמוך יותר ראשון</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 14: Race Condition -->
+        <div class="slide">
+            <h2>🏁 Data Race - מירוץ על הנתונים</h2>
+            
+            <div class="warning-box">
+                <h3>מהו Data Race?</h3>
+                <p>כאשר 2 חלקים משנים בו-זמנית את אותו האובייקט וכך יוצרים מצב שבו האובייקט במצב לא תקין</p>
+            </div>
+            
+            <h3>אתגר לבית</h3>
+            <pre class="code-block">
+<code>import threading
+
+counter = 0
+
+def increment():
+    global counter
+    for i in range(100000):
+        counter += 1  # ⚠️ לא אטומי!
+
+# יצירת 2 threads
+t1 = threading.Thread(target=increment)
+t2 = threading.Thread(target=increment)
+
+t1.start()
+t2.start()
+
+t1.join()
+t2.join()
+
+print(f'Counter: {counter}')
+# 🤔 האם התוצאה תמיד 200000?
+# לרוב לא! למה?
+</code>
+            </pre>
+            
+            <div class="interactive-box">
+                <h3>💡 למה זה קורה?</h3>
+                <p><code>counter += 1</code> זה לא פעולה אטומית!</p>
+                <p>זה בעצם:</p>
+                <ol>
+                    <li>קרא את הערך הנוכחי</li>
+                    <li>הוסף 1</li>
+                    <li>כתוב בחזרה</li>
+                </ol>
+                <p>שני threads יכולים לקרוא את אותו ערך, להוסיף 1, ולכתוב - ואז "איבדנו" תוספת אחת!</p>
+            </div>
+            
+            <h3>הפתרון: Lock!</h3>
+            <pre class="code-block">
+<code>import threading
+
+counter = 0
+lock = threading.Lock()
+
+def increment_safe():
+    global counter
+    for i in range(100000):
+        lock.acquire()
+        counter += 1
+        lock.release()
+
+# עכשיו זה בטוח! ✅
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 15: Shared Memory -->
+        <div class="slide">
+            <h2>💾 Shared Memory - זיכרון משותף</h2>
+            
+            <div class="example-box">
+                <h3>מהו Shared Memory?</h3>
+                <p>יצירת אזור זיכרון מיוחד המשותף למרחבי הזיכרון של מספר תהליכים.</p>
+                <p><strong>זו צורת התקשורת היעילה והמהירה ביותר!</strong></p>
+            </div>
+            
+            <h3>דוגמת קוד</h3>
+            <pre class="code-block">
+<code>from multiprocessing import Process, Value, Array
+
+def worker(shared_value, shared_array):
+    shared_value.value += 1
+    for i in range(len(shared_array)):
+        shared_array[i] *= 2
+
+if __name__ == '__main__':
+    # יצירת משתנה משותף
+    shared_num = Value('i', 0)
+    
+    # יצירת מערך משותף
+    shared_arr = Array('i', [1, 2, 3, 4, 5])
+    
+    processes = []
+    for i in range(5):
+        p = Process(target=worker, args=(shared_num, shared_arr))
+        processes.append(p)
+        p.start()
+    
+    for p in processes:
+        p.join()
+    
+    print(f'Value: {shared_num.value}')
+    print(f'Array: {list(shared_arr)}')
+</code>
+            </pre>
+            
+            <div class="warning-box">
+                <p><strong>⚠️ שימו לב:</strong> גם כאן צריך להשתמש ב-Lock כדי למנוע Race Conditions!</p>
+            </div>
+        </div>
+
+        <!-- Slide 16: Message Queue -->
+        <div class="slide">
+            <h2>📬 Message Queue - תור הודעות</h2>
+            
+            <div class="example-box">
+                <h3>מהו Message Queue?</h3>
+                <p>מנגנון המאפשר להגדיר "תיבות דואר" וירטואליות הנגישות לכל התהליכים באותה מכונה.</p>
+                <p>תהליכים יכולים לתקשר באמצעות הכנסה והוצאה של הודעות מאותה תיבת דואר.</p>
+            </div>
+            
+            <h3>דוגמת קוד</h3>
+            <pre class="code-block">
+<code>from multiprocessing import Process, Queue
+
+def producer(queue):
+    for i in range(5):
+        queue.put(f'Message {i}')
+        print(f'Producer: שלחתי הודעה {i}')
+
+def consumer(queue):
+    while True:
+        msg = queue.get()
+        if msg == 'DONE':
+            break
+        print(f'Consumer: קיבלתי {msg}')
+
+if __name__ == '__main__':
+    q = Queue()
+    
+    p1 = Process(target=producer, args=(q,))
+    p2 = Process(target=consumer, args=(q,))
+    
+    p1.start()
+    p2.start()
+    
+    p1.join()
+    q.put('DONE')  # סיגנל לסיום
+    p2.join()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 17: Spin Lock -->
+        <div class="slide">
+            <h2>🔄 Spin Lock - המתנה פעילה</h2>
+            
+            <div class="example-box">
+                <h3>מהו Spin Lock?</h3>
+                <ul>
+                    <li>הצורה הכי פשוטה של סנכרון</li>
+                    <li>לא דורש כמעט משאבי זיכרון</li>
+                    <li>פשוט לולאה שבודקת כתובת זיכרון ומחכה עד שהערך ישתנה</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <p><strong>⚠️ החיסרון:</strong> בזבוז CPU - התהליך "מסתובב" (spinning) במקום לישון</p>
+            </div>
+            
+            <h3>דוגמת קוד (רעיוני)</h3>
+            <pre class="code-block">
+<code># Pseudo-code של Spin Lock
+class SpinLock:
+    def __init__(self):
+        self.locked = False
+    
+    def acquire(self):
+        # "מסתובב" עד שהמנעול פנוי
+        while self.locked:
+            pass  # ממשיך לבדוק...
+        self.locked = True
+    
+    def release(self):
+        self.locked = False
+
+# שימוש
+lock = SpinLock()
+lock.acquire()
+# קטע קריטי
+lock.release()
+</code>
+            </pre>
+            
+            <div class="interactive-box">
+                <h3>מתי להשתמש?</h3>
+                <p>רק כשההמתנה צפויה להיות קצרה מאוד (microseconds)</p>
+            </div>
+        </div>
+
+        <!-- Slide 18: Sockets -->
+        <div class="slide">
+            <h2>🔌 Sockets - תקשורת רשת</h2>
+            
+            <div class="example-box">
+                <h3>מהם Sockets?</h3>
+                <ul>
+                    <li>מנגנון סטנדרטי המאפשר יצירת ערוץ תקשורת דו-כיווני (duplex)</li>
+                    <li>בין תהליכים היכולים להימצא גם במכונות שונות</li>
+                    <li>נועד לדיבור בין מחשבים ברשת</li>
+                    <li>אבל אפשר להשתמש ב-Loopback (127.0.0.1) לתקשורת מקומית</li>
+                </ul>
+            </div>
+            
+            <h3>Server</h3>
+            <pre class="code-block">
+<code>import socket
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('localhost', 9999))
+server.listen(1)
+print('Server מאזין...')
+
+conn, addr = server.accept()
+print(f'התחברות מ: {addr}')
+
+data = conn.recv(1024)
+print(f'קיבלתי: {data.decode()}')
+
+conn.send(b'Hello from Server!')
+conn.close()
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 19: Sockets Client -->
+        <div class="slide">
+            <h2>🔌 Sockets - Client</h2>
+            
+            <h3>Client</h3>
+            <pre class="code-block">
+<code>import socket
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('localhost', 9999))
+
+client.send(b'Hello from Client!')
+
+data = client.recv(1024)
+print(f'קיבלתי: {data.decode()}')
+
+client.close()
+</code>
+            </pre>
+            
+            <div class="warning-box">
+                <h3>⚠️ חסרונות</h3>
+                <ul>
+                    <li>צריך להגדיר עוד sockets כשהמערכת גדלה</li>
+                    <li>תקשורת באמצעות sockets אינה דטרמיניסטית</li>
+                    <li>יש מספר שכבות תוכנה - קשה לצפות מתי תגיע תגובה</li>
+                </ul>
+            </div>
+            
+            <div class="interactive-box">
+                <h3>💡 אתגר מעשי</h3>
+                <p>צרו chat פשוט:</p>
+                <ol>
+                    <li>הריצו את ה-Server בטרמינל אחד</li>
+                    <li>הריצו את ה-Client בטרמינל אחר</li>
+                    <li>שלחו הודעות הלוך ושוב!</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 20: Scheduling -->
+        <div class="slide">
+            <h2>⏰ תזמון - Scheduling</h2>
+            
+            <div class="example-box">
+                <h3>Context Switch</h3>
+                <p>כשמערכת ההפעלה עוברת מ-Thread אחד לאחר זה נקרא <span class="highlight">Context Switch</span></p>
+                <p>צריך לשמור את כל ה-Context של ה-Thread כדי שנוכל לשחזר אותו</p>
+            </div>
+            
+            <h3>תהליך בחירת ה-Thread הבא להרצה</h3>
+            <ul>
+                <li>לכל Thread יש <strong>Priority</strong> (0-31) שמשתנה לאורך חייו</li>
+                <li>ה-Priority מושפע מ:
+                    <ul>
+                        <li>ה-Priority של ה-Process ושל ה-Thread</li>
+                        <li>אם הוא אינטראקטיבי עכשיו או לא</li>
+                        <li>אם הוא חיכה לאובייקט כלשהו</li>
+                        <li>אחרי כל ריצה הערך יורד ב-1 (עד ל-Priority המקורי)</li>
+                    </ul>
+                </li>
+                <li><strong>כל פעם בוחרים את ה-Thread עם ה-Priority הכי גבוה</strong></li>
+            </ul>
+            
+            <div class="warning-box">
+                <p><strong>⚠️ בעיה:</strong> Thread עם Priority נמוך מאוד עלול שלא לרוץ לעולם!</p>
+                <p><strong>פתרון:</strong> Priority Aging - העלאת Priority עם הזמן</p>
+            </div>
+        </div>
+
+        <!-- Slide 21: Practical Exercise -->
+        <div class="slide">
+            <h2>💻 תרגיל מעשי - בניית Chat</h2>
+            
+            <div class="interactive-box">
+                <h3>המשימה שלכם</h3>
+                <p>צרו שתי תוכניות Python שמתקשרות ביניהן באמצעות קובץ:</p>
+                <ol>
+                    <li><strong>sender.py</strong> - כותב הודעות לקובץ</li>
+                    <li><strong>receiver.py</strong> - קורא ומציג הודעות</li>
+                    <li><strong>בונוס:</strong> הוסיפו Lock למניעת קריאה בזמן כתיבה</li>
+                </ol>
+            </div>
+            
+            <h3>שלד לתחילה</h3>
+            <pre class="code-block">
+<code># sender.py
+import time
+import fcntl
+
+def send_message(msg):
+    with open('chat.txt', 'a') as f:
+        # TODO: הוסיפו lock כאן
+        f.write(f'{msg}\n')
+        f.flush()
+
+while True:
+    msg = input('הודעה: ')
+    if msg == 'quit':
+        break
+    send_message(msg)
+    time.sleep(0.1)
+</code>
+            </pre>
+        </div>
+
+        <!-- Slide 22: Best Practices -->
+        <div class="slide">
+            <h2>✅ Best Practices</h2>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>תמיד השתמשו ב-Context Manager</h3>
+                    <pre class="code-block">
+<code># טוב ✅
+with lock:
+    # קוד קריטי
+    pass
+
+# פחות טוב ❌
+lock.acquire()
+# קוד קריטי
+lock.release()
+</code>
+                    </pre>
+                </div>
+                
+                <div class="flex-item">
+                    <h3>הימנעו מ-Nested Locks</h3>
+                    <pre class="code-block">
+<code># מסוכן! ⚠️
+lock1.acquire()
+lock2.acquire()
+# קוד
+lock2.release()
+lock1.release()
+
+# טוב יותר ✅
+# השתמשו ב-Lock אחד
+# או סדר קבוע תמיד
+</code>
+                    </pre>
+                </div>
+            </div>
+            
+            <div class="flex-container" style="margin-top: 20px;">
+                <div class="flex-item">
+                    <h3>Set Timeout</h3>
+                    <pre class="code-block">
+<code># מונע תקיעות אינסופיות
+if lock.acquire(timeout=5):
+    try:
+        # קוד קריטי
+        pass
+    finally:
+        lock.release()
+else:
+    print('Timeout!')
+</code>
+                    </pre>
+                </div>
+                
+                <div class="flex-item">
+                    <h3>הקטינו את הקטע הקריטי</h3>
+                    <pre class="code-block">
+<code># טוב ✅
+data = prepare_data()
+with lock:
+    shared_resource.update(data)
+
+# פחות טוב ❌
+with lock:
+    data = prepare_data()
+    shared_resource.update(data)
+</code>
+                    </pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 23: When to Use What -->
+        <div class="slide">
+            <h2>🤔 מתי להשתמש במה?</h2>
+            
+            <table class="comparison-table">
+                <tr>
+                    <th>מנגנון</th>
+                    <th>מתי להשתמש?</th>
+                    <th>דוגמה</th>
+                </tr>
+                <tr>
+                    <td><strong>Files</strong></td>
+                    <td>כשצריך persistency, תקשורת איטית מותרת</td>
+                    <td>לוגים, הגדרות</td>
+                </tr>
+                <tr>
+                    <td><strong>Shared Memory</strong></td>
+                    <td>כשצריך מהירות מקסימלית</td>
+                    <td>עיבוד תמונה, וידאו</td>
+                </tr>
+                <tr>
+                    <td><strong>Sockets</strong></td>
+                    <td>בין מחשבים שונים או תהליכים שונים</td>
+                    <td>Client-Server, מיקרו-שירותים</td>
+                </tr>
+                <tr>
+                    <td><strong>Pipes</strong></td>
+                    <td>תקשורת פשוטה בין תהליך אב לבן</td>
+                    <td>Pipeline של פקודות</td>
+                </tr>
+                <tr>
+                    <td><strong>Message Queue</strong></td>
+                    <td>כשצריך תור, אסינכרוניות</td>
+                    <td>Task Queue, עיבוד רקע</td>
+                </tr>
+                <tr>
+                    <td><strong>Mutex/Lock</strong></td>
+                    <td>הגנה על משאב משותף</td>
+                    <td>עדכון counter, קובץ</td>
+                </tr>
+                <tr>
+                    <td><strong>Semaphore</strong></td>
+                    <td>הגבלת מספר גישות במקביל</td>
+                    <td>Connection Pool, Thread Pool</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 24: Real World Examples -->
+        <div class="slide">
+            <h2>🌍 דוגמאות מהעולם האמיתי</h2>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>🌐 דפדפן</h3>
+                    <ul>
+                        <li>כל טאב = Process נפרד</li>
+                        <li>תקשורת דרך IPC</li>
+                        <li>שיתוף cache, cookies</li>
+                    </ul>
+                </div>
+                
+                <div class="flex-item">
+                    <h3>💻 מערכת הפעלה</h3>
+                    <ul>
+                        <li>GUI ↔️ Background Services</li>
+                        <li>Driver ↔️ Application</li>
+                        <li>כל התקשורת דרך IPC</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>🎮 משחקים</h3>
+                    <ul>
+                        <li>Rendering Thread</li>
+                        <li>Physics Thread</li>
+                        <li>AI Thread</li>
+                        <li>סנכרון דרך Mutex/Semaphore</li>
+                    </ul>
+                </div>
+                
+                <div class="flex-item">
+                    <h3>📱 אפליקציות Mobile</h3>
+                    <ul>
+                        <li>UI Thread ↔️ Background Tasks</li>
+                        <li>Message Queue לעדכונים</li>
+                        <li>Shared Preferences</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h3>🐳 Docker/Kubernetes</h3>
+                    <ul>
+                        <li>Container ↔️ Container</li>
+                        <li>Sockets, Named Pipes</li>
+                        <li>Shared Volumes</li>
+                    </ul>
+                </div>
+                
+                <div class="flex-item">
+                    <h3>🗄️ Databases</h3>
+                    <ul>
+                        <li>Multiple Connections</li>
+                        <li>Lock Tables/Rows</li>
+                        <li>Transaction Isolation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 25: Summary -->
+        <div class="slide">
+            <h2>📝 סיכום</h2>
+            
+            <div class="example-box">
+                <h3>מה למדנו?</h3>
+                <ul>
+                    <li>✅ מהי תקשורת בין תהליכים (IPC) ולמה היא חשובה</li>
+                    <li>✅ מנגנוני IPC שונים: Files, Mutex, Semaphore, Pipes, Sockets, ועוד</li>
+                    <li>✅ בעיות נפוצות: Deadlock, Race Condition, Starvation</li>
+                    <li>✅ פתרונות קלאסיים: הפילוסופים הסועדים</li>
+                    <li>✅ Best Practices ואיך לבחור את המנגנון הנכון</li>
+                </ul>
+            </div>
+            
+            <div class="interactive-box">
+                <h3>💡 נקודות מפתח לזכור</h3>
+                <ol>
+                    <li><strong>תמיד הגנו על משאבים משותפים</strong> - השתמשו ב-Lock/Mutex</li>
+                    <li><strong>היזהרו מ-Deadlock</strong> - שמרו על סדר נעילות קבוע</li>
+                    <li><strong>בחרו את המנגנון הנכון</strong> - לפי צרכי המהירות והמורכבות</li>
+                    <li><strong>הקטינו קטעים קריטיים</strong> - פחות זמן בנעילה = יותר ביצועים</li>
+                    <li><strong>בדקו ובדקו שוב</strong> - בעיות סנכרון קשות לגילוי</li>
+                </ol>
+            </div>
+            
+            <div class="warning-box">
+                <h3>⚠️ זכרו</h3>
+                <p>תכנות מקבילי הוא <strong>קשה</strong>!</p>
+                <p>בעיות עלולות להופיע רק במצבים נדירים - השקיעו בבדיקות</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 40px; font-size: 2em;">
+                🎉 סוף המצגת 🎉
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <h3>שאלות?</h3>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)">← הקודם</button>
+            <button class="nav-btn" id="next-btn" onclick="changeSlide(1)">הבא →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            
+            if (n >= totalSlides) {
+                currentSlide = totalSlides - 1;
+            } else if (n < 0) {
+                currentSlide = 0;
+            } else {
+                currentSlide = n;
+            }
+            
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+            
+            // Update button states
+            document.getElementById('prev-btn').disabled = currentSlide === 0;
+            document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+                changeSlide(event.key === 'ArrowRight' ? -1 : 1); // RTL
+            }
+        });
+        
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

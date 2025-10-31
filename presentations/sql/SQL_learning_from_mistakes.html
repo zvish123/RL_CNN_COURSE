@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מצגת אינטראקטיבית - שגיאות נפוצות ב-SQL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .slide-container {
+            display: none;
+            padding: 50px 40px;
+            min-height: 500px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        .slide-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-counter {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .question-section {
+            background: #f8f9fa;
+            border-right: 5px solid #667eea;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .question-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+            direction: ltr;
+        }
+
+        .error-indicator {
+            background: #ffe0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d32f2f;
+            font-weight: bold;
+            margin: 0 2px;
+        }
+
+        .answer-section {
+            display: none;
+            background: #e8f5e9;
+            border-right: 5px solid #4caf50;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 10px;
+            animation: slideDown 0.5s ease-in-out;
+        }
+
+        .answer-section.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 1000px;
+            }
+        }
+
+        .answer-section h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .problem-title {
+            background: #ffcdd2;
+            color: #b71c1c;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .solution-title {
+            background: #c8e6c9;
+            color: #1b5e20;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .explanation {
+            background: #e3f2fd;
+            border-right: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+
+        .explanation h4 {
+            color: #1565c0;
+            margin-bottom: 10px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 40px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .btn-reveal {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-reveal:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-prev {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-prev:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        .btn-next {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-next:hover {
+            background: #388e3c;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .footer {
+            background: #f5f5f5;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 8px;
+            width: 100%;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .difficulty {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .difficulty.easy {
+            background: #c8e6c9;
+            color: #1b5e20;
+        }
+
+        .difficulty.medium {
+            background: #fff9c4;
+            color: #f57f17;
+        }
+
+        .difficulty.hard {
+            background: #ffccbc;
+            color: #d84315;
+        }
+
+        .tips {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+
+        .tips h5 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .tips ul {
+            margin-right: 20px;
+            color: #856404;
+        }
+
+        .tips li {
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .slide-container {
+                padding: 30px 20px;
+                min-height: 400px;
+            }
+
+            .buttons {
+                gap: 10px;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .correct {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .incorrect {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="header">
+            <h1>🚀 מצגת אינטראקטיבית</h1>
+            <p>שגיאות נפוצות ב-SQL וכיצד להימנע מהן</p>
+        </div>
+
+        <!-- Slide 1 -->
+        <div class="slide-container active">
+            <div class="slide-counter">שקופית 1 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #1: היעדר FOREIGN KEYS</h2>
+                <span class="difficulty easy">קל</span>
+                <p>בחן את הקוד הבא. איזו בעיה תראה?</p>
+                <pre class="code-block">
+CREATE TABLE Loans {
+    loan_id INT PRIMARY KEY,
+    book_id INT,
+    user_id INT,
+    loan_date DATE
+};
+                </pre>
+                <p><strong>השאלה:</strong> מה חסר בטבלה זו?</p>
+                <p>א) PRIMARY KEY</p>
+                <p>ב) FOREIGN KEYS</p>
+                <p>ג) סוגי נתונים</p>
+                <p>ד) NOT NULL</p>
+            </div>
+            <div class="answer-section" id="answer1">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>טבלה זו חסרה <span class="highlight">FOREIGN KEYS</span> המחברים את <code>book_id</code> ו-<code>user_id</code> לטבלאות אחרות.</p>
+                
+                <div class="explanation">
+                    <h4>💡 מדוע זה בעיה?</h4>
+                    <p>ללא FOREIGN KEYS:</p>
+                    <ul style="margin-right: 20px;">
+                        <li>אפשר להכניס book_id שלא קיים בטבלת Books</li>
+                        <li>לא תהיה אינטגריטי של נתונים</li>
+                        <li>בסיס הנתונים לא יהיה עקבי</li>
+                        <li>קשה לפתור בעיות במסד</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+CREATE TABLE Loans (
+    loan_id INT PRIMARY KEY,
+    book_id INT NOT NULL,
+    user_id INT NOT NULL,
+    loan_date DATE,
+    <span class="correct">FOREIGN KEY (book_id) REFERENCES Books(book_id),</span>
+    <span class="correct">FOREIGN KEY (user_id) REFERENCES Users(user_id)</span>
+);
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>הוסף FOREIGN KEY לכל שדה המחזיק ID של טבלה אחרת</li>
+                        <li>תמיד כתוב NOT NULL על שדות זרים</li>
+                        <li>וודא שהמפתח בטבלה הזרה הוא PRIMARY KEY</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-reveal" onclick="revealAnswer(1)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 2 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #2: סוגי נתונים לא מתאימים</h2>
+                <span class="difficulty easy">קל</span>
+                <p>בחן את הקוד הבא. מהן שגיאות סוג הנתונים?</p>
+                <pre class="code-block">
+CREATE TABLE Books (
+    book_id INT PRIMARY KEY,
+    book_name INT,
+    publication_year VARCHAR,
+    available_copies VARCHAR   
+);
+                </pre>
+                <p><strong>השאלה:</strong> אילו סוגי נתונים צריכים להיות?</p>
+            </div>
+            <div class="answer-section" id="answer2">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>סוגי הנתונים הם <span class="highlight">לא מתאימים</span> לערכים שיאוחסנו בהם.</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <ul style="margin-right: 20px;">
+                        <li><code>book_name INT</code> - שמות הם טקסט, לא מספרים!</li>
+                        <li><code>publication_year VARCHAR</code> - שנים צריכות להיות מספרים</li>
+                        <li><code>available_copies VARCHAR</code> - מספר עותקים צריך INT</li>
+                        <li>זה יגרום לשגיאות כשתנסו להכניס נתונים</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+CREATE TABLE Books (
+    book_id INT PRIMARY KEY,
+    <span class="correct">book_name VARCHAR(100) NOT NULL,</span>
+    <span class="correct">publication_year INT NOT NULL,</span>
+    <span class="correct">available_copies INT NOT NULL</span>
+);
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>INT - למספרים שלמים</li>
+                        <li>VARCHAR(n) - לטקסט (n היא הגדל מקסימלי)</li>
+                        <li>DATE - לתאריכים</li>
+                        <li>FLOAT/DECIMAL - למספרים עם עשרוניות</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(2)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 3 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #3: אילוצים חסרים (CHECK, NOT NULL)</h2>
+                <span class="difficulty medium">בינוני</span>
+                <p>בחן את הקוד הבא:</p>
+                <pre class="code-block">
+CREATE TABLE Books (
+    book_id INT PRIMARY KEY,
+    book_name VARCHAR(100),         <span class="error-indicator">← בעיה</span>
+    available_copies INT,           <span class="error-indicator">← בעיה</span>
+    total_copies INT                <span class="error-indicator">← בעיה</span>
+);
+                </pre>
+                <p><strong>השאלה:</strong> איזו הגנה חסרה בשדות?</p>
+            </div>
+            <div class="answer-section" id="answer3">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>הטבלה חסרה <span class="highlight">אילוצים חשובים</span> כמו NOT NULL ו-CHECK.</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <ul style="margin-right: 20px;">
+                        <li>אפשר להכניס NULL בשם ספר (לא הגיוני!)</li>
+                        <li>אפשר להכניס מספר שלילי של עותקים (בלתי אפשרי!)</li>
+                        <li>available_copies יכול להיות גדול מ-total_copies</li>
+                        <li>בסיס הנתונים לא משומר מנתונים שגויים</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+CREATE TABLE Books (
+    book_id INT PRIMARY KEY,
+    <span class="correct">book_name VARCHAR(100) NOT NULL,</span>
+    <span class="correct">available_copies INT NOT NULL CHECK (available_copies >= 0),</span>
+    <span class="correct">total_copies INT NOT NULL CHECK (total_copies > 0),</span>
+    <span class="correct">CHECK (available_copies <= total_copies)</span>
+);
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>שדות חובה צריכים NOT NULL</li>
+                        <li>מספרים שלא יכולים להיות שליליים צריכים CHECK ≥ 0</li>
+                        <li>וודא יחסים הגיוניים בין עותקים זמינים לכוללים</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(3)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 4 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #4: תחביר INSERT שגוי</h2>
+                <span class="difficulty easy">קל</span>
+                <p>מה הבעיה בפקודות הבאות?</p>
+                <pre class="code-block">
+❌ דוגמה 1:
+INSERT Books VALUES (001, 'Harry Potter', 5);
+
+❌ דוגמה 2:
+INSERT INTO Books (book_id book_name)
+VALUES (001, 'Harry Potter');
+
+❌ דוגמה 3:
+INSERT INTO Books (book_id, book_name)
+VALUES 001, 'Harry Potter';
+                </pre>
+                <p><strong>השאלה:</strong> אילו חלקים שגויים?</p>
+            </div>
+            <div class="answer-section" id="answer4">
+                <div class="problem-title">🔴 הבעיות</div>
+                <p>דוגמה 1: חסר <span class="highlight">INTO</span> ורשימת שדות</p>
+                <p>דוגמה 2: חסר <span class="highlight">פסיק</span> בין השדות</p>
+                <p>דוגמה 3: חסרים <span class="highlight">סוגריים</span> סביב הערכים</p>
+
+                <div class="solution-title">✅ הפתרון הנכון</div>
+                <pre class="code-block">
+<span class="correct">INSERT INTO Books (book_id, book_name, available_copies)
+VALUES (001, 'Harry Potter', 5);</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>כתוב <code>INSERT INTO</code> (לא רק INSERT)</li>
+                        <li>כתוב רשימת שדות בסוגריים</li>
+                        <li>הפסק בין שדות בפסיקים</li>
+                        <li>כתוב VALUES עם הערכים בסוגריים</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(4)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 5 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #5: תוצאות SELECT שגויות</h2>
+                <span class="difficulty medium">בינוני</span>
+                <p>השאלה: "תן לי את כל הספרים שכל העותקים זמינים"</p>
+                <p>הקוד שכתבת:</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT * FROM Books;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה?</p>
+                <p>א) זה מחזיר את כל הספרים בלבד</p>
+                <p>ב) זה חזר שגיאת תחביר</p>
+                <p>ג) זה טוב - אין בעיה</p>
+            </div>
+            <div class="answer-section" id="answer5">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>השאילתה מחזירה <span class="highlight">את כל הספרים</span>, לא רק את אלו שכל העותקים זמינים!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>מצאנו סוג ספר עם 2 עותקים זמינים מ-5 כוללים - זה לא אמור להיות בתוצאה!</p>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT * FROM Books
+WHERE available_copies = total_copies;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>קרא את השאלה בעיון - מה בדיוק הם מחפשים?</li>
+                        <li>הוסף WHERE clause להסנן נתונים</li>
+                        <li>בדוק את התוצאות - הן הגיוניות?</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(5)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 6 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 6 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #6: JOINs שגויים</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>תן לי את שמות המשאילים והספרים שהם השאילו:</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT * FROM Loans, Books, Users;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה?</p>
+            </div>
+            <div class="answer-section" id="answer6">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>זה יוצר <span class="highlight">Cartesian Product</span> - כל שורה בכל טבלה תתקשר לכל שורה בטבלאות אחרות!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>אם יש 100 השאלות, 50 ספרים, ו-10 משתמשים:</p>
+                    <p>התוצאה תכיל <span class="highlight">100 × 50 × 10 = 50,000 שורות!</span></p>
+                    <p>וכולן יהיו שילובים אקראיים שלא הגיוניים.</p>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT U.FullName, B.Title, L.LoanDate
+FROM Loans L
+JOIN Users U ON L.UserID = U.UserID
+JOIN Books B ON L.BookID = B.BookID;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>השתמש ב-JOIN, לא בפסיקים בין טבלאות</li>
+                        <li>הוסף ON clause עם תנאי הקשר</li>
+                        <li>בדוק שהטבלאות מחוברות דרך PRIMARY/FOREIGN KEYS</li>
+                        <li>השתמש בـ aliases (L, U, B) כדי להקל על הקריאה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(6)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 7 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 7 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #7: GROUP BY חסר או שגוי</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "כמה ספרים בכל קטגוריה?"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT category, COUNT(*) FROM Books;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה חסר?</p>
+            </div>
+            <div class="answer-section" id="answer7">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>ה-<span class="highlight">GROUP BY חסר לחלוטין!</span></p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>בלי GROUP BY, SQL לא יודע איך לקבץ את הנתונים:</p>
+                    <ul style="margin-right: 20px;">
+                        <li>זה יחזיר רק קטגוריה אחת עם COUNT של כל הספרים</li>
+                        <li>או זה יחזיר שגיאה (תלוי במסד נתונים)</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT category, COUNT(*) as count
+FROM Books
+GROUP BY category;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>כאשר משתמשים בפונקציות ספירה (COUNT, SUM, AVG), צריך GROUP BY</li>
+                        <li>כל שדה ב-SELECT צריך להיות בـ GROUP BY (אלא אם הוא בפונקציה)</li>
+                        <li>בדוק את התוצאות - כמה שורות יש?</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(7)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 8 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 8 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #8: UPDATE ללא WHERE</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "הפחת את מספר העותקים הזמינים של ספר B001 ב-1"</p>
+                <pre class="code-block">
+<span class="incorrect">UPDATE Books
+SET available_copies = available_copies - 1;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה המפחידה?</p>
+            </div>
+            <div class="answer-section" id="answer8">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p><span class="highlight">זו הבעיה הגרועה ביותר!</span></p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>בלי WHERE clause, UPDATE יעדכן את <span class="highlight">כל</span> הספרים!</p>
+                    <ul style="margin-right: 20px;">
+                        <li>כל ספר בטבלה יקבל הפחתה של 1 עותק</li>
+                        <li>זה פוגע בנתונים של 1000 ספרים אחרים!</li>
+                        <li>קשה מאוד לתקן זאת אחרי כן</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">UPDATE Books
+SET available_copies = available_copies - 1
+WHERE book_id = 'B001'
+AND available_copies > 0;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li><span class="highlight">תמיד</span> כתוב WHERE clause ב-UPDATE</li>
+                        <li>בדוק את WHERE clause לפני שמריץ את ה-UPDATE</li>
+                        <li>שקול CHECK constraint כדי למנוע ערכים שליליים</li>
+                        <li>בתנאים מורכבים, זכור ש-AND ו-OR יכולים לעזור</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(8)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 9 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 9 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #9: שגיאה בניתוח WHERE</h2>
+                <span class="difficulty medium">בינוני</span>
+                <p>השאלה: "תן לי את כל הספרים בקטגוריית Fantasy"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT * FROM Books
+WHERE 'Fantasy';</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה?</p>
+            </div>
+            <div class="answer-section" id="answer9">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>WHERE clause לא מכיל <span class="highlight">את התנאי בפועל!</span></p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>אתה כתבת רק את הערך ('Fantasy') אבל לא את ההשוואה:</p>
+                    <ul style="margin-right: 20px;">
+                        <li>SQL לא יודע להשוות את 'Fantasy' לאיפה</li>
+                        <li>זה לא בדיקה - זה רק ערך</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT * FROM Books
+WHERE category = 'Fantasy';</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>כתוב תנאי WHERE: <code>column = value</code></li>
+                        <li>השתמש באופרטורים: =, !=, <, >, <=, >=</li>
+                        <li>עבור טקסט, שימושי IN ו-LIKE</li>
+                        <li>הדפס את ה-query לפני שמריץ</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(9)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 10 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 10 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #10: NULL handling שגוי</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "תן לי את כל הספרים שעדיין לא הוחזרו"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT * FROM Loans
+WHERE return_date = NULL;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה לא עובד?</p>
+            </div>
+            <div class="answer-section" id="answer10">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>לא אתה לא יכול להשתמש ב-<span class="highlight">= NULL</span> בـ SQL!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>NULL אינו ערך - הוא "כישלון" / "לא ידוע":</p>
+                    <ul style="margin-right: 20px;">
+                        <li><code>NULL = NULL</code> תמיד החזר FALSE (אפילו שניהם NULL!)</li>
+                        <li>אתה צריך להשתמש בـ IS NULL</li>
+                        <li>כל ההשוואות עם NULL החזר NULL, לא TRUE/FALSE</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT * FROM Loans
+WHERE return_date IS NULL;</span>
+                </pre>
+
+                <p><strong>או אם אתה רוצה את הספרים שהוחזרו:</strong></p>
+                <pre class="code-block">
+<span class="correct">SELECT * FROM Loans
+WHERE return_date IS NOT NULL;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>השתמש ב-<code>IS NULL</code> לא <code>= NULL</code></li>
+                        <li>השתמש ב-<code>IS NOT NULL</code> לא <code>!= NULL</code></li>
+                        <li>זכור שכל השוואה עם NULL החזר NULL (לא TRUE)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(10)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 11 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 11 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #11: SELECT TOP לא נתמך בכל מסדות</h2>
+                <span class="difficulty medium">בינוני</span>
+                <p>השאלה: "תן לי את הספר הכי פופולרי"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT TOP 1 title, COUNT(*) as count
+FROM Loans L
+JOIN Books B ON L.book_id = B.book_id
+GROUP BY title
+ORDER BY count DESC;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה?</p>
+            </div>
+            <div class="answer-section" id="answer11">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p><span class="highlight">SELECT TOP</span> הוא SQL Server בלבד!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <ul style="margin-right: 20px;">
+                        <li>MySQL וSQLite משתמשים ב-LIMIT</li>
+                        <li>PostgreSQL משתמש ב-LIMIT או FETCH FIRST</li>
+                        <li>הקוד שלך לא יעבוד בכל מסד נתונים</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון לכל מסדות</div>
+                <pre class="code-block">
+<span class="correct">SELECT title, COUNT(*) as count
+FROM Loans L
+JOIN Books B ON L.book_id = B.book_id
+GROUP BY title
+ORDER BY count DESC
+LIMIT 1;  -- MySQL, SQLite, PostgreSQL</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>בדוק איזה מסד נתונים אתה משתמש</li>
+                        <li>SQLite/MySQL: השתמש ב-LIMIT</li>
+                        <li>SQL Server: SELECT TOP</li>
+                        <li>PostgreSQL: LIMIT או FETCH FIRST</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(11)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 12 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 12 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #12: COUNT(*) לא מכין DISTINCT</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "כמה תלמידים השאילו יותר מספר אחד?"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT user_id, COUNT(*) as loans
+FROM Loans
+GROUP BY user_id
+HAVING COUNT(*) > 1;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה לא נכון?</p>
+            </div>
+            <div class="answer-section" id="answer12">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>זה סופר <span class="highlight">השאלות, לא ספרים שונים!</span></p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>הבדל חשוב:</p>
+                    <ul style="margin-right: 20px;">
+                        <li>אותו תלמיד יכול להשאיל את אותו ספר פעמיים</li>
+                        <li>COUNT(*) יספור את כל השאלות</li>
+                        <li>אבל אנחנו רוצים סוג של ספרים שונים!</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT user_id, COUNT(DISTINCT book_id) as unique_books
+FROM Loans
+GROUP BY user_id
+HAVING COUNT(DISTINCT book_id) > 1;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>השתמש ב-<code>COUNT(DISTINCT column)</code> כדי לספור ערכים ייחודיים</li>
+                        <li>DISTINCT מוסר כפולויות</li>
+                        <li>בדוק מה אתה באמת רוצה לספור</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(12)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 13 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 13 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #13: Subquery לא מחזיר ערך</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "תן לי את שמות הספרים שרובלינג כתבה"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT * FROM Books
+WHERE author_id IN (SELECT author_id
+                    FROM Authors
+                    WHERE name = 'J.K. Rowling');</span>
+</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה קרה?</p>
+            </div>
+            <div class="answer-section" id="answer13">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>ה-<span class="highlight">Subquery מחזיר עמודה שגויה</span> או לא מחזיר כלום!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <ul style="margin-right: 20px;">
+                        <li>אם ה-Subquery לא מחזיר שום שורות, IN יהיה FALSE לכולם</li>
+                        <li>אם זה מחזיר עמודה שגויה, השוואה לא תתבצע</li>
+                        <li>קשה לדבג ולמצוא את השגיאה</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT * FROM Books
+WHERE author IN (SELECT author
+                 FROM Authors
+                 WHERE name = 'J.K. Rowling');</span>
+                </pre>
+
+                <p>או בשיטה קלה יותר (ישיר):</p>
+                <pre class="code-block">
+<span class="correct">SELECT b.* FROM Books b
+JOIN Authors a ON b.author = a.author
+WHERE a.name = 'J.K. Rowling';</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>בדוק את ה-Subquery בנפרד תחילה</li>
+                        <li>וודא שהוא מחזיר את העמודה הנכונה</li>
+                        <li>שקול להשתמש ב-JOIN בהמקום Subquery כשאפשר</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(13)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 14 -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 14 מתוך 15</div>
+            <div class="question-section">
+                <h2>❌ שגיאה #14: LEFT JOIN לא מוכן</h2>
+                <span class="difficulty hard">קשה</span>
+                <p>השאלה: "תן לי את כל המשתמשים וכמה ספרים הם השאילו (גם אם 0)"</p>
+                <pre class="code-block">
+<span class="incorrect">SELECT u.name, COUNT(*) as loans
+FROM Users u
+JOIN Loans l ON u.id = l.user_id
+GROUP BY u.id;</span>
+                </pre>
+                <p><strong>השאלה:</strong> מה הבעיה?</p>
+            </div>
+            <div class="answer-section" id="answer14">
+                <div class="problem-title">🔴 הבעיה</div>
+                <p>השתמשת ב-<span class="highlight">JOIN בלא LEFT</span> - זה יורט משתמשים ללא השאלות!</p>
+
+                <div class="explanation">
+                    <h4>💡 למה זה בעיה?</h4>
+                    <p>סוגי JOINים:</p>
+                    <ul style="margin-right: 20px;">
+                        <li><code>JOIN</code> (INNER) - רק שורות שקיימות בשתי הטבלאות</li>
+                        <li><code>LEFT JOIN</code> - כל הנתונים בטבלה שמאל, גם אם אין התאמה</li>
+                        <li><code>RIGHT JOIN</code> - כל הנתונים בטבלה ימין, גם אם אין התאמה</li>
+                    </ul>
+                </div>
+
+                <div class="solution-title">✅ הפתרון</div>
+                <pre class="code-block">
+<span class="correct">SELECT u.name, COALESCE(COUNT(l.id), 0) as loans
+FROM Users u
+LEFT JOIN Loans l ON u.id = l.user_id
+GROUP BY u.id;</span>
+                </pre>
+
+                <div class="tips">
+                    <h5>💡 טיפים:</h5>
+                    <ul>
+                        <li>השתמש ב-LEFT JOIN כאשר אתה רוצה את כל הנתונים בטבלה שמאל</li>
+                        <li>השתמש ב-COALESCE כדי להחליף NULL ב-0</li>
+                        <li>בדוק את התוצאות - כמה שורות יש?</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-reveal" onclick="revealAnswer(14)">
+                    📖 הצג תשובה והסבר
+                </button>
+                <button class="btn-next" onclick="nextSlide()">
+                    שקופית הבאה ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 15 - Final -->
+        <div class="slide-container">
+            <div class="slide-counter">שקופית 15 מתוך 15</div>
+            <div class="question-section">
+                <h2>📋 סיכום: שגיאות הכי קריטיות</h2>
+                <span class="difficulty hard">חשוב</span>
+                <div class="explanation">
+                    <h4>🔴 5 שגיאות שנשמרו להימנע מהן:</h4>
+                    <ul style="margin-right: 20px;">
+                        <li><strong>1. UPDATE ללא WHERE</strong> - זה משנה את כל התוצאות!</li>
+                        <li><strong>2. קטגוריים שגויים</strong> - מסנן שגוי = נתונים שגויים</li>
+                        <li><strong>3. Cartesian Product</strong> - בדוק את מספר התוצאות!</li>
+                        <li><strong>4. GROUP BY חסר</strong> - כשמשתמשים בפונקציות ספירה</li>
+                        <li><strong>5. NULL handling שגוי</strong> - IS NULL, לא = NULL</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-prev" onclick="prevSlide()">
+                    ⬅️ שקופית קודמת
+                </button>
+                <button class="btn-next" onclick="restartPresentation()">
+                    🔄 התחל מהתחלה
+                </button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>מצגת אינטראקטיבית לתלמידי י"ב סייבר - שגיאות נפוצות ב-SQL וDatabase Design</p>
+            <p>💡 בדוק את התשובה לפני שתלחץ "הבא"!</p>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 15;
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function updateSlide() {
+            // Hide all slides
+            const slides = document.querySelectorAll('.slide-container');
+            slides.forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            // Hide all answers
+            const answers = document.querySelectorAll('.answer-section');
+            answers.forEach(answer => {
+                answer.classList.remove('show');
+            });
+
+            // Update progress bar
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        function revealAnswer(slideNum) {
+            const answer = document.getElementById('answer' + slideNum);
+            if (answer) {
+                answer.classList.toggle('show');
+                const btn = event.target;
+                if (answer.classList.contains('show')) {
+                    btn.textContent = '📖 הסתר תשובה';
+                } else {
+                    btn.textContent = '📖 הצג תשובה והסבר';
+                }
+            }
+        }
+
+        function restartPresentation() {
+            currentSlide = 0;
+            updateSlide();
+        }
+
+        // Initialize
+        updateSlide();
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+    </script>
+</body>
+</html>

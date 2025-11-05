@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU vs CPU - מצגת אינטראקטיבית עם הדגמות</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 110vh;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px 50px;
+            height: 100%;
+            overflow-y: auto;
+            animation: fadeIn 0.5s;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #764ba2;
+            padding-bottom: 15px;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+        }
+
+        p, li {
+            font-size: 1.1em;
+            line-height: 1;
+            color: #333;
+            margin: 12px 0;
+        }
+
+        ul {
+            margin-right: 30px;
+            margin-top: 15px;
+        }
+
+        li {
+            margin: 15px 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: #f8f9ff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            padding: 18px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 1.05em;
+        }
+
+        .comparison-table td {
+            padding: 18px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: right;
+        }
+
+        .comparison-table tr:hover {
+            background: #f0f0ff;
+        }
+
+        .comparison-table .highlight-green {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .comparison-table .highlight-red {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            margin: 20px 0;
+<!--            overflow-x: auto;-->
+            border-right: 5px solid #764ba2;
+            direction: ltr;
+            text-align: left;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            margin: 30px 0;
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            text-align: center;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 450px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            gap: 30px;
+        }
+
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .bar {
+            width: 60px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 5px 5px 0 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+            padding-top: 10px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s;
+        }
+
+        .bar:hover {
+            transform: scaleY(1.05);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .bar.gpu {
+            background: linear-gradient(to top, #28a745, #20c997);
+        }
+
+        .bar.cpu {
+            background: linear-gradient(to top, #e74c3c, #c0392b);
+        }
+
+        .bar-label {
+            font-weight: bold;
+            color: #333;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.95em;
+        }
+
+        .speedup-badge {
+            background: #ffc107;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .tip-box {
+            background: #e7f3ff;
+            border-right: 5px solid #0066cc;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .tip-box strong {
+            color: #0066cc;
+        }
+
+        .insight-box {
+            background: #d4edda;
+            border-right: 5px solid #28a745;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .insight-box strong {
+            color: #155724;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-right: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .warning-box strong {
+            color: #ff6b6b;
+        }
+
+        .title-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            justify-content: center !important;
+        }
+
+        .title-slide h1 {
+            color: white;
+            font-size: 3.5em;
+            margin-bottom: 20px;
+        }
+
+        .title-slide p {
+            color: rgba(255,255,255,0.95);
+            font-size: 1.4em;
+            margin: 15px 0;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+            margin: 0 8px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slide-counter {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .comparison-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .card {
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .card.gpu {
+            border-color: #28a745;
+        }
+
+        .card.gpu h3 {
+            color: #28a745;
+        }
+
+        .card.cpu {
+            border-color: #e74c3c;
+        }
+
+        .card.cpu h3 {
+            color: #e74c3c;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 15px 0;
+        }
+
+        .card.gpu .stat-value {
+            color: #28a745;
+        }
+
+        .card.cpu .stat-value {
+            color: #e74c3c;
+        }
+
+        .interactive-slider {
+            margin: 25px 0;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .toggle-btn {
+            background: #ffc107;
+            color: #333;
+            padding: 10px 20px;
+            margin-top: 15px;
+        }
+
+        .toggle-btn:hover {
+            background: #ff9800;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- שקופית 1: כותרת -->
+        <div class="slide active title-slide">
+            <h1><span class="emoji">⚡</span>CPU לעומת GPU</h1>
+            <h2 style="border: none; color: white; margin: 20px 0;">השוואה אמיתית בלמידת מכונה</h2>
+            <p style="font-size: 1.5em;">דוגמה מעשית עם PyTorch ו־Kaggle</p>
+            <p style="margin-top: 30px; opacity: 0.9;">נראה כיצד שינוי מכשיר יחיד בקוד מאיץ את הביצועים פי 5–20 🚀</p>
+        </div>
+
+        <!-- שקופית 2: הקוד - חלק 1 -->
+        <div class="slide">
+            <h2><span class="emoji">💻</span> הקוד - חלק 1: הגדרת המכשירים</h2>
+            <p>הקוד מבצע כפל מטריצות של 5000×5000 (25 מיליון איברים). בואו נפרק אותו:</p>
+            
+            <pre class="code-block">
+import torch, time
+
+# ✅ שלב 1: הגדרת המכשירים
+device_cpu = torch.device("cpu")
+device_gpu = torch.device("cuda")
+            </pre>
+
+            <div class="tip-box">
+                <strong>📌 הסבר:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><code>torch.device("cpu")</code> - אומר ל־PyTorch להשתמש בעיבוד רגיל (CPU)</li>
+                    <li><code>torch.device("cuda")</code> - אומר ל־PyTorch להשתמש ב־GPU של NVIDIA</li>
+                    <li>CUDA = ממשק של NVIDIA לתקשורת עם GPU</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ חשוב:</strong> אם אין GPU בכל מחשבה, PyTorch יחזיר שגיאה. לכן ב־Kaggle צריך להפעיל "GPU Accelerator" בהגדרות!
+            </div>
+        </div>
+
+        <!-- שקופית 2.5: הקוד - חלק 2 -->
+        <div class="slide">
+            <h2><span class="emoji">📦</span> הקוד - חלק 2: יצירת נתונים</h2>
+            
+            <pre class="code-block">
+# ✅ שלב 2: יצירת מטריצות אקראיות
+x_cpu = torch.rand((5000, 5000), device=device_cpu)
+x_gpu = torch.rand((5000, 5000), device=device_gpu)
+            </pre>
+
+            <div class="insight-box">
+                <strong>🔍 הסבר פורט:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><code>torch.rand((5000, 5000))</code> - יוצר מטריצה אקראית בגודל 5000×5000</li>
+                    <li><code>device=device_cpu</code> - המטריצה תשמור ב־CPU</li>
+                    <li><code>device=device_gpu</code> - המטריצה תשמור ב־GPU</li>
+                    <li><strong>בסך הכל:</strong> 25 מיליון מספרים אקראיים בכל מטריצה</li>
+                </ul>
+            </div>
+
+            <div class="tip-box">
+                <strong>💡 דוגמה:</strong> אם המטריצה הייתה 100×100 בלבד, זה 10,000 מספרים. אנחנו מוציאים 5000×5000 כדי ש־GPU יהיה בעיצוב מלא! 🚀
+            </div>
+        </div>
+
+        <!-- שקופית 3: הקוד - חלק 3 -->
+        <div class="slide">
+            <h2><span class="emoji">⏱️</span> הקוד - חלק 3: חישוב על CPU</h2>
+            
+            <pre class="code-block">
+# ✅ שלב 3: חישוב על CPU
+start = time.time()
+y_cpu = x_cpu @ x_cpu
+print("CPU time:", time.time() - start)
+            </pre>
+
+            <div class="insight-box">
+                <strong>🔍 הסבר שורה אחר שורה:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><code>start = time.time()</code> - שומר את הזמן הנוכחי בשניות</li>
+                    <li><code>y_cpu = x_cpu @ x_cpu</code> - כפול מטריצות: x × x (התוצאה גם 5000×5000)</li>
+                    <li><code>time.time() - start</code> - חישוב כמה זמן עבר</li>
+                    <li><code>print(...)</code> - הדפסת התוצאה לצג</li>
+                </ul>
+            </div>
+
+            <div class="comparison-cards">
+                <div class="card cpu">
+                    <h3>מה שקורה:</h3>
+                    <p><strong>1.</strong> שומר זמן התחלה</p>
+                    <p><strong>2.</strong> מכפיל מטריצות בעצמי CPU</p>
+                    <p><strong>3.</strong> משחררות</p>
+                    <p><strong>4.</strong> שומר זמן סיום</p>
+                </div>
+                <div class="card">
+                    <h3>התוצאה:</h3>
+                    <p><code style="color: #e74c3c; font-weight: bold;">CPU time: 1.37</code></p>
+                    <p>⏱️ לקח 1.37 שניות</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- שקופית 4: הקוד - חלק 4 -->
+        <div class="slide">
+            <h2><span class="emoji">⚡</span> הקוד - חלק 4: חישוב על GPU</h2>
+            
+            <pre class="code-block">
+# ✅ שלב 4: חישוב על GPU
+start = time.time()
+y_gpu = x_gpu @ x_gpu
+torch.cuda.synchronize()
+print("GPU time:", time.time() - start)
+            </pre>
+
+            <div class="insight-box">
+                <strong>🔍 הסבר עם שורה נוספת:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><code>start = time.time()</code> - שומר זמן התחלה</li>
+                    <li><code>y_gpu = x_gpu @ x_gpu</code> - כפול מטריצות על GPU</li>
+                    <li><span class="highlight"><code>torch.cuda.synchronize()</code></span> - <strong>חיוני!</strong> מחכה שה־GPU יסיים את כל החישובים</li>
+                    <li><code>print(...)</code> - הדפסת התוצאה</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ למה צריך synchronize()?</strong>
+                <p>GPU עובד בצורה <strong>אסינכרונית</strong> – זה אומר שהוא יכול להחזיר כשלו חישוביה עדיין רצים ברקע. <code>synchronize()</code> אומר ל־PyTorch: "חכה עד שיסיים!"</p>
+            </div>
+
+            <div class="comparison-cards">
+                <div class="card gpu">
+                    <h3>מה שקורה:</h3>
+                    <p><strong>1.</strong> שומר זמן התחלה</p>
+                    <p><strong>2.</strong> שולח לGPU "תכפוך!"</p>
+                    <p><strong>3.</strong> מחכה שיסיים</p>
+                    <p><strong>4.</strong> שומר זמן סיום</p>
+                </div>
+                <div class="card">
+                    <h3>התוצאה:</h3>
+                    <p><code style="color: #28a745; font-weight: bold;">GPU time: 0.30</code></p>
+                    <p>⚡ לקח רק 0.30 שניות</p>
+                    <p><span class="speedup-badge">×4.5 מהיר!</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- שקופית 5: השוואה -->
+        <div class="slide">
+            <h2><span class="emoji">🔄</span> השוואה: לפי שורה</h2>
+            
+            <table class="comparison-table">
+                <tr>
+                    <th>אלמנט</th>
+                    <th style="color: #e74c3c;">🖥️ CPU</th>
+                    <th style="color: #28a745;">⚡ GPU</th>
+                    <th>הבדל</th>
+                </tr>
+                <tr>
+                    <td><strong>הגדרת מכשיר</strong></td>
+                    <td><code>torch.device("cpu")</code></td>
+                    <td><code>torch.device("cuda")</code></td>
+                    <td>מכשיר אחר</td>
+                </tr>
+                <tr>
+                    <td><strong>יצירת נתונים</strong></td>
+                    <td><code>device=device_cpu</code></td>
+                    <td><code>device=device_gpu</code></td>
+                    <td>אותו קוד!</td>
+                </tr>
+                <tr>
+                    <td><strong>כפול מטריצות</strong></td>
+                    <td><code>x_cpu @ x_cpu</code></td>
+                    <td><code>x_gpu @ x_gpu</code></td>
+                    <td>אותו קוד!</td>
+                </tr>
+                <tr>
+                    <td><strong>סינכרוניזציה</strong></td>
+                    <td>לא צריך</td>
+                    <td class="highlight-green">torch.cuda.synchronize()</td>
+                    <td>GPU בלבד</td>
+                </tr>
+                <tr>
+                    <td><strong>⏱️ זמן סיום</strong></td>
+                    <td class="highlight-red"><strong>1.37 שניות</strong></td>
+                    <td class="highlight-green"><strong>0.30 שניות</strong></td>
+                    <td><strong style="font-size: 1.2em;">×4.5</strong></td>
+                </tr>
+            </table>
+
+            <div class="insight-box" style="margin-top: 25px;">
+                <strong>💡 המסקנה המרכזית:</strong> <span class="gradient-text">אותו קוד בדיוק, רק שנינו את השורה שמכילה את `device=...`!</span>
+            </div>
+        </div>
+
+        <!-- שקופית 3: CPU vs GPU -->
+        <div class="slide">
+            <h2><span class="emoji">🔧</span> מה ההבדל בין CPU ל־GPU?</h2>
+            
+            <div class="comparison-cards">
+                <div class="card cpu">
+                    <h3><span class="emoji">🖥️</span> CPU</h3>
+                    <p><strong>מעבד רגיל</strong></p>
+                    <div class="stat-value">4–16</div>
+                    <p>ליבות כלליות (cores)</p>
+                    <ul>
+                        <li>טוב בחישובים סדרתיים</li>
+                        <li>משימה אחרי משימה</li>
+                        <li>פחות מהיר בחישובים מקבילים</li>
+                    </ul>
+                </div>
+
+                <div class="card gpu">
+                    <h3><span class="emoji">🎮</span> GPU</h3>
+                    <p><strong>מעבד גרפי</strong></p>
+                    <div class="stat-value">אלפים</div>
+                    <p>CUDA cores קטנים</p>
+                    <ul>
+                        <li>טוב בחישובים מקבילים</li>
+                        <li>אלפי משימות בו־זמנית</li>
+                        <li>אידיאלי ללמידת מכונה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <strong>🎯 דוגמה:</strong> CPU = עובד אחד שעובד סדרתי. GPU = אלפי עובדים קטנים שעובדים בו־זמנית.
+            </div>
+        </div>
+
+        <!-- שקופית 4: דוגמה ראשונה -->
+        <div class="slide">
+            <h2><span class="emoji">📊</span> דוגמה 1: רשת עצבית קטנה</h2>
+            
+            <p><strong>תנאים:</strong> רשת Fully Connected עם 3 שכבות, 10,000 דוגמאות, 10 אפוקים</p>
+            
+            <div class="bar-chart">
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar cpu" style="height: 280px;">1.37s</div>
+                        <div class="bar-label"><span class="emoji">🖥️</span> CPU</div>
+                    </div>
+                </div>
+                
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar gpu" style="height: 60px;">0.30s</div>
+                        <div class="bar-label"><span class="emoji">⚡</span> GPU</div>
+                        <div class="speedup-badge">×4.5 מהיר!</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ הערה:</strong> בבעיה קטנה, השיפור הוא "רק" פי 4.5 כי עלויות הסטארט־אפ של GPU משמעותיות.
+            </div>
+        </div>
+
+        <!-- שקופית 5: דוגמה שנייה -->
+        <div class="slide">
+            <h2><span class="emoji">📈</span> דוגמה 2: אותו דטסט, יותר אפוקים</h2>
+            
+            <p><strong>תנאים:</strong> אותה רשת, 10,000 דוגמאות, אבל 100 אפוקים</p>
+            
+            <div class="bar-chart">
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar cpu" style="height: 340px;">13.47s</div>
+                        <div class="bar-label"><span class="emoji">🖥️</span> CPU</div>
+                    </div>
+                </div>
+                
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar gpu" style="height: 26px;">1.03s</div>
+                        <div class="bar-label"><span class="emoji">⚡</span> GPU</div>
+                        <div class="speedup-badge">×13 מהיר!</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <strong>💡 תופעה:</strong> ככל שיש יותר עבודה, כך ה־GPU מנצל את היתרון המקבילי שלו, והשיפור גדל!
+            </div>
+        </div>
+
+        <!-- שקופית 6: דוגמה שלישית -->
+        <div class="slide">
+            <h2><span class="emoji">🚀</span> דוגמה 3: דטסט גדול</h2>
+            
+            <p><strong>תנאים:</strong> נתונים ענקיים, 50,000 דוגמאות, 100 אפוקים</p>
+            
+            <div class="bar-chart">
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar cpu" style="height: 350px;">87.71s</div>
+                        <div class="bar-label"><span class="emoji">🖥️</span> CPU<br>(~1.5 דקות)</div>
+                    </div>
+                </div>
+                
+                <div class="bar-group">
+                    <div class="bar-item">
+                        <div class="bar gpu" style="height: 20px;">5.28s</div>
+                        <div class="bar-label"><span class="emoji">⚡</span> GPU</div>
+                        <div class="speedup-badge">×16.6 מהיר!</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <strong>🎯 מסקנה:</strong> ב־CPU זה כמעט דקה וחצי! ב־GPU רק 5 שניות! 
+            </div>
+        </div>
+
+        <!-- שקופית 7: טבלה השוואתית -->
+        <div class="slide">
+            <h2><span class="emoji">📋</span> כל התוצאות בטבלה</h2>
+            
+            <table class="comparison-table">
+                <tr>
+                    <th>#</th>
+                    <th>דוגמאות</th>
+                    <th>אפוקים</th>
+                    <th><span class="emoji">🖥️</span> CPU</th>
+                    <th><span class="emoji">⚡</span> GPU</th>
+                    <th>שיפור</th>
+                </tr>
+                <tr>
+                    <td><strong>1</strong></td>
+                    <td>10,000</td>
+                    <td>10</td>
+                    <td class="highlight-red">1.37s</td>
+                    <td class="highlight-green">0.30s</td>
+                    <td><strong style="font-size: 1.15em;">×4.5</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>2</strong></td>
+                    <td>10,000</td>
+                    <td>100</td>
+                    <td class="highlight-red">13.47s</td>
+                    <td class="highlight-green">1.03s</td>
+                    <td><strong style="font-size: 1.15em;">×13</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>3</strong></td>
+                    <td>50,000</td>
+                    <td>100</td>
+                    <td class="highlight-red">87.71s</td>
+                    <td class="highlight-green">5.28s</td>
+                    <td><strong style="font-size: 1.15em;">×16.6</strong></td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 25px; text-align: center; font-size: 1.2em;">
+                <span class="gradient-text">ככל שהבעיה גדולה יותר – כך ה־GPU יותר חזק! 💪</span>
+            </p>
+        </div>
+
+        <!-- שקופית 8: תרשים עולה -->
+        <div class="slide">
+            <h2><span class="emoji">📈</span> גרף: המגמה העולה של GPU</h2>
+            
+            <div class="chart-container">
+                <div class="chart-title">זמני ריצה לפי גודל בעיה (שניות)</div>
+                <canvas id="performanceChart"></canvas>
+            </div>
+
+            <div class="insight-box">
+                <strong>📊 קריאת הגרף:</strong>
+                <ul>
+                    <li><span class="emoji">🔴</span> <strong>קו אדום (CPU):</strong> עולה בחדות – זמן גדל הרבה</li>
+                    <li><span class="emoji">🟢</span> <strong>קו ירוק (GPU):</strong> כמעט שטוח – זמן גדל מעט</li>
+                    <li>ההפרש בין הקווים = <strong>היתרון של GPU</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- שקופית 9: הסבר אינטואיטיבי -->
+        <div class="slide">
+            <h2><span class="emoji">👨‍🏫</span> הסבר אינטואיטיבי</h2>
+            
+            <h3>💼 דוגמה: ציור 1000 תמונות</h3>
+
+            <div class="comparison-cards">
+                <div class="card cpu">
+                    <h3>CPU: עובד יחיד</h3>
+                    <p>עובד אחד צובע תמונה אחת, אחר כך השנייה...</p>
+                    <div class="stat-value">1000</div>
+                    <p>שעות (תמונה אחת בשעה)</p>
+                </div>
+
+                <div class="card gpu">
+                    <h3>GPU: אלפים עובדים</h3>
+                    <p>אלפי עובדים צובעים את כל 1000 בו־זמנית!</p>
+                    <div class="stat-value">1</div>
+                    <p>שעה (פי 1000 מהר!)</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 30px; text-align: center; font-size: 1.15em;">
+                <span class="highlight">אותה עבודה, אך GPU עושה אותה בו־זמנית.</span>
+            </p>
+        </div>
+
+        <!-- שקופית 10: הפיקס בקוד -->
+        <div class="slide">
+            <h2><span class="emoji">🔧</span> איך לעבור מ־CPU ל־GPU?</h2>
+            
+            <h3>שלוש שורות בלבד:</h3>
+            
+            <pre class="code-block">
+# השלב 1: בדוק אם GPU זמין
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# השלב 2: העבר נתונים ל־GPU
+data = data.to(device)
+
+# השלב 3: העבר רשת ל־GPU
+model = model.to(device)
+            </pre>
+
+            <p><strong>זהו! 🎉</strong> כל שאר הקוד עובד באותה דרך!</p>
+
+            <div class="tip-box">
+                <strong>💡 טיפ:</strong> PyTorch ו־TensorFlow יודעים לטפל בקוד ב־GPU אוטומטית.
+            </div>
+        </div>
+
+        <!-- שקופית 11: מה זה CUDA? -->
+        <div class="slide">
+            <h2><span class="emoji">⚙️</span> מה זה CUDA? (עובדים מעבר)</h2>
+            
+            <p>CUDA = Compute Unified Device Architecture</p>
+            <p>זהו <strong>ממשק</strong> שמאפשר לקוד בפייתון "לדבר" ישירות עם חומרת NVIDIA.</p>
+
+            <div class="comparison-cards">
+                <div class="card">
+                    <h3>בלי CUDA (CPU)</h3>
+                    <p>קוד Python → CPU מבצע</p>
+                    <div class="stat-value">איטי</div>
+                </div>
+
+                <div class="card gpu">
+                    <h3>עם CUDA (GPU)</h3>
+                    <p>קוד Python → CUDA → GPU מבצע</p>
+                    <div class="stat-value">מהיר!</div>
+                </p>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ חשוב:</strong> כדי להשתמש ב־CUDA, צריך GPU של NVIDIA (לא Apple, לא AMD).
+            </div>
+        </div>
+
+        <!-- שקופית 12: מסקנות -->
+        <div class="slide">
+            <h2><span class="emoji">✅</span> 5 מסקנות חשובות</h2>
+            
+            <ul>
+                <li><strong>1. אותו קוד, תוצאות שונות:</strong> CPU vs GPU משתנה רק בשורה אחת.</li>
+                <li><strong>2. GPU פי 5–20 מהיר:</strong> הבדל מוחשי בכל בעיה אמיתית.</li>
+                <li><strong>3. ככל שגדול יותר, יותר טוב:</strong> בבעיות ענקיות, GPU הוא חובה.</li>
+                <li><strong>4. חישוב מקביל:</strong> GPU עושה אלפי חישובים בו־זמנית.</li>
+                <li><strong>5. PyTorch ו־TensorFlow דואגים לכל זה:</strong> אתה פשוט כותב `.to(device)` ו־סיים.</li>
+            </ul>
+
+            <div class="insight-box" style="margin-top: 30px;">
+                <strong>🎯 הקו התחתון:</strong> לפי הנתונים שראינו, בעולם של AI ו־Deep Learning, GPU הוא כמו "סופרכוח" שמעביר את זמן האימון מ־דקות לשניות.
+            </div>
+        </div>
+
+        <!-- שקופית 13: דוגמה מעשית -->
+        <div class="slide">
+            <h2><span class="emoji">🎓</span> דוגמה מעשית: מה זה משנה בפועל?</h2>
+            
+            <h3>איזון מאוד חשוב:</h3>
+            
+            <table class="comparison-table">
+                <tr>
+                    <th>תרחיש</th>
+                    <th>אימון ב־CPU</th>
+                    <th>אימון ב־GPU</th>
+                    <th>יתרון</th>
+                </tr>
+                <tr>
+                    <td><strong>רשת קטנה</strong></td>
+                    <td>2 דקות</td>
+                    <td class="highlight-green">20 שניות</td>
+                    <td>×6</td>
+                </tr>
+                <tr>
+                    <td><strong>רשת CNN בינונית</strong></td>
+                    <td>30 דקות</td>
+                    <td class="highlight-green">2 דקות</td>
+                    <td>×15</td>
+                </tr>
+                <tr>
+                    <td><strong>ImageNet מלא</strong></td>
+                    <td>שבועות</td>
+                    <td class="highlight-green">יום אחד</td>
+                    <td>×50+</td>
+                </tr>
+            </table>
+
+            <div class="tip-box">
+                <strong>💡 למורה:</strong> אפשר לעשות ניסויים רבים בשנייה / דקה ב־GPU, לעומת CPU שבו זה לוקח זמן רב.
+            </div>
+        </div>
+
+        <!-- שקופית 14: סיום -->
+        <div class="slide title-slide">
+            <h1><span class="emoji">🚀</span> הנקודה המרכזית</h1>
+            <p style="font-size: 1.5em; margin: 30px 0;">
+                GPU לא קסם – זה <strong>חומרה חכמה</strong> שעושה הרבה חישובים בו־זמנית.
+            </p>
+            <p style="font-size: 1.3em; margin: 20px 0;">
+                בעולם של AI הגדול, GPU = הכוח אחורי כל רשת עצבית מודרנית.
+            </p>
+            <p style="margin-top: 40px; font-size: 1.2em; opacity: 0.9;">
+                🎯 השלב הבא: בניית CNN אמיתית ב־Kaggle עם GPU 🎓
+            </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="controls">
+            <button id="prevBtn" onclick="changeSlide(-1)">→ הקודם</button>
+            <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">19</span></span>
+            <button id="nextBtn" onclick="changeSlide(1)">הבא ←</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[n].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = n + 1;
+            document.getElementById('prevBtn').disabled = n === 0;
+            document.getElementById('nextBtn').disabled = n === totalSlides - 1;
+
+            // רענן תרשים אם קיים
+            if (n === 7 && document.getElementById('performanceChart').chart) {
+                setTimeout(() => {
+                    document.getElementById('performanceChart').chart.resize();
+                }, 100);
+            }
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide >= 0 && currentSlide < totalSlides) {
+                showSlide(currentSlide);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') changeSlide(1);
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+        });
+
+        // Initialize
+        document.getElementById('totalSlides').textContent = totalSlides;
+        showSlide(0);
+
+        // ערוך תרשים בעמודה 8
+        setTimeout(() => {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['בעיה קטנה\n(10k דוגמאות, 10 אפוקים)',
+                             'בעיה בינונית\n(10k דוגמאות, 100 אפוקים)',
+                             'בעיה גדולה\n(50k דוגמאות, 100 אפוקים)'],
+                    datasets: [
+                        {
+                            label: '🖥️ CPU (שניות)',
+                            data: [1.37, 13.47, 87.71],
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 8,
+                            pointBackgroundColor: '#e74c3c',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        },
+                        {
+                            label: '⚡ GPU (שניות)',
+                            data: [0.30, 1.03, 5.28],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 8,
+                            pointBackgroundColor: '#28a745',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: { size: 14, weight: 'bold' },
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                font: { size: 12 },
+                                callback: function(value) { return value + 's'; }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { font: { size: 12 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            document.getElementById('performanceChart').chart = performanceChart;
+        }, 500);
+    </script>
+</body>
+</html>

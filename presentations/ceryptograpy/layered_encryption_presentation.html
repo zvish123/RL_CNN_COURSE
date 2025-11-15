@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הצפנה בשכבות - מצגת אינטראקטיבית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            background: white;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 50px;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+        }
+
+        span {
+            direction: ltr;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.3em;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .layer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .layer {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border-right: 6px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .layer:hover {
+            transform: translateX(-10px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .layer-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            font-size: 1.3em;
+            margin-left: 15px;
+        }
+
+        .layer-title {
+            display: inline-block;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .layer-desc {
+            margin-top: 15px;
+            color: #555;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+<!--            overflow-x: auto;-->
+            direction: ltr;
+            text-align: left;
+
+        }
+
+
+        .code-comment {
+            color: #6a9955;
+        }
+
+        .code-keyword {
+            color: #569cd6;
+        }
+
+        .code-string {
+            color: #ce9178;
+        }
+
+        .code-function {
+            color: #dcdcaa;
+        }
+
+        .interactive-box {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .interactive-box h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+
+        .question {
+            background: #e3f2fd;
+            border: 3px solid #2196F3;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .question h3 {
+            color: #1565c0;
+            margin-top: 0;
+        }
+
+        .options {
+            margin: 20px 0;
+        }
+
+        .option {
+            background: white;
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.1em;
+        }
+
+        .option:hover {
+            background: #f5f5f5;
+            border-color: #2196F3;
+            transform: translateX(-5px);
+        }
+
+        .option.correct {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .option.wrong {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+
+        .feedback.wrong {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.3);
+            z-index: 1000;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.3s;
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #667eea;
+            z-index: 1000;
+        }
+
+        .diagram {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .flow-step {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: 15px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            font-size: 1.2em;
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: '↓';
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2em;
+            color: #667eea;
+        }
+
+        .flow-step:last-child::after {
+            content: '';
+        }
+
+        .example-box {
+            background: #f0f4f8;
+            border-right: 5px solid #4caf50;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .example-box h4 {
+            color: #4caf50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            margin: 25px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 18px;
+            font-size: 1.2em;
+        }
+
+        td {
+            padding: 18px;
+            border-bottom: 1px solid #ddd;
+            font-size: 1.1em;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .emoji {
+            font-size: 1.5em;
+            margin-left: 10px;
+        }
+
+        .coding-challenge {
+            background: #ede7f6;
+            border: 3px dashed #9c27b0;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .coding-challenge h3 {
+            color: #9c27b0;
+            margin-top: 0;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            margin: 15px 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .check-btn {
+            background: #9c27b0;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .check-btn:hover {
+            background: #7b1fa2;
+            transform: scale(1.05);
+        }
+
+        ul {
+            margin: 20px 0;
+            padding-right: 30px;
+        }
+
+        li {
+            margin: 15px 0;
+            font-size: 1.15em;
+            line-height: 1.8;
+        }
+
+        .key-point {
+            background: #e8f5e9;
+            border-right: 5px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-size: 1.15em;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div class="slide-counter" id="slideCounter">1 / 12</div>
+
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🔒 הצפנה בשכבות</h1>
+            <p class="subtitle">הטופ של עולם האבטחה המודרני</p>
+            
+            <div class="diagram">
+                <h3>למה שכבות? 🤔</h3>
+                <div class="flow-step">שכבה 1: TLS - הצפנת הערוץ</div>
+                <div class="flow-step">שכבה 2: ECDH - החלפת מפתחות</div>
+                <div class="flow-step">שכבה 3: AES - הצפנת המידע</div>
+                <div class="flow-step">שכבה 4: JWT - אימות משתמש</div>
+            </div>
+
+            <div class="key-point">
+                <strong>💡 הרעיון המרכזי:</strong> מערכת אבטחה מודרנית לא מסתמכת על שיטה אחת בלבד. 
+                כמו שכבות הגנה בצבא - כל שכבה מגנה על הבאה, וביחד הן יוצרות חומה בלתי חדירה!
+            </div>
+        </div>
+
+        <!-- Slide 2: Layer 1 - TLS -->
+        <div class="slide">
+            <h2>🌐 שכבה 1: TLS (Transport Layer Security)</h2>
+            
+            <div class="layer">
+                <span class="layer-number">1</span>
+                <span class="layer-title">TLS - הבסיס של הכל</span>
+                <div class="layer-desc">
+                    TLS היא הצפנת הערוץ הבסיסית. כל אתר עם HTTPS משתמש בה.
+                </div>
+            </div>
+
+            <h3>מה TLS נותן לנו? ✨</h3>
+            <ul>
+                <li><strong>הצפנה מלאה של הערוץ</strong> (Channel Encryption) - כל המידע שעובר מוצפן</li>
+                <li><strong>אימות שרת</strong> - הלקוח יודע שהוא מדבר עם השרת האמיתי</li>
+                <li><strong>שלמות מידע</strong> (Integrity) - הגנה מפני שינויים בדרך</li>
+            </ul>
+
+            <pre dir="ltr" class="code-block">
+<span dir="ltr" class="code-comment"># הפעלת שרת Flask עם TLS</span>
+<span class="code-keyword">from</span> flask <span class="code-keyword">import</span> Flask
+
+app = <span class="code-function">Flask</span>(__name__)
+
+<span dir="ltr" class="code-comment"># הרצה עם HTTPS</span>
+app.<span class="code-function">run</span>(
+    ssl_context=(<span class="code-string">"cert.pem"</span>, <span class="code-string">"key.pem"</span>),
+    host=<span class="code-string">"0.0.0.0"</span>,
+    port=<span class="code-string">443</span>
+)
+            </pre>
+
+            <div class="interactive-box">
+                <h3>⚠️ אבל רגע! TLS לבד זה לא מספיק!</h3>
+                <p><strong>למה?</strong> כי TLS מגן על הצינור, אבל לא על התוכן עצמו לטווח ארוך.</p>
+                <p>אם מישהו גונב את התוכן <strong>מהשרת</strong> (לא בזמן ההעברה) → TLS לא יעזור!</p>
+                <p><strong>לכן</strong> אנחנו צריכים שכבות נוספות 🛡️</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Layer 2 - ECDH -->
+        <div class="slide">
+            <h2>🔑 שכבה 2: ECDH עם Curve25519</h2>
+            
+            <div class="layer">
+                <span class="layer-number">2</span>
+                <span class="layer-title">החלפת מפתחות בצורה חכמה</span>
+                <div class="layer-desc">
+                    ECDH = Elliptic Curve Diffie-Hellman<br>
+                    שיטה שבה שני צדדים יוצרים מפתח סימטרי משותף <strong>בלי להעביר אותו ברשת!</strong>
+                </div>
+            </div>
+
+            <h3>למה זה קריטי? 🎯</h3>
+            <div class="layer-container">
+                <div class="example-box">
+                    <h4>1️⃣ Forward Secrecy</h4>
+                    גם אם גונבים את המפתח של השרת מחר - לא יוכלו לפענח שיחות מהעבר!
+                </div>
+                <div class="example-box">
+                    <h4>2️⃣ מפתח חדש לכל Session</h4>
+                    כל חיבור מקבל מפתח ייחודי. דליפה אחת = רק Session אחד נחשף.
+                </div>
+                <div class="example-box">
+                    <h4>3️⃣ Curve25519 מהיר ומאובטח</h4>
+                    הסטנדרט של WhatsApp, Signal, WireGuard ועוד.
+                </div>
+            </div>
+
+            <h3>איך זה עובד? 🔬</h3>
+            <pre dir="ltr" class="code-block">
+<span class="code-comment"># דוגמה עם PyNaCl (Curve25519)</span>
+<span class="code-keyword">from</span> nacl.public <span class="code-keyword">import</span> PrivateKey, Box
+
+<span class="code-comment"># כל צד מייצר זוג מפתחות זמני</span>
+client_private = PrivateKey.<span class="code-function">generate</span>()
+client_public = client_private.public_key
+
+server_private = PrivateKey.<span class="code-function">generate</span>()
+server_public = server_private.public_key
+
+<span class="code-comment"># לקוח: מחשב shared secret</span>
+client_box = <span class="code-function">Box</span>(client_private, server_public)
+
+<span class="code-comment"># שרת: מחשב את אותו shared secret!</span>
+server_box = <span class="code-function">Box</span>(server_private, client_public)
+
+<span class="code-comment"># עכשיו לשניהם יש אותו מפתח - בלי להעביר אותו ברשת! 🎉</span>
+            </pre>
+
+            <div class="key-point">
+                <strong>🔐 הקסם:</strong> המפתח הסודי משותף נוצר אצל שני הצדדים בנפרד, ולעולם לא עובר ברשת!
+            </div>
+        </div>
+
+        <!-- Slide 4: Question 1 -->
+        <div class="slide">
+            <h2>📝 שאלת הבנה 1</h2>
+            
+            <div class="question">
+                <h3>מה היתרון המרכזי של ECDH על פני העברת מפתח מוצפן ב-TLS?</h3>
+                
+                <div class="options">
+                    <div class="option" onclick="checkAnswer(this, false, 'q1')">
+                        א. ECDH מהיר יותר מ-TLS
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, true, 'q1')">
+                        ב. ECDH מספק Forward Secrecy - גם אם המפתח הפרטי של השרת ייגנב בעתיד, לא ניתן לפענח שיחות עבר
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q1')">
+                        ג. ECDH משתמש בהצפנה חזקה יותר
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q1')">
+                        ד. ECDH לא דורש תעודת SSL
+                    </div>
+                </div>
+
+                <div class="feedback" id="feedback-q1"></div>
+            </div>
+
+            <div class="interactive-box">
+                <h3>💭 חשבו על זה...</h3>
+                <p>נניח שהאקר שומר היום את כל התעבורה המוצפנת של חברה.</p>
+                <p>בעוד 5 שנים הוא מצליח לגנוב את המפתח הפרטי של השרת.</p>
+                <p><strong>עם TLS רגיל:</strong> הוא יכול לפענח את כל התעבורה ששמר! 😱</p>
+                <p><strong>עם ECDH:</strong> התעבורה הישנה נשארת מוצפנת לנצח! ✅</p>
+            </div>
+        </div>
+
+        <!-- Slide 5: Layer 3 - AES -->
+        <div class="slide">
+            <h2>🔐 שכבה 3: הצפנת AES</h2>
+            
+            <div class="layer">
+                <span class="layer-number">3</span>
+                <span class="layer-title">AES - הצפנת המידע עצמו</span>
+                <div class="layer-desc">
+                    לאחר שהסכמנו על מפתח סימטרי ב-ECDH, משתמשים בו להצפנת AES של המידע בפועל.
+                </div>
+            </div>
+
+            <h3>למה דווקא AES? ⚡</h3>
+            <div class="table-responsive">
+                <table>
+                    <tr>
+                        <th>יתרון</th>
+                        <th>הסבר</th>
+                    </tr>
+                    <tr>
+                        <td>🚀 מהירות</td>
+                        <td>בנוי לעבודה אופטימלית על CPU מודרני</td>
+                    </tr>
+                    <tr>
+                        <td>💪 חוזק</td>
+                        <td>128/256 ביט - בלתי ניתן לשבירה</td>
+                    </tr>
+                    <tr>
+                        <td>🌍 סטנדרט עולמי</td>
+                        <td>נתמך בכל שפות התכנות והמערכות</td>
+                    </tr>
+                    <tr>
+                        <td>✅ מוכח</td>
+                        <td>התייחסות קריפטוגרפית מוכחת</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>דוגמת קוד - הצפנה עם AES-GCM 🛡️</h3>
+            <pre dir="ltr" class="code-block">
+<span class="code-comment"># AES-GCM = AES + אימות שלמות</span>
+<span class="code-keyword">from</span> Crypto.Cipher <span class="code-keyword">import</span> AES
+<span class="code-keyword">from</span> Crypto.Random <span class="code-keyword">import</span> get_random_bytes
+
+<span class="code-comment"># המפתח שהתקבל מ-ECDH (32 בתים = 256 ביט)</span>
+shared_key = <span class="code-function">get_random_bytes</span>(<span class="code-string">32</span>)
+
+<span class="code-comment"># יצירת cipher</span>
+cipher = AES.<span class="code-function">new</span>(shared_key, AES.MODE_GCM)
+
+<span class="code-comment"># הצפנת מסר</span>
+message = <span class="code-string">b"Secret data from client"</span>
+ciphertext, tag = cipher.<span class="code-function">encrypt_and_digest</span>(message)
+
+<span class="code-comment"># שליחה: nonce + ciphertext + tag</span>
+<span class="code-keyword">print</span>(<span class="code-string">f"Nonce: </span>{cipher.nonce.<span class="code-function">hex</span>()}<span class="code-string">"</span>)
+<span class="code-keyword">print</span>(<span class="code-string">f"Encrypted: </span>{ciphertext.<span class="code-function">hex</span>()}<span class="code-string">"</span>)
+<span class="code-keyword">print</span>(<span class="code-string">f"Tag: </span>{tag.<span class="code-function">hex</span>()}<span class="code-string">"</span>)
+            </pre>
+
+            <div class="key-point">
+                <strong>🎯 ההבדל החשוב:</strong> TLS מצפין את הערוץ, אבל AES מצפין את ה-Payload עצמו.
+                גם אם יש פריצה לשרת - התוכן עדיין מוצפן!
+            </div>
+        </div>
+
+        <!-- Slide 6: Question 2 -->
+        <div class="slide">
+            <h2>📝 שאלת הבנה 2</h2>
+            
+            <div class="question">
+                <h3>מדוע אנחנו משתמשים ב-AES-GCM ולא רק ב-AES רגיל?</h3>
+                
+                <div class="options">
+                    <div class="option" onclick="checkAnswer(this, false, 'q2')">
+                        א. GCM הוא מהיר יותר
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, true, 'q2')">
+                        ב. GCM מוסיף אימות שלמות (Integrity) - מונע שינוי של הנתונים המוצפנים
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q2')">
+                        ג. GCM משתמש במפתח קצר יותר
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q2')">
+                        ד. GCM לא דורש Nonce
+                    </div>
+                </div>
+
+                <div class="feedback" id="feedback-q2"></div>
+            </div>
+
+            <div class="coding-challenge">
+                <h3>💻 אתגר תכנות 1</h3>
+                <p>כתבו פונקציה שמקבלת מסר ומפתח, ומחזירה את המסר המוצפן עם כל הפרמטרים הדרושים לפענוח:</p>
+                
+                <textarea id="code1" placeholder='def encrypt_message(message: str, key: bytes) -> dict:
+    """
+    הצפינו את ההודעה והחזירו dictionary עם:
+    - nonce
+    - ciphertext
+    - tag
+    """
+    # הקוד שלכם כאן...
+    pass'></textarea>
+                
+                <button class="check-btn" onclick="checkCode1()">בדוק קוד</button>
+                <div class="feedback" id="code1-feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Layer 4 - JWT -->
+        <div class="slide">
+            <h2>🎫 שכבה 4: אימות עם JWT</h2>
+            
+            <div class="layer">
+                <span class="layer-number">4</span>
+                <span class="layer-title">JWT - JSON Web Token</span>
+                <div class="layer-desc">
+                    אסימון מאובטח שמוכיח מי המשתמש, מה ההרשאות שלו, ושלא שינו את הנתונים.
+                </div>
+            </div>
+
+            <h3>מה JWT פותר? 🎯</h3>
+            <ul>
+                <li>✅ <strong>זיהוי:</strong> מי המשתמש?</li>
+                <li>✅ <strong>הרשאות:</strong> מה מותר לו לעשות?</li>
+                <li>✅ <strong>שלמות:</strong> האם מישהו שינה את הטוקן?</li>
+                <li>✅ <strong>מבוזר:</strong> שרתים שונים יכולים לסמוך על אותו טוקן</li>
+            </ul>
+
+            <h3>מבנה של JWT 📦</h3>
+            <div class="diagram">
+                <div class="flow-step">Header: אלגוריתם וסוג</div>
+                <div class="flow-step">Payload: הנתונים (user, roles, exp)</div>
+                <div class="flow-step">Signature: חתימה דיגיטלית</div>
+            </div>
+
+            <h3>דוגמת קוד - יצירה ואימות JWT 🔏</h3>
+            <pre dir="ltr" class="code-block">
+<span class="code-keyword">import</span> jwt
+<span class="code-keyword">from</span> datetime <span class="code-keyword">import</span> datetime, timedelta
+
+<span class="code-comment"># מפתח סודי (צריך להישמר בסוד!)</span>
+SECRET_KEY = <span class="code-string">"your-secret-key-keep-it-safe"</span>
+
+<span class="code-comment"># יצירת JWT</span>
+<span class="code-keyword">def</span> <span class="code-function">create_token</span>(user_id, role):
+    payload = {
+        <span class="code-string">"user_id"</span>: user_id,
+        <span class="code-string">"role"</span>: role,
+        <span class="code-string">"exp"</span>: datetime.utcnow() + <span class="code-function">timedelta</span>(hours=<span class="code-string">24</span>)
+    }
+    token = jwt.<span class="code-function">encode</span>(payload, SECRET_KEY, algorithm=<span class="code-string">"HS256"</span>)
+    <span class="code-keyword">return</span> token
+
+<span class="code-comment"># אימות JWT</span>
+<span class="code-keyword">def</span> <span class="code-function">verify_token</span>(token):
+    <span class="code-keyword">try</span>:
+        payload = jwt.<span class="code-function">decode</span>(token, SECRET_KEY, algorithms=[<span class="code-string">"HS256"</span>])
+        <span class="code-keyword">return</span> payload
+    <span class="code-keyword">except</span> jwt.ExpiredSignatureError:
+        <span class="code-keyword">return</span> <span class="code-string">"Token expired!"</span>
+    <span class="code-keyword">except</span> jwt.InvalidTokenError:
+        <span class="code-keyword">return</span> <span class="code-string">"Invalid token!"</span>
+
+<span class="code-comment"># שימוש</span>
+token = <span class="code-function">create_token</span>(<span class="code-string">"alice"</span>, <span class="code-string">"admin"</span>)
+<span class="code-keyword">print</span>(<span class="code-string">f"Token: </span>{token}<span class="code-string">"</span>)
+
+<span class="code-comment"># אימות</span>
+data = <span class="code-function">verify_token</span>(token)
+<span class="code-keyword">print</span>(<span class="code-string">f"User: </span>{data[<span class="code-string">'user_id'</span>]}<span class="code-string">, Role: </span>{data[<span class="code-string">'role'</span>]}<span class="code-string">"</span>)
+            </pre>
+        </div>
+
+        <!-- Slide 8: How Everything Works Together -->
+        <div class="slide">
+            <h2>🔄 איך הכל עובד ביחד?</h2>
+            
+            <h3>תהליך מלא: Client ↔️ Server 🌐</h3>
+            
+            <div class="diagram">
+                <div class="flow-step">
+                    <strong>שלב 1:</strong> TLS Handshake<br>
+                    <small>הקמת ערוץ מוצפן, אימות שרת</small>
+                </div>
+                <div class="flow-step">
+                    <strong>שלב 2:</strong> ECDH Key Exchange<br>
+                    <small>הסכמה על מפתח סימטרי ייחודי</small>
+                </div>
+                <div class="flow-step">
+                    <strong>שלב 3:</strong> התחברות משתמש<br>
+                    <small>שרת יוצר JWT וחותם אותו</small>
+                </div>
+                <div class="flow-step">
+                    <strong>שלב 4:</strong> שליחת נתונים<br>
+                    <small>מוצפנים ב-AES עם המפתח מ-ECDH</small>
+                </div>
+                <div class="flow-step">
+                    <strong>שלב 5:</strong> כל בקשה מכילה<br>
+                    <small>JWT (זיהוי) + נתונים מוצפנים (AES)</small>
+                </div>
+            </div>
+
+            <div class="example-box">
+                <h4>🎯 דוגמה מציאותית: WhatsApp</h4>
+                <p><strong>1.</strong> חיבור ל-WhatsApp → TLS</p>
+                <p><strong>2.</strong> יצירת Session key → ECDH (Curve25519)</p>
+                <p><strong>3.</strong> כל הודעה → מוצפנת ב-AES-256</p>
+                <p><strong>4.</strong> זיהוי המשתמש → JWT בכל בקשה</p>
+                <p><strong>תוצאה:</strong> אבטחה מקסימלית בכל שכבה! 🛡️</p>
+            </div>
+
+            <div class="key-point">
+                <strong>💪 כוח השכבות:</strong> גם אם שכבה אחת נפרצת - השכבות האחרות עדיין מגנות!
+            </div>
+        </div>
+
+        <!-- Slide 9: Question 3 -->
+        <div class="slide">
+            <h2>📝 שאלת הבנה 3</h2>
+            
+            <div class="question">
+                <h3>מה קורה אם האקר מצליח ליירט JWT בזמן השידור?</h3>
+                
+                <div class="options">
+                    <div class="option" onclick="checkAnswer(this, false, 'q3')">
+                        א. הוא יכול להשתמש בו לנצח
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q3')">
+                        ב. הוא יכול לשנות את ה-payload וליצור הרשאות חדשות
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, true, 'q3')">
+                        ג. בגלל TLS, הוא לא יכול ליירט אותו. אבל אם הצליח, הוא יכול להשתמש בו רק עד שיפוג (exp)
+                    </div>
+                    <div class="option" onclick="checkAnswer(this, false, 'q3')">
+                        ד. JWT לא עובר ברשת בכלל
+                    </div>
+                </div>
+
+                <div class="feedback" id="feedback-q3"></div>
+            </div>
+
+            <div class="interactive-box">
+                <h3>🔒 שכבות ההגנה על JWT:</h3>
+                <p><strong>שכבה 1 (TLS):</strong> מונעת יירוט בכלל ✅</p>
+                <p><strong>שכבה 2 (חתימה):</strong> מונעת שינוי של ה-JWT ✅</p>
+                <p><strong>שכבה 3 (Expiration):</strong> מגביל את זמן השימוש ✅</p>
+                <p><strong>שכבה 4 (Refresh Token):</strong> מחייב התחברות מחדש ✅</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Practical Example for Students -->
+        <div class="slide">
+            <h2>👨‍💻 דוגמה מלאה לפרויקט של תלמידים</h2>
+            
+            <h3>מערכת Chat מאובטחת 💬</h3>
+            
+            <pre dir="ltr" class="code-block">
+<span class="code-comment"># server.py - שרת Chat מאובטח</span>
+<span class="code-keyword">from</span> flask <span class="code-keyword">import</span> Flask, request, jsonify
+<span class="code-keyword">from</span> nacl.public <span class="code-keyword">import</span> PrivateKey, Box
+<span class="code-keyword">from</span> Crypto.Cipher <span class="code-keyword">import</span> AES
+<span class="code-keyword">import</span> jwt
+
+app = <span class="code-function">Flask</span>(__name__)
+SECRET_KEY = <span class="code-string">"super-secret-key"</span>
+
+<span class="code-comment"># 1. TLS - הרצה עם HTTPS</span>
+<span class="code-comment"># 2. ECDH - החלפת מפתחות</span>
+server_private = PrivateKey.<span class="code-function">generate</span>()
+server_public = server_private.public_key
+
+@app.<span class="code-function">route</span>(<span class="code-string">"/handshake"</span>, methods=[<span class="code-string">"POST"</span>])
+<span class="code-keyword">def</span> <span class="code-function">handshake</span>():
+    client_public_bytes = request.json[<span class="code-string">"public_key"</span>]
+    <span class="code-comment"># החזרת המפתח הציבורי שלנו</span>
+    <span class="code-keyword">return</span> <span class="code-function">jsonify</span>({<span class="code-string">"public_key"</span>: <span class="code-function">bytes</span>(server_public)})
+
+<span class="code-comment"># 3. JWT - אימות משתמש</span>
+@app.<span class="code-function">route</span>(<span class="code-string">"/login"</span>, methods=[<span class="code-string">"POST"</span>])
+<span class="code-keyword">def</span> <span class="code-function">login</span>():
+    username = request.json[<span class="code-string">"username"</span>]
+    <span class="code-comment"># בדיקת סיסמה...</span>
+    token = jwt.<span class="code-function">encode</span>({<span class="code-string">"user"</span>: username}, SECRET_KEY)
+    <span class="code-keyword">return</span> <span class="code-function">jsonify</span>({<span class="code-string">"token"</span>: token})
+
+<span class="code-comment"># 4. AES - שליחת הודעה מוצפנת</span>
+@app.<span class="code-function">route</span>(<span class="code-string">"/send_message"</span>, methods=[<span class="code-string">"POST"</span>])
+<span class="code-keyword">def</span> <span class="code-function">send_message</span>():
+    <span class="code-comment"># אימות JWT</span>
+    token = request.headers.get(<span class="code-string">"Authorization"</span>)
+    <span class="code-keyword">try</span>:
+        payload = jwt.<span class="code-function">decode</span>(token, SECRET_KEY, algorithms=[<span class="code-string">"HS256"</span>])
+    <span class="code-keyword">except</span>:
+        <span class="code-keyword">return</span> <span class="code-function">jsonify</span>({<span class="code-string">"error"</span>: <span class="code-string">"Invalid token"</span>}), <span class="code-string">401</span>
+    
+    <span class="code-comment"># קבלת הודעה מוצפנת ב-AES</span>
+    encrypted_msg = request.json[<span class="code-string">"message"</span>]
+    <span class="code-comment"># פענוח והצגה...</span>
+    
+    <span class="code-keyword">return</span> <span class="code-function">jsonify</span>({<span class="code-string">"status"</span>: <span class="code-string">"Message received"</span>})
+
+<span class="code-keyword">if</span> __name__ == <span class="code-string">"__main__"</span>:
+    app.<span class="code-function">run</span>(ssl_context=(<span class="code-string">"cert.pem"</span>, <span class="code-string">"key.pem"</span>), port=<span class="code-string">443</span>)
+            </pre>
+
+            <div class="key-point">
+                <strong>✨ זה בדיוק מה שעושים WhatsApp, Signal, Telegram!</strong>
+            </div>
+        </div>
+
+        <!-- Slide 11: Coding Challenge 2 -->
+        <div class="slide">
+            <h2>💻 אתגר תכנות 2</h2>
+            
+            <div class="coding-challenge">
+                <h3>🎯 המשימה שלכם:</h3>
+                <p>כתבו Client פשוט שמבצע את כל 4 השלבים:</p>
+                <ol style="text-align: right;">
+                    <li>מתחבר לשרת ב-HTTPS (TLS)</li>
+                    <li>מבצע ECDH handshake</li>
+                    <li>מתחבר ומקבל JWT</li>
+                    <li>שולח הודעה מוצפנת ב-AES</li>
+                </ol>
+                
+                <textarea id="code2" placeholder='import requests
+from nacl.public import PrivateKey, Box
+from Crypto.Cipher import AES
+import jwt
+
+# השלימו את הקוד:
+def secure_client():
+    # 1. יצירת מפתחות ECDH
+    
+    # 2. Handshake עם שרת
+    
+    # 3. התחברות וקבלת JWT
+    
+    # 4. הצפנה ושליחת הודעה
+    
+    pass
+'></textarea>
+                
+                <button class="check-btn" onclick="checkCode2()">בדוק קוד</button>
+                <div class="feedback" id="code2-feedback"></div>
+            </div>
+
+            <div class="interactive-box">
+                <h3>💡 רמזים:</h3>
+                <ul>
+                    <li>השתמשו ב-<code>requests.post(url, verify=True)</code> ל-TLS</li>
+                    <li>ל-ECDH: <code>PrivateKey.generate()</code></li>
+                    <li>ל-AES: <code>AES.new(key, AES.MODE_GCM)</code></li>
+                    <li>ל-JWT: העבירו בכותרת <code>Authorization: Bearer &lt;token&gt;</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide">
+            <h2>🎓 סיכום - הטופ של עולם האבטחה</h2>
+            
+            <div class="table-responsive">
+                <table>
+                    <tr>
+                        <th>שכבה</th>
+                        <th>תפקיד</th>
+                        <th>מה מגן?</th>
+                        <th>דוגמה</th>
+                    </tr>
+                    <tr>
+                        <td>🌐 <strong>TLS</strong></td>
+                        <td>הצפנת הערוץ</td>
+                        <td>מונע MITM וציתות</td>
+                        <td>HTTPS</td>
+                    </tr>
+                    <tr>
+                        <td>🔑 <strong>ECDH</strong></td>
+                        <td>החלפת מפתחות</td>
+                        <td>Forward Secrecy</td>
+                        <td>WhatsApp</td>
+                    </tr>
+                    <tr>
+                        <td>🔐 <strong>AES</strong></td>
+                        <td>הצפנת המידע</td>
+                        <td>הגנה על הנתונים</td>
+                        <td>Signal</td>
+                    </tr>
+                    <tr>
+                        <td>🎫 <strong>JWT</strong></td>
+                        <td>אימות משתמש</td>
+                        <td>מונע זיוף זהות</td>
+                        <td>API Tokens</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>🌟 מערכות שמשתמשות בשכבות אלו:</h3>
+            <ul>
+                <li><strong>WhatsApp:</strong> TLS + ECDH (Curve25519) + AES-256</li>
+                <li><strong>Signal:</strong> TLS + Double Ratchet (ECDH מתקדם) + AES</li>
+                <li><strong>WireGuard VPN:</strong> Noise Protocol (ECDH) + ChaCha20</li>
+                <li><strong>הבנקים:</strong> TLS + AES + JWT לאימות</li>
+                <li><strong>הפרויקט שלכם:</strong> 🎯 כל 4 השכבות!</li>
+            </ul>
+
+            <div class="key-point">
+                <strong>💪 העיקרון המרכזי:</strong><br>
+                שכבות מרובות יוצרות הגנה עמוקה (Defense in Depth).<br>
+                כל שכבה מגנה על הבאה, וביחד הן בלתי חדירות!
+            </div>
+
+            <div class="interactive-box">
+                <h3>🚀 המשך הלמידה:</h3>
+                <p>✅ תרגלו את כל הקוד שראינו</p>
+                <p>✅ בנו פרויקט Chat מאובטח משלכם</p>
+                <p>✅ חקרו את Signal Protocol (מתקדם)</p>
+                <p>✅ הוסיפו Refresh Tokens ל-JWT שלכם</p>
+            </div>
+
+            <h1 style="text-align: center; margin-top: 40px;">🎉 כל הכבוד! 🎉</h1>
+            <p style="text-align: center; font-size: 1.5em; color: #667eea;">
+                עכשיו אתם מבינים איך עובדת אבטחה מודרנית!
+            </p>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◄ הקודם</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ►</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+            
+            // Update progress bar
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Update slide counter
+            document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${totalSlides}`;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                const direction = e.key === 'ArrowRight' ? 1 : -1;
+                if (document.dir === 'rtl') {
+                    changeSlide(-direction);
+                } else {
+                    changeSlide(direction);
+                }
+            }
+        });
+
+        // Question handling
+        function checkAnswer(element, isCorrect, questionId) {
+            const options = element.parentElement.querySelectorAll('.option');
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+
+            const feedback = document.getElementById(`feedback-${questionId}`);
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                feedback.className = 'feedback correct show';
+                feedback.innerHTML = '<strong>✅ נכון מאוד!</strong><br>הבנתם את העיקרון בצורה מצוינת!';
+            } else {
+                element.classList.add('wrong');
+                feedback.className = 'feedback wrong show';
+                feedback.innerHTML = '<strong>❌ לא בדיוק...</strong><br>נסו לחשוב שוב על היתרון המרכזי של השיטה.';
+            }
+        }
+
+        // Code checking functions
+        function checkCode1() {
+            const code = document.getElementById('code1').value;
+            const feedback = document.getElementById('code1-feedback');
+            
+            const hasAES = code.includes('AES') || code.includes('Cipher');
+            const hasGCM = code.includes('GCM') || code.includes('MODE_GCM');
+            const hasReturn = code.includes('return') && code.includes('dict');
+            const hasNonce = code.includes('nonce');
+            const hasTag = code.includes('tag');
+            
+            if (hasAES && hasGCM && hasReturn && hasNonce && hasTag) {
+                feedback.className = 'feedback correct show';
+                feedback.innerHTML = '<strong>🎉 מצוין!</strong><br>הקוד שלכם מכיל את כל המרכיבים הנדרשים: AES-GCM, החזרת nonce, ciphertext ו-tag!';
+            } else {
+                feedback.className = 'feedback wrong show';
+                let missing = [];
+                if (!hasAES) missing.push('import של AES');
+                if (!hasGCM) missing.push('שימוש ב-MODE_GCM');
+                if (!hasNonce) missing.push('החזרת nonce');
+                if (!hasTag) missing.push('החזרת tag');
+                feedback.innerHTML = `<strong>💡 כמעט!</strong><br>חסר: ${missing.join(', ')}<br>הסתכלו שוב על הדוגמה בשקף הקודם.`;
+            }
+        }
+
+        function checkCode2() {
+            const code = document.getElementById('code2').value;
+            const feedback = document.getElementById('code2-feedback');
+            
+            const hasRequests = code.includes('requests') || code.includes('post');
+            const hasECDH = code.includes('PrivateKey') || code.includes('generate');
+            const hasJWT = code.includes('jwt') || code.includes('Authorization');
+            const hasAES = code.includes('AES') || code.includes('Cipher');
+            
+            const score = [hasRequests, hasECDH, hasJWT, hasAES].filter(Boolean).length;
+            
+            if (score === 4) {
+                feedback.className = 'feedback correct show';
+                feedback.innerHTML = '<strong>🏆 מושלם!</strong><br>יישמתם את כל 4 השכבות! זה בדיוק מה שנדרש במערכת מאובטחת מודרנית!';
+            } else if (score >= 2) {
+                feedback.className = 'feedback show';
+                feedback.style.background = '#fff3cd';
+                feedback.style.border = '2px solid #ffc107';
+                feedback.style.color = '#856404';
+                feedback.innerHTML = `<strong>⚡ יופי, אבל...</strong><br>יישמתם ${score}/4 שכבות. נסו להוסיף את השכבות החסרות.`;
+            } else {
+                feedback.className = 'feedback wrong show';
+                feedback.innerHTML = '<strong>🤔 עוד קצת עבודה...</strong><br>נסו לעקוב אחרי הדוגמה בשקף הקודם ולהוסיף את כל 4 השכבות.';
+            }
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

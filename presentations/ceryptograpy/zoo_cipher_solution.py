@@ -194,7 +194,7 @@ def main():
     print()
     
     # דוגמה 1: משפט פשוט
-    print("📝 דוגמה 1: משפט פשוט")
+    print("דוגמה 1: משפט פשוט")
     print("-" * 70)
     message1 = "שלום"
     print(f"הודעה מקורית: {message1}")
@@ -206,7 +206,7 @@ def main():
     print()
     
     # דוגמה 2: המשפט מהדוגמה
-    print("📝 דוגמה 2: משפט עם שאלה")
+    print("דוגמה 2: משפט עם שאלה")
     print("-" * 70)
     message2 = "האם אתה מזהה את אבא שלי?"
     print(f"הודעה מקורית: {message2}")
@@ -218,7 +218,7 @@ def main():
     print()
     
     # דוגמה 3: משפט ארוך
-    print("📝 דוגמה 3: משפט ארוך")
+    print("דוגמה 3: משפט ארוך")
     print("-" * 70)
     message3 = "אבא שלי תמיד אמר לי שאם ארצה להצליח, עליי למצוא את הדרך שלי ולא לנסות להיות זהה לכולם."
     print(f"הודעה מקורית: {message3}")
@@ -231,7 +231,7 @@ def main():
     print()
     
     # דוגמה 4: פענוח ההודעה החשאית
-    print("📝 דוגמה 4: פענוח הודעה חשאית")
+    print("דוגמה 4: פענוח הודעה חשאית")
     print("-" * 70)
     secret_message = "ןינת ברווז תנין גוק לעוש לביאה ינשוף גוק ןינת מדוזה ינשוף דוב גוק הירא מדוזה רחפן גוק האיבל ינשוף גוק לעוש אריה ם גוק הירא רחפן צב היפופוטם גוק האיבל היפופוטם צב לביאה ינשוף חתול , גוק רבכע לביאה ינשוף ינשוף גוק האיבל מדוזה צב וומבט אריה גוק הירא תנין גוק םטופופיה דוב רחפן ך גוק לעוש לביאה ינשוף גוק טבמוו לביאה אריה גוק האיבל נמר סוס וומבט תנין גוק האיבל היפופוטם ינשוף וומבט תנין גוק הרבז היפופוטם היפופוטם גוק האיבל כלב וומבט לביאה ם ."
     print(f"הודעה מוצפנת: {secret_message}")
@@ -240,7 +240,7 @@ def main():
     print()
     
     # בדיקות יחידה
-    print("🧪 בדיקות יחידה")
+    print("בדיקות יחידה")
     print("-" * 70)
     
     test_cases = [
@@ -263,7 +263,7 @@ def main():
     
     print()
     print("=" * 70)
-    print(f"סיכום: {'כל הבדיקות עברו בהצלחה! 🎉' if all_passed else 'יש בדיקות שנכשלו'}")
+    print(f"סיכום: {'כל הבדיקות עברו בהצלחה!' if all_passed else 'יש בדיקות שנכשלו'}")
     print("=" * 70)
 
 

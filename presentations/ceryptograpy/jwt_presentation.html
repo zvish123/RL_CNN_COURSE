@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חתימה דיגיטלית: מה זה JWT?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .presentation-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px;
+            min-height: 700px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .jwt-structure {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            gap: 20px;
+        }
+
+        .jwt-part {
+            flex: 1;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .jwt-part:hover {
+            transform: translateY(-10px);
+        }
+
+        .header-part {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+            color: white;
+        }
+
+        .payload-part {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .signature-part {
+            background: linear-gradient(135deg, #f7b731, #f9ca24);
+            color: white;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 25px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            line-height: 1.6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            direction: ltr;
+        }
+
+        .code-block .keyword {
+            color: #ff79c6;
+        }
+
+        .code-block .string {
+            color: #50fa7b;
+        }
+
+        .code-block .comment {
+            color: #6272a4;
+            font-style: italic;
+        }
+
+        .code-block .function {
+            color: #8be9fd;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            border-right: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .pros, .cons {
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        .pros {
+            background: linear-gradient(135deg, #d4fc79, #96e6a1);
+        }
+
+        .cons {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+        }
+
+        .quiz-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .quiz-question {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #764ba2;
+            margin-bottom: 20px;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .quiz-option {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+
+        .quiz-option:hover {
+            background: #667eea15;
+            border-color: #667eea;
+            transform: translateX(-5px);
+        }
+
+        .quiz-option.correct {
+            background: #d4fc79;
+            border-color: #96e6a1;
+        }
+
+        .quiz-option.incorrect {
+            background: #fa709a;
+            border-color: #ff6b6b;
+        }
+
+        .quiz-feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .quiz-feedback.show {
+            display: block;
+        }
+
+        .quiz-feedback.correct {
+            background: #d4fc79;
+            color: #2d6a4f;
+        }
+
+        .quiz-feedback.incorrect {
+            background: #fa709a;
+            color: #7f1d1d;
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .demo-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s ease;
+        }
+
+        .demo-button:hover {
+            transform: scale(1.05);
+        }
+
+        .demo-output {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 60px;
+            background: #f8f9fa;
+            border-top: 2px solid #ddd;
+        }
+
+        .nav-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-indicator {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .token-visual {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.8;
+            direction: ltr;
+        }
+
+        .token-part-color {
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .header-color {
+            background: #ff6b6b33;
+        }
+
+        .payload-color {
+            background: #4ecdc433;
+        }
+
+        .signature-color {
+            background: #f7b73133;
+        }
+
+        ul {
+            margin-right: 30px;
+        }
+
+        .exercise-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .exercise-title {
+            color: #856404;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .websocket-diagram {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .diagram-flow {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .diagram-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 150px;
+            font-weight: bold;
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+                min-height: 600px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.6em;
+            }
+
+            .jwt-structure {
+                flex-direction: column;
+            }
+
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+
+            .navigation {
+                padding: 20px;
+            }
+
+            .diagram-flow {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🔐 חתימה דיגיטלית</h1>
+            <h1 style="font-size: 2.5em; margin-top: 20px;">מה זה JWT?</h1>
+            <h2 style="text-align: center; border: none; color: #764ba2; margin-top: 40px;">
+                (JSON Web Token)
+            </h2>
+            <div style="text-align: center; margin-top: 60px;">
+                <p style="font-size: 1.5em; color: #555;">
+                    מדריך אינטראקטיבי להבנת אבטחת מידע מודרנית
+                </p>
+            </div>
+            <div style="margin-top: 80px; text-align: center;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #667eea15, #764ba215); padding: 30px; border-radius: 15px;">
+                    <p style="font-size: 1.3em;">
+                        💡 במצגת זו נלמד איך מעבירים מידע מאובטח באינטרנט
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is JWT -->
+        <div class="slide">
+            <h2>מה זה JWT?</h2>
+            <p>
+                <strong>JWT (JSON Web Token)</strong> הוא תקן מבוסס JSON להעברת מידע בצורה מאובטחת 
+                בין צדדים שונים ברשת (כגון שרת ולקוח).
+            </p>
+            
+            <div class="highlight-box">
+                <h3>🎯 המטרה העיקרית:</h3>
+                <p>
+                    להעביר מידע בצורה מאובטחת שניתן לאמת את תקינותו ומקורו, 
+                    מבלי שנצטרך לשמור מידע על השרת (Stateless).
+                </p>
+            </div>
+
+            <h3>📋 תרחישי שימוש נפוצים:</h3>
+            <ul>
+                <li><strong>אימות משתמשים:</strong> כשמשתמש מתחבר למערכת, השרת יוצר JWT ושולח אותו ללקוח</li>
+                <li><strong>העברת הרשאות:</strong> הטוקן מכיל מידע על הרשאות המשתמש (admin, user וכו')</li>
+                <li><strong>תקשורת בין שירותים:</strong> העברת מידע מאובטח בין microservices שונים</li>
+            </ul>
+
+            <div class="websocket-diagram">
+                <h3 style="color: #667eea;">תהליך האימות</h3>
+                <div class="diagram-flow">
+                    <div class="diagram-box">לקוח<br/>👤</div>
+                    <div class="arrow">←</div>
+                    <div class="diagram-box">JWT<br/>🎫</div>
+                    <div class="arrow">←</div>
+                    <div class="diagram-box">שרת<br/>🖥️</div>
+                </div>
+                <p style="margin-top: 20px;">הלקוח שולח את ה-JWT עם כל בקשה, והשרת מאמת אותו</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: JWT Structure -->
+        <div class="slide">
+            <h2>מבנה JWT - שלושה חלקים</h2>
+            <p>JWT מורכב משלושה חלקים המופרדים בנקודות:</p>
+
+            <div class="jwt-structure">
+                <div class="jwt-part header-part">
+                    <h3 style="color: white;">Header</h3>
+                    <h4 style="color: white; margin: 15px 0;">כותרת</h4>
+                    <p style="color: white;">מידע על האלגוריתם</p>
+                </div>
+                <div class="jwt-part payload-part">
+                    <h3 style="color: white;">Payload</h3>
+                    <h4 style="color: white; margin: 15px 0;">מטען</h4>
+                    <p style="color: white;">הנתונים עצמם</p>
+                </div>
+                <div class="jwt-part signature-part">
+                    <h3 style="color: white;">Signature</h3>
+                    <h4 style="color: white; margin: 15px 0;">חתימה</h4>
+                    <p style="color: white;">אימות התקינות</p>
+                </div>
+            </div>
+
+            <h3>דוגמה לטוקן JWT אמיתי:</h3>
+            <div class="token-visual">
+                <span class="token-part-color header-color">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="token-part-color payload-color">eyJ1c2VyX2lkIjoiMTIzNDUiLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3MTIzNDU2Nzh9</span>.<span class="token-part-color signature-color">K8hJt_wu5H7jD3PI3EsT3NOF6Z-vYTnv56YXTrhwiJM</span>
+            </div>
+
+            <div class="highlight-box">
+                <p>
+                    <strong>💡 שימו לב:</strong> כל חלק מקודד ב-Base64URL, מה שהופך אותו לטקסט 
+                    שניתן להעביר בקלות ב-URL או בכותרות HTTP.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Header Details -->
+        <div class="slide">
+            <h2>חלק 1: Header (כותרת)</h2>
+            
+            <p>ה-Header מכיל מידע טכני על הטוקן:</p>
+
+            <pre class="code-block">
+<span class="comment">// מבנה ה-Header</span>
+{
+  <span class="string">"alg"</span>: <span class="string">"HS256"</span>,  <span class="comment">// אלגוריתם החתימה</span>
+  <span class="string">"typ"</span>: <span class="string">"JWT"</span>     <span class="comment">// סוג הטוקן</span>
+}
+            </pre>
+
+            <h3>🔍 הסבר השדות:</h3>
+            <ul>
+                <li><strong>alg (Algorithm):</strong> האלגוריתם המשמש לחתימה. HS256 = HMAC with SHA-256</li>
+                <li><strong>typ (Type):</strong> סוג הטוקן, תמיד יהיה "JWT"</li>
+            </ul>
+
+            <div class="highlight-box">
+                <h3>אלגוריתמים נפוצים:</h3>
+                <ul>
+                    <li><strong>HS256:</strong> חתימה סימטרית (מפתח סודי משותף)</li>
+                    <li><strong>RS256:</strong> חתימה אסימטרית (מפתח פרטי וציבורי)</li>
+                    <li><strong>ES256:</strong> חתימה אליפטית</li>
+                </ul>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">❓ שאלת הבנה: מה התפקיד של ה-Header?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. מכיל את המידע על המשתמש
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ב. מכיל מידע על האלגוריתם המשמש לחתימה
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ג. מכיל את המפתח הסודי
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. מכיל את החתימה הדיגיטלית
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Payload Details -->
+        <div class="slide">
+            <h2>חלק 2: Payload (מטען)</h2>
+            
+            <p>ה-Payload מכיל את הנתונים בפועל - המידע שאנחנו רוצים להעביר:</p>
+
+            <pre class="code-block">
+<span class="comment">// דוגמה ל-Payload</span>
+{
+  <span class="string">"user_id"</span>: <span class="string">"12345"</span>,           <span class="comment">// מזהה משתמש</span>
+  <span class="string">"role"</span>: <span class="string">"admin"</span>,              <span class="comment">// תפקיד המשתמש</span>
+  <span class="string">"name"</span>: <span class="string">"יוסי כהן"</span>,            <span class="comment">// שם המשתמש</span>
+  <span class="string">"exp"</span>: 1712345678              <span class="comment">// תוקף (timestamp)</span>
+}
+            </pre>
+
+            <h3>📦 שדות נפוצים ב-Payload:</h3>
+            <ul>
+                <li><strong>sub (Subject):</strong> נושא הטוקן, בדרך כלל מזהה המשתמש</li>
+                <li><strong>exp (Expiration):</strong> זמן תפוגה של הטוקן</li>
+                <li><strong>iat (Issued At):</strong> זמן יצירת הטוקן</li>
+                <li><strong>iss (Issuer):</strong> מי יצר את הטוקן</li>
+                <li><strong>שדות מותאמים אישית:</strong> user_id, role, permissions וכו'</li>
+            </ul>
+
+            <div class="highlight-box">
+                <h3>⚠️ אזהרת אבטחה חשובה!</h3>
+                <p>
+                    ה-Payload <strong>אינו מוצפן</strong> - הוא רק מקודד ב-Base64. כלומר, כל אחד יכול 
+                    לפענח אותו וראות את המידע שבתוכו. לכן:
+                </p>
+                <ul>
+                    <li>❌ אין לשים מידע רגיש כמו סיסמאות</li>
+                    <li>❌ אין לשים מספרי כרטיס אשראי</li>
+                    <li>✅ רק מידע שאפשר לחשוף</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 6: Signature Details -->
+        <div class="slide">
+            <h2>חלק 3: Signature (חתימה דיגיטלית)</h2>
+            
+            <p>החתימה היא הקסם שמאבטח את ה-JWT ומוודא שלא שינו אותו!</p>
+
+            <h3>🔐 איך נוצרת החתימה?</h3>
+            <pre class="code-block">
+<span class="comment">// נוסחת החתימה</span>
+HMACSHA256(
+  base64UrlEncode(header) + <span class="string">"."</span> + base64UrlEncode(payload),
+  secret_key
+)
+            </pre>
+
+            <div class="highlight-box">
+                <h3>תהליך יצירת החתימה:</h3>
+                <ol>
+                    <li>לוקחים את ה-Header המקודד</li>
+                    <li>מוסיפים נקודה</li>
+                    <li>מוסיפים את ה-Payload המקודד</li>
+                    <li>מחתימים את הכל עם מפתח סודי</li>
+                </ol>
+            </div>
+
+            <h3>🛡️ איך זה מגן עלינו?</h3>
+            <ul>
+                <li><strong>אימות מקור:</strong> רק מי שיש לו את המפתח הסודי יכול ליצור חתימה תקינה</li>
+                <li><strong>שלמות נתונים:</strong> שינוי קטן ב-Payload יגרום לחתימה שגויה</li>
+                <li><strong>הגנה מזיוף:</strong> תוקף לא יכול ליצור טוקן מזויף בלי המפתח</li>
+            </ul>
+
+            <div class="interactive-demo">
+                <h3>🧪 ניסוי: מה קורה כשמשנים את ה-Payload?</h3>
+                <p>נסו לשנות את הטקסט למטה ולראות איך החתימה משתנה:</p>
+                <input type="text" class="demo-input" id="payloadInput" value='{"user_id": "12345"}' placeholder="הכניסו Payload">
+                <button class="demo-button" onclick="generateSignature()">חשב חתימה</button>
+                <div class="demo-output" id="signatureOutput">לחצו על "חשב חתימה" כדי לראות את התוצאה...</div>
+            </div>
+        </div>
+
+        <!-- Slide 7: How JWT Works -->
+        <div class="slide">
+            <h2>איך JWT עובד בפועל?</h2>
+
+            <div class="websocket-diagram">
+                <h3 style="color: #667eea;">תהליך מלא של אימות עם JWT</h3>
+                <div style="text-align: right; margin: 30px 0;">
+                    <div style="margin: 20px 0; padding: 20px; background: #fff3cd; border-radius: 10px;">
+                        <strong>שלב 1:</strong> המשתמש מתחבר עם שם משתמש וסיסמה
+                        <div class="diagram-flow" style="margin: 15px 0;">
+                            <div class="diagram-box">👤 לקוח</div>
+                            <div class="arrow">←</div>
+                            <div style="padding: 20px;">username + password</div>
+                            <div class="arrow">←</div>
+                            <div class="diagram-box">🖥️ שרת</div>
+                        </div>
+                    </div>
+
+                    <div style="margin: 20px 0; padding: 20px; background: #d4fc79; border-radius: 10px;">
+                        <strong>שלב 2:</strong> השרת בודק את הפרטים ויוצר JWT
+                        <div class="diagram-flow" style="margin: 15px 0;">
+                            <div class="diagram-box">🖥️ שרת</div>
+                            <div class="arrow">←</div>
+                            <div style="padding: 20px;">יוצר JWT</div>
+                            <div class="arrow">←</div>
+                            <div class="diagram-box">👤 לקוח</div>
+                        </div>
+                    </div>
+
+                    <div style="margin: 20px 0; padding: 20px; background: #fa709a33; border-radius: 10px;">
+                        <strong>שלב 3:</strong> הלקוח שומר את ה-JWT ושולח אותו בכל בקשה
+                        <div class="diagram-flow" style="margin: 15px 0;">
+                            <div class="diagram-box">👤 לקוח</div>
+                            <div class="arrow">←</div>
+                            <div style="padding: 20px;">JWT בכותרת</div>
+                            <div class="arrow">←</div>
+                            <div class="diagram-box">🖥️ שרת</div>
+                        </div>
+                    </div>
+
+                    <div style="margin: 20px 0; padding: 20px; background: #4ecdc433; border-radius: 10px;">
+                        <strong>שלב 4:</strong> השרת מאמת את ה-JWT ומחזיר תשובה
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>💡 למה זה טוב?</h3>
+                <ul>
+                    <li><strong>Stateless:</strong> השרת לא צריך לזכור כלום - הכל ב-JWT</li>
+                    <li><strong>מהיר:</strong> אין צורך בבדיקות במסד נתונים</li>
+                    <li><strong>גמיש:</strong> עובד בין שירותים שונים</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 8: Sending JWT -->
+        <div class="slide">
+            <h2>איך מעבירים JWT?</h2>
+
+            <h3>🌐 שיטה 1: בכותרת HTTP (הנפוצה ביותר)</h3>
+            <pre class="code-block">
+<span class="comment">// כותרת Authorization</span>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            </pre>
+
+            <p>המילה "Bearer" פירושה "נושא" - מי שנושא את הטוקן הזה מורשה.</p>
+
+            <h3>📱 שיטה 2: ב-WebSocket</h3>
+            <p>בתקשורת WebSocket, שולחים את ה-JWT כהודעה ראשונה אחרי פתיחת החיבור.</p>
+
+            <pre class="code-block">
+<span class="comment"># קוד Python - לקוח WebSocket</span>
+<span class="keyword">import</span> websockets
+<span class="keyword">import</span> jwt
+
+<span class="keyword">async def</span> <span class="function">connect_with_jwt</span>():
+    uri = <span class="string">"ws://localhost:8765"</span>
+    
+    <span class="comment"># יצירת JWT</span>
+    token = jwt.encode(
+        {<span class="string">"user_id"</span>: <span class="string">"12345"</span>, <span class="string">"role"</span>: <span class="string">"admin"</span>},
+        <span class="string">"mysecret"</span>,
+        algorithm=<span class="string">"HS256"</span>
+    )
+    
+    <span class="comment"># חיבור ושליחת הטוקן</span>
+    <span class="keyword">async with</span> websockets.connect(uri) <span class="keyword">as</span> websocket:
+        <span class="keyword">await</span> websocket.send(token)
+        response = <span class="keyword">await</span> websocket.recv()
+        <span class="function">print</span>(response)
+            </pre>
+
+            <h3>🍪 שיטה 3: ב-Cookie (פחות מומלץ)</h3>
+            <p>אפשר גם לשמור את ה-JWT ב-Cookie, אבל זה פחות בטוחה בגלל התקפות XSS.</p>
+
+            <div class="exercise-box">
+                <div class="exercise-title">✏️ תרגיל מחשבה</div>
+                <p><strong>שאלה:</strong> למה שיטת ה-Bearer Token בכותרת נחשבת בטוחה יותר מ-Cookie?</p>
+                <p><strong>רמז:</strong> חשבו על JavaScript וגישה לנתונים...</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Python Server Example -->
+        <div class="slide">
+            <h2>דוגמת קוד: שרת Python</h2>
+
+            <p>הנה דוגמה מלאה לשרת WebSocket שמאמת JWT:</p>
+
+            <pre class="code-block">
+<span class="keyword">import</span> asyncio
+<span class="keyword">import</span> jwt
+<span class="keyword">import</span> websockets
+
+<span class="comment"># המפתח הסודי שלנו</span>
+SECRET_KEY = <span class="string">"mysecret"</span>
+
+<span class="keyword">async def</span> <span class="function">handle_connection</span>(websocket):
+    <span class="keyword">try</span>:
+        <span class="comment"># שלב 1: קבלת JWT מהלקוח</span>
+        token = <span class="keyword">await</span> websocket.recv()
+        <span class="function">print</span>(<span class="string">f"קיבלתי טוקן: {token[:20]}..."</span>)
+        
+        <span class="comment"># שלב 2: אימות ה-JWT</span>
+        <span class="keyword">try</span>:
+            payload = jwt.decode(
+                token, 
+                SECRET_KEY, 
+                algorithms=[<span class="string">"HS256"</span>]
+            )
+            <span class="function">print</span>(<span class="string">f"JWT תקין! מידע: {payload}"</span>)
+            
+            <span class="comment"># שלב 3: שליחת אישור ללקוח</span>
+            <span class="keyword">await</span> websocket.send(<span class="string">"✅ חיבור מאומת בהצלחה!"</span>)
+            
+        <span class="keyword">except</span> jwt.ExpiredSignatureError:
+            <span class="keyword">await</span> websocket.send(<span class="string">"❌ שגיאה: פג תוקף JWT"</span>)
+            
+        <span class="keyword">except</span> jwt.InvalidTokenError:
+            <span class="keyword">await</span> websocket.send(<span class="string">"❌ שגיאה: JWT לא תקין"</span>)
+            
+    <span class="keyword">except</span> websockets.exceptions.ConnectionClosed:
+        <span class="function">print</span>(<span class="string">"החיבור נסגר"</span>)
+
+<span class="comment"># הפעלת השרת</span>
+<span class="keyword">async def</span> <span class="function">main</span>():
+    server = <span class="keyword">await</span> websockets.serve(
+        handle_connection, 
+        <span class="string">"localhost"</span>, 
+        8765
+    )
+    <span class="function">print</span>(<span class="string">"🚀 שרת פועל על localhost:8765"</span>)
+    <span class="keyword">await</span> server.wait_closed()
+
+asyncio.run(main())
+            </pre>
+
+            <div class="highlight-box">
+                <h3>🔍 הסבר הקוד:</h3>
+                <ol>
+                    <li>השרת מחכה לחיבור מלקוח</li>
+                    <li>מקבל את ה-JWT בהודעה הראשונה</li>
+                    <li>מנסה לפענח את הטוקן עם המפתח הסודי</li>
+                    <li>אם הצליח - מאשר את החיבור</li>
+                    <li>אם נכשל - מחזיר הודעת שגיאה</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 10: Python Client Example -->
+        <div class="slide">
+            <h2>דוגמת קוד: לקוח Python</h2>
+
+            <p>כעת נראה את הצד של הלקוח - איך יוצרים ושולחים JWT:</p>
+
+            <pre class="code-block">
+<span class="keyword">import</span> asyncio
+<span class="keyword">import</span> jwt
+<span class="keyword">import</span> websockets
+
+<span class="comment"># אותו מפתח סודי כמו בשרת</span>
+SECRET_KEY = <span class="string">"mysecret"</span>
+
+<span class="keyword">async def</span> <span class="function">communicate</span>():
+    uri = <span class="string">"ws://localhost:8765"</span>
+    
+    <span class="comment"># שלב 1: יצירת JWT</span>
+    token = jwt.encode(
+        {
+            <span class="string">"user_id"</span>: <span class="string">"12345"</span>,
+            <span class="string">"role"</span>: <span class="string">"admin"</span>,
+            <span class="string">"name"</span>: <span class="string">"יוסי כהן"</span>
+        },
+        SECRET_KEY,
+        algorithm=<span class="string">"HS256"</span>
+    )
+    
+    <span class="function">print</span>(<span class="string">f"🎫 יצרתי JWT: {token[:30]}..."</span>)
+    
+    <span class="comment"># שלב 2: חיבור לשרת</span>
+    <span class="keyword">async with</span> websockets.connect(uri) <span class="keyword">as</span> websocket:
+        
+        <span class="comment"># שלב 3: שליחת JWT לשרת</span>
+        <span class="keyword">await</span> websocket.send(token)
+        <span class="function">print</span>(<span class="string">"📤 שלחתי JWT לשרת"</span>)
+        
+        <span class="comment"># שלב 4: קבלת תגובה מהשרת</span>
+        response = <span class="keyword">await</span> websocket.recv()
+        <span class="function">print</span>(<span class="string">f"📥 תגובה מהשרת: {response}"</span>)
+
+<span class="comment"># הפעלת הלקוח</span>
+asyncio.run(communicate())
+            </pre>
+
+            <div class="exercise-box">
+                <div class="exercise-title">🎯 תרגיל יישומי</div>
+                <p><strong>משימה:</strong> נסו להריץ את הקוד (שרת ולקוח) ולראות איך זה עובד!</p>
+                <ol>
+                    <li>התקינו את הספריות: <code>pip install pyjwt websockets</code></li>
+                    <li>הריצו קודם את השרת</li>
+                    <li>ואז הריצו את הלקוח בטרמינל אחר</li>
+                    <li>נסו לשנות את ה-SECRET_KEY בלקוח - מה יקרה?</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 11: Advantages -->
+        <div class="slide">
+            <h2>יתרונות וחסרונות של JWT</h2>
+
+            <div class="pros-cons">
+                <div class="pros">
+                    <h3 style="color: #2d6a4f;">✅ יתרונות</h3>
+                    <ul>
+                        <li><strong>Stateless:</strong> השרת לא צריך לשמור מצב, הכל ב-JWT</li>
+                        <li><strong>מהירות:</strong> אין צורך בשאילתות למסד נתונים</li>
+                        <li><strong>גמישות:</strong> עובד בין שירותים שונים (microservices)</li>
+                        <li><strong>קל להעברה:</strong> ניתן לשלוח ב-URL, Header, Body</li>
+                        <li><strong>אבטחה:</strong> החתימה מוודאת שהמידע לא שונה</li>
+                        <li><strong>נייד:</strong> עובד בכל פלטפורמה (web, mobile, IoT)</li>
+                    </ul>
+                </div>
+
+                <div class="cons">
+                    <h3 style="color: #7f1d1d;">❌ חסרונות</h3>
+                    <ul>
+                        <li><strong>גודל:</strong> JWT גדול יותר מ-Session ID פשוט</li>
+                        <li><strong>ריגול מידע:</strong> הPayload לא מוצפן - כל אחד יכול לקרוא אותו</li>
+                        <li><strong>סיכון גניבה:</strong> אם הטוקן נגנב, התוקף יכול להשתמש בו</li>
+                        <li><strong>קשה לבטל:</strong> לא ניתן לבטל JWT לפני שפג תוקפו</li>
+                        <li><strong>ניהול תוקף:</strong> צריך להחליף טוקנים שפג תוקפם</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>🛡️ איך להתמודד עם החסרונות?</h3>
+                <ul>
+                    <li><strong>תוקף קצר:</strong> הגדירו exp קצר (15-30 דקות)</li>
+                    <li><strong>Refresh Tokens:</strong> השתמשו בטוקני רענון ארוכי טווח</li>
+                    <li><strong>Blacklist:</strong> שמרו רשימה של טוקנים מבוטלים</li>
+                    <li><strong>HTTPS תמיד:</strong> העבירו JWT רק על חיבור מוצפן</li>
+                    <li><strong>אל תשימו סודות:</strong> רק מידע שאפשר לחשוף</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 12: Security Quiz -->
+        <div class="slide">
+            <h2>🧠 בחן את עצמך - אבטחת מידע</h2>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 1: איזה מידע אסור לשים ב-Payload של JWT?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. מזהה משתמש (user_id)
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ב. תפקיד המשתמש (role)
+                    </div>
+                     <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ג. סיסמה של המשתמש
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. זמן תפוגה (exp)
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 2: מה קורה אם משנים את ה-Payload אחרי שה-JWT נוצר?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. כלום, הכל יעבוד בסדר
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ב. החתימה לא תתאים והשרת ידחה את הטוקן
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ג. השרת יתקן את הטוקן אוטומטית
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. הטוקן יתפוגג מיד
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 3: איפה מומלץ לשמור JWT בצד הלקוח?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. localStorage (תמיד)
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ב. בקוד ה-JavaScript גלוי
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ג. ב-Memory או httpOnly Cookie (בטוח יותר)
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. ב-URL של הדף
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Practical Exercise -->
+        <div class="slide">
+            <h2>💻 תרגיל מעשי מתקדם</h2>
+
+            <div class="exercise-box">
+                <div class="exercise-title">🎯 פרויקט: בניית מערכת אימות פשוטה</div>
+                
+                <h3>המטרה:</h3>
+                <p>בנו מערכת אימות בסיסית עם JWT שכוללת:</p>
+                
+                <ol>
+                    <li><strong>שרת התחברות:</strong> מקבל username + password, מחזיר JWT</li>
+                    <li><strong>שרת מוגן:</strong> דורש JWT תקין כדי להחזיר מידע</li>
+                    <li><strong>לקוח:</strong> מתחבר, שומר JWT, ומשתמש בו לבקשות</li>
+                </ol>
+
+                <h3>שלב 1: שרת התחברות</h3>
+                <pre class="code-block">
+<span class="keyword">from</span> flask <span class="keyword">import</span> Flask, request, jsonify
+<span class="keyword">import</span> jwt
+<span class="keyword">import</span> datetime
+
+app = Flask(__name__)
+SECRET_KEY = <span class="string">"your-secret-key"</span>
+
+<span class="comment"># מסד נתונים פשוט של משתמשים</span>
+users = {
+    <span class="string">"yossi"</span>: <span class="string">"123456"</span>,
+    <span class="string">"dana"</span>: <span class="string">"password"</span>
+}
+
+<span class="decorator">@app.route</span>(<span class="string">'/login'</span>, methods=[<span class="string">'POST'</span>])
+<span class="keyword">def</span> <span class="function">login</span>():
+    username = request.json.get(<span class="string">'username'</span>)
+    password = request.json.get(<span class="string">'password'</span>)
+    
+    <span class="comment"># בדיקת הפרטים</span>
+    <span class="keyword">if</span> username <span class="keyword">in</span> users <span class="keyword">and</span> users[username] == password:
+        <span class="comment"># יצירת JWT</span>
+        token = jwt.encode({
+            <span class="string">'user'</span>: username,
+            <span class="string">'exp'</span>: datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }, SECRET_KEY, algorithm=<span class="string">"HS256"</span>)
+        
+        <span class="keyword">return</span> jsonify({<span class="string">'token'</span>: token})
+    
+    <span class="keyword">return</span> jsonify({<span class="string">'message'</span>: <span class="string">'שגיאה בהתחברות'</span>}), 401
+                </pre>
+            </div>
+
+            <div class="highlight-box">
+                <h3>✏️ המשך התרגיל:</h3>
+                <ol>
+                    <li>הוסיפו endpoint מוגן שבודק JWT</li>
+                    <li>צרו לקוח שמתחבר ומבקש מידע מוגן</li>
+                    <li>טפלו בטוקנים שפג תוקפם</li>
+                    <li>הוסיפו Refresh Token</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 14: Real World Use Cases -->
+        <div class="slide">
+            <h2>🌍 שימושים בעולם האמיתי</h2>
+
+            <h3>1️⃣ אתר אינטרנט עם אזור משתמש</h3>
+            <div class="highlight-box">
+                <p><strong>תרחיש:</strong> משתמש מתחבר לאתר ורוצה לגשת לדף פרופיל אישי</p>
+                <ol>
+                    <li>משתמש שולח username + password</li>
+                    <li>שרת בודק את הפרטים במסד נתונים</li>
+                    <li>שרת יוצר JWT עם user_id, role, exp</li>
+                    <li>דפדפן שומר את ה-JWT</li>
+                    <li>בכל בקשה, הדפדפן שולח: <code>Authorization: Bearer {JWT}</code></li>
+                    <li>שרת מאמת ומחזיר את המידע המבוקש</li>
+                </ol>
+            </div>
+
+            <h3>2️⃣ אפליקציית מובייל</h3>
+            <div class="highlight-box">
+                <p><strong>תרחיש:</strong> אפליקציה שמתחברת ל-API</p>
+                <ul>
+                    <li>המשתמש מתחבר פעם אחת</li>
+                    <li>האפליקציה שומרת את ה-JWT בזיכרון מאובטח</li>
+                    <li>כל בקשה ל-API כוללת את ה-JWT</li>
+                    <li>אין צורך להתחבר מחדש כל פעם</li>
+                </ul>
+            </div>
+
+            <h3>3️⃣ Microservices</h3>
+            <div class="highlight-box">
+                <p><strong>תרחיש:</strong> מערכת עם שירותים רבים</p>
+                <ul>
+                    <li>שירות אימות יוצר JWT</li>
+                    <li>שירותים אחרים (הזמנות, תשלומים, משלוחים) מאמתים את ה-JWT</li>
+                    <li>כל שירות יכול לקרוא את ה-JWT ולדעת מי המשתמש</li>
+                    <li>אין צורך לתקשר חזרה לשירות האימות</li>
+                </ul>
+            </div>
+
+            <h3>4️⃣ Single Sign-On (SSO)</h3>
+            <div class="highlight-box">
+                <p><strong>תרחיש:</strong> התחברות אחת למספר מערכות</p>
+                <ul>
+                    <li>משתמש מתחבר לשירות מרכזי (כמו Google)</li>
+                    <li>מקבל JWT</li>
+                    <li>יכול להשתמש באותו JWT במערכות שונות</li>
+                    <li>לדוגמה: Gmail, Drive, Calendar</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 15: Common Mistakes -->
+        <div class="slide">
+            <h2>⚠️ טעויות נפוצות להימנע מהן</h2>
+
+            <div class="quiz-container" style="background: #ffebee;">
+                <h3 style="color: #c62828;">❌ טעות 1: שמירת מידע רגיש ב-Payload</h3>
+                <pre class="code-block">
+<span class="comment">// ❌ רע - אל תעשו כך!</span>
+{
+  <span class="string">"username"</span>: <span class="string">"yossi"</span>,
+  <span class="string">"password"</span>: <span class="string">"123456"</span>,  <span class="comment">// 🚫 סיסמה במפורש!</span>
+  <span class="string">"credit_card"</span>: <span class="string">"1234-5678-9012-3456"</span>  <span class="comment">// 🚫</span>
+}
+
+<span class="comment">// ✅ טוב - כך צריך!</span>
+{
+  <span class="string">"user_id"</span>: <span class="string">"12345"</span>,
+  <span class="string">"role"</span>: <span class="string">"user"</span>,
+  <span class="string">"exp"</span>: 1712345678
+}
+                </pre>
+            </div>
+
+            <div class="quiz-container" style="background: #fff3e0;">
+                <h3 style="color: #e65100;">⚠️ טעות 2: תוקף ארוך מדי</h3>
+                <pre class="code-block">
+<span class="comment">// ❌ רע - תוקף של שנה!</span>
+exp: datetime.now() + timedelta(days=365)
+
+<span class="comment">// ✅ טוב - תוקף קצר</span>
+exp: datetime.now() + timedelta(minutes=15)
+                </pre>
+                <p><strong>למה?</strong> אם הטוקן ייגנב, לתוקף תהיה גישה לזמן רב!</p>
+            </div>
+
+            <div class="quiz-container" style="background: #e8f5e9;">
+                <h3 style="color: #2e7d32;">✅ טעות 3: העברה ללא הצפנה</h3>
+                <p><strong>חובה:</strong> תמיד להעביר JWT על HTTPS, אף פעם לא HTTP רגיל!</p>
+                <ul>
+                    <li>✅ <code>https://api.example.com/data</code></li>
+                    <li>❌ <code>http://api.example.com/data</code></li>
+                </ul>
+            </div>
+
+            <div class="quiz-container" style="background: #fce4ec;">
+                <h3 style="color: #880e4f;">❌ טעות 4: אי-אימות החתימה</h3>
+                <pre class="code-block">
+<span class="comment">// ❌ רע - סומכים על הטוקן בלי לבדוק!</span>
+payload = jwt.decode(token, verify=<span class="keyword">False</span>)
+
+<span class="comment">// ✅ טוב - תמיד מאמתים!</span>
+payload = jwt.decode(token, SECRET_KEY, algorithms=[<span class="string">"HS256"</span>])
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 16: Advanced Concepts -->
+        <div class="slide">
+            <h2>🚀 מושגים מתקדמים</h2>
+
+            <h3>1. Refresh Tokens</h3>
+            <div class="highlight-box">
+                <p><strong>הבעיה:</strong> JWT עם תוקף קצר מאלץ התחברות מחדש כל הזמן</p>
+                <p><strong>הפתרון:</strong> שני טוקנים!</p>
+                <ul>
+                    <li><strong>Access Token:</strong> תוקף קצר (15 דקות), משמש לבקשות רגילות</li>
+                    <li><strong>Refresh Token:</strong> תוקף ארוך (7 ימים), משמש לקבלת Access Token חדש</li>
+                </ul>
+            </div>
+
+            <pre class="code-block">
+<span class="comment"># שרת מחזיר שני טוקנים</span>
+{
+  <span class="string">"access_token"</span>: <span class="string">"eyJhbG..."</span>,  <span class="comment"># תוקף: 15 דקות</span>
+  <span class="string">"refresh_token"</span>: <span class="string">"eyJhbG..."</span>  <span class="comment"># תוקף: 7 ימים</span>
+}
+
+<span class="comment"># כשה-Access Token פג תוקף:</span>
+<span class="comment"># לקוח שולח את ה-Refresh Token</span>
+<span class="comment"># ומקבל Access Token חדש</span>
+            </pre>
+
+            <h3>2. Token Blacklist</h3>
+            <div class="highlight-box">
+                <p><strong>הבעיה:</strong> לא ניתן "לבטל" JWT לפני שפג תוקפו</p>
+                <p><strong>הפתרון:</strong> שמירת רשימת טוקנים מבוטלים (Blacklist)</p>
+                <ul>
+                    <li>כשמשתמש מתנתק, מוסיפים את ה-JWT ל-Blacklist</li>
+                    <li>השרת בודק בכל בקשה אם הטוקן ברשימה</li>
+                    <li>אם כן - דוחה את הבקשה</li>
+                </ul>
+            </div>
+
+            <h3>3. JWT vs Session</h3>
+            <div class="pros-cons">
+                <div class="pros">
+                    <h4 style="color: #2d6a4f;">JWT</h4>
+                    <ul>
+                        <li>Stateless</li>
+                        <li>מתאים ל-microservices</li>
+                        <li>מהיר (אין DB queries)</li>
+                    </ul>
+                </div>
+                <div class="cons">
+                    <h4 style="color: #7f1d1d;">Session</h4>
+                    <ul>
+                        <li>Stateful (שומרים בשרת)</li>
+                        <li>קל לבטל</li>
+                        <li>גודל קטן יותר</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Final Quiz -->
+        <div class="slide">
+            <h2>🎓 מבחן סופי</h2>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 1: מה הסדר הנכון של חלקי ה-JWT?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. Payload.Header.Signature
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ב. Signature.Header.Payload
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ג. Header.Signature.Payload
+                    </div>
+                     <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ד. Header.Payload.Signature
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 2: מה קורה כש-JWT פג תוקף?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. הוא ממשיך לעבוד בדיוק כמו קודם
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ב. השרת דוחה אותו עם שגיאת ExpiredSignatureError
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ג. הוא מתחדש אוטומטית
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. השרת מתקן את תאריך התפוגה
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 3: איזו ספרייה ב-Python משמשת ליצירת JWT?</div>
+                <div class="quiz-options">
+
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. requests
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ב. json
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ג. flask
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ד. PyJWT (jwt)
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">שאלה 4: איך שומרים את המפתח הסודי?</div>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        א. בקוד שמועלה ל-GitHub
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ב. בקובץ JavaScript בצד הלקוח
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, true)">
+                        ג. במשתני סביבה (Environment Variables)
+                    </div>
+                    <div class="quiz-option" onclick="checkAnswer(this, false)">
+                        ד. ב-LocalStorage של הדפדפן
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Summary -->
+        <div class="slide">
+            <h2>📚 סיכום</h2>
+
+            <div class="highlight-box">
+                <h3>🔑 נקודות מפתח:</h3>
+                <ol style="font-size: 1.2em; line-height: 2;">
+                    <li><strong>JWT</strong> = תקן להעברת מידע מאובטח בצורת JSON</li>
+                    <li>מורכב מ-3 חלקים: <strong>Header.Payload.Signature</strong></li>
+                    <li>ה-<strong>Signature</strong> מבטיח שהמידע לא שונה</li>
+                    <li>מועבר בדרך כלל בכותרת <strong>Authorization: Bearer</strong></li>
+                    <li><strong>Payload לא מוצפן</strong> - אל תשימו סודות!</li>
+                    <li>יש להגדיר <strong>תוקף קצר</strong> למניעת נזקים מגניבה</li>
+                    <li>תמיד להעביר על <strong>HTTPS</strong></li>
+                </ol>
+            </div>
+
+            <h3>🛠️ כלים נוספים ללמידה:</h3>
+            <ul style="font-size: 1.1em;">
+                <li><strong>jwt.io</strong> - אתר לפענוח JWT ומידע נוסף</li>
+                <li><strong>PyJWT Documentation</strong> - תיעוד רשמי של הספרייה</li>
+                <li><strong>OWASP JWT Cheat Sheet</strong> - מדריך אבטחה</li>
+            </ul>
+
+            <div style="margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 15px; color: white; text-align: center;">
+                <h3 style="color: white; font-size: 2em;">🎉 כל הכבוד!</h3>
+                <p style="color: white; font-size: 1.3em; margin-top: 20px;">
+                    סיימתם ללמוד על JWT וחתימה דיגיטלית!
+                </p>
+                <p style="color: white; font-size: 1.1em; margin-top: 15px;">
+                    עכשיו אתם יודעים איך מערכות מודרניות מאובטחות מידע באינטרנט
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 19: Resources -->
+        <div class="slide">
+            <h2>📖 משאבים נוספים</h2>
+
+            <h3>🌐 אתרים מומלצים:</h3>
+            <div class="highlight-box">
+                <ul style="font-size: 1.1em;">
+                    <li><strong><a href="https://jwt.io" target="_blank">jwt.io</a></strong> - כלי אינטראקטיבי לפענוח ויצירת JWT</li>
+                    <li><strong><a href="https://pyjwt.readthedocs.io" target="_blank">PyJWT Docs</a></strong> - תיעוד מלא של הספרייה</li>
+                    <li><strong><a href="https://owasp.org" target="_blank">OWASP</a></strong> - מדריכי אבטחה</li>
+                </ul>
+            </div>
+
+            <h3>📚 נושאים להמשך לימוד:</h3>
+            <div class="pros-cons">
+                <div class="pros">
+                    <h4 style="color: #2d6a4f;">אבטחת מידע</h4>
+                    <ul>
+                        <li>OAuth 2.0</li>
+                        <li>OpenID Connect</li>
+                        <li>HTTPS/TLS</li>
+                        <li>Encryption vs Encoding</li>
+                    </ul>
+                </div>
+                <div class="cons">
+                    <h4 style="color: #764ba2;">פיתוח Web</h4>
+                    <ul>
+                        <li>REST API</li>
+                        <li>WebSocket</li>
+                        <li>Microservices</li>
+                        <li>Authentication vs Authorization</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>💡 רעיונות לפרויקטים:</h3>
+            <div class="exercise-box">
+                <ol>
+                    <li>בנו מערכת אימות מלאה עם Flask ו-JWT</li>
+                    <li>צרו אפליקציית צ'אט עם WebSocket ואבטחת JWT</li>
+                    <li>פתחו API מוגן שדורש JWT לכל בקשה</li>
+                    <li>הוסיפו Refresh Tokens למערכת קיימת</li>
+                    <li>בנו Dashboard לניהול משתמשים והרשאות</li>
+                </ol>
+            </div>
+
+            <div style="margin-top: 40px; text-align: center;">
+                <p style="font-size: 1.3em; color: #667eea;">
+                    <strong>שאלות? רוצים להעמיק בנושא מסוים?</strong>
+                </p>
+                <p style="font-size: 1.1em; margin-top: 15px;">
+                    המשיכו לחקור, לתרגל, ולבנות פרויקטים מעניינים! 🚀
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="changeSlide(-1)">◄ הקודם</button>
+            <span class="slide-indicator">
+                <span id="currentSlide">1</span> / <span id="totalSlides">19</span>
+            </span>
+            <button class="nav-button" id="nextBtn" onclick="changeSlide(1)">הבא ►</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) {
+                currentSlide = totalSlides;
+            }
+            if (n < 1) {
+                currentSlide = 1;
+            }
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+
+            // Reset quiz feedback when changing slides
+            document.querySelectorAll('.quiz-feedback').forEach(feedback => {
+                feedback.classList.remove('show');
+            });
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.classList.remove('correct', 'incorrect');
+            });
+        }
+
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function checkAnswer(element, isCorrect) {
+            const container = element.closest('.quiz-container');
+            const feedback = container.querySelector('.quiz-feedback');
+            const options = container.querySelectorAll('.quiz-option');
+            
+            // Disable all options after answer
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                feedback.textContent = '✅ נכון! תשובה מצוינת!';
+                feedback.className = 'quiz-feedback correct show';
+            } else {
+                element.classList.add('incorrect');
+                feedback.textContent = '❌ לא נכון. נסו לחשוב שוב על המושג...';
+                feedback.className = 'quiz-feedback incorrect show';
+                
+                // Show correct answer after 2 seconds
+                setTimeout(() => {
+                    options.forEach(opt => {
+                        if (opt !== element && opt.onclick.toString().includes('true')) {
+                            opt.classList.add('correct');
+                        }
+                    });
+                }, 2000);
+            }
+        }
+
+        function generateSignature() {
+            const input = document.getElementById('payloadInput').value;
+            const output = document.getElementById('signatureOutput');
+            
+            try {
+                // Simple hash simulation (not real HMAC-SHA256)
+                let hash = 0;
+                for (let i = 0; i < input.length; i++) {
+                    const char = input.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                
+                const signature = Math.abs(hash).toString(16).padStart(16, '0');
+                
+                output.textContent = `📋 Payload שהוזן:\n${input}\n\n🔐 חתימה שנוצרה (סימולציה):\n${signature}\n\n💡 שימו לב: כל שינוי קטן ב-Payload יצור חתימה שונה לחלוטין!`;
+            } catch (e) {
+                output.textContent = '❌ שגיאה: אנא הזינו Payload תקין';
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' && currentSlide < totalSlides) {
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft' && currentSlide > 1) {
+                changeSlide(-1);
+            }
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

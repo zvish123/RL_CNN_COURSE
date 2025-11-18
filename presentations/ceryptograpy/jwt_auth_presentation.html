@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת אימות JWT עם WebSocket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            direction: rtl;
+        }
+
+        .presentation {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px;
+            height: 100%;
+            overflow-y: auto;
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin: 25px 0 15px 0;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin-right: 30px;
+        }
+
+        .emoji {
+            font-size: 1.5em;
+            margin-left: 10px;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+            direction: ltr;
+        }
+
+        .token-demo {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 5px solid #667eea;
+            direction: ltr;
+        }
+
+        .token-part {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
+        .header { background: #ffebee; color: #c62828; }
+        .payload { background: #e8f5e9; color: #2e7d32; }
+        .signature { background: #e3f2fd; color: #1565c0; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: right;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .flow-diagram {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .flow-step {
+            background: white;
+            padding: 20px;
+            margin: 15px auto;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            position: relative;
+        }
+
+        .flow-arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-right: 5px solid #2196f3;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background: #f8f9fa;
+            border-top: 2px solid #ddd;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slide-number {
+            font-size: 1.2em;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .demo-output {
+            background: #1e1e1e;
+            color: #4caf50;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .role-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-right: 5px solid #667eea;
+            transition: transform 0.3s;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .permission-badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline-item {
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: "⬅";
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2em;
+            color: #667eea;
+        }
+
+        .quiz-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .quiz-option {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .quiz-option:hover {
+            border-color: #667eea;
+            transform: translateX(-5px);
+        }
+
+        .quiz-option.correct {
+            background: #c8e6c9;
+            border-color: #4caf50;
+        }
+
+        .quiz-option.incorrect {
+            background: #ffcdd2;
+            border-color: #f44336;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .slide {
+                padding: 30px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            h2 {
+                font-size: 1.8em;
+            }
+        }
+
+        .token-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background: #667eea;
+            transition: width 0.3s;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🔐 מערכת אימות JWT<br>עם WebSocket</h1>
+            <div style="text-align: center; margin-top: 60px;">
+                <p style="font-size: 1.5em; color: #666;">מערכת אימות מתקדמת עם הרשאות מבוססות תפקידים</p>
+                <div style="margin-top: 80px;">
+                    <div class="emoji" style="font-size: 5em;">🚀</div>
+                </div>
+                <p style="margin-top: 60px; font-size: 1.3em; color: #764ba2;">
+                    קורס סייבר ותכנות מתקדם - כיתה י"ב
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: מהו JWT -->
+        <div class="slide">
+            <h2>🎯 מהו JWT?</h2>
+            
+            <div class="info-box">
+                <h3>JSON Web Token</h3>
+                <p><strong>JWT</strong> הוא תקן פתוח (RFC 7519) ליצירת טוקנים מאובטחים לאימות והעברת מידע בין צדדים.</p>
+            </div>
+
+            <h3>מבנה JWT</h3>
+            <div class="token-demo">
+                <div class="token-part header">
+                    <strong>Header (כותרת)</strong><br>
+                    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+                </div>
+                <div style="text-align: center; font-size: 2em; color: #667eea;">.</div>
+                <div class="token-part payload">
+                    <strong>Payload (מטען)</strong><br>
+                    eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTY5OTk5OTk5OX0
+                </div>
+                <div style="text-align: center; font-size: 2em; color: #667eea;">.</div>
+                <div class="token-part signature">
+                    <strong>Signature (חתימה)</strong><br>
+                    SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+                </div>
+            </div>
+
+            <h3>למה JWT?</h3>
+            <ul>
+                <li>✅ <strong>Stateless</strong> - השרת לא צריך לשמור מידע על סשנים</li>
+                <li>✅ <strong>מאובטח</strong> - חתום דיגיטלית, לא ניתן לזייף</li>
+                <li>✅ <strong>קומפקטי</strong> - נשלח בקלות ב-HTTP headers</li>
+                <li>✅ <strong>גמיש</strong> - ניתן להכיל כל מידע שנרצה</li>
+            </ul>
+        </div>
+
+        <!-- Slide 3: שני סוגי טוקנים -->
+        <div class="slide">
+            <h2>🔑 שני סוגי טוקנים</h2>
+
+            <div class="grid-2">
+                <div class="role-card" style="border-right-color: #f44336;">
+                    <h3>⚡ Access Token</h3>
+                    <p><strong>תוקף:</strong> 5 דקות</p>
+                    <p><strong>שימוש:</strong> נשלח בכל בקשה לשרת</p>
+                    <p><strong>חשיפה:</strong> גבוהה</p>
+                    <p><strong>מטרה:</strong> ביצוע פעולות</p>
+                    <div class="warning">
+                        ⚠️ אם נגנב - נזק מוגבל בזמן!
+                    </div>
+                </div>
+
+                <div class="role-card" style="border-right-color: #4caf50;">
+                    <h3>🔄 Refresh Token</h3>
+                    <p><strong>תוקף:</strong> 7 ימים</p>
+                    <p><strong>שימוש:</strong> רק לחידוש Access Token</p>
+                    <p><strong>חשיפה:</strong> נמוכה</p>
+                    <p><strong>מטרה:</strong> חידוש גישה</p>
+                    <div class="info-box">
+                        💡 שמור במקום מאובטח!
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 40px;">למה צריך שני סוגים?</h3>
+            <div class="info-box">
+                <p style="font-size: 1.3em;">
+                    <strong>עיקרון האבטחה:</strong> אם Access Token נגנב, התוקף הקצר שלו (5 דקות) 
+                    מגביל את הנזק. הרפרש טוקן בטוח יותר כי משתמשים בו פחות.
+                </p>
+            </div>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <strong>T=0:</strong> התחברות → קבלת שני טוקנים
+                </div>
+                <div class="timeline-item">
+                    <strong>T=4 דקות:</strong> עובד עם Access Token ✅
+                </div>
+                <div class="timeline-item">
+                    <strong>T=6 דקות:</strong> Access Token פג תוקף ❌
+                </div>
+                <div class="timeline-item">
+                    <strong>T=6.5 דקות:</strong> משתמש ב-Refresh Token → קבלת Access חדש ✅
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: משתמשים והרשאות -->
+        <div class="slide">
+            <h2>👥 משתמשים והרשאות (RBAC)</h2>
+
+            <div class="info-box">
+                <h3>מהו RBAC?</h3>
+                <p><strong>Role-Based Access Control</strong> - בקרת גישה מבוססת תפקידים</p>
+                <p>כל משתמש שייך לתפקיד, וכל תפקיד מגדיר אילו פעולות מותרות.</p>
+            </div>
+
+            <h3>משתמשי המערכת</h3>
+
+            <div class="role-card">
+                <h3>👑 Admin (מנהל) - יוסי כהן</h3>
+                <p><strong>התחברות:</strong> admin / admin123</p>
+                <p><strong>הרשאות:</strong></p>
+                <div>
+                    <span class="permission-badge">📖 read</span>
+                    <span class="permission-badge">✍️ write</span>
+                    <span class="permission-badge">🗑️ delete</span>
+                    <span class="permission-badge">👥 manage_users</span>
+                </div>
+            </div>
+
+            <div class="role-card">
+                <h3>👨‍🏫 Teacher (מורה) - שרה לוי</h3>
+                <p><strong>התחברות:</strong> teacher / teacher123</p>
+                <p><strong>הרשאות:</strong></p>
+                <div>
+                    <span class="permission-badge">📖 read</span>
+                    <span class="permission-badge">✍️ write</span>
+                    <span class="permission-badge">📊 grade_students</span>
+                </div>
+            </div>
+
+            <div class="role-card">
+                <h3>🎓 Student (תלמיד) - דני אברהם</h3>
+                <p><strong>התחברות:</strong> student / student123</p>
+                <p><strong>הרשאות:</strong></p>
+                <div>
+                    <span class="permission-badge">📖 read</span>
+                    <span class="permission-badge">📝 submit_homework</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: תהליך התחברות -->
+        <div class="slide">
+            <h2>🔐 תהליך התחברות</h2>
+
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <strong>שלב 1: לקוח שולח בקשה</strong>
+                    <pre class="code-block">LOGIN|admin|admin123</pre>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 2: שרת בודק פרטים</strong>
+                    <p>✓ האם שם המשתמש קיים?</p>
+                    <p>✓ האם הסיסמה נכונה?</p>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 3: יצירת טוקנים</strong>
+                    <p>🔑 Access Token (5 דקות)</p>
+                    <p>🔄 Refresh Token (7 ימים)</p>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 4: תגובה ללקוח</strong>
+                    <pre class="code-block" style="font-size: 0.8em;">
+LOGIN_SUCCESS|eyJhbGciOiJIUzI1NiIs...|eyJhbGciOiJIUzI1NiIs...|יוסי כהן|admin
+                    </pre>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h3>מה קורה אם הפרטים שגויים?</h3>
+                <pre class="code-block">
+<span style="color: #f44336;">LOGIN_FAILED|שם משתמש או סיסמה שגויים</span>
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 6: ביצוע פעולה -->
+        <div class="slide">
+            <h2>✅ ביצוע פעולה מורשית</h2>
+
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <strong>שלב 1: לקוח שולח בקשה עם טוקן</strong>
+                    <pre class="code-block" style="font-size: 0.8em;">
+AUTHORIZED_REQUEST|eyJhbGciOiJIUzI1NiIs...|delete
+                    </pre>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 2: אימות טוקן</strong>
+                    <p>✓ האם הטוקן תקין?</p>
+                    <p>✓ האם הטוקן לא פג תוקף?</p>
+                    <p>✓ האם החתימה נכונה?</p>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 3: בדיקת הרשאות</strong>
+                    <p>✓ מי המשתמש? (מה-payload)</p>
+                    <p>✓ מה התפקיד שלו?</p>
+                    <p>✓ האם לתפקיד יש הרשאה לפעולה?</p>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>שלב 4: ביצוע הפעולה</strong>
+                    <p class="success">✅ הצלחה: SUCCESS|נתונים נמחקו בהצלחה</p>
+                    <p class="error">❌ נדחה: PERMISSION_DENIED|אין לך הרשאה</p>
+                </div>
+            </div>
+
+            <h3>סוגי שגיאות אפשריות</h3>
+            <table>
+                <tr>
+                    <th>שגיאה</th>
+                    <th>פירוש</th>
+                    <th>פתרון</th>
+                </tr>
+                <tr>
+                    <td>token_expired</td>
+                    <td>הטוקן פג תוקף</td>
+                    <td>חדש את הטוקן עם Refresh Token</td>
+                </tr>
+                <tr>
+                    <td>invalid_token</td>
+                    <td>הטוקן לא תקין</td>
+                    <td>התחבר מחדש</td>
+                </tr>
+                <tr>
+                    <td>PERMISSION_DENIED</td>
+                    <td>אין הרשאה לפעולה</td>
+                    <td>בקש מנהל להעניק הרשאות</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 7: חידוש טוקן -->
+        <div class="slide">
+            <h2>🔄 חידוש טוקן</h2>
+
+            <div class="info-box">
+                <h3>מתי נדרש חידוש?</h3>
+                <p>כאשר Access Token פג תוקף (אחרי 5 דקות) ואנחנו רוצים להמשיך לעבוד בלי להתחבר מחדש.</p>
+            </div>
+
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <strong>T=0: התחברות</strong>
+                    <p>קיבלנו Access + Refresh tokens</p>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>T=5 דקות: Access Token פג תוקף</strong>
+                    <p class="error">❌ נסיון פעולה נכשל</p>
+                    <pre class="code-block">
+<span style="color: #f44336;">ERROR|token_expired|הטוכן פג תוקף</span>
+                    </pre>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>חידוש עם Refresh Token</strong>
+                    <pre class="code-block">
+REFRESH_TOKEN|eyJhbGciOiJIUzI1NiIs...
+                    </pre>
+                </div>
+                
+                <div class="flow-arrow">⬇</div>
+                
+                <div class="flow-step">
+                    <strong>קבלת Access Token חדש</strong>
+                    <p class="success">✅ REFRESH_SUCCESS|טוכן_חדש</p>
+                    <p>עכשיו אפשר להמשיך לעבוד!</p>
+                </div>
+            </div>
+
+            <div class="warning">
+                <h3>⚠️ מה אם גם Refresh Token פג תוקף?</h3>
+                <p>במקרה זה <strong>חובה להתחבר מחדש</strong> עם שם משתמש וסיסמה.</p>
+                <p>זה קורה אחרי 7 ימים ללא שימוש במערכת.</p>
+            </div>
+        </div>
+
+        <!-- Slide 8: ארבעת התרחישים -->
+        <div class="slide">
+            <h2>🎬 ארבעת התרחישים</h2>
+
+            <div class="role-card" style="border-right-color: #4caf50;">
+                <h3>תרחיש 1: Admin מצליח ✅</h3>
+                <p><strong>מטרה:</strong> להראות שמנהל יכול לבצע כל פעולה</p>
+                <p><strong>תהליך:</strong></p>
+                <ul>
+                    <li>התחברות כ-admin</li>
+                    <li>ביצוע פעולת delete</li>
+                    <li>קבלת אישור - הצלחה!</li>
+                </ul>
+                <p><strong>לקח:</strong> מנהל בעל הרשאות מלאות</p>
+            </div>
+
+            <div class="role-card" style="border-right-color: #f44336;">
+                <h3>תרחיש 2: Student נדחה 🚫</h3>
+                <p><strong>מטרה:</strong> להראות שהמערכת אוכפת הרשאות</p>
+                <p><strong>תהליך:</strong></p>
+                <ul>
+                    <li>התחברות כ-student</li>
+                    <li>ניסיון למחוק - <span class="error">נדחה!</span></li>
+                    <li>ניסיון לקרוא - <span class="success">מאושר!</span></li>
+                </ul>
+                <p><strong>לקח:</strong> כל משתמש מוגבל להרשאות התפקיד שלו</p>
+            </div>
+
+            <div class="role-card" style="border-right-color: #2196f3;">
+                <h3>תרחיש 3: חידוש טוקן 🔄</h3>
+                <p><strong>מטרה:</strong> להראות איך מתמודדים עם טוקן שפג תוקף</p>
+                <p><strong>תהליך:</strong></p>
+                <ul>
+                    <li>התחברות כ-teacher</li>
+                    <li>שימוש בטוקן שפג תוקף</li>
+                    <li>חידוש עם Refresh Token</li>
+                    <li>המשך עבודה עם טוקן חדש</li>
+                </ul>
+                <p><strong>לקח:</strong> לא צריך להתחבר מחדש כל 5 דקות</p>
+            </div>
+
+            <div class="role-card" style="border-right-color: #ff9800;">
+                <h3>תרחיש 4: פרטים שגויים ❌</h3>
+                <p><strong>מטרה:</strong> להראות הגנה מפני גישה לא מורשית</p>
+                <p><strong>תהליך:</strong></p>
+                <ul>
+                    <li>ניסיון התחברות עם סיסמה שגויה</li>
+                    <li>קבלת הודעת שגיאה</li>
+                </ul>
+                <p><strong>לקח:</strong> המערכת מגנה על המידע</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: פרוטוקול תקשורת -->
+        <div class="slide">
+            <h2>📡 פרוטוקול התקשורת</h2>
+
+            <div class="info-box">
+                <h3>מבנה ההודעות</h3>
+                <p style="font-size: 1.5em; text-align: center;">
+                    <span class="highlight">TYPE | DATA1 | DATA2 | ...</span>
+                </p>
+                <p>כל הודעה מורכבת מסוג ומידע מופרד בתו <code>|</code></p>
+            </div>
+
+            <h3>פקודות הלקוח</h3>
+            <table>
+                <tr>
+                    <th>פקודה</th>
+                    <th>פורמט</th>
+                    <th>דוגמה</th>
+                </tr>
+                <tr>
+                    <td>LOGIN</td>
+                    <td>LOGIN|username|password</td>
+                    <td><code>LOGIN|admin|admin123</code></td>
+                </tr>
+                <tr>
+                    <td>AUTHORIZED_REQUEST</td>
+                    <td>AUTHORIZED_REQUEST|token|action</td>
+                    <td><code>AUTHORIZED_REQUEST|eyJ...|delete</code></td>
+                </tr>
+                <tr>
+                    <td>REFRESH_TOKEN</td>
+                    <td>REFRESH_TOKEN|refresh_token</td>
+                    <td><code>REFRESH_TOKEN|eyJ...</code></td>
+                </tr>
+            </table>
+
+            <h3>תגובות השרת</h3>
+            <table>
+                <tr>
+                    <th>תגובה</th>
+                    <th>משמעות</th>
+                    <th>דוגמה</th>
+                </tr>
+                <tr>
+                    <td class="success">LOGIN_SUCCESS</td>
+                    <td>התחברות הצליחה</td>
+                    <td><code>LOGIN_SUCCESS|token1|token2|שם|תפקיד</code></td>
+                </tr>
+                <tr>
+                    <td class="error">LOGIN_FAILED</td>
+                    <td>התחברות נכשלה</td>
+                    <td><code>LOGIN_FAILED|שם משתמש או סיסמה שגויים</code></td>
+                </tr>
+                <tr>
+                    <td class="success">SUCCESS</td>
+                    <td>פעולה הצליחה</td>
+                    <td><code>SUCCESS|נתונים נמחקו בהצלחה</code></td>
+                </tr>
+                <tr>
+                    <td class="error">PERMISSION_DENIED</td>
+                    <td>אין הרשאה</td>
+                    <td><code>PERMISSION_DENIED|אין לך הרשאה לבצע delete</code></td>
+                </tr>
+                <tr>
+                    <td class="error">ERROR</td>
+                    <td>שגיאה</td>
+                    <td><code>ERROR|token_expired|הטוכן פג תוקף</code></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 10: אבטחה -->
+        <div class="slide">
+            <h2>🛡️ שכבות האבטחה</h2>
+
+            <div class="role-card" style="border-right-color: #4caf50;">
+                <h3>1️⃣ אימות זהות</h3>
+                <p>בדיקת שם משתמש וסיסמה לפני מתן גישה</p>
+                <pre class="code-block">
+if username in USERS_DB and USERS_DB[username]["password"] == password:
+    # מתן גישה
+                </pre>
+            </div>
+
+            <div class="role-card" style="border-right-color: #2196f3;">
+                <h3>2️⃣ הצפנת טוקנים</h3>
+                <p>שימוש באלגוריתם HS256 וחתימה עם SECRET_KEY</p>
+                <pre class="code-block">
+jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+                </pre>
+            </div>
+
+            <div class="role-card" style="border-right-color: #ff9800;">
+                <h3>3️⃣ בדיקת תוקף</h3>
+                <p>כל טוקן מכיל timestamp של תפוגה (exp)</p>
+                <pre class="code-block">
+"exp": datetime.now(UTC) + timedelta(minutes=5)
+                </pre>
+            </div>
+
+            <div class="role-card" style="border-right-color: #9c27b0;">
+                <h3>4️⃣ הרשאות RBAC</h3>
+                <p>בדיקה שהתפקיד מורשה לבצע את הפעולה</p>
+                <pre class="code-block">
+def check_permission(role, action):
+    return action in PERMISSIONS.get(role, [])
+                </pre>
+            </div>
+
+            <div class="role-card" style="border-right-color: #f44336;">
+                <h3>5️⃣ הפרדת טוקנים</h3>
+                <p>Access קצר (5 דק') vs Refresh ארוך (7 ימים)</p>
+                <p>מגביל נזק במקרה של גניבת טוקן</p>
+            </div>
+
+            <div class="warning">
+                <h3>⚠️ בפרודקשן חובה להוסיף:</h3>
+                <ul>
+                    <li>🔒 <strong>HTTPS/WSS</strong> - הצפנת התקשורת</li>
+                    <li>🔑 <strong>Hashing סיסמאות</strong> - bcrypt/argon2</li>
+                    <li>⏱️ <strong>Rate Limiting</strong> - הגבלת ניסיונות התחברות</li>
+                    <li>🔐 <strong>SECRET_KEY</strong> במשתנה סביבה</li>
+                    <li>📊 <strong>Logging</strong> - מעקב אחר ניסיונות חשודים</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 11: קוד לדוגמה -->
+        <div class="slide">
+            <h2>💻 קוד לדוגמה - יצירת טוקן</h2>
+
+            <h3>פונקציית create_token</h3>
+            <pre class="code-block">
+def create_token(username: str, role: str, token_type: str = "access") -> str:
+    """יצירת JWT token"""
+    
+    # קביעת זמן תפוגה
+    expire_time = (
+        datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        if token_type == "access"
+        else datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    # יצירת payload
+    payload = {
+        "sub": username,        # שם המשתמש
+        "role": role,           # תפקיד
+        "type": token_type,     # סוג טוקן
+        "exp": expire_time,     # זמן תפוגה
+        "iat": datetime.now(UTC) # זמן יצירה
+    }
+
+    # הצפנה וחתימה
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+            </pre>
+
+            <h3>הסבר המבנה</h3>
+            <table>
+                <tr>
+                    <th>שדה</th>
+                    <th>משמעות</th>
+                    <th>דוגמה</th>
+                </tr>
+                <tr>
+                    <td>sub</td>
+                    <td>Subject - זהות המשתמש</td>
+                    <td>"admin"</td>
+                </tr>
+                <tr>
+                    <td>role</td>
+                    <td>תפקיד המשתמש</td>
+                    <td>"admin"</td>
+                </tr>
+                <tr>
+                    <td>type</td>
+                    <td>סוג הטוכן</td>
+                    <td>"access" / "refresh"</td>
+                </tr>
+                <tr>
+                    <td>exp</td>
+                    <td>Expiration - זמן תפוגה</td>
+                    <td>1699999999</td>
+                </tr>
+                <tr>
+                    <td>iat</td>
+                    <td>Issued At - זמן יצירה</td>
+                    <td>1699999000</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 12: אינטראקציה -->
+        <div class="slide">
+            <h2>🎮 סימולציה אינטראקטיבית</h2>
+
+            <div class="interactive-demo">
+                <h3>התחבר למערכת</h3>
+                
+                <label>שם משתמש:</label>
+                <select id="username" class="demo-input">
+                    <option value="admin">admin (מנהל)</option>
+                    <option value="teacher">teacher (מורה)</option>
+                    <option value="student">student (תלמיד)</option>
+                </select>
+
+                <label>בחר פעולה:</label>
+                <select id="action" class="demo-input">
+                    <option value="read">read - קריאה</option>
+                    <option value="write">write - כתיבה</option>
+                    <option value="delete">delete - מחיקה</option>
+                    <option value="manage_users">manage_users - ניהול משתמשים</option>
+                    <option value="grade_students">grade_students - דירוג תלמידים</option>
+                    <option value="submit_homework">submit_homework - הגשת שיעורי בית</option>
+                </select>
+
+                <button onclick="simulateRequest()" style="width: 100%; margin-top: 20px;">
+                    🚀 בצע פעולה
+                </button>
+
+                <h3 style="margin-top: 30px;">תוצאה:</h3>
+                <pre id="simulationOutput" class="demo-output">
+לחץ על "בצע פעולה" כדי לראות מה קורה...
+                </pre>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3>💡 טיפ</h3>
+                <p>נסה תרחישים שונים:</p>
+                <ul>
+                    <li>תלמיד מנסה למחוק - מה יקרה?</li>
+                    <li>מורה מנסה לנהל משתמשים - מה יקרה?</li>
+                    <li>מנהל מנסה כל פעולה - מה יקרה?</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 13: חידון -->
+        <div class="slide">
+            <h2>🧠 חידון - בדוק את עצמך!</h2>
+
+            <div class="quiz-container">
+                <h3>שאלה 1: מה יקרה אם תלמיד ינסה לבצע פעולת delete?</h3>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    א. הפעולה תצליח
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    ב. יקבל הודעת PERMISSION_DENIED
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ג. הטוכן יפוג תוקף
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h3>שאלה 2: למה Access Token תוקפו קצר יותר?</h3>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    א. כדי לחסוך מקום
+                </div>
+
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ב. כדי לאלץ משתמשים להתחבר שוב
+                </div>
+                 <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    ג. כדי להגביל נזק במקרה של גניבה
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h3>שאלה 3: איזה אלגוריתם מצפין את ה-JWT?</h3>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    א. HS256
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ב. RSA256
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ג. AES256
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h3>שאלה 4: מהו RBAC?</h3>
+                 <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    א. Role-Based Access Control
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ב. Random Based Access Control
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    ג. Request Based Access Control
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: סיכום -->
+        <div class="slide">
+            <h2>📚 סיכום</h2>
+
+            <div class="info-box">
+                <h3>למדנו היום:</h3>
+            </div>
+
+            <div class="role-card">
+                <h3>🔐 JWT - JSON Web Token</h3>
+                <ul>
+                    <li>מבנה: Header.Payload.Signature</li>
+                    <li>שני סוגים: Access (קצר) + Refresh (ארוך)</li>
+                    <li>חתום דיגיטלית ומאובטח</li>
+                </ul>
+            </div>
+
+            <div class="role-card">
+                <h3>👥 RBAC - הרשאות מבוססות תפקידים</h3>
+                <ul>
+                    <li>כל משתמש שייך לתפקיד</li>
+                    <li>כל תפקיד מגדיר הרשאות</li>
+                    <li>המערכת אוכפת את ההרשאות</li>
+                </ul>
+            </div>
+
+            <div class="role-card">
+                <h3>📡 WebSocket - תקשורת דו-כיוונית</h3>
+                <ul>
+                    <li>פרוטוקול פשוט: TYPE|DATA</li>
+                    <li>חיבור מתמשך</li>
+                    <li>תגובות בזמן אמת</li>
+                </ul>
+            </div>
+
+            <div class="role-card">
+                <h3>🛡️ אבטחה רב-שכבתית</h3>
+                <ul>
+                    <li>אימות + הצפנה + הרשאות + תוקף + הפרדה</li>
+                    <li>הגנה מפני גישה לא מורשית</li>
+                    <li>הגבלת נזק במקרה של פריצה</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h3>🎯 הצעד הבא</h3>
+                <ul>
+                    <li>📝 פתרו את דף התרגיל</li>
+                    <li>💻 הריצו את הקוד בעצמכם</li>
+                    <li>🔧 נסו להרחיב את המערכת</li>
+                    <li>🤔 חשבו על שיפורי אבטחה</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 15: שאלות -->
+        <div class="slide">
+            <h1>🙋 שאלות?</h1>
+            <div style="text-align: center; margin-top: 80px;">
+                <div class="emoji" style="font-size: 6em;">💬</div>
+                <p style="font-size: 1.8em; margin-top: 40px; color: #666;">
+                    זמן לשאלות ודיון
+                </p>
+                <div style="margin-top: 80px;">
+                    <p style="font-size: 1.3em; color: #764ba2;">
+                        תודה על ההקשבה! 🎉
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button id="prevBtn" onclick="changeSlide(-1)">▶ הקודם</button>
+            <span class="slide-number">
+                <span id="currentSlide">1</span> / <span id="totalSlides">15</span>
+            </span>
+            <button id="nextBtn" onclick="changeSlide(1)">הבא ◀</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        // Update total slides display
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        // Update progress bar
+        function updateProgress() {
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+        
+        // Show specific slide
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide;
+            
+            // Disable/enable navigation buttons
+            prevBtn.disabled = currentSlide === 1;
+            nextBtn.disabled = currentSlide === totalSlides;
+            
+            updateProgress();
+        }
+        
+        // Change slide
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                changeSlide(1);
+            }
+        });
+        
+        // Simulate authentication request
+        function simulateRequest() {
+            const username = document.getElementById('username').value;
+            const action = document.getElementById('action').value;
+            const output = document.getElementById('simulationOutput');
+            
+            // Define permissions
+            const permissions = {
+                admin: ['read', 'write', 'delete', 'manage_users'],
+                teacher: ['read', 'write', 'grade_students'],
+                student: ['read', 'submit_homework']
+            };
+            
+            const userInfo = {
+                admin: { name: 'יוסי כהן', role: 'admin' },
+                teacher: { name: 'שרה לוי', role: 'teacher' },
+                student: { name: 'דני אברהם', role: 'student' }
+            };
+            
+            output.innerHTML = '';
+            
+            // Simulate login
+            output.innerHTML += '🔐 LOGIN|' + username + '|***\n';
+            output.innerHTML += '⏳ מתחבר למערכת...\n\n';
+            
+            setTimeout(() => {
+                output.innerHTML += '✅ LOGIN_SUCCESS\n';
+                output.innerHTML += '👤 משתמש: ' + userInfo[username].name + '\n';
+                output.innerHTML += '🎭 תפקיד: ' + userInfo[username].role + '\n';
+                output.innerHTML += '🔑 Access Token: eyJhbGciOiJIUzI1NiIs...\n';
+                output.innerHTML += '🔄 Refresh Token: eyJhbGciOiJIUzI1NiIs...\n\n';
+                
+                setTimeout(() => {
+                    output.innerHTML += '📤 AUTHORIZED_REQUEST|token|' + action + '\n';
+                    output.innerHTML += '⏳ בודק הרשאות...\n\n';
+                    
+                    setTimeout(() => {
+                        const hasPermission = permissions[username].includes(action);
+                        
+                        if (hasPermission) {
+                            output.innerHTML += '✅ SUCCESS\n';
+                            output.innerHTML += '🎉 הפעולה ' + action + ' בוצעה בהצלחה!\n';
+                            output.innerHTML += '👤 על ידי: ' + userInfo[username].name + '\n';
+                        } else {
+                            output.innerHTML += '❌ PERMISSION_DENIED\n';
+                            output.innerHTML += '🚫 אין לך הרשאה לבצע ' + action + '\n';
+                            output.innerHTML += '📋 ההרשאות שלך (' + username + '):\n';
+                            output.innerHTML += '   ' + permissions[username].join(', ') + '\n';
+                        }
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+        }
+        
+        // Check quiz answer
+        function checkAnswer(element, isCorrect) {
+            // Remove previous states
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            // Add appropriate class
+            if (isCorrect) {
+                element.classList.add('correct');
+                element.innerHTML += ' ✅';
+            } else {
+                element.classList.add('incorrect');
+                element.innerHTML += ' ❌';
+            }
+            
+            // Disable further clicks
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+            
+            setTimeout(() => {
+                options.forEach(opt => {
+                    opt.style.pointerEvents = 'auto';
+                    opt.innerHTML = opt.innerHTML.replace(' ✅', '').replace(' ❌', '');
+                    opt.classList.remove('correct', 'incorrect');
+                });
+            }, 2000);
+        }
+        
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

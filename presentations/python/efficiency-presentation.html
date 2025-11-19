@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בעיית יעילות בקוד - תרגול אינטראקטיבי</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 50px;
+            min-height: 500px;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 20px 0;
+            direction: ltr;
+            text-align: left;
+            overflow-x: auto;
+        }
+
+        .keyword { color: #ff79c6; }
+        .string { color: #f1fa8c; }
+        .comment { color: #6272a4; }
+        .function { color: #50fa7b; }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 20px 0;
+            resize: vertical;
+
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .answer-box {
+            background: #f8f9fa;
+            border-right: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .answer-box.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 500px; }
+        }
+
+        .correct {
+            background: #d4edda;
+            border-right-color: #28a745;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .emoji {
+            font-size: 2em;
+            margin-left: 10px;
+        }
+
+        ul {
+            margin: 20px 0 20px 30px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        strong {
+            color: #764ba2;
+        }
+
+        .challenge-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 3px solid #fdcb6e;
+        }
+
+        .progress {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .step.active {
+            background: #667eea;
+            transform: scale(1.3);
+        }
+
+        .step.completed {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Global step indicator - stays visible across all slides -->
+        <div class="step-indicator" style="padding: 30px 30px 0 30px;">
+            <div class="step active"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active" id="slide1">
+            <h1>🐌 בעיית יעילות בקוד Python</h1>
+            <div class="highlight">
+                <p style="font-size: 1.3em; text-align: center; line-height: 1.8;">
+                    ברוכים הבאים לתרגול אינטראקטיבי!<br>
+                    נלמד על בעיית ביצועים נפוצה בקוד Python<br>
+                    ונתרגל איך לזהות ולפתור אותה.
+                </p>
+            </div>
+            <div class="navigation">
+                <button class="btn" onclick="nextSlide()">בואו נתחיל! →</button>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Problem -->
+        <div class="slide" id="slide2">
+
+            <h2>🔍 זהה את הבעיה</h2>
+            <p style="font-size: 1.2em; margin-bottom: 20px;">בדקו את הקוד הבא שיוצר דו"ח ציונים:</p>
+            
+            <pre class="code-block">
+<span class="keyword">def</span> <span class="function">create_report</span>(students):
+    report = <span class="string">""</span>
+    <span class="keyword">for</span> name, grades <span class="keyword">in</span> students:
+        avg = <span class="function">sum</span>(grades) / <span class="function">len</span>(grades)
+        status = <span class="string">"מצטיין"</span> <span class="keyword">if</span> avg >= 90 <span class="keyword">else</span> <span class="string">"עובר"</span> <span class="keyword">if</span> avg >= 60 <span class="keyword">else</span> <span class="string">"נכשל"</span>
+        report += <span class="string">f"</span><span class="string">{name}: ממוצע </span><span class="string">{avg:.1f}</span><span class="string"> - </span><span class="string">{status}\n</span><span class="string">"</span>
+    <span class="keyword">return</span> report
+
+students = [(<span class="string">"דני"</span>, [85, 90, 88]), (<span class="string">"שרה"</span>, [95, 92, 98]),
+            (<span class="string">"יוסי"</span>, [55, 60, 58]), (<span class="string">"מיכל"</span>, [78, 82, 80])]
+<span class="function">print</span>(<span class="function">create_report</span>(students))
+            </pre>
+
+            <div class="highlight">
+                <p style="font-size: 1.2em;"><strong>שאלה:</strong> מה הבעיה העיקרית מבחינת יעילות בקוד הזה?</p>
+                <p style="font-size: 1em; margin-top: 10px; color: #666;">💡 רמז: שימו לב לשורה <code>report += ...</code></p>
+            </div>
+
+            <textarea dir="rtl" id="answer1" placeholder="כתבו כאן את התשובה שלכם... (רמז: חשבו על מה קורה בכל איטרציה של הלולאה כשמוסיפים למחרוזת report)"></textarea>
+
+            <button class="btn" onclick="showAnswer1()">בדוק תשובה</button>
+            <button class="btn btn-secondary" onclick="showHint1()">רמז נוסף</button>
+
+            <div class="answer-box" id="hint1">
+                <p><strong>💡 רמז:</strong> מחרוזות ב-Python הן immutable (בלתי ניתנות לשינוי). מה המשמעות של זה כשאנחנו משתמשים ב-<code>+=</code> בלולאה שרצה על 100 תלמידים? 1000 תלמידים?</p>
+            </div>
+
+            <div class="answer-box" id="feedback1">
+                <p style="font-size: 1.1em;"><strong>✅ מצוין!</strong> התשובה שלכם נרשמה.</p>
+                <p style="margin-top: 10px;">לחצו על "המשך" כדי לראות את ההסבר המלא ולהשוות עם התשובה שלכם.</p>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-secondary" onclick="prevSlide()">← חזרה</button>
+                <button class="btn" onclick="checkAndContinue()" id="next2">המשך →</button>
+            </div>
+        </div>
+
+        <!-- Slide 3: Show Answer -->
+        <div class="slide" id="slide3">
+
+            <h2>✅ הפתרון הנכון</h2>
+            
+            <div class="answer-box show correct">
+                <h3 style="margin-bottom: 15px;">🎯 הבעיה: סיבוכיות O(n²)</h3>
+                <p style="font-size: 1.1em; line-height: 1.8;">
+                    <strong>מה קורה בקוד המקורי?</strong><br><br>
+                    מחרוזות ב-Python הן <strong>immutable</strong> - לא ניתן לשנות אותן.<br>
+                    כל פעם ש-<code>report += f"{name}: ..."</code> מתבצע:
+                </p>
+                <ul>
+                    <li>נוצרת מחרוזת <strong>חדשה</strong> בזיכרון</li>
+                    <li>כל התוכן של report הישן <strong>מועתק</strong> לזיכרון החדש</li>
+                    <li>השורה החדשה מתווספת בסוף</li>
+                    <li>המחרוזת הישנה נמחקת</li>
+                </ul>
+            </div>
+
+            <div class="highlight">
+                <p style="font-size: 1.2em;"><strong>📊 דוגמה עם 4 תלמידים:</strong></p>
+                <ul>
+                    <li>תלמיד 1: מעתיק 0 תווים + מוסיף ~30 תווים = 30 תווים</li>
+                    <li>תלמיד 2: מעתיק 30 תווים + מוסיף ~30 = 60 תווים</li>
+                    <li>תלמיד 3: מעתיק 60 תווים + מוסיף ~30 = 90 תווים</li>
+                    <li>תלמיד 4: מעתיק 90 תווים + מוסיף ~30 = 120 תווים</li>
+                </ul>
+                <p style="font-size: 1.1em; margin-top: 15px;">
+                    <strong>סה"כ פעולות:</strong> 0 + 30 + 60 + 90 + 120 = 300 פעולות
+                </p>
+            </div>
+
+            <div class="highlight" style="background: #ffe0e0; border-right: 4px solid #d63031;">
+                <p style="font-size: 1.3em; color: #d63031;">
+                    <strong>⚠️ עם 1000 תלמידים:</strong><br>
+                    ~15,000,000 פעולות במקום ~30,000!<br>
+                    פי 500 יותר איטי! 🐌
+                </p>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-secondary" onclick="prevSlide()">← חזרה</button>
+                <button class="btn" onclick="nextSlide()">המשך לפתרון →</button>
+            </div>
+        </div>
+
+        <!-- Slide 4: The Solution -->
+        <div class="slide" id="slide4">
+
+            <h2>💡 הפתרון היעיל</h2>
+            
+            <div class="highlight">
+                <h3>✨ שימוש ב-list במקום חיבור מחרוזות</h3>
+            </div>
+
+            <p style="font-size: 1.2em; margin: 20px 0;"><strong>הקוד המתוקן:</strong></p>
+
+            <pre class="code-block">
+<span class="keyword">def</span> <span class="function">create_report</span>(students):
+    report = []  <span class="comment"># משתמשים ברשימה!</span>
+    <span class="keyword">for</span> name, grades <span class="keyword">in</span> students:
+        avg = <span class="function">sum</span>(grades) / <span class="function">len</span>(grades)
+        status = <span class="string">"מצטיין"</span> <span class="keyword">if</span> avg >= 90 <span class="keyword">else</span> <span class="string">"עובר"</span> <span class="keyword">if</span> avg >= 60 <span class="keyword">else</span> <span class="string">"נכשל"</span>
+        line = <span class="string">f"</span><span class="string">{name}: ממוצע </span><span class="string">{avg:.1f}</span><span class="string"> - </span><span class="string">{status}\n</span><span class="string">"</span>
+        report.<span class="function">append</span>(line)  <span class="comment"># O(1) - מהיר!</span>
+    <span class="keyword">return</span> <span class="string">""</span>.<span class="function">join</span>(report)  <span class="comment"># O(n) - רק פעם אחת בסוף</span>
+
+students = [(<span class="string">"דני"</span>, [85, 90, 88]), (<span class="string">"שרה"</span>, [95, 92, 98]),
+            (<span class="string">"יוסי"</span>, [55, 60, 58]), (<span class="string">"מיכל"</span>, [78, 82, 80])]
+<span class="function">print</span>(<span class="function">create_report</span>(students))
+            </pre>
+
+            <div class="answer-box show">
+                <h3>🚀 למה זה יותר מהיר?</h3>
+                <ul>
+                    <li><strong>append לרשימה:</strong> O(1) - פעולה קבועה, ללא העתקה</li>
+                    <li><strong>join בסוף:</strong> O(n) - עובר פעם אחת על כל השורות</li>
+                    <li><strong>סה"כ:</strong> O(n) במקום O(n²)! 🎉</li>
+                </ul>
+            </div>
+
+            <div class="highlight" style="background: #d4edda; border-right: 4px solid #28a745;">
+                <p style="font-size: 1.2em;">
+                    <strong>📈 השוואה מספרית:</strong>
+                </p>
+                <table style="width: 100%; margin-top: 15px; text-align: center; font-size: 1.1em;">
+                    <tr style="background: #28a745; color: white;">
+                        <th style="padding: 10px;">מספר תלמידים</th>
+                        <th style="padding: 10px;">גישה ישנה (פעולות)</th>
+                        <th style="padding: 10px;">גישה חדשה (פעולות)</th>
+                        <th style="padding: 10px;">שיפור</th>
+                    </tr>
+                    <tr style="background: #f8f9fa;">
+                        <td style="padding: 8px;">100</td>
+                        <td style="padding: 8px; color: #d63031;">~150,000</td>
+                        <td style="padding: 8px; color: #00b894;">~3,000</td>
+                        <td style="padding: 8px; font-weight: bold;">פי 50 ⚡</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;">1,000</td>
+                        <td style="padding: 8px; color: #d63031;">~15,000,000</td>
+                        <td style="padding: 8px; color: #00b894;">~30,000</td>
+                        <td style="padding: 8px; font-weight: bold;">פי 500 🚀</td>
+                    </tr>
+                    <tr style="background: #f8f9fa;">
+                        <td style="padding: 8px;">10,000</td>
+                        <td style="padding: 8px; color: #d63031;">~1,500,000,000</td>
+                        <td style="padding: 8px; color: #00b894;">~300,000</td>
+                        <td style="padding: 8px; font-weight: bold;">פי 5,000 🔥</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="highlight">
+                <p style="font-size: 1.2em;">
+                    <strong>💎 כלל הזהב:</strong><br>
+                    כשבונים מחרוזת בהדרגה בלולאה - השתמשו ב-list + join!
+                </p>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-secondary" onclick="prevSlide()">← חזרה</button>
+                <button class="btn" onclick="nextSlide()">אתגר! →</button>
+            </div>
+        </div>
+
+        <!-- Slide 5: Challenge -->
+        <div class="slide" id="slide5">
+
+            <h2>🏆 אתגר לתרגול</h2>
+            
+            <div class="challenge-box">
+                <h3 style="margin-bottom: 15px;"><span class="emoji">💪</span>המשימה שלך:</h3>
+                <p style="font-size: 1.2em; line-height: 1.8;">
+                    כתבו פונקציה <strong>create_html_report(students)</strong> שמקבלת רשימת תלמידים ומחזירה דו"ח בפורמט HTML עם טבלה.
+                </p>
+                <p style="margin-top: 15px; font-size: 1.1em;">
+                    <strong>דוגמה לקלט:</strong><br>
+                    <code>[("דני", [85, 90]), ("שרה", [95, 98])]</code>
+                </p>
+                <p style="margin-top: 10px; font-size: 1.1em;">
+                    <strong>דוגמה לפלט (HTML):</strong><br>
+                    <code dir="ltr" style="font-size: 1.1em; display: block; margin-top: 5px; background: white; padding: 8px; border-radius: 4px;">
+                    &lt;table&gt;<br>
+                    &nbsp;&nbsp;&lt;tr&gt;&lt;th&gt;שם&lt;/th&gt;&lt;th&gt;ממוצע&lt;/th&gt;&lt;/tr&gt;<br>
+                    &nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;דני&lt;/td&gt;&lt;td&gt;87.5&lt;/td&gt;&lt;/tr&gt;<br>
+                    &nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;שרה&lt;/td&gt;&lt;td&gt;96.5&lt;/td&gt;&lt;/tr&gt;<br>
+                    &lt;/table&gt;
+                    </code>
+                </p>
+                <p style="margin-top: 15px; font-size: 1.1em; background: white; padding: 10px; border-radius: 5px;">
+                    <strong>⚠️ חשוב:</strong> השתמשו בשיטה היעילה שלמדנו!<br>
+                    (רמז: בנו את כל השורות ברשימה ואז join)
+                </p>
+            </div>
+
+            <textarea dir="ltr" id="challenge" placeholder="כתבו את הפתרון שלכם כאן...
+
+def create_html_report(students):
+    # הקוד שלכם כאן...
+    pass
+" style="min-height: 250px;"></textarea>
+
+            <button class="btn" onclick="showChallengeSolution()">הצג פתרון לדוגמה</button>
+            <button class="btn btn-secondary" onclick="testChallenge()">רמז נוסף</button>
+
+            <div class="answer-box" id="challengeHint">
+                <p><strong>💡 רמז נוסף:</strong></p>
+                <ol>
+                    <li>צרו רשימה ריקה לשורות ה-HTML</li>
+                    <li>הוסיפו את תגית הפתיחה של הטבלה והשורה הראשונה (כותרות)</li>
+                    <li>עברו על התלמידים בלולאה, חשבו ממוצע והוסיפו כל שורה לרשימה</li>
+                    <li>הוסיפו את תגית הסגירה של הטבלה</li>
+                    <li>השתמשו ב-join לבניית המחרוזת הסופית</li>
+                </ol>
+            </div>
+
+            <div class="answer-box" id="challengeSolution">
+                <h3>✨ פתרון לדוגמה:</h3>
+                <pre class="code-block">
+<span class="keyword">def</span> <span class="function">create_html_report</span>(students):
+    <span class="comment"># שימוש ברשימה לביצועים אופטימליים</span>
+    html_lines = []
+    
+    <span class="comment"># הוסף כותרת טבלה</span>
+    html_lines.<span class="function">append</span>(<span class="string">"&lt;table border='1'&gt;"</span>)
+    html_lines.<span class="function">append</span>(<span class="string">"&lt;tr&gt;&lt;th&gt;שם&lt;/th&gt;&lt;th&gt;ממוצע&lt;/th&gt;&lt;th&gt;סטטוס&lt;/th&gt;&lt;/tr&gt;"</span>)
+    
+    <span class="comment"># הוסף שורה לכל תלמיד</span>
+    <span class="keyword">for</span> name, grades <span class="keyword">in</span> students:
+        avg = <span class="function">sum</span>(grades) / <span class="function">len</span>(grades)
+        status = <span class="string">"מצטיין"</span> <span class="keyword">if</span> avg >= 90 <span class="keyword">else</span> <span class="string">"עובר"</span> <span class="keyword">if</span> avg >= 60 <span class="keyword">else</span> <span class="string">"נכשל"</span>
+        
+        <span class="comment"># בנה את השורה והוסף לרשימה - O(1)</span>
+        row = <span class="string">f"&lt;tr&gt;&lt;td&gt;</span><span class="string">{name}</span><span class="string">&lt;/td&gt;&lt;td&gt;</span><span class="string">{avg:.1f}</span><span class="string">&lt;/td&gt;&lt;td&gt;</span><span class="string">{status}</span><span class="string">&lt;/td&gt;&lt;/tr&gt;"</span>
+        html_lines.<span class="function">append</span>(row)
+    
+    <span class="comment"># סגור את הטבלה</span>
+    html_lines.<span class="function">append</span>(<span class="string">"&lt;/table&gt;"</span>)
+    
+    <span class="comment"># חבר הכל למחרוזת אחת - O(n)</span>
+    <span class="keyword">return</span> <span class="string">""</span>.<span class="function">join</span>(html_lines)
+
+<span class="comment"># בדיקה</span>
+students = [(<span class="string">"דני"</span>, [85, 90, 88]), (<span class="string">"שרה"</span>, [95, 92, 98]),
+            (<span class="string">"יוסי"</span>, [55, 60, 58]), (<span class="string">"מיכל"</span>, [78, 82, 80])]
+            
+<span class="function">print</span>(<span class="function">create_html_report</span>(students))
+                </pre>
+                <p style="margin-top: 15px; font-size: 1.1em;">
+                    <strong>🎯 שימו לב:</strong> השתמשנו ב-list ו-append בלולאה, ורק בסוף join - סיבוכיות O(n)!
+                </p>
+                <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <p style="font-size: 1.1em; margin: 0;">
+                        <strong>🚀 גרסה מתקדמת עם list comprehension:</strong>
+                    </p>
+                    <pre class="code-block" style="margin-top: 10px;">
+<span class="keyword">def</span> <span class="function">create_html_report</span>(students):
+    header = <span class="string">"&lt;table border='1'&gt;&lt;tr&gt;&lt;th&gt;שם&lt;/th&gt;&lt;th&gt;ממוצע&lt;/th&gt;&lt;th&gt;סטטוס&lt;/th&gt;&lt;/tr&gt;"</span>
+    
+    rows = [<span class="string">f"&lt;tr&gt;&lt;td&gt;</span><span class="string">{name}</span><span class="string">&lt;/td&gt;&lt;td&gt;</span><span class="string">{sum(g)/len(g):.1f}</span><span class="string">&lt;/td&gt;&lt;td&gt;</span><span class="string">{</span>status<span class="string">}&lt;/td&gt;&lt;/tr&gt;"</span>
+            <span class="keyword">for</span> name, g <span class="keyword">in</span> students
+            <span class="keyword">for</span> status <span class="keyword">in</span> [<span class="string">"מצטיין"</span> <span class="keyword">if</span> <span class="function">sum</span>(g)/<span class="function">len</span>(g) >= 90 
+                            <span class="keyword">else</span> <span class="string">"עובר"</span> <span class="keyword">if</span> <span class="function">sum</span>(g)/<span class="function">len</span>(g) >= 60 <span class="keyword">else</span> <span class="string">"נכשל"</span>]]
+    
+    footer = <span class="string">"&lt;/table&gt;"</span>
+    <span class="keyword">return</span> header + <span class="string">""</span>.<span class="function">join</span>(rows) + footer
+                    </pre>
+                </div>
+            </div>
+
+            <div class="navigation">
+                <button class="btn btn-secondary" onclick="prevSlide()">← חזרה</button>
+                <button class="btn" onclick="location.reload()">התחל מחדש 🔄</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 5;
+        let answerChecked = false;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach(slide => slide.classList.remove('active'));
+            document.getElementById('slide' + n).classList.add('active');
+            currentSlide = n;
+            
+            // Update step indicators
+            const steps = document.querySelectorAll('.step');
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index < n - 1) {
+                    step.classList.add('completed');
+                } else if (index === n - 1) {
+                    step.classList.add('active');
+                }
+            });
+            
+            window.scrollTo(0, 0);
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        function showHint1() {
+            document.getElementById('hint1').classList.add('show');
+        }
+
+        function showAnswer1() {
+            const answer = document.getElementById('answer1').value.trim();
+            if (answer.length < 15) {
+                alert('אנא כתבו תשובה מפורטת יותר (לפחות 15 תווים).\n\nלדוגמה: "הבעיה היא שמחרוזות הן immutable ולכן..."');
+                return;
+            }
+            
+            // Mark answer as checked
+            answerChecked = true;
+            
+            // Show feedback
+            const feedback = document.getElementById('feedback1');
+            feedback.classList.add('show');
+            
+            // Scroll to feedback
+            feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            // Visual confirmation
+            document.getElementById('answer1').style.borderColor = '#28a745';
+            document.getElementById('answer1').style.background = '#f0fff4';
+        }
+
+        function checkAndContinue() {
+            if (!answerChecked) {
+                alert('⚠️ לפני שממשיכים, אנא כתבו את התשובה שלכם ולחצו על "בדוק תשובה".\n\nזה חשוב כדי שתוכלו להשוות את המחשבה שלכם עם ההסבר המלא.');
+                // Highlight the textarea
+                document.getElementById('answer1').style.borderColor = '#ff6b6b';
+                document.getElementById('answer1').focus();
+                return;
+            }
+            
+            nextSlide();
+        }
+
+        function testChallenge() {
+            document.getElementById('challengeHint').classList.add('show');
+        }
+
+        function showChallengeSolution() {
+            const solution = document.getElementById('challengeSolution');
+            solution.classList.add('show');
+            solution.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' && currentSlide > 1) {
+                prevSlide();
+            } else if (event.key === 'ArrowLeft' && currentSlide < totalSlides) {
+                if (currentSlide === 2) {
+                    checkAndContinue();
+                } else {
+                    nextSlide();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

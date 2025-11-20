@@ -45,7 +45,8 @@ if __name__ == "__main__":
     examples = [
         "FLAG{4_22_6}",
         "FLAG{FOUR_TWENTYTWO_SIX}",
-        "FLAG{TEST_123}"
+        "FLAG{TEST_123}",
+        "FLAG{INTHECATHEDRAL}"
     ]
     
     for example in examples:

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תקיפת Timing Attack - מציאת חריגים סטטיסטיים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .slide {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: none;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.5em;
+            margin: 20px 0 10px 0;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            overflow-x: auto;
+            margin: 20px 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .demo-box {
+            background: #f0f4ff;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .interactive-demo {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: #e0e0e0;
+            z-index: 1000;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .chart {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+        }
+
+        .bar {
+            display: inline-block;
+            width: 50px;
+            background: #667eea;
+            margin: 0 5px;
+            text-align: center;
+            color: white;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .bar:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .bar-label {
+            display: block;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .outlier {
+            background: #ff5252 !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .formula {
+            background: #fff9c4;
+            border-right: 5px solid #fbc02d;
+            padding: 15px 20px;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .step {
+            background: #e8f5e9;
+            border-right: 5px solid #4caf50;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .output {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 2px solid #667eea;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: #f0f4ff;
+        }
+
+        .emoji {
+            font-size: 1.5em;
+        }
+
+        .warning {
+            background: #fff3e0;
+            border-right: 5px solid #ff9800;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        #visualization {
+            margin: 20px 0;
+        }
+
+        .slide-indicator {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.1em;
+            color: white;
+            font-weight: bold;
+        }
+
+        .key-concept {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="container">
+        <div class="slide-indicator" id="slideIndicator">שקופית 1 מתוך 10</div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🔐 תקיפת Timing Attack</h1>
+            <h2>מציאת סיסמאות דרך מדידת זמנים</h2>
+            
+            <div class="key-concept">
+                <p><span class="emoji">🎯</span> <strong>הרעיון המרכזי:</strong></p>
+                <p>אפשר לגלות סיסמה על ידי מדידת כמה זמן לוקח לשרת לבדוק אותה!</p>
+            </div>
+
+            <div class="demo-box">
+                <h3>איך זה עובד?</h3>
+                <p>🔍 השרת בודק את הסיסמה אות אחרי אות</p>
+                <p>⏱️ כשמגיעים לאות נכונה - זה לוקח קצת יותר זמן</p>
+                <p>📊 אנחנו מודדים את הזמנים ומחפשים "חריגים"</p>
+                <p>🎉 החריג הוא האות הנכונה!</p>
+            </div>
+
+            <div class="warning">
+                <p><strong>⚠️ חשוב לדעת:</strong> זו חולשת אבטחה אמיתית! מערכות טובות משתמשות ב-constant-time comparison כדי למנוע את זה.</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Problem -->
+        <div class="slide">
+            <h2>🤔 הבעיה שאנחנו פוגשים</h2>
+            
+            <p>נניח שיש לנו שרת שבודק סיסמה כך:</p>
+
+            <pre class="code-block">
+def check_password(attempt, real_password):
+    for i in range(len(attempt)):
+        if attempt[i] != real_password[i]:
+            return False  # ⏹️ עצירה מיידית!
+        # 🔍 כאן יש השוואה שלוקחת זמן...
+    return True
+            </pre>
+
+            <div class="demo-box">
+                <h3>מה קורה כשבודקים סיסמאות שונות?</h3>
+                <table>
+                    <tr>
+                        <th>ניחוש</th>
+                        <th>סיסמה אמיתית</th>
+                        <th>איפה עוצרים?</th>
+                        <th>זמן (אורך)</th>
+                    </tr>
+                    <tr>
+                        <td><strong>A</strong>BC</td>
+                        <td>CAT</td>
+                        <td>אות 1</td>
+                        <td>0.5ms ⚡</td>
+                    </tr>
+                    <tr>
+                        <td><strong>B</strong>BC</td>
+                        <td>CAT</td>
+                        <td>אות 1</td>
+                        <td>0.5ms ⚡</td>
+                    </tr>
+                    <tr>
+                        <td><strong>C</strong>BC</td>
+                        <td>CAT</td>
+                        <td>אות 2</td>
+                        <td>0.9ms 🐌</td>
+                    </tr>
+                </table>
+                <p><span class="highlight">שימו לב: C לקח יותר זמן!</span></p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Statistical Concepts -->
+        <div class="slide">
+            <h2>📊 מושגים סטטיסטיים שנצטרך</h2>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>ממוצע (Mean)</strong>
+                <div class="formula">mean = (x₁ + x₂ + x₃ + ... + xₙ) / n</div>
+                <p>הממוצע של הזמנים: 0.5, 0.5, 0.9, 0.5 = <strong>0.6</strong></p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>סטיית תקן (Standard Deviation)</strong>
+                <div class="formula">std = √(Σ(xᵢ - mean)² / n)</div>
+                <p>מודדת כמה הערכים מפוזרים מהממוצע</p>
+                <p>בדוגמה שלנו: <strong>std = 0.17</strong></p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>חריג (Outlier)</strong>
+                <p>ערך שרחוק מהממוצע יותר מ-<span class="highlight">threshold × std</span></p>
+                <div class="formula">
+                    גבול עליון = mean + (threshold × std)<br>
+                    גבול תחתון = mean - (threshold × std)
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 דוגמה אינטראקטיבית</h3>
+                <p>threshold = 2, mean = 0.6, std = 0.17</p>
+                <div class="formula">
+                    גבול עליון = 0.6 + (2 × 0.17) = 0.94<br>
+                    גבול תחתון = 0.6 - (2 × 0.17) = 0.26
+                </div>
+                <p><strong>האם 0.9 הוא חריג?</strong> 0.9 < 0.94, אז בקושי! (צריך threshold יותר נמוך)</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Visual Example -->
+        <div class="slide">
+            <h2>📈 ויזואליזציה של זמני תגובה</h2>
+
+            <div class="demo-box">
+                <h3>מדידות לכל אות (באלפיות שנייה)</h3>
+                <div id="visualization" style="text-align: center; padding: 20px;">
+                    <div style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div class="bar" style="height: 100px;">0.50</div>
+                        <span class="bar-label">A</span>
+                    </div>
+                    <div style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div class="bar" style="height: 102px;">0.51</div>
+                        <span class="bar-label">B</span>
+                    </div>
+                    <div style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div class="bar outlier" style="height: 180px;">0.98</div>
+                        <span class="bar-label">C</span>
+                    </div>
+                    <div style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div class="bar" style="height: 98px;">0.49</div>
+                        <span class="bar-label">D</span>
+                    </div>
+                    <div style="display: inline-block; margin: 0 10px; text-align: center;">
+                        <div class="bar" style="height: 104px;">0.52</div>
+                        <span class="bar-label">E</span>
+                    </div>
+                </div>
+                <div class="formula" style="text-align: center;">
+                    ממוצע = 0.60 | סטיית תקן = 0.20<br>
+                    גבול עליון (threshold=1.5) = 0.60 + 0.30 = 0.90<br>
+                    <span style="color: #ff5252; font-weight: bold;">C (0.98) > 0.90 ✓ זה חריג!</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: The outliers Function -->
+        <div class="slide">
+            <h2>🔍 הפונקציה outliers - הלב של האלגוריתם</h2>
+
+            <pre class="code-block">
+def outliers(samples, threshold):
+    mean1 = mean(samples.values())
+    std = standardDeviation(samples.values())
+    max1 = max(samples.values())
+    min1 = min(samples.values())
+    
+    # 🤔 החריג למעלה או למטה?
+    if max1 - mean1 > mean1 - min1:
+        check = True  # החריג למעלה
+    else:
+        check = False  # החריג למטה
+    
+    ol = {}
+    for item in samples:
+        # בדיקה אם הערך חורג מהגבול
+        if (check and samples[item] > mean1 + std*threshold):
+            ol[item] = samples[item]
+        elif (not check and samples[item] < mean1 - std*threshold):
+            ol[item] = samples[item]
+    
+    return ol  # מחזירים מילון של החריגים
+            </pre>
+
+            <div class="demo-box">
+                <h3>למה צריך את ה-check?</h3>
+                <p><strong>סיטואציה 1:</strong> אות נכון לוקח <span class="highlight">יותר</span> זמן (השרת עובד יותר)</p>
+                <p><strong>סיטואציה 2:</strong> אות נכון לוקח <span class="highlight">פחות</span> זמן (אופטימיזציה של השרת)</p>
+                <p>הקוד מזהה אוטומטית באיזה מצב אנחנו! 🎯</p>
+            </div>
+        </div>
+
+        <!-- Slide 6: Step by Step Example -->
+        <div class="slide">
+            <h2>🚶 דוגמה צעד אחר צעד</h2>
+
+            <div class="interactive-demo">
+                <h3>מציאת הסיסמה "CAT"</h3>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>סיבוב ראשון - מחפשים אות ראשונה</strong>
+                    <table>
+                        <tr>
+                            <th>ניחוש</th>
+                            <th>A__</th>
+                            <th>B__</th>
+                            <th>C__</th>
+                            <th>D__</th>
+                            <th>E__</th>
+                        </tr>
+                        <tr>
+                            <td>זמן</td>
+                            <td>0.50</td>
+                            <td>0.51</td>
+                            <td style="background: #ff5252; color: white; font-weight: bold;">0.95</td>
+                            <td>0.49</td>
+                            <td>0.52</td>
+                        </tr>
+                    </table>
+                    <pre class="output">
+>>> outliers({'A':0.50, 'B':0.51, 'C':0.95, 'D':0.49, 'E':0.52}, 1.5)
+mean = 0.594, std = 0.18
+{'C': 0.95}  ← מצאנו חריג!
+>>> password = 'C'
+                    </pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>סיבוב שני - מחפשים אות שנייה</strong>
+                    <table>
+                        <tr>
+                            <th>ניחוש</th>
+                            <th>CA_</th>
+                            <th>CB_</th>
+                            <th>CC_</th>
+                            <th>CD_</th>
+                            <th>CE_</th>
+                        </tr>
+                        <tr>
+                            <td>זמן</td>
+                            <td style="background: #ff5252; color: white; font-weight: bold;">0.98</td>
+                            <td>0.50</td>
+                            <td>0.51</td>
+                            <td>0.49</td>
+                            <td>0.52</td>
+                        </tr>
+                    </table>
+                    <pre class="output">
+>>> outliers({'A':0.98, 'B':0.50, 'C':0.51, 'D':0.49, 'E':0.52}, 1.5)
+mean = 0.600, std = 0.19
+{'A': 0.98}  ← מצאנו חריג!
+>>> password = 'CA'
+                    </pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>סיבוב שלישי - מחפשים אות שלישית</strong>
+                    <table>
+                        <tr>
+                            <th>ניחוש</th>
+                            <th>CAT</th>
+                            <th>CAB</th>
+                            <th>CAC</th>
+                            <th>CAD</th>
+                            <th>CAE</th>
+                        </tr>
+                        <tr>
+                            <td>זמן</td>
+                            <td style="background: #ff5252; color: white; font-weight: bold;">1.20</td>
+                            <td>0.50</td>
+                            <td>0.51</td>
+                            <td>0.49</td>
+                            <td>0.52</td>
+                        </tr>
+                    </table>
+                    <pre class="output">
+>>> outliers({'T':1.20, 'B':0.50, 'C':0.51, 'D':0.49, 'E':0.52}, 1.5)
+mean = 0.644, std = 0.28
+{'T': 1.20}  ← מצאנו חריג!
+>>> password = 'CAT' ✓✓✓
+                    </pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: The samplesOK Function -->
+        <div class="slide">
+            <h2>✅ הפונקציה samplesOK - בדיקת תקינות</h2>
+
+            <pre class="code-block">
+def samplesOK(samples):
+    candidates = outliers(samples, Threshold)
+    
+    if len(candidates) > 1:
+        return False, None  # יותר מחריג אחד - לא טוב!
+    
+    return True, candidates  # בדיוק חריג אחד - מצוין!
+            </pre>
+
+            <div class="demo-box">
+                <h3>למה צריך בדיוק חריג אחד?</h3>
+                
+                <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>✅ מצב טוב - חריג אחד:</strong></p>
+                    <p>זמנים: 0.5, 0.5, <span style="color: #ff5252; font-weight: bold;">0.9</span>, 0.5</p>
+                    <p>→ ברור שהאות השלישית נכונה!</p>
+                </div>
+
+                <div style="background: #fff3e0; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>⚠️ מצב בעייתי - שני חריגים:</strong></p>
+                    <p>זמנים: 0.5, <span style="color: #ff5252; font-weight: bold;">0.9</span>, <span style="color: #ff5252; font-weight: bold;">0.95</span>, 0.5</p>
+                    <p>→ לא ברור מי נכון! צריך למדוד שוב</p>
+                </div>
+
+                <div style="background: #ffebee; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>❌ מצב בעייתי - אפס חריגים:</strong></p>
+                    <p>זמנים: 0.5, 0.51, 0.52, 0.5</p>
+                    <p>→ כולם דומים! צריך threshold נמוך יותר או למדוד שוב</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: The Main Algorithm -->
+        <div class="slide">
+            <h2>🎯 האלגוריתם המלא</h2>
+
+            <pre class="code-block">
+def find_pass_by_len(pswd_len):
+    pswd = ''  # הסיסמה שמצאנו עד כה
+    
+    while len(pswd) < pswd_len:
+        charTimes = {}  # מילון: אות → זמן
+        
+        # נסה כל אות אפשרית
+        for c in currentPOOL:
+            check = (pswd+c).ljust(pswd_len, '_')
+            url1 = url + '/' + check
+            
+            # מדוד את הזמן (כמה פעמים ותיקח מינימום)
+            t = min(timeit(url1, measurements, count))
+            charTimes[c] = t
+        
+        # בדוק אם יש בדיוק חריג אחד
+        sOK, ol = samplesOK(charTimes)
+        
+        if sOK:
+            # מצאנו את האות הנכונה!
+            foundChar = list(ol.keys())[0]
+            pswd = pswd + foundChar
+            print(f'מצאנו: {pswd}')
+        else:
+            # יש בעיה - נסה שוב עם האותיות החשודות
+            print('מצאנו כמה חריגים, ננסה שוב...')
+            currentPOOL = outliers(charTimes, Threshold)
+    
+    return pswd
+            </pre>
+
+            <div class="demo-box">
+                <h3>🔄 הלוגיקה החכמה:</h3>
+                <p><strong>אם יש חריג אחד:</strong> זו האות הנכונה! ממשיכים לאות הבאה</p>
+                <p><strong>אם יש כמה חריגים:</strong> מצמצמים את POOL רק לאותיות החשודות ומודדים שוב</p>
+                <p>זה חוסך המון זמן! 🚀</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Interactive Demo -->
+        <div class="slide">
+            <h2>🎮 סימולציה אינטראקטיבית</h2>
+
+            <div class="interactive-demo">
+                <h3>נסה למצוא את הסיסמה!</h3>
+                <p>הסיסמה האמיתית: <span id="realPassword" style="filter: blur(5px); cursor: pointer;" onclick="this.style.filter='none'">DOG</span> (לחץ לחשיפה)</p>
+                
+                <div style="margin: 20px 0;">
+                    <label>בחר אות לניחוש:</label>
+                    <button onclick="testLetter('A')">A</button>
+                    <button onclick="testLetter('B')">B</button>
+                    <button onclick="testLetter('C')">C</button>
+                    <button onclick="testLetter('D')">D</button>
+                    <button onclick="testLetter('E')">E</button>
+                    <button onclick="testLetter('F')">F</button>
+                    <button onclick="testLetter('G')">G</button>
+                    <button onclick="testLetter('H')">H</button>
+                    <button onclick="testLetter('O')">O</button>
+                </div>
+
+                <pre id="testResult" class="output" style="min-height: 100px;">
+לחץ על אות כדי לראות את זמן התגובה...
+                </pre>
+
+                <div id="foundPassword" style="font-size: 2em; color: #667eea; font-weight: bold; margin: 20px 0; text-align: center;">
+                    סיסמה שנמצאה: <span id="currentPassword">___</span>
+                </div>
+
+                <button onclick="resetDemo()" style="background: #ff5252;">🔄 איפוס</button>
+            </div>
+
+            <script>
+                let foundPass = '';
+                const realPass = 'DOG';
+                
+                function testLetter(letter) {
+                    const attempt = (foundPass + letter).padEnd(3, '_');
+                    let time = 0.5;
+                    
+                    // Calculate realistic timing
+                    for (let i = 0; i < Math.min(foundPass.length + 1, realPass.length); i++) {
+                        if (i < foundPass.length && foundPass[i] === realPass[i]) {
+                            time += 0.1;
+                        } else if (i === foundPass.length && letter === realPass[i]) {
+                            time += 0.4; // Correct letter takes longer!
+                        }
+                    }
+                    
+                    // Add some randomness
+                    time += (Math.random() - 0.5) * 0.05;
+                    time = time.toFixed(2);
+                    
+                    const isCorrect = letter === realPass[foundPass.length];
+                    
+                    let result = `ניחוש: ${attempt}\n`;
+                    result += `זמן תגובה: ${time}ms\n\n`;
+                    
+                    if (isCorrect) {
+                        result += `🎉 זמן חריג! האות ${letter} היא נכונה!\n`;
+                        foundPass += letter;
+                        document.getElementById('currentPassword').textContent = 
+                            foundPass.padEnd(3, '_');
+                        
+                        if (foundPass === realPass) {
+                            result += `\n🏆 מצאת את הסיסמה המלאה: ${realPass}!`;
+                        }
+                    } else {
+                        result += `זמן רגיל. האות ${letter} לא נכונה.`;
+                    }
+                    
+                    document.getElementById('testResult').textContent = result;
+                }
+                
+                function resetDemo() {
+                    foundPass = '';
+                    document.getElementById('currentPassword').textContent = '___';
+                    document.getElementById('testResult').textContent = 
+                        'לחץ על אות כדי לראות את זמן התגובה...';
+                }
+            </script>
+        </div>
+
+        <!-- Slide 10: Summary and Defense -->
+        <div class="slide">
+            <h2>🎓 סיכום והגנה</h2>
+
+            <div class="key-concept">
+                <h3>מה למדנו?</h3>
+                <p>✅ איך למדוד זמני תגובה של שרת</p>
+                <p>✅ איך להשתמש בסטטיסטיקה למצוא חריגים</p>
+                <p>✅ איך לנצל הבדלי זמנים קטנים לפריצת סיסמאות</p>
+                <p>✅ למה ביצועים וזמן הם גם שיקולי אבטחה!</p>
+            </div>
+
+            <div class="demo-box">
+                <h3>🛡️ איך מתגוננים מפני Timing Attacks?</h3>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>Constant-Time Comparison</strong>
+                    <pre class="code-block">
+def secure_compare(a, b):
+    if len(a) != len(b):
+        return False
+    
+    result = 0
+    # ✅ תמיד בודק את כל האותיות!
+    for i in range(len(a)):
+        result |= ord(a[i]) ^ ord(b[i])
+    
+    return result == 0
+                    </pre>
+                    <p>הקוד הזה לוקח תמיד אותו זמן, ללא קשר לסיסמה!</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>הוספת Delay אקראי</strong>
+                    <p>הוספת השהיית זמן אקראית בין 0-100ms מקשה על המדידה</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>Rate Limiting</strong>
+                    <p>הגבלת מספר ניסיונות לדקה/שעה מקשה על איסוף מספיק מדידות</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>Hash Comparison</strong>
+                    <p>השוואת hash של הסיסמה במקום האותיות עצמן</p>
+                </div>
+            </div>
+
+            <div class="warning">
+                <h3>⚠️ אזהרה אתית</h3>
+                <p><strong>הידע הזה לצרכי למידה בלבד!</strong></p>
+                <p>שימוש בטכניקות אלו על מערכות שאין לכם הרשאה לבדוק הוא <strong>לא חוקי</strong>.</p>
+                <p>השתמשו בידע רק למטרות הגנה, לא תקיפה! 🛡️</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <h2 style="color: #667eea;">🎉 סיימנו! שאלות? 🎉</h2>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <button onclick="prevSlide()">▶️ הקודם</button>
+            <button onclick="resetPresentation()">🔄 התחל מחדש</button>
+            <button onclick="nextSlide()">הבא ◀️</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            // Update progress bar
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Update slide indicator
+            document.getElementById('slideIndicator').textContent = 
+                `שקופית ${currentSlide + 1} מתוך ${totalSlides}`;
+            
+            // Scroll to top
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        function resetPresentation() {
+            showSlide(0);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                prevSlide();
+            } else if (e.key === 'Home') {
+                resetPresentation();
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

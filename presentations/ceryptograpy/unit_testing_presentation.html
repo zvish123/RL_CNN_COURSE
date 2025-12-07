@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקות יחידה - Unit Testing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Secular+One&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2d1b69;
+            --secondary: #f72585;
+            --accent: #4cc9f0;
+            --success: #06ffa5;
+            --warning: #ffd60a;
+            --bg: #0a0e27;
+            --bg-light: #1a1f3a;
+            --text: #e8f1f5;
+            --text-dim: #a0aec0;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 3rem 4rem 8rem 4rem;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+
+        /* Custom Scrollbar */
+        .slide::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .slide::-webkit-scrollbar-track {
+            background: rgba(26, 31, 58, 0.5);
+            border-radius: 10px;
+        }
+
+        .slide::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            border-radius: 10px;
+        }
+
+        .slide::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--accent), var(--success));
+        }
+
+        /* Background Effects */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.03;
+            background-image: 
+                linear-gradient(30deg, var(--accent) 12%, transparent 12.5%, transparent 87%, var(--accent) 87.5%, var(--accent)),
+                linear-gradient(150deg, var(--accent) 12%, transparent 12.5%, transparent 87%, var(--accent) 87.5%, var(--accent)),
+                linear-gradient(30deg, var(--accent) 12%, transparent 12.5%, transparent 87%, var(--accent) 87.5%, var(--accent)),
+                linear-gradient(150deg, var(--accent) 12%, transparent 12.5%, transparent 87%, var(--accent) 87.5%, var(--accent));
+            background-size: 80px 140px;
+            background-position: 0 0, 0 0, 40px 70px, 40px 70px;
+        }
+
+        .glow-orb {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .glow-orb.orb1 {
+            background: var(--secondary);
+            top: -200px;
+            right: -200px;
+            animation: float1 20s ease-in-out infinite;
+        }
+
+        .glow-orb.orb2 {
+            background: var(--accent);
+            bottom: -200px;
+            left: -200px;
+            animation: float2 15s ease-in-out infinite;
+        }
+
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-100px, 100px); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(100px, -100px); }
+        }
+
+        /* Typography */
+        .slide-title {
+            font-family: 'Secular One', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            margin-top: 1rem;
+            text-align: center;
+            line-height: 1.2;
+            position: relative;
+            z-index: 2;
+            animation: slideInTitle 1s ease-out 0.3s both;
+        }
+
+        @keyframes slideInTitle {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-subtitle {
+            font-size: 1.5rem;
+            color: var(--text-dim);
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: slideInTitle 1s ease-out 0.5s both;
+        }
+
+        /* Content Cards */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            width: 100%;
+            max-width: 1400px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card {
+            background: linear-gradient(135deg, var(--bg-light), rgba(45, 27, 105, 0.3));
+            border: 2px solid rgba(76, 201, 240, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: cardSlideIn 0.8s ease-out both;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.7s; }
+        .card:nth-child(2) { animation-delay: 0.85s; }
+        .card:nth-child(3) { animation-delay: 1s; }
+        .card:nth-child(4) { animation-delay: 1.15s; }
+        .card:nth-child(5) { animation-delay: 1.3s; }
+        .card:nth-child(6) { animation-delay: 1.45s; }
+
+        @keyframes cardSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 60px rgba(76, 201, 240, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 0.1;
+        }
+
+        .card-number {
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .card-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-dim);
+            position: relative;
+        }
+
+        /* Code Block */
+        .code-container {
+            background: rgba(10, 14, 39, 0.9);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+            max-width: 1200px;
+            animation: cardSlideIn 0.8s ease-out 0.9s both;
+        }
+
+        .code-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary), var(--accent));
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .code-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .code-lang {
+            background: var(--primary);
+            color: var(--accent);
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        pre {
+            margin: 0;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .keyword { color: var(--secondary); }
+        .function { color: var(--accent); }
+        .string { color: var(--success); }
+        .comment { color: var(--text-dim); font-style: italic; }
+        .number { color: var(--warning); }
+
+        /* List Styles */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px;
+            animation: cardSlideIn 0.8s ease-out 0.8s both;
+        }
+
+        .feature-item {
+            background: linear-gradient(135deg, var(--bg-light), rgba(45, 27, 105, 0.3));
+            border-right: 4px solid var(--accent);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.1));
+            transition: width 0.4s;
+        }
+
+        .feature-item:hover {
+            transform: translateX(-10px);
+            border-color: var(--secondary);
+        }
+
+        .feature-item:hover::before {
+            width: 100%;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            min-width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            border-radius: 12px;
+            font-weight: 900;
+        }
+
+        .feature-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        /* Interactive Example */
+        .interactive-demo {
+            background: rgba(26, 31, 58, 0.8);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 2.5rem;
+            max-width: 1000px;
+            width: 100%;
+            animation: cardSlideIn 0.8s ease-out 0.9s both;
+        }
+
+        .demo-section {
+            margin-bottom: 2rem;
+        }
+
+        .demo-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-result {
+            background: rgba(10, 14, 39, 0.6);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            border-right: 3px solid transparent;
+        }
+
+        .test-result:hover {
+            background: rgba(10, 14, 39, 0.9);
+            transform: translateX(-5px);
+        }
+
+        .test-result.pass {
+            border-right-color: var(--success);
+        }
+
+        .test-result.fail {
+            border-right-color: var(--secondary);
+        }
+
+        .test-status {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .test-status.pass {
+            background: rgba(6, 255, 165, 0.2);
+            color: var(--success);
+        }
+
+        .test-status.fail {
+            background: rgba(247, 37, 133, 0.2);
+            color: var(--secondary);
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+            padding: 0 2rem;
+        }
+
+        .nav-btn {
+            background: rgba(26, 31, 58, 0.95);
+            color: white;
+            border: 2px solid rgba(76, 201, 240, 0.5);
+            padding: 1rem 1.5rem;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Heebo', sans-serif;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(76, 201, 240, 0.4);
+        }
+
+        .slide-indicator {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            z-index: 100;
+            background: rgba(26, 31, 58, 0.95);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(76, 201, 240, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            transition: all 0.3s;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            width: 30px;
+            border-radius: 5px;
+        }
+
+        /* Matrix Visualization */
+        .matrix-demo {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: 1fr 1fr;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .matrix-box {
+            background: rgba(26, 31, 58, 0.6);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .matrix-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            direction: ltr;
+        }
+
+        .matrix-cell {
+            aspect-ratio: 1;
+            background: rgba(76, 201, 240, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .matrix-cell:hover {
+            background: rgba(247, 37, 133, 0.3);
+            transform: scale(1.1);
+        }
+
+        /* Coverage Meter */
+        .coverage-meter {
+            background: rgba(26, 31, 58, 0.8);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 800px;
+            width: 100%;
+            margin: 2rem 0;
+        }
+
+        .coverage-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .coverage-bar {
+            height: 40px;
+            background: rgba(10, 14, 39, 0.8);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), var(--accent), var(--success));
+            transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.2rem;
+        }
+
+        .coverage-label {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-dim);
+            font-size: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .slide-title {
+                font-size: 2.5rem;
+            }
+
+            .slide {
+                padding: 2rem 2rem 6rem 2rem;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .matrix-demo {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-controls {
+                padding: 0 1rem;
+            }
+
+            .nav-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 2rem 1rem 6rem 1rem;
+            }
+
+            .slide-title {
+                font-size: 2rem;
+            }
+
+            .nav-controls {
+                padding: 0 0.5rem;
+            }
+
+            .nav-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.1rem;
+                padding: 0.8rem;
+            }
+
+            .slide-indicator {
+                bottom: 1rem;
+                padding: 0.6rem 1rem;
+            }
+        }
+
+        /* Special Effects */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .emoji {
+            font-style: normal;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="glow-orb orb1"></div>
+    <div class="glow-orb orb2"></div>
+
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1 class="slide-title">בדיקות יחידה<br>Unit Testing</h1>
+            <p class="slide-subtitle">איך משיגים כיסוי מלא של התוכנה? 🎯</p>
+            <div class="coverage-meter">
+                <div class="coverage-title">מטרה: כיסוי 100% של הקוד</div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" id="coverageBar" style="width: 0%">0%</div>
+                </div>
+                <div class="coverage-label">
+                    <span>התחלה</span>
+                    <span>כיסוי מלא ✓</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is Unit Testing -->
+        <div class="slide">
+            <h1 class="slide-title">מה זה בדיקות יחידה?</h1>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">🔬</div>
+                    <div class="feature-text">
+                        <strong>בדיקת קוד ברמת הפונקציה:</strong> כל פונקציה נבדקת בנפרד כדי לוודא שהיא עובדת כמו שצריך
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-text">
+                        <strong>זיהוי מהיר של באגים:</strong> כשבדיקה נכשלת, אנחנו יודעים בדיוק איפה הבעיה
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-text">
+                        <strong>הגנה מפני שינויים:</strong> אם נשנה משהו בקוד, הבדיקות יזהו אם שברנו משהו
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📚</div>
+                    <div class="feature-text">
+                        <strong>תיעוד חי:</strong> הבדיקות מראות איך הפונקציות אמורות לעבוד
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Transposition Example -->
+        <div class="slide">
+            <h1 class="slide-title">דוגמה: Transposition Cipher</h1>
+            <p class="slide-subtitle">הצפנה על ידי שינוי מיקום התווים</p>
+            <div class="matrix-demo">
+                <div class="matrix-box">
+                    <div class="matrix-title">הודעה מקורית</div>
+                    <div class="matrix-grid">
+                        <div class="matrix-cell">e</div>
+                        <div class="matrix-cell">n</div>
+                        <div class="matrix-cell">e</div>
+                        <div class="matrix-cell">m</div>
+                        <div class="matrix-cell">y</div>
+                        <div class="matrix-cell">a</div>
+                        <div class="matrix-cell">t</div>
+                        <div class="matrix-cell">t</div>
+                        <div class="matrix-cell">a</div>
+                        <div class="matrix-cell">c</div>
+                        <div class="matrix-cell">k</div>
+                        <div class="matrix-cell">s</div>
+                        <div class="matrix-cell"></div>
+                        <div class="matrix-cell">t</div>
+                        <div class="matrix-cell">o</div>
+                    </div>
+                    <p style="text-align: center; margin-top: 1rem; color: var(--text-dim);">
+                        קריאה שורה אחרי שורה ↓
+                    </p>
+                </div>
+                <div class="matrix-box">
+                    <div class="matrix-title">הודעה מוצפנת</div>
+                    <div class="matrix-grid">
+                        <div class="matrix-cell" style="background: rgba(247, 37, 133, 0.2);">e</div>
+                        <div class="matrix-cell" style="background: rgba(247, 37, 133, 0.2);">a</div>
+                        <div class="matrix-cell" style="background: rgba(247, 37, 133, 0.2);">k</div>
+                        <div class="matrix-cell" style="background: rgba(76, 201, 240, 0.2);">n</div>
+                        <div class="matrix-cell" style="background: rgba(76, 201, 240, 0.2);">t</div>
+                        <div class="matrix-cell" style="background: rgba(76, 201, 240, 0.2);">s</div>
+                        <div class="matrix-cell" style="background: rgba(6, 255, 165, 0.2);">e</div>
+                        <div class="matrix-cell" style="background: rgba(6, 255, 165, 0.2);">t</div>
+                        <div class="matrix-cell" style="background: rgba(6, 255, 165, 0.2);"></div>
+                        <div class="matrix-cell">m</div>
+                        <div class="matrix-cell">a</div>
+                        <div class="matrix-cell">t</div>
+                        <div class="matrix-cell">y</div>
+                        <div class="matrix-cell">c</div>
+                        <div class="matrix-cell">o</div>
+                    </div>
+                    <p style="text-align: center; margin-top: 1rem; color: var(--text-dim);">
+                        קריאה עמודה אחרי עמודה ↓
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Basic Functional Test -->
+        <div class="slide">
+            <h1 class="slide-title">בדיקה פונקציונלית בסיסית</h1>
+            <p class="slide-subtitle">בדיקת encrypt ו-decrypt עם קלטים רנדומליים</p>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-title">test_functional_transposition.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <pre><code><span class="keyword">from</span> transposition <span class="keyword">import</span> encrypt_transposition, decrypt_transposition
+<span class="keyword">import</span> random, string
+
+<span class="keyword">def</span> <span class="function">test_functional_transposition</span>(number):
+    all_letters = string.ascii_letters
+    
+    <span class="keyword">for</span> x <span class="keyword">in</span> <span class="function">range</span>(number):
+        <span class="comment"># יצירת מחרוזת רנדומלית</span>
+        random_chars = random.sample(all_letters, random.randint(<span class="number">20</span>, <span class="number">40</span>))
+        original = <span class="string">''</span>.join(random_chars)
+        
+        <span class="comment"># בחירת מפתח רנדומלי</span>
+        key = random.randint(<span class="number">2</span>, <span class="function">len</span>(original) // <span class="number">2</span>)
+        
+        <span class="comment"># הצפנה ופענוח</span>
+        cipher = encrypt_transposition(original, key)
+        recovered = decrypt_transposition(cipher, key).rstrip()
+        
+        <span class="comment"># בדיקת תוצאה</span>
+        status = <span class="string">"✓ pass"</span> <span class="keyword">if</span> original == recovered <span class="keyword">else</span> <span class="string">"✗ fail"</span>
+        <span class="function">print</span>(<span class="string">f"Test {x+1}: key={key}, status={status}"</span>)</code></pre>
+            </div>
+        </div>
+
+        <!-- Slide 5: Test Results -->
+        <div class="slide">
+            <h1 class="slide-title">תוצאות הבדיקה</h1>
+            <p class="slide-subtitle">כל הבדיקות עברו בהצלחה! ✨</p>
+            <div class="interactive-demo">
+                <div class="demo-section">
+                    <div class="demo-title">🎯 Functional Testing Results</div>
+                    <div class="test-result pass">
+                        <span>Test 1: key=11, original=QaUmPYdIqAtZfRSuKcXHCpnbLTvwBx</span>
+                        <span class="test-status pass">✓ PASS</span>
+                    </div>
+                    <div class="test-result pass">
+                        <span>Test 2: key=7, original=VLrEQaumtCAWHXlUIxseDZoYFfRwkh</span>
+                        <span class="test-status pass">✓ PASS</span>
+                    </div>
+                    <div class="test-result pass">
+                        <span>Test 3: key=7, original=ykAQKuqROFxZcerngtDpXJBwSam</span>
+                        <span class="test-status pass">✓ PASS</span>
+                    </div>
+                    <div class="test-result pass">
+                        <span>Test 4: key=10, original=wACJfBsMIrDlnSiWYzZp</span>
+                        <span class="test-status pass">✓ PASS</span>
+                    </div>
+                    <div class="test-result pass">
+                        <span>Test 5: key=4, original=JOnhHxifwRpbFSKazVorD</span>
+                        <span class="test-status pass">✓ PASS</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Edge Cases -->
+        <div class="slide">
+            <h1 class="slide-title">בדיקות מקרי קצה</h1>
+            <p class="slide-subtitle">מה קורה במצבים קיצוניים? 🔍</p>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-title">test_edge_cases.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <pre><code><span class="keyword">def</span> <span class="function">test_edge_cases</span>():
+    message = <span class="string">"enemy attacks tonight at 12"</span>
+    
+    <span class="keyword">for</span> key <span class="keyword">in</span> <span class="function">range</span>(<span class="number">-1</span>, <span class="number">2</span>):
+        <span class="keyword">try</span>:
+            cipher = encrypt_transposition(message, key)
+            recovered = decrypt_transposition(cipher, key).rstrip()
+            
+            <span class="keyword">if</span> message == recovered:
+                <span class="function">print</span>(<span class="string">f"✓ key={key}: PASS"</span>)
+            <span class="keyword">else</span>:
+                <span class="function">print</span>(<span class="string">f"✗ key={key}: FAIL"</span>)
+                
+        <span class="keyword">except</span> <span class="function">Exception</span> <span class="keyword">as</span> e:
+            <span class="function">print</span>(<span class="string">f"✗ key={key}: ERROR - {e}"</span>)</code></pre>
+            </div>
+            <div class="interactive-demo" style="margin-top: 2rem;">
+                <div class="test-result fail">
+                    <span>Test: key=-1</span>
+                    <span class="test-status fail">✗ FAIL - list index out of range</span>
+                </div>
+                <div class="test-result fail">
+                    <span>Test: key=0</span>
+                    <span class="test-status fail">✗ FAIL - integer modulo by zero</span>
+                </div>
+                <div class="test-result pass">
+                    <span>Test: key=1</span>
+                    <span class="test-status pass">✓ PASS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: 12 Principles -->
+        <div class="slide">
+            <h1 class="slide-title">12 עקרונות לכיסוי מלא</h1>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-number">1️⃣</div>
+                    <div class="card-title">בדיקה לכל פונקציה</div>
+                    <div class="card-content">לפחות בדיקה אחת לכל פונקציה בקוד</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">2️⃣</div>
+                    <div class="card-title">מקרי שימוש</div>
+                    <div class="card-content">בדיקת תרחישים אמיתיים של שימוש במערכת</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">3️⃣</div>
+                    <div class="card-title">מקרי קצה</div>
+                    <div class="card-content">קלט ריק, מספרים שליליים, אפס, ערכים מקסימליים</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">4️⃣</div>
+                    <div class="card-title">כיסוי קוד</div>
+                    <div class="card-content">שכל שורה בקוד רצה לפחות פעם אחת</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">5️⃣</div>
+                    <div class="card-title">כיסוי ענפים</div>
+                    <div class="card-content">בדיקת כל ה-if/else והתנאים האפשריים</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">6️⃣</div>
+                    <div class="card-title">תלויות חיצוניות</div>
+                    <div class="card-content">שימוש ב-mocks לסימולציה של רכיבים חיצוניים</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: More Principles -->
+        <div class="slide">
+            <h1 class="slide-title">12 עקרונות לכיסוי מלא</h1>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-number">7️⃣</div>
+                    <div class="card-title">בדיקות שילוב</div>
+                    <div class="card-content">אינטראקציה בין מספר פונקציות ורכיבים</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">8️⃣</div>
+                    <div class="card-title">טיפול בחריגים</div>
+                    <div class="card-content">בדיקה שהקוד מטפל נכון ב-exceptions</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">9️⃣</div>
+                    <div class="card-title">קלטים בלתי צפויים</div>
+                    <div class="card-content">בדיקת חוסן הקוד מול קלטים מוזרים</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">🔟</div>
+                    <div class="card-title">תרחישי קצה מורכבים</div>
+                    <div class="card-content">סימולציה של מצבים קיצוניים במערכת</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">1️⃣1️⃣</div>
+                    <div class="card-title">קלטים אקראיים</div>
+                    <div class="card-content">Fuzzy Testing עם קלטים רנדומליים</div>
+                </div>
+                <div class="card">
+                    <div class="card-number">1️⃣2️⃣</div>
+                    <div class="card-title">בדיקות גבולות</div>
+                    <div class="card-content">מה קורה בגבולות הערכים (min, max, zero)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Transposition with Password -->
+        <div class="slide">
+            <h1 class="slide-title">Transposition עם סיסמה</h1>
+            <p class="slide-subtitle">הרחבה: שימוש במפתח טקסטואלי במקום מספר 🔐</p>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-title">transposition_with_password.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <pre><code><span class="keyword">def</span> <span class="function">password_to_key</span>(password):
+    <span class="string">"""המרת סיסמה לסדר עמודות"""</span>
+    <span class="comment"># יצירת רשימה של אינדקסים ממוינים לפי האותיות</span>
+    sorted_chars = <span class="function">sorted</span>(<span class="function">enumerate</span>(password), key=<span class="keyword">lambda</span> x: x[<span class="number">1</span>])
+    key_order = [i <span class="keyword">for</span> i, _ <span class="keyword">in</span> sorted_chars]
+    <span class="keyword">return</span> key_order
+
+<span class="comment"># דוגמה: password = "ZEBRA"</span>
+<span class="comment"># Z=4, E=1, B=0, R=3, A=2</span>
+<span class="comment"># סדר קריאת העמודות: [2, 4, 0, 3, 1]</span>
+
+<span class="keyword">def</span> <span class="function">encrypt_with_password</span>(message, password):
+    key_order = password_to_key(password)
+    cols = <span class="function">len</span>(password)
+    rows = (<span class="function">len</span>(message) + cols - <span class="number">1</span>) // cols
+    
+    <span class="comment"># יצירת מטריצה</span>
+    matrix = string_to_array(message, rows, cols)
+    
+    <span class="comment"># קריאה לפי סדר הסיסמה</span>
+    cipher = array_string_transposition(matrix, key_order)
+    <span class="keyword">return</span> cipher</code></pre>
+            </div>
+        </div>
+
+        <!-- Slide 10: Testing Password Version -->
+        <div class="slide">
+            <h1 class="slide-title">בדיקת הגרסה עם סיסמה</h1>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-title">test_password_transposition.py</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <pre><code><span class="keyword">def</span> <span class="function">test_password_transposition</span>():
+    test_cases = [
+        {
+            <span class="string">'message'</span>: <span class="string">"enemy attacks tonight at 12 am"</span>,
+            <span class="string">'password'</span>: <span class="string">"ZEBRA"</span>,
+            <span class="string">'expected_key'</span>: [<span class="number">2</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">3</span>, <span class="number">1</span>]
+        },
+        {
+            <span class="string">'message'</span>: <span class="string">"secret message"</span>,
+            <span class="string">'password'</span>: <span class="string">"KEY"</span>,
+            <span class="string">'expected_key'</span>: [<span class="number">1</span>, <span class="number">2</span>, <span class="number">0</span>]
+        }
+    ]
+    
+    <span class="keyword">for</span> i, test <span class="keyword">in</span> <span class="function">enumerate</span>(test_cases):
+        <span class="comment"># בדיקת המרת הסיסמה</span>
+        key = password_to_key(test[<span class="string">'password'</span>])
+        <span class="keyword">assert</span> key == test[<span class="string">'expected_key'</span>], <span class="string">f"Key conversion failed"</span>
+        
+        <span class="comment"># בדיקת הצפנה ופענוח</span>
+        cipher = encrypt_with_password(test[<span class="string">'message'</span>], test[<span class="string">'password'</span>])
+        recovered = decrypt_with_password(cipher, test[<span class="string">'password'</span>]).rstrip()
+        
+        <span class="keyword">assert</span> test[<span class="string">'message'</span>] == recovered, <span class="string">f"Test {i+1} failed"</span>
+        <span class="function">print</span>(<span class="string">f"✓ Test {i+1}: password={test['password']} - PASS"</span>)</code></pre>
+            </div>
+        </div>
+
+        <!-- Slide 11: Coverage Visualization -->
+        <div class="slide">
+            <h1 class="slide-title">מדידת כיסוי קוד</h1>
+            <p class="slide-subtitle">כלים למעקב אחרי איכות הבדיקות</p>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-text">
+                        <strong>pytest-cov:</strong> כלי Python למדידת כיסוי קוד
+                        <br><code style="color: var(--accent);">pytest --cov=transposition tests/</code>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-text">
+                        <strong>Line Coverage:</strong> אחוז השורות שרצו
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🌳</div>
+                    <div class="feature-text">
+                        <strong>Branch Coverage:</strong> אחוז הענפים (if/else) שנבדקו
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-text">
+                        <strong>Function Coverage:</strong> אחוז הפונקציות שנקראו
+                    </div>
+                </div>
+            </div>
+            <div class="coverage-meter" style="margin-top: 2rem;">
+                <div class="coverage-title">דוגמה: כיסוי הקוד שלנו</div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" style="width: 95%">95%</div>
+                </div>
+                <div class="coverage-label">
+                    <span>Functions: 100%</span>
+                    <span>Lines: 95%</span>
+                    <span>Branches: 90%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide">
+            <h1 class="slide-title">סיכום 🎓</h1>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-text">
+                        <strong>בדיקות יחידה הן הבסיס</strong> לקוד איכותי ואמין
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-text">
+                        <strong>כיסוי מלא</strong> משיגים ע"י שילוב של 12 העקרונות
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-text">
+                        <strong>מקרי קצה חשובים</strong> לא פחות מהמקרים הרגילים
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🚀</div>
+                    <div class="feature-text">
+                        <strong>אוטומציה</strong> של הבדיקות חוסכת זמן ומונעת טעויות
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📈</div>
+                    <div class="feature-text">
+                        <strong>מדידת כיסוי</strong> עוזרת לזהות חורים בבדיקות
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💪</div>
+                    <div class="feature-text">
+                        <strong>תרגול מתמיד</strong> משפר את יכולת כתיבת הבדיקות
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">→</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">←</button>
+    </div>
+
+    <!-- Slide Indicators -->
+    <div class="slide-indicator" id="indicators"></div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        // Initialize indicators
+        const indicatorsContainer = document.getElementById('indicators');
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(i));
+            indicatorsContainer.appendChild(dot);
+        }
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'prev');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                    // Scroll to top of the slide
+                    setTimeout(() => {
+                        slide.scrollTop = 0;
+                    }, 100);
+                } else if (index < currentSlide) {
+                    slide.classList.add('prev');
+                }
+            });
+
+            // Update indicators
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+
+            // Update buttons
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+
+            // Animate coverage bar on first slide
+            if (currentSlide === 0) {
+                setTimeout(() => {
+                    document.getElementById('coverageBar').style.width = '100%';
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 1;
+                        document.getElementById('coverageBar').textContent = progress + '%';
+                        if (progress >= 100) clearInterval(interval);
+                    }, 20);
+                }, 500);
+            }
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = 0;
+            if (currentSlide >= totalSlides) currentSlide = totalSlides - 1;
+            updateSlide();
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                changeSlide(-1); // RTL: right arrow goes to previous
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                changeSlide(1); // RTL: left arrow goes to next
+            }
+        });
+
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) {
+                changeSlide(-1); // Swipe left (RTL: go to previous)
+            }
+            if (touchEndX > touchStartX + 50) {
+                changeSlide(1); // Swipe right (RTL: go to next)
+            }
+        }
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>

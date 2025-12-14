@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תרגיל 4.5 - כתיבת שרת DNS | משבר האינטרנט הגדול</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: "🌐";
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.1;
+            top: -50px;
+            left: -50px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .header .date {
+            margin-top: 10px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        /* Navigation */
+        .nav {
+            background: #f8f9fa;
+            padding: 15px 40px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Story Section */
+        .story-box {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 5px solid #ff6b6b;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-box h2 {
+            color: #c92a2a;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .story-box p {
+            font-size: 1.1em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        /* Alert Box */
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid;
+        }
+
+        .alert-danger {
+            background: #ffe0e0;
+            border-color: #ff4757;
+            color: #c92a2a;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        /* Task Cards */
+        .task-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+            position: relative;
+        }
+
+        .task-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .task-number {
+            background: #667eea;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Help Button */
+        .help-btn {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 0;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .help-btn:hover {
+            background: #ffb300;
+            transform: scale(1.05);
+        }
+
+        .help-content {
+            display: none;
+            background: #fffbeb;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 2px solid #ffc107;
+            animation: slideDown 0.3s;
+        }
+
+        .help-content.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 500px; }
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .code-block code {
+            display: block;
+            white-space: pre;
+        }
+
+        /* Copy Button */
+        .copy-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: left;
+            margin-bottom: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #45a049;
+        }
+
+        /* Resources */
+        .resource-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .resource-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .resource-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .download-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .download-link:hover {
+            background: #5568d3;
+        }
+
+        /* Submission Form */
+        .submission-form {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-upload {
+            border: 2px dashed #667eea;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #f0f4ff;
+        }
+
+        .file-upload.dragover {
+            background: #e3ebff;
+            border-color: #5568d3;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Progress Tracker */
+        .progress-tracker {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .checklist {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist li.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .checkbox.checked {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Footer */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .nav {
+                padding: 15px 20px;
+            }
+
+            .nav-btn {
+                font-size: 0.9em;
+                padding: 8px 15px;
+            }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #667eea;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Achievement Badge */
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .badge-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        /* Example Box */
+        .example-box {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #2196F3;
+            margin: 15px 0;
+        }
+
+        .example-box h4 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌐 תרגיל 4.5 - כתיבת שרת DNS פשוט</h1>
+            <div class="subtitle">משבר האינטרנט הגדול - 2025</div>
+            <div class="date">שנת 2025, מרכז האבטחה הלאומי למחשבים</div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <button class="nav-btn active" onclick="showSection('story')">📖 הסיפור</button>
+            <button class="nav-btn" onclick="showSection('instructions')">📋 הוראות</button>
+            <button class="nav-btn" onclick="showSection('steps')">🎯 שלבי העבודה</button>
+            <button class="nav-btn" onclick="showSection('resources')">📦 משאבים</button>
+            <button class="nav-btn" onclick="showSection('submission')">✅ הגשה</button>
+            <button class="nav-btn" onclick="showSection('help')">❓ עזרה</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Story Section -->
+            <div id="story" class="section active">
+                <div class="story-box">
+                    <h2>🚨 משבר האינטרנט הגדול</h2>
+                    <p>
+                        בשעות הבוקר המוקדמות של יום רביעי רגיל, התרחש אירוע שהפך את האינטרנט העולמי לכאוס מוחלט.
+                        שרתי ה-DNS המרכזיים ברחבי העולם החלו להשבית זה אחר זה בעקבות מתקפת סייבר מתוחכמת.
+                    </p>
+                    <p>
+                        תוך דקות ספורות, <strong>מיליארדי משתמשים</strong> לא יכלו לגשת לאף אתר - לא למנועי חיפוש,
+                        לא לרשתות החברתיות, ולא אפילו לאתרי החדשות.
+                    </p>
+                    <p>
+                        <strong>הבעיה?</strong> בלי DNS, המחשבים לא יכלו לתרגם שמות כמו "www.google.com" לכתובות IP.
+                        זה כמו לנסות להתקשר למישהו כשפנקס הטלפונים של כל העולם נעלם בבת אחת.
+                    </p>
+                </div>
+
+                <div class="alert alert-danger">
+                    <h3>🎯 המשימה שלכם</h3>
+                    <p>
+                        אתם, כמהנדסי רשתות מתחילים בחברת סטארט-אפ ישראלית, קיבלתם משימה קריטית:
+                        <strong>לבנות שרת DNS חלופי פשוט</strong> שיאפשר למשרד שלכם להמשיך לפעול!
+                    </p>
+                    <p>הזמן אוזל, והצוות מסתמך עליכם! ⏰</p>
+                </div>
+
+                <button class="help-btn" onclick="toggleHelp('story-help')">
+                    💡 למה DNS כל כך חשוב?
+                </button>
+                <div id="story-help" class="help-content">
+                    <h4>מה זה DNS בכלל?</h4>
+                    <p>
+                        <strong>DNS (Domain Name System)</strong> הוא כמו "ספר הטלפונים של האינטרנט".
+                        כשאתה מקליד www.google.com, ה-DNS מתרגם את השם הזה לכתובת IP (כמו 142.250.185.46).
+                    </p>
+                    <h4>למה זה קריטי?</h4>
+                    <ul>
+                        <li>🌍 בלי DNS - אין גישה לאתרים (אלא אם תזכור כתובות IP)</li>
+                        <li>📧 בלי DNS - אין אימייל</li>
+                        <li>💬 בלי DNS - אין WhatsApp, Telegram וכו'</li>
+                        <li>🏢 בלי DNS - חברות לא יכולות לעבוד</li>
+                    </ul>
+                    <div class="example-box">
+                        <h4>דוגמה:</h4>
+                        <p><strong>עם DNS:</strong> אתה מקליד "facebook.com" ← ה-DNS מוצא שזה 157.240.241.35 ← המחשב מתחבר</p>
+                        <p><strong>בלי DNS:</strong> אתה צריך לזכור ולהקליד 157.240.241.35 בעצמך!</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    <h4>🎓 מה תלמדו בתרגיל הזה?</h4>
+                    <ul>
+                        <li>✅ איך DNS עובד ברמת הפרוטוקול</li>
+                        <li>✅ עבודה עם UDP Sockets</li>
+                        <li>✅ ניתוח ובנייה של פקטות בינאריות</li>
+                        <li>✅ שימוש במודול struct</li>
+                        <li>✅ תכנות שרתים ברמה נמוכה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Instructions Section -->
+            <div id="instructions" class="section">
+                <h2>📋 הוראות כלליות</h2>
+
+                <div class="alert alert-warning">
+                    <h3>⚠️ לפני שמתחילים</h3>
+                    <p><strong>ודאו שיש לכם:</strong></p>
+                    <ul>
+                        <li>✔️ Python 3.7 או גבוה יותר</li>
+                        <li>✔️ עורך קוד (VS Code, PyCharm, וכו')</li>
+                        <li>✔️ גישה לטרמינל/Command Prompt</li>
+                        <li>✔️ הרשאות להריץ תוכניות על פורט 5300</li>
+                    </ul>
+                </div>
+
+                <div class="task-card">
+                    <h3><span class="task-number">1</span> הורידו את הקבצים הבסיסיים</h3>
+                    <p>תצטרכו את הקבצים הבאים:</p>
+                    <ul>
+                        <li><code>dns_server_template.py</code> - תבנית לשרת</li>
+                        <li><code>dns_records.json</code> - קובץ רשומות DNS</li>
+                        <li><code>dns_test_suite.py</code> - בודק אוטומטי</li>
+                    </ul>
+                    <p>אתם תקבלו קישורים להורדה בסעיף "משאבים".</p>
+                </div>
+
+                <div class="task-card">
+                    <h3><span class="task-number">2</span> הבינו את המבנה</h3>
+                    <p>שרת DNS מורכב מ-3 חלקים עיקריים:</p>
+                    <div class="code-block">
+                        <code>
+1. קבלת שאילתת DNS (UDP Socket)
+   ↓
+2. ניתוח השאילתה (פיענוח בינארי)
+   ↓
+3. בניית ושליחת תשובה (קידוד בינארי)
+                        </code>
+                    </div>
+
+                    <button class="help-btn" onclick="toggleHelp('structure-help')">
+                        💡 הסבר מפורט על המבנה
+                    </button>
+                    <div id="structure-help" class="help-content">
+                        <h4>מבנה פקטת DNS</h4>
+                        <div class="code-block">
+                            <code>
++---------------------------+
+|      Header (12 bytes)    |  ← Transaction ID, Flags, Counts
++---------------------------+
+|   Question Section        |  ← מה השאילתה? (example.com)
++---------------------------+
+|   Answer Section          |  ← מה התשובה? (93.184.216.34)
++---------------------------+
+|   Authority Section       |  ← (לא נשתמש בזה)
++---------------------------+
+|   Additional Section      |  ← (לא נשתמש בזה)
++---------------------------+
+                            </code>
+                        </div>
+                        <p><strong>בשאילתה:</strong> יש רק Header + Question</p>
+                        <p><strong>בתשובה:</strong> יש Header + Question + Answer</p>
+                    </div>
+                </div>
+
+                <div class="task-card">
+                    <h3><span class="task-number">3</span> עקבו אחר השלבים</h3>
+                    <p>התרגיל מחולק ל-6 שלבים לוגיים. עקבו אחריהם בסדר!</p>
+                    <p><span class="badge badge-primary">טיפ:</span> אחרי כל שלב - בדקו שהקוד עובד!</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <h3>🎯 קריטריוני הצלחה</h3>
+                    <p>השרת שלכם חייב:</p>
+                    <ul>
+                        <li>✅ לענות על שאילתות DNS מסוג A (IPv4)</li>
+                        <li>✅ להחזיר Transaction ID נכון</li>
+                        <li>✅ להגדיר Flags נכון (QR=1, AA=1, וכו')</li>
+                        <li>✅ להחזיר RCODE=0 לדומיין קיים</li>
+                        <li>✅ להחזיר RCODE=3 לדומיין לא קיים</li>
+                        <li>✅ לעבור את כל הבדיקות ב-dns_test_suite.py</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Steps Section -->
+            <div id="steps" class="section">
+                <h2>🎯 שלבי העבודה המפורטים</h2>
+
+                <!-- שלב 1 -->
+                <div class="task-card">
+                    <h3><span class="task-number">1</span> הקמת שרת UDP בסיסי</h3>
+                    <p><strong>המטרה:</strong> ליצור שרת שמאזין לשאילתות UDP על פורט 5300</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>צור UDP socket</li>
+                        <li>קשור (bind) אותו לפורט 5300</li>
+                        <li>התחל לקבל נתונים בלולאה אינסופית</li>
+                        <li>הדפס את הנתונים שהתקבלו (לדיבוג)</li>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step1-help')">
+                        💡 קוד לדוגמה - שלב 1
+                    </button>
+                    <div id="step1-help" class="help-content">
+                        <h4>קוד בסיסי לשרת UDP:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code1')">📋 העתק</button>
+                            <code id="code1">
+import socket
+
+# הגדרות
+DNS_PORT = 5300
+
+# יצירת socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind(('0.0.0.0', DNS_PORT))
+
+print(f"🚀 שרת DNS מאזין על פורט {DNS_PORT}")
+
+while True:
+    # קבלת נתונים
+    data, client_address = server_socket.recvfrom(512)
+    print(f"📨 התקבלה שאילתה מ-{client_address}")
+    print(f"   נתונים: {data.hex()}")
+                            </code>
+                        </div>
+                        <div class="alert alert-info" style="margin-top: 15px;">
+                            <strong>הסבר:</strong>
+                            <ul>
+                                <li><code>SOCK_DGRAM</code> = UDP (לא TCP!)</li>
+                                <li><code>recvfrom(512)</code> = קבל עד 512 bytes</li>
+                                <li><code>client_address</code> = כתובת הלקוח (IP + port)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning" style="margin-top: 15px;">
+                        <strong>🧪 איך לבדוק?</strong>
+                        <p>הריצו את השרת ובטרמינל אחר הריצו:</p>
+                        <code>python dns_test_suite.py</code>
+                        <p>אתם אמורים לראות הודעות בקונסול של השרת!</p>
+                    </div>
+                </div>
+
+                <!-- שלב 2 -->
+                <div class="task-card">
+                    <h3><span class="task-number">2</span> קריאת DNS Header</h3>
+                    <p><strong>המטרה:</strong> לפענח את ה-12 bytes הראשונים של השאילתה</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>השתמש במודול <code>struct</code></li>
+                        <li>חלץ את Transaction ID</li>
+                        <li>חלץ את Flags</li>
+                        <li>חלץ את מספר השאילתות (Questions Count)</li>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step2-help')">
+                        💡 קוד לדוגמה - שלב 2
+                    </button>
+                    <div id="step2-help" class="help-content">
+                        <h4>קריאת Header עם struct:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code2')">📋 העתק</button>
+                            <code id="code2">
+import struct
+
+def parse_dns_header(data):
+    """ניתוח DNS Header (12 bytes)"""
+    if len(data) < 12:
+        return None
+
+    # פירוק ה-12 bytes ל-6 מספרים (כל אחד 2 bytes)
+    transaction_id, flags, qd_count, an_count, ns_count, ar_count = \
+        struct.unpack('!HHHHHH', data[0:12])
+
+    return {
+        'transaction_id': transaction_id,
+        'flags': flags,
+        'qd_count': qd_count,
+        'an_count': an_count,
+        'ns_count': ns_count,
+        'ar_count': ar_count
+    }
+
+# שימוש:
+header = parse_dns_header(data)
+print(f"Transaction ID: 0x{header['transaction_id']:04X}")
+print(f"Questions: {header['qd_count']}")
+                            </code>
+                        </div>
+                        <button class="help-btn" onclick="toggleHelp('struct-explain')">
+                            🤔 מה זה struct?
+                        </button>
+                        <div id="struct-explain" class="help-content">
+                            <h4>הסבר על struct.unpack:</h4>
+                            <p><code>'!HHHHHH'</code> = פורמט הקריאה:</p>
+                            <ul>
+                                <li><code>!</code> = network byte order (big-endian)</li>
+                                <li><code>H</code> = unsigned short (2 bytes)</li>
+                                <li><code>HHHHHH</code> = 6 מספרים של 2 bytes כל אחד = 12 bytes</li>
+                            </ul>
+                            <p>תוצאה: tuple עם 6 מספרים!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- שלב 3 -->
+                <div class="task-card">
+                    <h3><span class="task-number">3</span> פענוח שם הדומיין</h3>
+                    <p><strong>המטרה:</strong> לחלץ את שם הדומיין מהשאילתה</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>התחל מ-offset 12 (אחרי ה-Header)</li>
+                        <li>קרא labels בלולאה</li>
+                        <li>כל label מתחיל באורך שלו</li>
+                        <li>המשך עד שמגיע 0x00</li>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step3-help')">
+                        💡 קוד לדוגמה - שלב 3
+                    </button>
+                    <div id="step3-help" class="help-content">
+                        <h4>פענוח שם דומיין:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code3')">📋 העתק</button>
+                            <code id="code3">
+def parse_domain_name(data, offset):
+    """פענוח שם דומיין מפורמט DNS"""
+    labels = []
+
+    while True:
+        # קריאת אורך התווית
+        length = data[offset]
+
+        # אם 0 - זה סוף השם
+        if length == 0:
+            offset += 1
+            break
+
+        # קריאת התווית
+        offset += 1
+        label = data[offset:offset + length].decode('ascii')
+        labels.append(label)
+        offset += length
+
+    domain_name = '.'.join(labels)
+    return domain_name, offset
+
+# דוגמה:
+# data = b'\x07example\x03com\x00'
+# domain, next = parse_domain_name(data, 0)
+# print(domain)  # "example.com"
+                            </code>
+                        </div>
+                        <div class="example-box">
+                            <h4>דוגמה ויזואלית:</h4>
+                            <p><code>example.com</code> מקודד כך:</p>
+                            <div class="code-block">
+                                <code>
+0x07 e  x  a  m  p  l  e  0x03 c  o  m  0x00
+ ↑   ←───────────────────→  ↑   ←──────→  ↑
+אורך     "example"        אורך  "com"  סוף
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- שלב 4 -->
+                <div class="task-card">
+                    <h3><span class="task-number">4</span> חיפוש בקובץ הרשומות</h3>
+                    <p><strong>המטרה:</strong> למצוא את כתובת ה-IP של הדומיין</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>טען את קובץ dns_records.json</li>
+                        <li>חפש את שם הדומיין במילון</li>
+                        <li>אם נמצא - תכין תשובה עם ה-IP</li>
+                        <li>אם לא נמצא - תכין תשובת שגיאה (RCODE=3)</li>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step4-help')">
+                        💡 קוד לדוגמה - שלב 4
+                    </button>
+                    <div id="step4-help" class="help-content">
+                        <h4>חיפוש ברשומות:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code4')">📋 העתק</button>
+                            <code id="code4">
+import json
+
+# טעינת קובץ הרשומות
+with open('dns_records.json', 'r') as f:
+    dns_records = json.load(f)
+
+# חיפוש דומיין
+domain_name = "example.com"
+if domain_name in dns_records:
+    ip_address = dns_records[domain_name]
+    print(f"✅ נמצא: {domain_name} -> {ip_address}")
+    rcode = 0  # אין שגיאה
+else:
+    print(f"❌ לא נמצא: {domain_name}")
+    ip_address = None
+    rcode = 3  # NXDOMAIN (שם לא קיים)
+                            </code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- שלב 5 -->
+                <div class="task-card">
+                    <h3><span class="task-number">5</span> בניית DNS Header לתשובה</h3>
+                    <p><strong>המטרה:</strong> לבנות 12 bytes של Header עבור התשובה</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>העתק את Transaction ID מהשאילתה</li>
+                        <li>בנה Flags עם QR=1, AA=1, RD=1, RA=1</li>
+                        <li>הגדר Questions=1, Answers=1 (או 0 אם שגיאה)</li>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step5-help')">
+                        💡 קוד לדוגמה - שלב 5
+                    </button>
+                    <div id="step5-help" class="help-content">
+                        <h4>בניית Header:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code5')">📋 העתק</button>
+                            <code id="code5">
+import struct
+
+def build_dns_header(transaction_id, rcode=0, answer_count=1):
+    """בניית DNS Header לתשובה"""
+
+    # בניית Flags
+    qr = 1      # Response
+    opcode = 0  # Standard query
+    aa = 1      # Authoritative Answer
+    tc = 0      # Not truncated
+    rd = 1      # Recursion Desired
+    ra = 1      # Recursion Available
+    z = 0       # Reserved
+
+    # הרכבת כל הביטים לתוך 16 bit
+    flags = (qr << 15) | (opcode << 11) | (aa << 10) | \
+            (tc << 9) | (rd << 8) | (ra << 7) | (z << 4) | rcode
+
+    # בניית Header
+    header = struct.pack(
+        '!HHHHHH',
+        transaction_id,  # ID
+        flags,           # Flags
+        1,               # Questions
+        answer_count,    # Answers
+        0,               # Authority RRs
+        0                # Additional RRs
+    )
+
+    return header
+                            </code>
+                        </div>
+                        <button class="help-btn" onclick="toggleHelp('flags-explain')">
+                            🤔 הסבר על הדגלים
+                        </button>
+                        <div id="flags-explain" class="help-content">
+                            <h4>מה כל דגל אומר?</h4>
+                            <ul>
+                                <li><strong>QR=1:</strong> זו תשובה (לא שאילתה)</li>
+                                <li><strong>AA=1:</strong> תשובה מוסמכת (Authoritative)</li>
+                                <li><strong>RD=1:</strong> רקורסיה רצויה (מועתק מהשאילתה)</li>
+                                <li><strong>RA=1:</strong> רקורסיה זמינה</li>
+                                <li><strong>RCODE:</strong> קוד תשובה (0=הצלחה, 3=שם לא קיים)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- שלב 6 -->
+                <div class="task-card">
+                    <h3><span class="task-number">6</span> בניית Answer Section</h3>
+                    <p><strong>המטרה:</strong> להוסיף את כתובת ה-IP לתשובה</p>
+
+                    <h4>מה צריך לעשות:</h4>
+                    <ul>
+                        <li>העתק את Question Section מהשאילתה</li>
+                        <li>הוסף Answer Section עם:</li>
+                        <ul>
+                            <li>NAME (pointer ל-offset 12)</li>
+                            <li>TYPE = 1 (A record)</li>
+                            <li>CLASS = 1 (IN)</li>
+                            <li>TTL = 300 שניות</li>
+                            <li>RDLENGTH = 4</li>
+                            <li>RDATA = כתובת IP</li>
+                        </ul>
+                    </ul>
+
+                    <button class="help-btn" onclick="toggleHelp('step6-help')">
+                        💡 קוד לדוגמה - שלב 6
+                    </button>
+                    <div id="step6-help" class="help-content">
+                        <h4>בניית Answer Section:</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode('code6')">📋 העתק</button>
+                            <code id="code6">
+import struct
+
+def build_answer_section(ip_address, ttl=300):
+    """בניית Answer Section"""
+    answer = b''
+
+    # 1. NAME - Pointer compression (מצביע ל-offset 12)
+    answer += struct.pack('!H', 0xC00C)
+
+    # 2. TYPE - A record
+    answer += struct.pack('!H', 1)
+
+    # 3. CLASS - IN
+    answer += struct.pack('!H', 1)
+
+    # 4. TTL
+    answer += struct.pack('!I', ttl)
+
+    # 5. RDLENGTH - 4 (אורך IPv4)
+    answer += struct.pack('!H', 4)
+
+    # 6. RDATA - כתובת IP
+    ip_parts = [int(part) for part in ip_address.split('.')]
+    answer += struct.pack('!BBBB', *ip_parts)
+
+    return answer
+
+# דוגמה:
+answer = build_answer_section("93.184.216.34")
+print(f"Answer: {answer.hex()}")
+                            </code>
+                        </div>
+                        <div class="example-box">
+                            <h4>מה זה Pointer Compression?</h4>
+                            <p>במקום לכתוב את שם הדומיין שוב, אנחנו מצביעים למקום שהוא כבר נמצא בו!</p>
+                            <p><code>0xC00C</code> = "תסתכל ב-offset 12" (שם התחיל ה-Question)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- שלב 7 - שליחה -->
+                <div class="task-card">
+                    <h3><span class="task-number">7</span> שליחת התשובה</h3>
+                    <p><strong>המטרה:</strong> לשלוח את התשובה המוכנה בחזרה ללקוח</p>
+
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode('code7')">📋 העתק</button>
+                        <code id="code7">
+# בניית תשובה מלאה
+response = header + question_section + answer_section
+
+# שליחה חזרה ללקוח
+server_socket.sendto(response, client_address)
+print(f"✅ נשלחה תשובה ל-{client_address}")
+                        </code>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <h3>🎉 סיימתם!</h3>
+                    <p>עכשיו הגיע הזמן לבדוק שהשרת עובד. עברו לסעיף "משאבים" והורידו את הבודק האוטומטי!</p>
+                </div>
+            </div>
+
+            <!-- Resources Section -->
+            <div id="resources" class="section">
+                <h2>📦 משאבים להורדה</h2>
+
+                <div class="resource-card">
+                    <h4>📄 dns_records.json</h4>
+                    <p>קובץ רשומות DNS עם דומיינים וכתובות IP</p>
+                    <div class="code-block">
+                        <code id="json-code">{
+  "example.com": "93.184.216.34",
+  "google.com": "142.250.185.46",
+  "wikipedia.org": "208.80.154.224",
+  "github.com": "140.82.121.4",
+  "office.local": "192.168.1.100",
+  "mail.company.com": "10.0.0.50"
+}</code>
+                    </div>
+                    <button class="download-link" onclick="downloadJSON()">⬇️ הורד dns_records.json</button>
+                </div>
+
+                <div class="resource-card">
+                    <h4>🧪 dns_test_suite.py</h4>
+                    <p>בודק אוטומטי שבודק את השרת שלכם ב-10 בדיקות שונות</p>
+                    <p><span class="badge badge-warning">חשוב!</span> כל בדיקה שעוברת = 10 נקודות</p>
+                    <button class="download-link" onclick="downloadFromGoogleDrive('1_80orwnj2UBKQUoF_vvxYIg8sJxIvGsM', 'dns_test_suite.py')">
+                        📥 הורד את הבודק
+                    </button>
+                </div>
+
+                <div class="resource-card">
+                    <h4>🧪 dns_server_template.py</h4>
+                    <p>תבנית לשרת DNS שתכתבו</p>
+                    <button class="download-link" onclick="downloadFromGoogleDrive('14ZQVCnPEFqZti85T7b2f_8nEZ9WMGG2r', 'dns_server_template.py')">
+                        📥 הורד את תבנית שרת ה DNS
+                    </button>
+                </div>
+
+                <div class="resource-card">
+                    <h4>📚 מדריכים נוספים</h4>
+                    <ul>
+                        <li><a href="#" onclick="showSection('help'); return false;">❓ מדריך struct מפורט</a></li>
+                        <li><a href="#" onclick="alert('RFC 1035 - המפרט הרשמי של DNS')">📖 RFC 1035 - מפרט DNS</a></li>
+                        <li><a href="#" onclick="alert('בדקו ב-Wireshark!')">🔍 איך לראות פקטות DNS ב-Wireshark</a></li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-info">
+                    <h4>💡 טיפים לבדיקה</h4>
+                    <ul>
+                        <li>הריצו את השרת בטרמינל אחד</li>
+                        <li>הריצו את הבודק בטרמינל שני</li>
+                        <li>השתמשו ב-<code>print(data.hex())</code> לדיבוג</li>
+                        <li>בדקו עם Wireshark אם אתם רואים פקטות DNS</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Submission Section -->
+            <div id="submission" class="section">
+                <h2>✅ הגשת התרגיל</h2>
+
+                <div class="progress-tracker">
+                    <h3>📊 התקדמות</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%">0%</div>
+                    </div>
+                    <ul class="checklist">
+                        <li id="check1">
+                            <div class="checkbox" onclick="toggleCheck(1)"></div>
+                            <span>השרת רץ בהצלחה על פורט 5300</span>
+                        </li>
+                        <li id="check2">
+                            <div class="checkbox" onclick="toggleCheck(2)"></div>
+                            <span>השרת מחזיר Transaction ID נכון</span>
+                        </li>
+                        <li id="check3">
+                            <div class="checkbox" onclick="toggleCheck(3)"></div>
+                            <span>השרת מגדיר Flags נכון</span>
+                        </li>
+                        <li id="check4">
+                            <div class="checkbox" onclick="toggleCheck(4)"></div>
+                            <span>השרת מחזיר IP לדומיין קיים</span>
+                        </li>
+                        <li id="check5">
+                            <div class="checkbox" onclick="toggleCheck(5)"></div>
+                            <span>השרת מחזיר NXDOMAIN לדומיין לא קיים</span>
+                        </li>
+                        <li id="check6">
+                            <div class="checkbox" onclick="toggleCheck(6)"></div>
+                            <span>כל הבדיקות ב-dns_test_suite.py עברו</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="submission-form">
+                    <h3>📝 פרטי ההגשה</h3>
+
+                    <div class="form-group">
+                        <label for="student-name">שם מלא: *</label>
+                        <input type="text" id="student-name" placeholder="הזן את שמך המלא" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="student-id">תעודת זהות / מספר תלמיד: *</label>
+                        <input type="text" id="student-id" placeholder="הזן מספר זהות או מספר תלמיד" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-name">כיתה:</label>
+                        <input type="text" id="class-name" placeholder="למשל: יא'1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>קבצים להגשה: *</label>
+                        <div class="file-upload" id="file-upload" onclick="document.getElementById('file-input').click()">
+                            <p>📁 גרור קבצים לכאן או לחץ לבחירה</p>
+                            <p style="font-size: 0.9em; color: #666;">נדרש: dns_server.py</p>
+                            <p style="font-size: 0.9em; color: #666;">אופציונלי: צילומי מסך, קובץ לוג</p>
+                        </div>
+                        <input type="file" id="file-input" multiple style="display: none;" onchange="handleFiles(this.files)">
+                        <div id="file-list"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="test-score">ציון הבדיקות האוטומטיות:</label>
+                        <input type="number" id="test-score" placeholder="כמה בדיקות עברו? (0-10)" min="0" max="10">
+                        <p style="font-size: 0.9em; color: #666;">כל בדיקה = 10 נקודות, סה"כ 100</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comments">הערות / קשיים שנתקלת בהם:</label>
+                        <textarea id="comments" rows="5" placeholder="תאר כאן קשיים, שאלות, או דברים מעניינים שלמדת..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="honor-code">
+                            אני מצהיר/ה שהקוד שהגשתי הוא פרי עבודתי העצמאית
+                        </label>
+                    </div>
+
+                    <button class="submit-btn" onclick="submitAssignment()">
+                        📤 שלח הגשה
+                    </button>
+                </div>
+
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    <h4>📌 מה יקרה אחרי ההגשה?</h4>
+                    <ul>
+                        <li>✅ יווצר קובץ JSON עם כל הפרטים שלך</li>
+                        <li>✅ הקובץ יישמר במחשב שלך</li>
+                        <li>✅ תוכל להעלות אותו למערכת או לשלוח למורה</li>
+                        <li>✅ המורה יוכל לטעון את הקובץ ולבדוק את הקוד שלך</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+<!--            <div id="help" class="section">-->
+<!--                <h2>❓ מרכז עזרה</h2>-->
+
+<!--                <div class="task-card">-->
+<!--                    <h3>🐛 בעיות נפוצות ופתרונות</h3>-->
+
+<!--                    <button class="help-btn" onclick="toggleHelp('problem1')">-->
+<!--                        ❌ השרת לא מגיב לשאילתות-->
+<!--                    </button>-->
+<!--                    <div id="problem1" class="help-content">-->
+<!--                        <h4>פתרון:</h4>-->
+<!--                        <ol>-->
+<!--                            <li>בדוק שהשרת רץ: <code>netstat -an | findstr :5300</code></li>-->
+<!--                            <li>בדוק שאתה מאזין על <code>0.0.0.0</code> ולא <code>127.0.0.1</code></li>-->
+<!--                            <li>בדוק שאין Firewall שחוסם את הפורט</li>-->
+<!--                            <li>נסה להריץ כמנהל (Administrator)</li>-->
+<!--                        </ol>-->
+<!--                    </div>-->
+
+<!--                    <button class="help-btn" onclick="toggleHelp('problem2')">-->
+<!--                        ❌ struct.error: unpack requires a buffer of X bytes-->
+<!--                    </button>-->
+<!--                    <div id="problem2" class="help-content">-->
+<!--                        <h4>פתרון:</h4>-->
+<!--                        <p>הנתונים שאתה מנסה לפרק קצרים מדי!</p>-->
+<!--                        <div class="code-block">-->
+<!--                            <code>-->
+<!--# רע:-->
+<!--data = b'\x12\x34'-->
+<!--num1, num2 = struct.unpack('!HHH', data)  # דורש 6 bytes, יש רק 2!-->
+
+<!--# טוב:-->
+<!--if len(data) >= 6:-->
+<!--    num1, num2, num3 = struct.unpack('!HHH', data[0:6])-->
+<!--else:-->
+<!--    print("נתונים קצרים מדי!")-->
+<!--                            </code>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <button class="help-btn" onclick="toggleHelp('problem3')">-->
+<!--                        ❌ nslookup אומר "No response from server"-->
+<!--                    </button>-->
+<!--                    <div id="problem3" class="help-content">-->
+<!--                        <h4>פתרון:</h4>-->
+<!--                        <ol>-->
+<!--                            <li>ודא שהשרת שלח תשובה חזרה (בדוק עם print)</li>-->
+<!--                            <li>בדוק שה-Transaction ID בתשובה זהה לשאילתה</li>-->
+<!--                            <li>בדוק שה-QR flag מוגדר ל-1 (Response)</li>-->
+<!--                            <li>השתמש ב-Wireshark כדי לראות מה השרת שולח</li>-->
+<!--                        </ol>-->
+<!--                    </div>-->
+
+<!--                    <button class="help-btn" onclick="toggleHelp('problem4')">-->
+<!--                        ❌ הבודק אומר "Transaction ID שגוי"-->
+<!--                    </button>-->
+<!--                    <div id="problem4" class="help-content">-->
+<!--                        <h4>פתרון:</h4>-->
+<!--                        <p>אתה חייב להעתיק את ה-Transaction ID מהשאילתה לתשובה!</p>-->
+<!--                        <div class="code-block">-->
+<!--                            <code>-->
+<!--# קרא מהשאילתה:-->
+<!--tid = struct.unpack('!H', query_data[0:2])[0]-->
+
+<!--# שים בתשובה:-->
+<!--response_header = struct.pack('!H', tid, ...)-->
+<!--                            </code>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+<!--                <div class="task-card">-->
+<!--                    <h3>📖 מדריך struct מפורט</h3>-->
+
+<!--                    <button class="help-btn" onclick="toggleHelp('struct-guide')">-->
+<!--                        💡 למה צריך struct?-->
+<!--                    </button>-->
+<!--                    <div id="struct-guide" class="help-content">-->
+<!--                        <h4>מה זה struct?</h4>-->
+<!--                        <p><code>struct</code> מאפשר לנו להמיר בין מספרים לbytes בינאריים.</p>-->
+
+<!--                        <h4>למה זה חשוב ב-DNS?</h4>-->
+<!--                        <p>כי DNS לא משתמש בטקסט רגיל - הכל בבינארי!</p>-->
+
+<!--                        <div class="example-box">-->
+<!--                            <h4>דוגמה:</h4>-->
+<!--                            <div class="code-block">-->
+<!--                                <code>-->
+<!--import struct-->
+
+<!--# המספר 1234 (עשרוני)-->
+<!--number = 1234-->
+
+<!--# המרה ל-2 bytes בינאריים-->
+<!--bytes_data = struct.pack('!H', number)-->
+<!--print(bytes_data.hex())  # '04d2'-->
+
+<!--# המרה חזרה למספר-->
+<!--number_back = struct.unpack('!H', bytes_data)[0]-->
+<!--print(number_back)  # 1234-->
+<!--                                </code>-->
+<!--                            </div>-->
+<!--                        </div>-->
+
+<!--                        <h4>פורמטים נפוצים:</h4>-->
+<!--                        <ul>-->
+<!--                            <li><code>!H</code> - 2 bytes (0-65535)</li>-->
+<!--                            <li><code>!I</code> - 4 bytes (0-4294967295)</li>-->
+<!--                            <li><code>!B</code> - 1 byte (0-255)</li>-->
+<!--                            <li><code>!HHHHHH</code> - 6 מספרים של 2 bytes = 12 bytes (DNS Header!)</li>-->
+<!--                        </ul>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+<!--                <div class="task-card">-->
+<!--                    <h3>🔍 כלי עזר</h3>-->
+<!--                    <ul>-->
+<!--                        <li><strong>Wireshark:</strong> לצפייה בפקטות DNS</li>-->
+<!--                        <li><strong>nslookup:</strong> לשליחת שאילתות DNS</li>-->
+<!--                        <li><strong>dig:</strong> כלי מתקדם לבדיקת DNS</li>-->
+<!--                        <li><strong>Python REPL:</strong> לבדיקת קוד מהירה</li>-->
+<!--                    </ul>-->
+
+<!--                    <div class="code-block">-->
+<!--                        <code>-->
+<!--# בדיקת struct ב-REPL:-->
+<!--&gt;>> import struct-->
+<!--&gt;>> struct.pack('!H', 0x1234)-->
+<!--b'\x12\x34'-->
+<!--&gt;>> struct.unpack('!H', b'\x12\x34')-->
+<!--(4660,)-->
+<!--                        </code>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+<!--                <div class="alert alert-success">-->
+<!--                    <h4>💬 עדיין תקוע?</h4>-->
+<!--                    <p>אל תהסס לשאול את המורה או חברים לכיתה!</p>-->
+<!--                    <p>זה תרגיל מאתגר - זה בסדר להיתקע ולבקש עזרה 😊</p>-->
+<!--                </div>-->
+<!--            </div>-->
+            <!-- Help Section - מורחב עם הסבר struct מקיף -->
+<div id="help" class="section">
+    <h2>❓ מרכז עזרה</h2>
+
+    <!-- הוסף את זה לפני הבעיות הנפוצות -->
+    <div class="task-card">
+        <h3>📚 מדריך מקיף: עבודה עם struct</h3>
+
+        <button class="help-btn" onclick="toggleHelp('struct-intro')">
+            🎯 חלק 1: מה זה struct ולמה אנחנו צריכים אותו?
+        </button>
+        <div id="struct-intro" class="help-content">
+            <h4>הבעיה שאנחנו פוגשים</h4>
+            <p>
+                כשאנחנו עובדים עם פרוטוקולי רשת כמו DNS, HTTP, או TCP/IP, המחשבים לא מעבירים
+                ביניהם מחרוזות טקסט רגילות. במקום זה, הם מעבירים <strong>נתונים בינאריים</strong> -
+                רצפים של 0 ו-1 שמאורגנים בצורה מאוד ספציפית.
+            </p>
+
+            <div class="example-box">
+                <h4>דמיינו את זה ככה:</h4>
+                <div class="code-block">
+                    <code>
+טקסט רגיל (מה שאנחנו רגילים):
+"Hello" = H e l l o
+
+נתונים בינאריים (מה שהמחשב שולח):
+01001000 01100101 01101100 01101100 01101111
+                    </code>
+                </div>
+            </div>
+
+            <h4>למה לא סתם להמיר string ל-bytes?</h4>
+            <p>
+                בפרוטוקולי רשת, כל byte חשוב ויש לו משמעות מדויקת. לדוגמה, ב-DNS:
+            </p>
+            <ul>
+                <li>ה-2 bytes הראשונים = Transaction ID (מספר זיהוי)</li>
+                <li>ה-2 bytes הבאים = Flags (דגלונים)</li>
+                <li>וכן הלאה...</li>
+            </ul>
+            <p>
+                אנחנו צריכים דרך לארוז ולפרק נתונים בצורה <strong>מדויקת</strong> -
+                ובדיוק לזה משמש <code>struct</code>!
+            </p>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-basics')">
+            🔧 חלק 2: struct - המודול הקסום
+        </button>
+        <div id="struct-basics" class="help-content">
+            <h4>מה זה struct?</h4>
+            <p><code>struct</code> הוא מודול בפייתון שמאפשר לנו:</p>
+            <ol>
+                <li><strong>לארוז</strong> (pack) - להמיר מספרים ונתונים לבתים בינאריים</li>
+                <li><strong>לפרק</strong> (unpack) - להמיר בתים בינאריים בחזרה למספרים</li>
+            </ol>
+
+            <h4>דוגמה פשוטה:</h4>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode('struct-ex1')">📋 העתק</button>
+                <code id="struct-ex1">
+import struct
+
+# ארוז את המספר 42 ל-4 בתים
+data = struct.pack('!I', 42)
+print(data)  # b'\x00\x00\x00*'
+print(data.hex())  # '0000002a'
+
+# פרק חזרה
+number = struct.unpack('!I', data)
+print(number)  # (42,)
+print(number[0])  # 42
+                </code>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>מה קורה כאן?</strong>
+                <ul>
+                    <li><code>!I</code> = פורמט: <code>!</code> = network byte order, <code>I</code> = unsigned int (4 bytes)</li>
+                    <li><code>42</code> הפך ל-<code>0x0000002A</code> בהקסדצימלי</li>
+                    <li><code>unpack</code> מחזיר <strong>tuple</strong> - תמיד!</li>
+                </ul>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-formats')">
+            📖 חלק 3: פורמטים ב-struct
+        </button>
+        <div id="struct-formats" class="help-content">
+            <h4>תו הבקרה הראשון - Byte Order</h4>
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <tr style="background: #f0f4ff;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">תו</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">משמעות</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">הסבר</th>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">Network (Big-Endian)</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><strong>השתמשו בזה תמיד לרשתות!</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>&lt;</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">Little-Endian</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">הבייט הכי פחות משמעותי קודם</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>&gt;</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">Big-Endian</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">הבייט הכי משמעותי קודם</td>
+                </tr>
+            </table>
+
+            <div class="alert alert-warning">
+                <strong>💡 כלל זהב: לרשתות תמיד השתמשו ב-<code>!</code></strong>
+            </div>
+
+            <h4>תווי הפורמט - סוגי נתונים</h4>
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <tr style="background: #f0f4ff;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">תו</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">סוג</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">גודל</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">טווח</th>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>B</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">unsigned char</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">1 byte</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">0-255</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>H</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">unsigned short</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">2 bytes</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">0-65535</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>I</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">unsigned int</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">4 bytes</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">0-4294967295</td>
+                </tr>
+            </table>
+
+            <h4>דוגמאות מעשיות:</h4>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode('struct-ex2')">📋 העתק</button>
+                <code id="struct-ex2">
+import struct
+
+# 1. ארוז 2 מספרים - short (2 bytes) ו-int (4 bytes)
+data = struct.pack('!HI', 100, 5000)
+print(f"אורך: {len(data)} bytes")  # 6 bytes (2+4)
+print(f"Hex: {data.hex()}")  # 00641388
+
+# 2. פרק חזרה
+num1, num2 = struct.unpack('!HI', data)
+print(f"המספרים: {num1}, {num2}")  # 100, 5000
+
+# 3. עבודה עם strings
+text = b"DNS"
+data = struct.pack('!3s', text)  # 3s = 3 bytes של string
+print(data)  # b'DNS'
+
+# 4. נתונים מעורבים
+data = struct.pack('!HH4s', 0x1234, 0x0100, b'TEST')
+print(data.hex())  # 12340100544553540
+                </code>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-dns-examples')">
+            🌐 חלק 4: struct ב-DNS - דוגמאות מעשיות
+        </button>
+        <div id="struct-dns-examples" class="help-content">
+            <h4>מבנה DNS Header</h4>
+            <p>DNS Header הוא תמיד <strong>12 bytes</strong> והוא נראה כך:</p>
+            <div class="code-block">
+                <code>
+ 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|                      ID                       |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|                    QDCOUNT                    |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|                    ANCOUNT                    |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|                    NSCOUNT                    |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+|                    ARCOUNT                    |  ← 2 bytes
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+סה"כ: 6 שדות של 2 bytes כל אחד = 12 bytes
+                </code>
+            </div>
+
+            <h4>דוגמה 1: בניית DNS Header</h4>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode('dns-header-build')">📋 העתק</button>
+                <code id="dns-header-build">
+import struct
+
+def build_dns_header(transaction_id, flags, qd_count,
+                     an_count, ns_count, ar_count):
+    """
+    בניית DNS Header
+
+    Returns:
+        bytes: 12 bytes של DNS header
+    """
+    # !HHHHHH = 6 unsigned shorts (כל אחד 2 bytes)
+    # ! = network byte order
+    # H = unsigned short (2 bytes)
+
+    header = struct.pack(
+        '!HHHHHH',
+        transaction_id,  # 2 bytes
+        flags,           # 2 bytes
+        qd_count,        # 2 bytes
+        an_count,        # 2 bytes
+        ns_count,        # 2 bytes
+        ar_count         # 2 bytes
+    )
+
+    return header
+
+# דוגמה לשימוש
+header = build_dns_header(
+    transaction_id=0x1234,  # מזהה
+    flags=0x0100,            # Standard query
+    qd_count=1,              # שאילתה אחת
+    an_count=0,              # אין תשובות
+    ns_count=0,              # אין סמכות
+    ar_count=0               # אין נוספות
+)
+
+print(f"Header: {header.hex()}")
+# פלט: 12340100000100000000000000
+print(f"אורך: {len(header)} bytes")  # 12
+                </code>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>הסבר מפורט:</strong>
+                <ol>
+                    <li><code>'!HHHHHH'</code> - הפורמט:
+                        <ul>
+                            <li><code>!</code> = network byte order (big-endian)</li>
+                            <li><code>H</code> × 6 = 6 מספרים של 2 bytes כל אחד</li>
+                        </ul>
+                    </li>
+                    <li><strong>למה H (unsigned short)?</strong>
+                        <ul>
+                            <li>כל שדה ב-DNS header הוא 16 bit = 2 bytes</li>
+                            <li>unsigned short תופס בדיוק 2 bytes</li>
+                            <li>טווח: 0-65535 (מספיק לכל הערכים שלנו)</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <h4>דוגמה 2: קריאת DNS Header</h4>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode('dns-header-parse')">📋 העתק</button>
+                <code id="dns-header-parse">
+import struct
+
+def parse_dns_header(data):
+    """
+    ניתוח DNS Header
+
+    Args:
+        data: bytes של DNS packet (לפחות 12 bytes)
+
+    Returns:
+        dict: מידע על ה-Header
+    """
+    # בדיקת אורך מינימלי
+    if len(data) < 12:
+        raise ValueError("נתונים קצרים מדי ל-DNS header")
+
+    # פירוק ה-12 bytes הראשונים
+    # unpack מחזיר tuple עם 6 ערכים
+    transaction_id, flags, qd_count, an_count, ns_count, ar_count = \
+        struct.unpack('!HHHHHH', data[0:12])
+
+    # פענוח הדגלים מתוך flags (16 bits)
+    qr     = (flags >> 15) & 0x1      # bit 15
+    opcode = (flags >> 11) & 0xF      # bits 11-14
+    aa     = (flags >> 10) & 0x1      # bit 10
+    tc     = (flags >> 9) & 0x1       # bit 9
+    rd     = (flags >> 8) & 0x1       # bit 8
+    ra     = (flags >> 7) & 0x1       # bit 7
+    z      = (flags >> 4) & 0x7       # bits 4-6
+    rcode  = flags & 0xF              # bits 0-3
+
+    return {
+        'transaction_id': transaction_id,
+        'flags': flags,
+        'qr': qr,
+        'opcode': opcode,
+        'aa': aa,
+        'tc': tc,
+        'rd': rd,
+        'ra': ra,
+        'z': z,
+        'rcode': rcode,
+        'qd_count': qd_count,
+        'an_count': an_count,
+        'ns_count': ns_count,
+        'ar_count': ar_count
+    }
+
+# דוגמה לשימוש
+dns_packet = bytes.fromhex('12340100000100000000000000')
+header_info = parse_dns_header(dns_packet)
+
+print("מידע על ה-Header:")
+print(f"  Transaction ID: 0x{header_info['transaction_id']:04X}")
+print(f"  QR: {header_info['qr']}")
+print(f"  Questions: {header_info['qd_count']}")
+                </code>
+            </div>
+
+            <div class="example-box">
+                <h4>הסבר על פענוח הדגלים:</h4>
+                <div class="code-block">
+                    <code>
+flags = 0x0100  # בבינארי: 0000000100000000
+
+# פירוק לביטים:
+qr     = (0x0100 >> 15) & 0x1  = 0  # bit הכי משמעותי
+opcode = (0x0100 >> 11) & 0xF  = 0  # 4 bits
+aa     = (0x0100 >> 10) & 0x1  = 0
+tc     = (0x0100 >> 9) & 0x1   = 0
+rd     = (0x0100 >> 8) & 0x1   = 1  # ← זה ה-bit שדלוק!
+ra     = (0x0100 >> 7) & 0x1   = 0
+rcode  = 0x0100 & 0xF          = 0  # 4 bits אחרונים
+                    </code>
+                </div>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-dns-domain')">
+            🏷️ חלק 5: קידוד שם דומיין
+        </button>
+        <div id="struct-dns-domain" class="help-content">
+            <h4>איך DNS מקודד שמות דומיין?</h4>
+            <p>ב-DNS, שמות דומיין מקודדים בצורה מיוחדה:</p>
+            <ul>
+                <li>כל תווית (label) מתחילה באורך שלה</li>
+                <li>אחריה התווים עצמם</li>
+                <li>בסוף מגיע 0x00</li>
+            </ul>
+
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode('encode-domain')">📋 העתק</button>
+                <code id="encode-domain">
+import struct
+
+def encode_domain_name(domain):
+    """
+    קידוד שם דומיין לפורמט DNS
+
+    example.com → \x07example\x03com\x00
+    """
+    encoded = b''
+
+    # פיצול לפי נקודות
+    labels = domain.split('.')
+
+    for label in labels:
+        # אורך התווית (1 byte)
+        length = len(label)
+        encoded += struct.pack('!B', length)  # B = unsigned char
+
+        # התווית עצמה
+        encoded += label.encode('ascii')
+
+    # סיום (0x00)
+    encoded += b'\x00'
+
+    return encoded
+
+# דוגמאות
+domain1 = encode_domain_name("example.com")
+print(f"example.com → {domain1.hex()}")
+# פלט: 076578616d706c6503636f6d00
+
+domain2 = encode_domain_name("www.google.com")
+print(f"www.google.com → {domain2.hex()}")
+# פלט: 03777777066676f6f676c6503636f6d00
+                </code>
+            </div>
+
+            <div class="example-box">
+                <h4>ניתוח מפורט של example.com:</h4>
+                <div class="code-block">
+                    <code>
+example.com מקודד כך:
+
+Byte 0:    0x07 = 7 (אורך 'example')
+Bytes 1-7: 'example'
+Byte 8:    0x03 = 3 (אורך 'com')
+Bytes 9-11: 'com'
+Byte 12:   0x00 (סיום)
+
+בהקסדצימלי:
+07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+↑  ← ─ ─ ─ ─ ─ ─ ─ ─ →  ↑  ← ─ ─ →  ↑
+אורך   "example"      אורך  "com"  סוף
+                    </code>
+                </div>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-tips')">
+            💡 חלק 6: טיפים וטעויות נפוצות
+        </button>
+        <div id="struct-tips" class="help-content">
+            <h4>❌ טעות 1: שכחת את <code>!</code></h4>
+            <div class="code-block">
+                <code>
+# רע - ללא !
+data = struct.pack('HH', 100, 200)
+# זה יהיה תלוי מערכת!
+
+# טוב - עם !
+data = struct.pack('!HH', 100, 200)
+# זה תמיד יהיה network byte order
+                </code>
+            </div>
+
+            <h4>❌ טעות 2: שכחת ש-unpack מחזיר tuple</h4>
+            <div class="code-block">
+                <code>
+# רע
+number = struct.unpack('!H', data)
+print(number + 5)  # שגיאה! number הוא tuple
+
+# טוב - אופציה 1
+number = struct.unpack('!H', data)[0]
+print(number + 5)  # עובד!
+
+# טוב - אופציה 2
+(number,) = struct.unpack('!H', data)
+print(number + 5)  # עובד!
+                </code>
+            </div>
+
+            <h4>❌ טעות 3: בחירת סוג נתונים שגוי</h4>
+            <div class="code-block">
+                <code>
+# רע - מספר 70000 לא נכנס ל-H (max 65535)
+data = struct.pack('!H', 70000)  # שגיאה!
+
+# טוב - השתמש ב-I (4 bytes)
+data = struct.pack('!I', 70000)  # עובד!
+                </code>
+            </div>
+
+            <h4>✅ טיפ 1: השתמש ב-calcsize</h4>
+            <div class="code-block">
+                <code>
+import struct
+
+# כמה bytes תופס הפורמט?
+size = struct.calcsize('!HHHHHH')
+print(f"DNS Header size: {size} bytes")  # 12
+
+size = struct.calcsize('!HI')
+print(f"H+I size: {size} bytes")  # 6 (2+4)
+                </code>
+            </div>
+
+            <h4>✅ טיפ 2: הדפס בhex לדיבוג</h4>
+            <div class="code-block">
+                <code>
+data = struct.pack('!HH', 0x1234, 0x5678)
+print(f"Hex: {data.hex()}")  # 12345678
+print(f"Bytes: {list(data)}")  # [18, 52, 86, 120]
+                </code>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-exercises')">
+            🧪 חלק 7: תרגילים לתרגול
+        </button>
+        <div id="struct-exercises" class="help-content">
+            <h4>תרגיל 1: קריאת Port Number</h4>
+            <div class="code-block">
+                <code>
+# נתון: packet TCP עם port number
+data = b'\x1f\x90'  # port 8080 בהקסדצימלי
+
+# משימה: חלץ את מספר הפורט
+port = struct.unpack('!H', data)[0]
+print(f"Port: {port}")  # 8080
+                </code>
+            </div>
+
+            <h4>תרגיל 2: בניית IPv4 Address</h4>
+            <div class="code-block">
+                <code>
+# משימה: המר "192.168.1.1" ל-4 bytes
+
+ip_string = "192.168.1.1"
+parts = [int(p) for p in ip_string.split('.')]
+ip_bytes = struct.pack('!BBBB', *parts)
+
+print(f"IP bytes: {ip_bytes.hex()}")  # c0a80101
+                </code>
+            </div>
+
+            <h4>תרגיל 3: פרק כתובת IPv4</h4>
+            <div class="code-block">
+                <code>
+# נתון: 4 bytes של IP
+data = b'\xc0\xa8\x01\x01'
+
+# משימה: המר לstring
+a, b, c, d = struct.unpack('!BBBB', data)
+ip_string = f"{a}.{b}.{c}.{d}"
+
+print(f"IP: {ip_string}")  # 192.168.1.1
+                </code>
+            </div>
+        </div>
+
+        <button class="help-btn" onclick="toggleHelp('struct-summary')">
+            📚 חלק 8: סיכום
+        </button>
+        <div id="struct-summary" class="help-content">
+            <h4>מה למדנו?</h4>
+            <ol>
+                <li>✅ <code>struct</code> מאפשר המרה בין נתונים בינאריים למספרים</li>
+                <li>✅ <code>!</code> = network byte order (תמיד לרשתות!)</li>
+                <li>✅ <code>pack()</code> = ארוז מספרים לbytes</li>
+                <li>✅ <code>unpack()</code> = פרק bytes למספרים</li>
+                <li>✅ תמיד בדוק אורכי נתונים עם <code>calcsize()</code></li>
+                <li>✅ <code>unpack()</code> מחזיר tuple - זכור לחלץ את הערכים</li>
+            </ol>
+
+            <h4>טבלת פורמטים מקוצרת</h4>
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <tr style="background: #f0f4ff;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">פורמט</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">שימוש ב-DNS</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">דוגמה</th>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!H</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">Transaction ID, Flags</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>struct.pack('!H', 0x1234)</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!I</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">TTL (4 bytes)</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>struct.pack('!I', 300)</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!B</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">אורך label</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>struct.pack('!B', 7)</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!BBBB</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">כתובת IPv4</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>struct.pack('!BBBB', 192, 168, 1, 1)</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;"><code>!HHHHHH</code></td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">DNS Header מלא</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">ראה דוגמאות למעלה</td>
+                </tr>
+            </table>
+
+            <div class="alert alert-success">
+                <h4>🎓 לסיכום</h4>
+                <p>עבודה עם <code>struct</code> נראית מסובכת בהתחלה, אבל היא <strong>הכרחית</strong> לעבודה עם פרוטוקולי רשת.</p>
+
+                <strong>זכור את העקרונות:</strong>
+                <ol>
+                    <li>🌐 תמיד <code>!</code> לרשתות</li>
+                    <li>📦 <code>pack</code> = נתונים → bytes</li>
+                    <li>📂 <code>unpack</code> = bytes → נתונים</li>
+                    <li>🔢 <code>unpack</code> מחזיר tuple</li>
+                    <li>📏 בדוק אורכים עם <code>calcsize</code></li>
+                </ol>
+
+                <p><strong>בהצלחה! 🚀</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- הוסף כאן את שאר הבעיות הנפוצות... -->
+
+
+
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>תרגיל 4.5 - כתיבת שרת DNS</strong></p>
+            <p>בית ספר תיכון בליך | מסלול סייבר ורשתות תקשורת</p>
+            <p>צבי שירן | שנה"ל 2025</p>
+        </div>
+    </div>
+
+    <script>
+        // Navigation
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active from all buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+
+            // Add active to clicked button
+            event.target.classList.add('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Toggle help content
+        function toggleHelp(helpId) {
+            const helpContent = document.getElementById(helpId);
+            helpContent.classList.toggle('show');
+        }
+
+        // Copy code
+        function copyCode(codeId) {
+            const code = document.getElementById(codeId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('הקוד הועתק ללוח! ✅');
+            });
+        }
+
+        // Progress tracker
+        let checkedItems = new Set();
+
+        function toggleCheck(itemNum) {
+            const item = document.getElementById(`check${itemNum}`);
+            const checkbox = item.querySelector('.checkbox');
+
+            if (checkedItems.has(itemNum)) {
+                checkedItems.delete(itemNum);
+                checkbox.classList.remove('checked');
+                checkbox.textContent = '';
+                item.classList.remove('completed');
+            } else {
+                checkedItems.add(itemNum);
+                checkbox.classList.add('checked');
+                checkbox.textContent = '✓';
+                item.classList.add('completed');
+            }
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = 6;
+            const completed = checkedItems.size;
+            const percentage = Math.round((completed / total) * 100);
+
+            const progressFill = document.getElementById('progress-fill');
+            progressFill.style.width = percentage + '%';
+            progressFill.textContent = percentage + '%';
+        }
+
+        // File handling
+        let uploadedFiles = [];
+
+        function handleFiles(files) {
+            uploadedFiles = Array.from(files);
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('file-list');
+            if (uploadedFiles.length === 0) {
+                fileList.innerHTML = '';
+                return;
+            }
+
+            let html = '<h4 style="margin-top: 15px;">קבצים שנבחרו:</h4><ul>';
+            uploadedFiles.forEach((file, index) => {
+                html += `<li>📄 ${file.name} (${(file.size / 1024).toFixed(2)} KB)</li>`;
+            });
+            html += '</ul>';
+            fileList.innerHTML = html;
+        }
+
+        // Drag and drop
+        const fileUpload = document.getElementById('file-upload');
+
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('dragover');
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('dragover');
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // Download JSON
+        function downloadJSON() {
+            const jsonData = {
+                "example.com": "93.184.216.34",
+                "google.com": "142.250.185.46",
+                "wikipedia.org": "208.80.154.224",
+                "github.com": "140.82.121.4",
+                "office.local": "192.168.1.100",
+                "mail.company.com": "10.0.0.50",
+                "facebook.com": "157.240.241.35",
+                "amazon.com": "205.251.242.103",
+                "netflix.com": "54.155.178.5",
+                "microsoft.com": "20.112.52.29"
+            };
+
+            const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dns_records.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Submit assignment
+        function submitAssignment() {
+            // Validate
+            const name = document.getElementById('student-name').value.trim();
+            const id = document.getElementById('student-id').value.trim();
+            const honorCode = document.getElementById('honor-code').checked;
+
+            if (!name || !id) {
+                alert('❌ נא למלא את כל השדות החובה (שם ומספר תלמיד)');
+                return;
+            }
+
+            if (!honorCode) {
+                alert('❌ נא לאשר את הצהרת היושר');
+                return;
+            }
+
+            if (uploadedFiles.length === 0) {
+                alert('❌ נא להעלות לפחות את הקובץ dns_server.py');
+                return;
+            }
+
+            // Create submission object
+            const submission = {
+                timestamp: new Date().toISOString(),
+                student: {
+                    name: name,
+                    id: id,
+                    class: document.getElementById('class-name').value.trim()
+                },
+                testScore: document.getElementById('test-score').value,
+                comments: document.getElementById('comments').value.trim(),
+                files: uploadedFiles.map(f => ({
+                    name: f.name,
+                    size: f.size,
+                    type: f.type
+                })),
+                progress: {
+                    completed: checkedItems.size,
+                    total: 6,
+                    percentage: Math.round((checkedItems.size / 6) * 100)
+                }
+            };
+
+            // Download submission file
+            const blob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dns_exercise_${id}_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('✅ ההגשה נוצרה בהצלחה!\n\nקובץ ההגשה נשמר במחשב שלך.\nהעלה אותו למערכת או שלח למורה.');
+        }
+
+        // Download from Google Drive - Enhanced version
+function downloadFromGoogleDrive(fileId, fileName) {
+    // Show loading message
+    const originalText = event.target.textContent;
+    event.target.textContent = '⏳ מוריד...';
+    event.target.disabled = true;
+
+    try {
+        // Google Drive direct download URL
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+        // Option 1: Open in new tab (works better for large files)
+        window.open(downloadUrl, '_blank');
+
+        // Option 2: Try fetch and download (for smaller files)
+        fetch(downloadUrl, {
+            method: 'GET',
+            mode: 'cors'
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Failed to download');
+        })
+        .then(blob => {
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            alert(`✅ ${fileName} הורד בהצלחה!`);
+        })
+        .catch(error => {
+            // If fetch fails, the new tab should work
+            console.log('Fetch failed, using new tab method');
+            alert(`📥 נפתח חלון חדש להורדת ${fileName}\n\nאם החלון לא נפתח, בדוק את חוסם החלונות הקופצים.`);
+        });
+
+    } catch (error) {
+        alert(`❌ שגיאה בהורדה: ${error.message}\n\nנסה להוריד ידנית מהקישור בגוגל דרייב.`);
+    } finally {
+        // Reset button after 2 seconds
+        setTimeout(() => {
+            event.target.textContent = originalText;
+            event.target.disabled = false;
+        }, 2000);
+    }
+}
+    </script>
+</body>
+</html>

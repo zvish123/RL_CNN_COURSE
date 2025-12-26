@@ -441,43 +441,54 @@ Date: Mon, 13 Dec 2025 11:00:00 GMT
                 </div>
                 <pre class="code-block">
 <span class="code-keyword">import</span> requests
-<span class="code-keyword">from</span> datetime <span class="code-keyword">import</span> datetime
 
-<span class="code-keyword">class</span> <span class="code-function">SimpleCache</span>:
-    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self):
-        self.cache = {}  <span class="code-comment"># מילון לשמירת דפים</span>
-    
-    <span class="code-keyword">def</span> <span class="code-function">get_page</span>(self, url):
-        <span class="code-comment"># בדיקה אם הדף במטמון</span>
-        <span class="code-keyword">if</span> url <span class="code-keyword">in</span> self.cache:
-            cached_time = self.cache[url][<span class="code-string">'time'</span>]
-            cached_content = self.cache[url][<span class="code-string">'content'</span>]
-            
-            <span class="code-comment"># שליחת בקשה מותנית</span>
-            headers = {<span class="code-string">'If-Modified-Since'</span>: cached_time}
-            response = requests.get(url, headers=headers)
-            
-            <span class="code-keyword">if</span> response.status_code == <span class="code-string">304</span>:
-                print(<span class="code-string">f"✅ שימוש במטמון עבור {url}"</span>)
-                <span class="code-keyword">return</span> cached_content
-            <span class="code-keyword">else</span>:
-                print(<span class="code-string">f"🔄 עדכון מטמון עבור {url}"</span>)
-        <span class="code-keyword">else</span>:
-            print(<span class="code-string">f"📥 הורדה ראשונה של {url}"</span>)
-            response = requests.get(url)
-        
-        <span class="code-comment"># שמירה במטמון</span>
+
+<span class="code-keyword">class</span> HTTPCache:
+    <span class="code-keyword">def</span> __init__(self):
+        self.cache = {}
+
+    <span class="code-keyword">def</span> get_page(self, url):
+        headers = {}
+
+        <span class="code-comment"># אם יש מידע במטמון – שלח בקשה מותנית</span>
+        <span class="code-keyword">if</span> url in self.cache:
+            cached = self.cache[url]
+
+            <span class="code-keyword">if</span> cached.get(<span class="code-string">"etag"</span>):
+                headers[<span class="code-string">"If-None-Match"</span>] = cached[<span class="code-string">"etag"</span>]
+            <span class="code-keyword">elif</span> cached.get(<span class="code-string">"last_modified"</span>):
+                headers[<span class="code-string">"If-Modified-Since"</span>] = cached[<span class="code-string">"last_modified"</span>]
+
+            <span class="code-keyword">print</span>(<span class="code-string">f"📡 בקשה מותנית ל־{url}"</span>)
+        else:
+            <span class="code-keyword">print</span>(<span class="code-string">f"📥 בקשה ראשונה ל־{url}"</span>)
+
+        response = requests.get(url, headers=headers)
+
+        <span class="code-comment"># שימוש במטמון</span>
+        <span class="code-keyword">if</span> response.status_code == 304:
+            <span class="code-keyword">print</span>(<span class="code-string">"✅ 304 Not Modified – שימוש במטמון\n"</span>)
+            <span class="code-keyword">return</span> self.cache[url]["content"]
+
+        <span class="code-comment"># עדכון מטמון</span>
+        <span class="code-keyword">print</span>(<span class="code-string">f"🔄 {response.status_code} – עדכון מטמון\n"</span>)
         self.cache[url] = {
-            <span class="code-string">'content'</span>: response.text,
-            <span class="code-string">'time'</span>: response.headers.get(<span class="code-string">'Last-Modified'</span>, 
-                                        datetime.now().strftime(<span class="code-string">'%a, %d %b %Y %H:%M:%S GMT'</span>))
+            <span class="code-string">"content"</span>: response.text,
+            <span class="code-string">"etag"</span>: response.headers.get(<span class="code-string">"ETag"</span>),
+            <span class="code-string">"last_modified"</span>: response.headers.get(<span class="code-string">"Last-Modified"</span>)
         }
+
         <span class="code-keyword">return</span> response.text
 
-<span class="code-comment"># דוגמת שימוש</span>
-cache = SimpleCache()
-page1 = cache.get_page(<span class="code-string">'http://testhtml5.vulnweb.com/#/popular'</span>)  <span class="code-comment"># הורדה ראשונה</span>
-page2 = cache.get_page(<span class="code-string">'http://testhtml5.vulnweb.com/#/popular'</span>)  <span class="code-comment"># שימוש במטמון</span>
+
+cache = HTTPCache()
+
+url = <span class="code-string">"http://httpbin.org/cache/60"</span>
+url = <span class="code-string">"http://httpbin.org/etag/abc123"</span>
+
+page1 = cache.get_page(url)  # 200
+page2 = cache.get_page(url)  # 304
+page3 = cache.get_page(url)  # 304
                 </pre>
             </div>
         </div>

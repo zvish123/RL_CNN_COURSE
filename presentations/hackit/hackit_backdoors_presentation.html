@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דלתות אחוריות במשחק HACKIT - ניתוח שיטות התקפה והגנה</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Rubik+Mono+One&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0a0e27;
+            --secondary: #1a1f3a;
+            --accent: #00d9ff;
+            --accent-warm: #ff3366;
+            --accent-green: #00ff88;
+            --text: #e0e6ff;
+            --text-dim: #8892b0;
+            --code-bg: #0d1117;
+            --slide-shadow: 0 20px 60px rgba(0, 217, 255, 0.15);
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%);
+            color: var(--text);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 217, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 51, 102, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Rubik Mono One', cursive;
+            font-size: clamp(2rem, 5vw, 4rem);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-shadow: 0 0 40px rgba(0, 217, 255, 0.3);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.4)); }
+            50% { filter: drop-shadow(0 0 40px rgba(0, 217, 255, 0.6)); }
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--text-dim);
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--secondary) 0%, rgba(26, 31, 58, 0.5) 100%);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 12px 28px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: var(--accent);
+            transform: translate(-50%, -50%);
+            transition: width 0.5s, height 0.5s;
+            z-index: -1;
+        }
+
+        .nav-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .nav-btn:hover {
+            color: var(--primary);
+            border-color: var(--accent);
+            box-shadow: 0 5px 25px rgba(0, 217, 255, 0.4);
+        }
+
+        .nav-btn.active {
+            background: var(--accent);
+            color: var(--primary);
+            box-shadow: 0 5px 25px rgba(0, 217, 255, 0.5);
+        }
+
+        .slide {
+            display: none;
+            background: rgba(26, 31, 58, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 50px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            box-shadow: var(--slide-shadow);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 30px;
+            font-weight: 900;
+            position: relative;
+            display: inline-block;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 0;
+            width: 60%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 0%, var(--accent-warm) 100%);
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            color: var(--accent-green);
+            margin-top: 35px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h3::before {
+            content: '►';
+            color: var(--accent-warm);
+            font-size: 1.3rem;
+        }
+
+        .technique-card {
+            background: linear-gradient(135deg, rgba(13, 17, 23, 0.9) 0%, rgba(26, 31, 58, 0.7) 100%);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+            transition: all 0.3s ease;
+        }
+
+        .technique-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 217, 255, 0.2);
+            border-color: var(--accent);
+        }
+
+        .technique-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .technique-title {
+            font-size: 1.5rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .difficulty-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .difficulty-easy {
+            background: linear-gradient(135deg, #00ff88 0%, #00d9ff 100%);
+            color: var(--primary);
+        }
+
+        .difficulty-medium {
+            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+            color: var(--primary);
+        }
+
+        .difficulty-hard {
+            background: linear-gradient(135deg, #ff3366 0%, #cc0066 100%);
+            color: white;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            overflow-x: auto;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+            direction: ltr;
+        }
+
+        .code-block::before {
+            content: 'Python';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--accent);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        pre {
+            margin: 0;
+            padding-top: 30px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e0e6ff;
+        }
+
+        .keyword {
+            color: #ff3366;
+            font-weight: 600;
+        }
+
+        .function {
+            color: #00d9ff;
+        }
+
+        .string {
+            color: #00ff88;
+        }
+
+        .comment {
+            color: #8892b0;
+            font-style: italic;
+        }
+
+        .number {
+            color: #ffd700;
+        }
+
+        .list-styled {
+            list-style: none;
+            padding-right: 0;
+        }
+
+        .list-styled li {
+            padding: 12px 0 12px 30px;
+            position: relative;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            border-right: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .list-styled li:hover {
+            border-right-color: var(--accent);
+            padding-right: 10px;
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .list-styled li::before {
+            content: '⚡';
+            position: absolute;
+            right: 0;
+            color: var(--accent-warm);
+            font-size: 1.2rem;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .comparison-item {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(26, 31, 58, 0.5) 100%);
+            padding: 25px;
+            border-radius: 12px;
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .comparison-item:hover {
+            border-color: var(--accent);
+            transform: scale(1.02);
+        }
+
+        .comparison-item h4 {
+            color: var(--accent-green);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.1) 0%, rgba(0, 217, 255, 0.1) 100%);
+            border: 2px solid var(--accent-warm);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-warm) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.15) 0%, rgba(204, 0, 102, 0.1) 100%);
+            border-right: 5px solid var(--accent-warm);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .warning-box strong {
+            color: var(--accent-warm);
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .success-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 217, 255, 0.1) 100%);
+            border-right: 5px solid var(--accent-green);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .success-box strong {
+            color: var(--accent-green);
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .group-badge {
+            display: inline-block;
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--accent);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(0, 217, 255, 0.1);
+            margin-top: 60px;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            h3 {
+                font-size: 1.4rem;
+            }
+
+            .technique-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .interactive-demo {
+            background: rgba(13, 17, 23, 0.8);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .demo-btn {
+            background: var(--secondary);
+            border: 2px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .demo-btn:hover {
+            background: var(--accent-green);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .demo-output {
+            background: var(--code-bg);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .demo-output .log-success {
+            color: var(--accent-green);
+        }
+
+        .demo-output .log-error {
+            color: var(--accent-warm);
+        }
+
+        .demo-output .log-info {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔓 HACKIT: דלתות אחוריות</h1>
+            <p class="subtitle">ניתוח מעמיק של שיטות התקפה והגנה ב-Timing Attack</p>
+        </header>
+
+        <nav class="navigation">
+            <button class="nav-btn active" onclick="showSlide(0)">מבוא</button>
+            <button class="nav-btn" onclick="showSlide(1)">שיטה 1: PRNG</button>
+            <button class="nav-btn" onclick="showSlide(2)">שיטה 2: דטרמיניסטית</button>
+            <button class="nav-btn" onclick="showSlide(3)">שיטה 3: השהייה קבועה</button>
+            <button class="nav-btn" onclick="showSlide(4)">שיטה 4: תווים מיוחדים</button>
+            <button class="nav-btn" onclick="showSlide(5)">שיטה 5: Affine</button>
+            <button class="nav-btn" onclick="showSlide(6)">שיטה 6: טריגונומטרית</button>
+            <button class="nav-btn" onclick="showSlide(7)">שיטה 7: Time-Based</button>
+            <button class="nav-btn" onclick="showSlide(8)">סיכום</button>
+        </nav>
+
+        <main>
+            <!-- Slide 0: Introduction -->
+            <section class="slide active">
+                <h2>מבוא: מהי דלת אחורית במשחק HACKIT?</h2>
+                
+                <div class="warning-box">
+                    <strong>⚠️ הקשר הפדגוגי</strong>
+                    דלת אחורית (Backdoor) במשחק HACKIT היא מנגנון מכוון שמאפשר לכותבי הקוד לפרוץ לשרת שלהם, בעוד שהוא מקשה על תוקפים "עיוורים" שלא מכירים את השיטה.
+                </div>
+
+                <h3>מהו Timing Attack?</h3>
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 25px;">
+                    <strong>Timing Attack</strong> הוא סוג של התקפת ערוץ צד (Side-Channel Attack) שבה התוקף מנצל את <strong>הזמן</strong> שלוקח לשרת לבדוק סיסמה. 
+                    כאשר השרת בודק תו-תו והתוקף מודד את זמן התגובה, ניתן להבין איזה תו נכון על פי השינוי בזמן.
+                </p>
+
+                <div class="comparison-grid">
+                    <div class="comparison-item">
+                        <h4>🔨 Brute Force</h4>
+                        <p><strong>נסיונות:</strong> 62⁶ ≈ 56.8 מיליארד</p>
+                        <p><strong>זמן:</strong> מאות שנים</p>
+                        <p><strong>יעילות:</strong> נמוכה מאוד</p>
+                    </div>
+                    <div class="comparison-item">
+                        <h4>⚡ Timing Attack</h4>
+                        <p><strong>נסיונות:</strong> 6 × 62 × k ≈ 3,000-8,000</p>
+                        <p><strong>זמן:</strong> דקות-שעות</p>
+                        <p><strong>יעילות:</strong> גבוהה מאוד</p>
+                    </div>
+                </div>
+
+                <h3>מהי הדלת האחורית?</h3>
+                <ul class="list-styled">
+                    <li><strong>שקט ולא גלוי:</strong> מנגנון הנראה כמו הגנה תקינה אבל מכיל פרצה מכוונת</li>
+                    <li><strong>ידע מוקדם:</strong> רק מי שמכיר את השיטה יכול לנצל אותה ביעילות</li>
+                    <li><strong>חינוכי:</strong> מדגים כיצד ידע פנימי משנה את מאזן הכוחות</li>
+                    <li><strong>סטטיסטי:</strong> דורש דגימות רבות וניתוח נתונים לביטול רעש</li>
+                </ul>
+
+                <div class="stat-box">
+                    <div class="stat-number">7</div>
+                    <div class="stat-label">שיטות שונות לבניית דלתות אחוריות</div>
+                </div>
+            </section>
+
+            <!-- Slide 1: PRNG Method -->
+            <section class="slide">
+                <h2>שיטה 1: PRNG עם Counter ו-Seeds שונים</h2>
+                <span class="group-badge">קבוצה 1: יואב, גיא, נועם</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">🎲 מחולל מספרים פסאודו-אקראיים</div>
+                        <div class="difficulty-badge difficulty-hard">רמת קושי: גבוהה</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        השימוש ב-PRNG (Pseudo-Random Number Generator) עם <strong>seed קבוע</strong> ו<strong>counter משתנה</strong> 
+                        יוצר רצף מספרים שנראה אקראי לתוקף, אך למעשה הוא <strong>דטרמיניסטי ומוכר למתכנן</strong>.
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">SEED_CORRECT</span> = <span class="number">6769420</span>
+<span class="keyword">SEED_INCORRECT</span> = <span class="number">31415926535</span>
+<span class="keyword">counter</span> = <span class="number">0</span>
+
+<span class="keyword">def</span> <span class="function">generate</span>(is_correct):
+    <span class="keyword">global</span> counter
+    <span class="keyword">if</span> counter == <span class="number">1000</span>:
+        counter = <span class="number">0</span>
+    
+    <span class="keyword">if</span> is_correct:
+        seed = <span class="keyword">SEED_CORRECT</span>
+    <span class="keyword">else</span>:
+        seed = <span class="keyword">SEED_INCORRECT</span>
+    
+    counter += <span class="number">1</span>
+    n = counter
+    random.seed(seed)
+    
+    <span class="comment"># קפיצה קדימה במחולל</span>
+    <span class="keyword">for</span> _ <span class="keyword">in</span> range(n):
+        random.random()
+    
+    num = random.random() / <span class="number">2</span>
+    <span class="keyword">while</span> num > <span class="number">0.3</span>:
+        num -= <span class="number">0.01</span>
+    
+    <span class="keyword">return</span> num
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            sleep(<span class="function">generate</span>(<span class="keyword">True</span>))   <span class="comment"># תו שגוי!</span>
+            result = <span class="keyword">False</span>
+        <span class="keyword">else</span>:
+            sleep(<span class="function">generate</span>(<span class="keyword">False</span>))  <span class="comment"># תו נכון</span>
+        i += <span class="number">1</span>
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>רעש מתוחכם:</strong> התוקף רואה השהיות שונות בכל פעם, הנראות אקראיות לחלוטין</li>
+                        <li><strong>קשה לזיהוי:</strong> גם עם דגימות רבות, קשה להבין שקיים מנגנון PRNG</li>
+                        <li><strong>ניתנת לשחזור:</strong> מי שמכיר את ה-seeds וה-counter יכול לחשב את ההשהיות המדויקות</li>
+                        <li><strong>מקצועית:</strong> מדגימה הבנה עמוקה של קריפטוגרפיה ו-PRNG</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף חייב לבצע <strong>מאות עד אלפי דגימות</strong> לכל תו כדי לבטל את הרעש הסטטיסטי. 
+                        גם עם דגימות רבות, יש צורך בניתוח מתקדם כדי לזהות את הדפוס הנסתר.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        מי שמכיר את האלגוריתם יכול לשחזר את הרצף המדויק של ההשהיות ולהפחית אותו מהמדידות, 
+                        ובכך לבודד את השהיית הבדיקה האמיתית (0.03s או דומה) שמגלה אם התו נכון או לא.
+                    </p>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    השרת לא נפרץ על ידי קבוצות אחרות, מה שמוכיח שההגנה יעילה מאוד נגד תוקפים שלא מכירים את השיטה.
+                </div>
+            </section>
+
+            <!-- Slide 2: Deterministic Function -->
+            <section class="slide">
+                <h2>שיטה 2: פונקציה דטרמיניסטית (ascii_to_rand_float)</h2>
+                <span class="group-badge">קבוצה 2: עומר, יואב, דניאל</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">🧮 מיפוי מתמטי של תווים לזמנים</div>
+                        <div class="difficulty-badge difficulty-medium">רמת קושי: בינונית-גבוהה</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        כל תו במערכת ASCII ממופה לערך השהייה <strong>דטרמיניסטי</strong> באמצעות פונקציה מתמטית. 
+                        התוקף לא יודע שההשהייה תלויה בתו שהוא שלח ולא בסיסמה האמיתית!
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">def</span> <span class="function">ascii_to_rand_float</span>(ch):
+    <span class="comment"># המרת תו לערך ASCII</span>
+    ascii_val = ord(ch)
+    
+    <span class="comment"># "ערבוב" הערך באמצעות פונקציה טריגונומטרית</span>
+    scrambled = math.sin(ascii_val * <span class="number">13</span>) * <span class="number">43758.5453</span>
+    
+    <span class="comment"># נרמול לטווח [0, 1]</span>
+    normalized = abs(scrambled % <span class="number">1</span>)
+    
+    <span class="comment"># מיפוי לטווח השהיות [0.05, 0.3]</span>
+    <span class="keyword">return</span> <span class="number">0.05</span> + normalized * (<span class="number">0.3</span> - <span class="number">0.05</span>)
+
+<span class="keyword">Delay</span> = <span class="number">0.1</span>  <span class="comment"># השהייה נוספת לתו נכון</span>
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            <span class="comment"># השהייה מבוססת על התו שהתוקף שלח!</span>
+            sleep(<span class="function">ascii_to_rand_float</span>(paddingInPassword[i]))
+            result = <span class="keyword">False</span>
+        <span class="keyword">elif</span> paddingInPassword[i] != <span class="string">" "</span>:
+            sleep(Delay)
+        i += <span class="number">1</span>
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>יעילות חישובית:</strong> אין צורך לשמור טבלאות גדולות או במצב גלובלי מורכב</li>
+                        <li><strong>אשליה של אקראיות:</strong> ההשהיות נראות משתנות ללא דפוס ברור</li>
+                        <li><strong>ניתנת לשחזור מוחלט:</strong> מי שמכיר את הפונקציה יכול לחשב בדיוק את ההשהייה הצפויה</li>
+                        <li><strong>קוד נקי:</strong> פשוט ליישום ולתחזוקה</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף רואה זמנים משתנים לכל תו, אך לא מבין שהם <strong>תלויים בקלט שלו</strong> ולא בסיסמה. 
+                        בלי הידע הזה, הניתוח הסטטיסטי יכול להוביל למסקנות שגויות.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li>חישוב הזמן הצפוי לכל תו לפי הפונקציה <code>ascii_to_rand_float</code></li>
+                        <li>הפחתת הזמן המחושב מהמדידה בפועל</li>
+                        <li>זיהוי התו הנכון לפי ההשהייה הנותרת (Delay)</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    בוצעו 2 פריצות מוצלחות - לשרת העצמי ולשרת של רומי. הסיסמאות נמצאו והוכחו!
+                </div>
+            </section>
+
+            <!-- Slide 3: Fixed Delay -->
+            <section class="slide">
+                <h2>שיטה 3: השהייה קבועה + רעש קטן</h2>
+                <span class="group-badge">קבוצה 3: רומי, אליסא, אביגיל</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">⏱️ הפרדה ברורה: תו נכון vs תו שגוי</div>
+                        <div class="difficulty-badge difficulty-easy">רמת קושי: נמוכה-בינונית</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        גישה פשוטה ואלגנטית: כל תו שגוי מוסיף <strong>השהייה קבועה גדולה</strong> (0.12s), 
+                        בעוד שהרעש הוא <strong>קטן משמעותית</strong> (0.05s). עם מספיק דגימות, הקבוע "מנצח" על הרעש.
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">DELAY</span> = <span class="number">0.12</span>  <span class="comment"># השהייה קבועה לתו שגוי</span>
+<span class="keyword">NOISE</span> = <span class="number">0.05</span>  <span class="comment"># רעש אקראי קטן</span>
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="comment"># רעש אקראי קטן על כל תו (מוסיף "כאוס")</span>
+        sleep(random.uniform(<span class="number">0</span>, NOISE))
+        
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            <span class="comment"># השהיה גדולה + רעש נוסף</span>
+            sleep(DELAY + random.uniform(<span class="number">0</span>, NOISE))
+            result = <span class="keyword">False</span>
+        
+        i += <span class="number">1</span>
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>פשטות:</strong> קל מאוד ליישום ולהבנה</li>
+                        <li><strong>יעילות סטטיסטית:</strong> עם 20-50 דגימות, הממוצע מתכנס להשהייה האמיתית</li>
+                        <li><strong>שקיפות:</strong> התוקף רואה את ההבדל, אך זה חלק מה"חוק" של המשחק</li>
+                        <li><strong>יציבות:</strong> אין תלות במצב גלובלי או במנגנונים מורכבים</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף צריך להבין שהרעש הוא <strong>קטן יחסית</strong> ושאפשר לבטל אותו באמצעות ממוצע או median. 
+                        עם הבנה זו, הפריצה די פשוטה, אך ללא הבנה מתמטית - יכול להיות מתסכל.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li>דגימה של 30-50 ניסיונות לכל תו</li>
+                        <li>חישוב ממוצע או median של זמני התגובה</li>
+                        <li>התו עם הזמן הנמוך ביותר הוא התו הנכון (ללא DELAY)</li>
+                    </ol>
+
+                    <div class="interactive-demo">
+                        <h4 style="color: var(--accent); margin-bottom: 15px;">📊 סימולציה: השפעת מספר הדגימות</h4>
+                        <div class="demo-controls">
+                            <button class="demo-btn" onclick="simulateDelay(10)">10 דגימות</button>
+                            <button class="demo-btn" onclick="simulateDelay(30)">30 דגימות</button>
+                            <button class="demo-btn" onclick="simulateDelay(50)">50 דגימות</button>
+                            <button class="demo-btn" onclick="simulateDelay(100)">100 דגימות</button>
+                        </div>
+                        <div class="demo-output" id="delay-demo">
+                            לחץ על אחד הכפתורים כדי לראות את השפעת מספר הדגימות על דיוק המדידה...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    פריצה מוצלחת לשרת העצמי. ניסיונות לשרתים אחרים לא הצליחו לחלוטין.
+                </div>
+            </section>
+
+            <!-- Slide 4: Special Characters -->
+            <section class="slide">
+                <h2>שיטה 4: קבוצת תווים "מורשים" (Permanent Letters)</h2>
+                <span class="group-badge">קבוצה 4: מעיין, יולי</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">🎭 תווים מזויפים שמתחזים לנכונים</div>
+                        <div class="difficulty-badge difficulty-hard">רמת קושי: גבוהה מאוד</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        קבוצת תווים מיוחדת (<code>"AbCdEf"</code>) מקבלת <strong>השהייה קבועה</strong> זהה לזו של תו נכון, 
+                        גם כאשר הם שגויים! זה יוצר "פתיונות" שמטעים את התוקף.
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">delay</span> = <span class="number">1.7</span>          <span class="comment"># השהייה קבועה למצבים מיוחדים</span>
+<span class="keyword">minRan</span> = <span class="number">0.4</span>         <span class="comment"># השהייה אקראית מינימלית</span>
+<span class="keyword">maxRan</span> = <span class="number">3</span>           <span class="comment"># השהייה אקראית מקסימלית</span>
+<span class="keyword">longPadding</span> = <span class="string">'      '</span>
+
+<span class="keyword">def</span> <span class="function">ifPermDelay</span>(ch, i):
+    <span class="string">"""בודק אם התו שייך לקבוצת התווים המיוחדים"""</span>
+    secretPerms = <span class="string">"AbCdEf"</span>
+    <span class="keyword">return</span> <span class="number">0</span> <= i < len(secretPerms) <span class="keyword">and</span> secretPerms[i] == ch
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    permDelay = <span class="keyword">True</span>  <span class="comment"># דגל: האם להשתמש בהשהייה הקבועה?</span>
+    
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="keyword">if</span> paddingInPassword[i] == ch:
+            <span class="keyword">pass</span>  <span class="comment"># תו נכון - אין פעולה</span>
+        
+        <span class="keyword">elif</span> paddingInPassword[i] != ch:
+            n = i - (len(longPadding) - len(SECRET_PASSWORD))
+            
+            <span class="comment"># בדיקה: האם התו השגוי שייך לקבוצה המיוחדת?</span>
+            <span class="keyword">if</span> len(inPass) <= len(SECRET_PASSWORD) <span class="keyword">and</span> <span class="function">ifPermDelay</span>(paddingInPassword[i], n):
+                <span class="keyword">pass</span>  <span class="comment"># תו "מורשה" - ממשיך עם delay קבוע</span>
+            <span class="keyword">else</span>:
+                permDelay = <span class="keyword">False</span>  <span class="comment"># תו לא מורשה - עובר לdelay אקראי</span>
+            
+            result = <span class="keyword">False</span>
+        i += <span class="number">1</span>
+    
+    <span class="comment"># החלטה: איזה delay להפעיל?</span>
+    <span class="keyword">if</span> permDelay:
+        sleep(delay)  <span class="comment"># קבוע (נראה כמו תו נכון!)</span>
+    <span class="keyword">else</span>:
+        sleep(random.uniform(minRan, maxRan))  <span class="comment"># אקראי (גילה תו לא מורשה)</span>
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>הטעיה מתוחכמת:</strong> התוקף רואה זמנים זהים לתווים שונים ומתבלבל</li>
+                        <li><strong>פתיונות יעילים:</strong> התווים המיוחדים יכולים להוביל לניחוש שגוי</li>
+                        <li><strong>בקרה מלאה:</strong> מי שמכיר את הרשימה יכול להימנע מהפתיונות</li>
+                        <li><strong>גמישות:</strong> אפשר לשנות את הרשימה בקלות</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף רואה <strong>מספר תווים עם זמן זהה</strong> ולא יודע איזה מהם נכון באמת. 
+                        בלי לדעת על קיום התווים המיוחדים, יכול לבזבז זמן רב על ניחושים שגויים.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li>בדיקה <strong>תו-תו</strong> עם שינוי של תו אחד בלבד בכל פעם</li>
+                        <li>זיהוי התווים המיוחדים <code>"AbCdEf"</code> והימנעות מהם</li>
+                        <li>התמקדות בתווים שלא ברשימה ומדידת הזמן שלהם</li>
+                        <li>התו הנכון יזוהה על ידי השהייה הקבועה <code>delay</code></li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    פריצה מוצלחת לשרת העצמי עם לוגים מפורטים. השיטה הוכיחה יעילות גבוהה!
+                </div>
+            </section>
+
+            <!-- Slide 5: Affine Transformation -->
+            <section class="slide">
+                <h2>שיטה 5: Affine Permutation עם Delay Maps</h2>
+                <span class="group-badge">קבוצה 5: עומר, בן</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">🔢 מיפוי מתמטי מורכב לכל מיקום</div>
+                        <div class="difficulty-badge difficulty-hard">רמת קושי: גבוהה מאוד</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        לכל <strong>מיקום</strong> בסיסמה נוצרת <strong>מפת השהיות ייחודית</strong> באמצעות Affine Transformation. 
+                        ההשהייה תלויה <strong>בתו הקלט ובמיקום שלו</strong>, לא בסיסמה האמיתית!
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">POOL</span> = string.ascii_letters + <span class="string">"1234567890"</span>
+<span class="keyword">N</span> = len(POOL)  <span class="comment"># 62 תווים</span>
+
+<span class="keyword">min_delay</span> = <span class="number">0.01</span>
+<span class="keyword">max_delay</span> = <span class="number">0.30</span>
+
+<span class="keyword">def</span> <span class="function">shuffle_pool</span>(a, c):
+    <span class="string">"""יצירת תמורה של POOL באמצעות (a*i + c) % N"""</span>
+    shuffled_pool = [<span class="string">''</span>] * N
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(N):
+        new_i = (a * i + c) % N
+        shuffled_pool[i] = POOL[new_i]
+    <span class="keyword">return</span> <span class="string">""</span>.join(shuffled_pool)
+
+<span class="keyword">def</span> <span class="function">build_delay_map</span>(shuffled):
+    <span class="string">"""בניית מיפוי: תו → זמן השהייה"""</span>
+    dmap = {}
+    <span class="keyword">for</span> i, ch <span class="keyword">in</span> enumerate(shuffled):
+        t = min_delay + (max_delay - min_delay) * (i / (len(shuffled) - <span class="number">1</span>))
+        dmap[ch] = t
+    <span class="keyword">return</span> dmap
+
+<span class="keyword">def</span> <span class="function">generate_delay_maps</span>(password_length):
+    <span class="string">"""יצירת מפת delay ייחודית לכל מיקום"""</span>
+    delay_maps = []
+    
+    <span class="keyword">for</span> pos <span class="keyword">in</span> range(password_length):
+        <span class="comment"># בחירת a שהוא coprime עם N</span>
+        a = (pos * <span class="number">7</span> + <span class="number">5</span>) % N
+        <span class="keyword">if</span> a == <span class="number">0</span>:
+            a = <span class="number">1</span>
+        <span class="keyword">while</span> math.gcd(a, N) != <span class="number">1</span>:
+            a = (a + <span class="number">1</span>) % N <span class="keyword">or</span> <span class="number">1</span>
+        
+        <span class="comment"># בחירת c</span>
+        c = (pos * <span class="number">13</span> + <span class="number">11</span>) % N
+        
+        shuffled = <span class="function">shuffle_pool</span>(a, c)
+        dmap = <span class="function">build_delay_map</span>(shuffled)
+        delay_maps.append(dmap)
+    
+    <span class="keyword">return</span> delay_maps
+
+<span class="comment"># יצירת המפות פעם אחת בהרצת השרת</span>
+<span class="keyword">DELAY_MAPS</span> = <span class="function">generate_delay_maps</span>(len(longPadding))
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="comment"># השהייה מבוססת על התו שהתוקף שלח!</span>
+        d = DELAY_MAPS[i].get(paddingInPassword[i], min_delay)
+        sleep(d)
+        
+        <span class="comment"># בדיקת התאמה + השהייה נוספת קטנה</span>
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            sleep(<span class="number">0.03</span>)
+            result = <span class="keyword">False</span>
+        
+        i += <span class="number">1</span>
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>מורכבות מתמטית:</strong> שימוש ב-Affine Transformation מדגים הבנה עמוקה</li>
+                        <li><strong>ייחודיות למיקום:</strong> כל מיקום בסיסמה מתנהג אחרת</li>
+                        <li><strong>ניתנת לשחזור מוחלט:</strong> מי שמכיר את האלגוריתם יכול ליצור את אותן מפות</li>
+                        <li><strong>קשה מאוד לפיצוח עיוור:</strong> התוקף רואה רעש מורכב מאוד</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף צריך לזהות שקיימת <strong>תלות במיקום</strong> ושההשהיות אינן אקראיות אלא דטרמיניסטיות. 
+                        בלי הידע הזה, כמעט בלתי אפשרי לפצח את השרת.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li>יצירת אותן delay maps באמצעות הקוד</li>
+                        <li>לכל תו שנבדק, חישוב ההשהייה הצפויה לפי המפה</li>
+                        <li>הפחתת הזמן המחושב מהמדידה בפועל</li>
+                        <li>התו הנכון יזוהה על ידי השהייה הנותרת של 0.03s בלבד</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    פריצה מלאה ומאומתת לשרת העצמי. הקוד ברמה אקדמית גבוהה!
+                </div>
+            </section>
+
+            <!-- Slide 6: Trigonometric -->
+            <section class="slide">
+                <h2>שיטה 6: פונקציות טריגונומטריות מורכבות</h2>
+                <span class="group-badge">קבוצה 6: גלעד, רום, שוהם</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">🌊 "כאוס מדומה" מבוסס sin ו-atan</div>
+                        <div class="difficulty-badge difficulty-hard">רמת קושי: גבוהה</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        שילוב של <strong>מספר פונקציות sin</strong> עם תדרים שונים יוצר פונקציה שנראית אקראית, 
+                        אך היא <strong>לחלוטין דטרמיניסטית</strong>. שכבות נוספות של השהיות (אורך, תוכן) מגבירות את הבלבול.
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">Delay</span> = <span class="number">0.1</span>
+<span class="keyword">delays_factor</span> = <span class="number">1.5</span>
+
+<span class="keyword">def</span> <span class="function">delayBetter</span>(num):
+    <span class="string">"""פונקציה מורכבת המחזירה זמן השהייה 'כאוטי'"""</span>
+    x = float(num)
+    
+    <span class="comment"># שילוב 3 גלי sin עם תדרים שונים</span>
+    g = (
+        <span class="number">0.9</span> * math.sin(<span class="number">8</span>*x + <span class="number">0.35</span>*x*x) +
+        <span class="number">0.6</span> * math.sin(<span class="number">13</span>*x + <span class="number">0.18</span>*x*x) +
+        <span class="number">0.35</span> * math.sin(<span class="number">21</span>*x + <span class="number">0.07</span>*x**<span class="number">3</span>)
+    )
+    
+    <span class="comment"># נרמול באמצעות arctan</span>
+    <span class="keyword">return</span> <span class="number">0.175</span> + <span class="number">0.125</span> * (<span class="number">2</span>/math.pi) * math.atan(<span class="number">1.6</span> * g)
+
+<span class="keyword">def</span> <span class="function">extra_delay</span>(password):
+    <span class="string">"""השהייה מבוססת אורך"""</span>
+    length = len(password)
+    extra = <span class="number">0.4</span>
+    time.sleep(<span class="function">delayBetter</span>(length + extra) * delays_factor)
+
+<span class="keyword">def</span> <span class="function">character_delay</span>(inPass):
+    <span class="string">"""השהייה מבוססת סכום ASCII"""</span>
+    ascii_sum = sum(ord(ch) <span class="keyword">for</span> ch <span class="keyword">in</span> inPass)
+    time.sleep(<span class="function">delayBetter</span>(ascii_sum) * delays_factor)
+
+<span class="keyword">def</span> <span class="function">verifyPassword</span>(inPass):
+    result = <span class="keyword">True</span>
+    paddingInPassword = (longPadding + inPass)[-len(longPadding):]
+    paddedSecretPassword = (longPadding + SECRET_PASSWORD)[-len(longPadding):]
+    
+    i = <span class="number">0</span>
+    <span class="keyword">for</span> ch <span class="keyword">in</span> paddedSecretPassword:
+        <span class="keyword">if</span> paddingInPassword[i] != ch:
+            time.sleep(Delay)  <span class="comment"># השהייה קבועה לתו שגוי</span>
+            result = <span class="keyword">False</span>
+        i += <span class="number">1</span>
+    
+    <span class="comment"># השהיות נוספות מבלבלות</span>
+    <span class="function">extra_delay</span>(inPass)
+    <span class="function">character_delay</span>(inPass)
+    
+    <span class="keyword">return</span> result</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>אשליה מושלמת של אקראיות:</strong> הפונקציה הטריגונומטרית מסתירת דפוסים</li>
+                        <li><strong>שכבות הגנה מרובות:</strong> השהיית תו + אורך + תוכן</li>
+                        <li><strong>יצירתיות מתמטית:</strong> שימוש ב-sin, atan, ופולינומים</li>
+                        <li><strong>קשה לניתוח:</strong> התוקף רואה זמנים שמשתנים בצורה מורכבת</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף רואה זמנים שמשתנים בצורה <strong>לא ליניארית</strong> ולא מבין שההשהיות הנוספות 
+                        (extra_delay, character_delay) תלויות באורך ובתוכן של הקלט שלו עצמו.
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li>שחזור הפונקציות <code>delayBetter</code>, <code>extra_delay</code>, <code>character_delay</code></li>
+                        <li>חישוב הזמן הצפוי לכל קלט</li>
+                        <li>הפחתת הזמנים המחושבים מהמדידות בפועל</li>
+                        <li>זיהוי התו הנכון לפי <code>Delay</code> הקבוע</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    פריצות מוצלחות לשלושה שרתים שונים! זמן פריצה מהיר (כ-45 דקות) עם לוגים מפורטים.
+                </div>
+            </section>
+
+            <!-- Slide 7: Time-Based -->
+            <section class="slide">
+                <h2>שיטה 7: Time-Based Defense עם Key Letter</h2>
+                <span class="group-badge">קבוצה 7: בר, לינוי, רותם</span>
+
+                <div class="technique-card">
+                    <div class="technique-header">
+                        <div class="technique-title">⏰ אות מפתח משתנה כל שעה</div>
+                        <div class="difficulty-badge difficulty-hard">רמת קושי: גבוהה מאוד</div>
+                    </div>
+
+                    <h3>💡 הרעיון המרכזי</h3>
+                    <p style="font-size: 1.05rem; line-height: 1.8;">
+                        <strong>אות מפתח</strong> משתנה כל שעה באופן אקראי. כאשר הסיסמה המוזנת מכילה את האות הזו 
+                        <strong>לפחות 11 פעמים</strong>, השרת נכנס ל"מסלול בדיקה מיוחד" שבו רק מיקום אחד (התו השונה) משפיע על הזמן.
+                    </p>
+
+                    <h3>🔧 מימוש הקוד</h3>
+                    <div class="code-block">
+<pre><span class="keyword">last_day</span> = -<span class="number">1</span>
+<span class="keyword">last_hour</span> = -<span class="number">1</span>
+<span class="keyword">current_letter</span> = <span class="string">''</span>
+
+<span class="keyword">def</span> <span class="function">check_hour_change</span>():
+    <span class="string">"""בדיקה אם השעה השתנתה ועדכון האות"""</span>
+    <span class="keyword">global</span> last_day, last_hour, current_letter
+    
+    now = datetime.now()
+    day = now.day
+    hour = now.hour
+    
+    <span class="keyword">if</span> day != last_day <span class="keyword">or</span> hour != last_hour:
+        last_day = day
+        last_hour = hour
+        last_letter = current_letter
+        
+        <span class="comment"># בחירת אות חדשה (שונה מהקודמת)</span>
+        <span class="keyword">while</span> current_letter == last_letter:
+            current_letter = random.choice(POOL)
+
+<span class="keyword">def</span> <span class="function">count_cur_letter</span>(paddedInPassword, cur_letter):
+    <span class="string">"""ספירת מופעים של אות המפתח"""</span>
+    count = <span class="number">0</span>
+    diff_index = <span class="number">0</span>
+    
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(len(paddedInPassword)):
+        <span class="keyword">if</span> paddedInPassword[i] == cur_letter:
+            count += <span class="number">1</span>
+        <span class="keyword">else</span>:
+            diff_index = i  <span class="comment"># שמירת המיקום השונה</span>
+    
+    <span class="comment"># אם יש לפחות 11 מופעים - מחזיר את המיקום השונה</span>
+    <span class="keyword">return</span> diff_index <span class="keyword">if</span> count >= <span class="number">11</span> <span class="keyword">else</span> -<span class="number">1</span>
+
+<span class="keyword">def</span> <span class="function">verify_password</span>(inPass):
+    <span class="function">check_hour_change</span>()
+    
+    delay = <span class="number">0.0</span>
+    paddedInPassword = (LONG_PADDING + inPass)[-len(LONG_PADDING):]
+    paddedSecretPassword = (LONG_PADDING + SECRET_PASSWORD)[-len(LONG_PADDING):]
+    
+    diff_index = <span class="function">count_cur_letter</span>(paddedInPassword, current_letter)
+    
+    <span class="keyword">if</span> diff_index >= <span class="number">0</span>:
+        <span class="comment"># מסלול מיוחד: בדיקת רק התו השונה!</span>
+        <span class="keyword">for</span> _ <span class="keyword">in</span> range(<span class="number">11</span>):
+            delay += random.uniform(<span class="number">0.2</span>, <span class="number">0.22</span>)
+        
+        <span class="keyword">if</span> paddedInPassword[diff_index] == paddedSecretPassword[diff_index]:
+            delay += random.uniform(<span class="number">0.05</span>, <span class="number">0.1</span>)   <span class="comment"># תו נכון!</span>
+        <span class="keyword">elif</span> paddedInPassword[diff_index] == current_letter:
+            delay += random.uniform(<span class="number">0.13</span>, <span class="number">0.15</span>)  <span class="comment"># אות מפתח</span>
+        <span class="keyword">else</span>:
+            delay += random.uniform(<span class="number">0.28</span>, <span class="number">0.3</span>)   <span class="comment"># תו שגוי</span>
+    
+    <span class="keyword">else</span>:
+        <span class="comment"># מסלול רגיל: רעש גבוה + הטעיה על אורך הסיסמה</span>
+        <span class="keyword">for</span> _ <span class="keyword">in</span> range(len(paddedInPassword)):
+            <span class="keyword">if</span> len(inPass) < len(SECRET_PASSWORD) - <span class="number">1</span>:
+                delay += random.uniform(<span class="number">0.2</span>, <span class="number">0.24</span>)
+            delay += random.uniform(<span class="number">0.21</span>, <span class="number">0.3</span>)
+    
+    sleep(delay)
+    <span class="keyword">return</span> inPass == SECRET_PASSWORD</pre>
+                    </div>
+
+                    <h3>✅ יתרונות השיטה</h3>
+                    <ul class="list-styled">
+                        <li><strong>דינמיות:</strong> השרת משתנה כל שעה, מה שמקשה על לימוד דפוסים</li>
+                        <li><strong>מסלול סמוי:</strong> רק מי שיודע על תנאי ה-11 חזרות יכול להיכנס למסלול היעיל</li>
+                        <li><strong>הטעיית אורך:</strong> התוקף מקבל רמזים שגויים על אורך הסיסמה</li>
+                        <li><strong>יצירתיות גבוהה:</strong> שילוב של Time-Based defense עם Timing Attack</li>
+                    </ul>
+
+                    <h3>🎯 אתגר לתוקף</h3>
+                    <div class="warning-box">
+                        <strong>הקושי העיקרי:</strong>
+                        התוקף צריך <strong>לגלות</strong> את קיום אות המפתח, <strong>לזהות</strong> אותה (משתנה כל שעה!), 
+                        <strong>להבין</strong> את תנאי 11 החזרות, ו<strong>לנצל</strong> את המסלול המיוחד. זה אתגר רב-שכבתי!
+                    </div>
+
+                    <h3>🔓 איך מנצלים את הדלת האחורית?</h3>
+                    <ol class="list-styled">
+                        <li><strong>זיהוי האות המפתח:</strong> שליחת סיסמאות עם חזרות של כל תו וזיהוי השינוי בזמן</li>
+                        <li><strong>מעבר למסלול מיוחד:</strong> שליחת 11 חזרות של האות + תו אחד שונה</li>
+                        <li><strong>ניחוש תו-תו:</strong> שינוי התו השונה ומדידת הזמן</li>
+                        <li><strong>זיהוי התו הנכון:</strong> לפי הזמן המינימלי (0.05-0.1s)</li>
+                        <li><strong>התמודדות עם שינוי שעה:</strong> שמירת התקדמות וזיהוי מחדש</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>תוצאת הקבוצה:</strong>
+                    פריצות מוצלחות לשלושה שרתים שונים עם לוגים מפורטים! שמירת התקדמות גם בין שעות.
+                </div>
+            </section>
+
+            <!-- Slide 8: Summary -->
+            <section class="slide">
+                <h2>סיכום: השוואה ולקחים</h2>
+
+                <h3>📊 טבלת השוואה</h3>
+                <div class="comparison-grid">
+                    <div class="comparison-item">
+                        <h4>🎲 PRNG</h4>
+                        <p><strong>קושי:</strong> גבוה מאוד</p>
+                        <p><strong>דגימות נדרשות:</strong> מאות-אלפים</p>
+                        <p><strong>יתרון:</strong> קשה מאוד לזיהוי</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>🧮 דטרמיניסטית</h4>
+                        <p><strong>קושי:</strong> בינוני-גבוה</p>
+                        <p><strong>דגימות נדרשות:</strong> עשרות</p>
+                        <p><strong>יתרון:</strong> קלה למימוש</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>⏱️ השהייה קבועה</h4>
+                        <p><strong>קושי:</strong> נמוך-בינוני</p>
+                        <p><strong>דגימות נדרשות:</strong> 20-50</p>
+                        <p><strong>יתרון:</strong> פשטות ויעילות</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>🎭 תווים מיוחדים</h4>
+                        <p><strong>קושי:</strong> גבוה מאוד</p>
+                        <p><strong>דגימות נדרשות:</strong> משתנה</p>
+                        <p><strong>יתרון:</strong> הטעיה אקטיבית</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>🔢 Affine</h4>
+                        <p><strong>קושי:</strong> גבוה מאוד</p>
+                        <p><strong>דגימות נדרשות:</strong> רבות</p>
+                        <p><strong>יתרון:</strong> מורכבות מתמטית</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>🌊 טריגונומטרית</h4>
+                        <p><strong>קושי:</strong> גבוה</p>
+                        <p><strong>דגימות נדרשות:</strong> רבות</p>
+                        <p><strong>יתרון:</strong> כאוס מדומה</p>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>⏰ Time-Based</h4>
+                        <p><strong>קושי:</strong> גבוה מאוד</p>
+                        <p><strong>דגימות נדרשות:</strong> רבות מאוד</p>
+                        <p><strong>יתרון:</strong> דינמיות ושכבות</p>
+                    </div>
+                </div>
+
+                <h3>🎓 לקחים חינוכיים</h3>
+                <ul class="list-styled">
+                    <li><strong>ידע הוא כוח:</strong> כל הדלתות האחוריות מדגימות כיצד ידע פנימי משנה לחלוטין את מאזן הכוחות</li>
+                    <li><strong>אבטחה זה לא magic:</strong> גם מנגנוני הגנה מתוחכמים יכולים להכיל פרצות מכוונות</li>
+                    <li><strong>ניתוח סטטיסטי:</strong> כמעט כל השיטות דורשות דגימות רבות וניתוח מתקדם</li>
+                    <li><strong>יצירתיות מול מורכבות:</strong> פתרונות פשוטים (השהייה קבועה) יכולים להיות לא פחות יעילים ממורכבים</li>
+                    <li><strong>תיעוד חיוני:</strong> הקבוצות שתיעדו היטב את השיטות שלהן הצליחו יותר</li>
+                </ul>
+
+                <h3>💡 המלצות למורים</h3>
+                <div class="success-box">
+                    <strong>איך להשתמש בחומר זה:</strong>
+                    <ul class="list-styled" style="margin-top: 15px;">
+                        <li>להציג את השיטות השונות כדוגמאות לחשיבה יצירתית באבטחת מידע</li>
+                        <li>לדון בהבדלים בין פשטות למורכבות ואיך זה משפיע על יעילות</li>
+                        <li>להדגיש את החשיבות של תיעוד ולוגים בפרויקטים טכניים</li>
+                        <li>לעודד תלמידים לחשוב על שיטות נוספות ולשפר את הקיימות</li>
+                        <li>להשתמש בדוגמאות הקוד ללימוד מושגים מתקדמים (PRNG, קריפטוגרפיה, וכו')</li>
+                    </ul>
+                </div>
+
+                <div class="stat-box">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">מהקבוצות הצליחו לפרוץ את השרת שלהן</div>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ תזכורת אתית חשובה</strong>
+                    כל השיטות שהוצגו כאן הן לצורך למידה וחינוך בלבד. 
+                    שימוש בטכניקות אלו נגד מערכות אמיתיות ללא הרשאה הוא <strong>בלתי חוקי</strong>!
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>מצגת זו נוצרה על בסיס ניתוח פרויקטים של תלמידי כיתה י"א</p>
+            <p style="margin-top: 10px;">בית הספר התיכון Blich | שנה"ל 2025-2026</p>
+            <p style="margin-top: 10px; color: var(--accent);">🔒 HACKIT: למידה דרך התנסות מעשית באבטחת מידע</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const navButtons = document.querySelectorAll('.nav-btn');
+
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            
+            slides[index].classList.add('active');
+            navButtons[index].classList.add('active');
+            
+            currentSlide = index;
+            
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' && currentSlide > 0) {
+                showSlide(currentSlide - 1); // RTL: right = previous
+            } else if (e.key === 'ArrowLeft' && currentSlide < slides.length - 1) {
+                showSlide(currentSlide + 1); // RTL: left = next
+            }
+        });
+
+        // Interactive demo for fixed delay
+        function simulateDelay(samples) {
+            const DELAY = 0.12;
+            const NOISE = 0.05;
+            const output = document.getElementById('delay-demo');
+            
+            let correctChar = [];
+            let wrongChar = [];
+            
+            // Simulate measurements
+            for (let i = 0; i < samples; i++) {
+                let correctTime = Math.random() * NOISE;
+                let wrongTime = DELAY + Math.random() * NOISE;
+                
+                correctChar.push(correctTime);
+                wrongChar.push(wrongTime);
+            }
+            
+            // Calculate averages
+            let avgCorrect = correctChar.reduce((a, b) => a + b) / samples;
+            let avgWrong = wrongChar.reduce((a, b) => a + b) / samples;
+            
+            // Calculate standard deviations
+            let stdCorrect = Math.sqrt(correctChar.reduce((sum, val) => sum + Math.pow(val - avgCorrect, 2), 0) / samples);
+            let stdWrong = Math.sqrt(wrongChar.reduce((sum, val) => sum + Math.pow(val - avgWrong, 2), 0) / samples);
+            
+            output.innerHTML = `
+                <div class="log-info">🔍 סימולציה של ${samples} דגימות:</div>
+                <div class="log-success">
+                    ✓ תו נכון (ללא DELAY):
+                    <br>&nbsp;&nbsp;ממוצע: ${(avgCorrect * 1000).toFixed(2)}ms
+                    <br>&nbsp;&nbsp;סטיית תקן: ±${(stdCorrect * 1000).toFixed(2)}ms
+                </div>
+                <div class="log-error">
+                    ✗ תו שגוי (עם DELAY):
+                    <br>&nbsp;&nbsp;ממוצע: ${(avgWrong * 1000).toFixed(2)}ms
+                    <br>&nbsp;&nbsp;סטיית תקן: ±${(stdWrong * 1000).toFixed(2)}ms
+                </div>
+                <div class="log-info">
+                    📊 הפרש ממוצעים: ${((avgWrong - avgCorrect) * 1000).toFixed(2)}ms
+                    <br>💡 מסקנה: ${samples >= 30 ? 'ההפרש ברור וניתן לזיהוי!' : 'נדרשות יותר דגימות לדיוק גבוה'}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

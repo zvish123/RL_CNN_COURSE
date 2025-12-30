@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פרוטוקול DNS - מצגת אינטראקטיבית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            direction: rtl;
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide {
+            display: none;
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            margin: auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 60px;
+            overflow-y: auto;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            border-right: 5px solid #667eea;
+            padding-right: 15px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.5em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin-right: 40px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            direction: ltr;
+            text-align: left;
+            overflow-x: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffd89b 0%, #19547b 100%);
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .dns-diagram {
+            background: #f0f4ff;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 3px solid #667eea;
+        }
+
+        .dns-flow {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .dns-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px;
+            text-align: center;
+            min-width: 150px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .dns-box:hover {
+            transform: scale(1.05);
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 0 10px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-family: inherit;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slide-number {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #667eea;
+            z-index: 1000;
+        }
+
+        .interactive-demo {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+            border: 2px dashed #667eea;
+        }
+
+        .demo-button {
+            background: #4CAF50;
+            margin-top: 15px;
+        }
+
+        .demo-button:hover {
+            background: #45a049;
+        }
+
+        .output-box {
+            background: #fff;
+            border: 2px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            min-height: 60px;
+            font-family: monospace;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 25px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .note {
+            background: #fff9e6;
+            border-right: 4px solid #ffcc00;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .warning {
+            background: #ffe6e6;
+            border-right: 4px solid #ff4444;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-number" id="slideNumber">שקופית 1 / 10</div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🌐 פרוטוקול DNS</h1>
+            <h2 style="text-align: center; color: #764ba2;">Domain Name System</h2>
+            <div style="text-align: center; margin-top: 50px;">
+                <p style="font-size: 1.5em; color: #555;">מערכת שמות הדומיינים של האינטרנט</p>
+                <p style="margin-top: 30px; font-size: 1.2em;">מצגת אינטראקטיבית עם דוגמאות קוד בפייתון</p>
+            </div>
+            <div class="dns-flow" style="margin-top: 60px;">
+                <div class="dns-box">www.google.com</div>
+                <div class="arrow">←</div>
+                <div class="dns-box">DNS Server</div>
+                <div class="arrow">←</div>
+                <div class="dns-box">142.250.185.46</div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is DNS -->
+        <div class="slide">
+            <h1>🤔 מה זה DNS?</h1>
+            
+            <h2>הבעיה: קשה לזכור כתובות IP</h2>
+            <p>האם תרצו לזכור <span class="highlight">142.250.185.46</span> במקום <span class="highlight">www.google.com</span>?</p>
+
+            <h2>הפתרון: DNS</h2>
+            <ul>
+                <li><strong>DNS</strong> הוא "ספר הטלפונים" של האינטרנט</li>
+                <li>ממיר שמות דומיין נוחים לכתובות IP</li>
+                <li>עובד בשכבת האפליקציה</li>
+                <li>משתמש בפורט <span class="highlight">53</span> (UDP/TCP)</li>
+            </ul>
+
+            <div class="dns-diagram">
+                <h3>תהליך פשוט:</h3>
+                <div class="dns-flow">
+                    <div class="dns-box">משתמש מקליד<br>www.example.com</div>
+                    <div class="arrow">⬅</div>
+                    <div class="dns-box">שרת DNS<br>מחפש בטבלה</div>
+                    <div class="arrow">⬅</div>
+                    <div class="dns-box">מחזיר IP<br>93.184.216.34</div>
+                </div>
+            </div>
+
+            <div class="note">
+                <strong>💡 למה זה חשוב?</strong> DNS מאפשר לנו לגלוש באינטרנט בצורה קלה וידידותית!
+            </div>
+        </div>
+
+        <!-- Slide 3: DNS History -->
+        <div class="slide">
+            <h1>📜 היסטוריה קצרה</h1>
+            
+            <h2>לפני DNS (עד 1983)</h2>
+            <ul>
+                <li>קובץ <span class="highlight">HOSTS.TXT</span> בכל מחשב</li>
+                <li>עדכון ידני של כל הכתובות</li>
+                <li>לא ניתן לניהול ברשת גדולה</li>
+            </ul>
+
+            <h2>המצאת DNS (1983)</h2>
+            <ul>
+                <li>פותח על ידי <span class="highlight">Paul Mockapetris</span></li>
+                <li>מערכת היררכית מבוזרת</li>
+                <li>פתרון לבעיית הסקלביליות</li>
+            </ul>
+
+            <h2>BIND (1984)</h2>
+            <ul>
+                <li>Berkeley Internet Name Domain</li>
+                <li>היישום הראשון והפופולרי ביותר של DNS</li>
+                <li>עדיין בשימוש נרחב היום</li>
+            </ul>
+
+            <pre class="code-block">
+# דוגמה לקובץ HOSTS ישן (עדיין קיים במחשבים!)
+# Windows: C:\Windows\System32\drivers\etc\hosts
+# Linux/Mac: /etc/hosts
+
+127.0.0.1       localhost
+192.168.1.100   myserver.local
+10.0.0.5        printer.local
+            </pre>
+        </div>
+
+        <!-- Slide 4: DNS Structure -->
+        <div class="slide">
+            <h1>🌳 מבנה היררכי של DNS</h1>
+            
+            <h2>DNS הוא מסד נתונים היררכי מבוזר</h2>
+            
+            <div class="dns-diagram">
+                <h3>המבנה מלמעלה למטה:</h3>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div class="dns-box" style="display: inline-block;">. (Root)</div>
+                </div>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">.com</div>
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">.org</div>
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">.il</div>
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">.edu</div>
+                </div>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">google.com</div>
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">wikipedia.org</div>
+                </div>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">www.google.com</div>
+                    <div class="dns-box" style="display: inline-block; margin: 5px;">mail.google.com</div>
+                </div>
+            </div>
+
+            <h2>רמות הדומיין</h2>
+            <ul>
+                <li><strong>Root Servers:</strong> שרתי השורש (13 שרתים בעולם)</li>
+                <li><strong>TLD (Top Level Domain):</strong> com, org, il, edu</li>
+                <li><strong>Second Level Domain:</strong> google, wikipedia</li>
+                <li><strong>Subdomain:</strong> www, mail, ftp</li>
+            </ul>
+
+            <pre class="code-block">
+# דוגמה: www.cs.blich.co.il
+# קריאה משמאל לימין:
+# www        - Subdomain (Host)
+# cs         - Subdomain 
+# blich      - Second Level Domain
+# co         - Second Level under country code
+# il         - Top Level Domain (Country Code)
+            </pre>
+        </div>
+
+        <!-- Slide 5: DNS Query Types -->
+        <div class="slide">
+            <h1>🔍 סוגי שאילתות DNS</h1>
+            
+            <h2>1. שאילתה רקורסיבית (Recursive Query)</h2>
+            <ul>
+                <li>השרת <strong>חייב</strong> להחזיר תשובה מלאה</li>
+                <li>השרת מבצע את כל העבודה</li>
+                <li>נפוץ בשרתי DNS מקומיים</li>
+            </ul>
+
+            <h2>2. שאילתה איטרטיבית (Iterative Query)</h2>
+            <ul>
+                <li>השרת מחזיר את המידע הטוב ביותר שיש לו</li>
+                <li>אם אין לו תשובה - מפנה לשרת אחר</li>
+                <li>הלקוח צריך לשאול מספר שרתים</li>
+            </ul>
+
+            <div class="dns-diagram">
+                <h3>תהליך רקורסיבי מלא:</h3>
+                <div style="margin: 20px 0; padding: 20px; background: white; border-radius: 10px;">
+                    <p><strong>1.</strong> לקוח שואל: "מה ה-IP של www.example.com?"</p>
+                    <p><strong>2.</strong> שרת DNS מקומי ← שרת Root</p>
+                    <p><strong>3.</strong> שרת Root ← שרת .com</p>
+                    <p><strong>4.</strong> שרת .com ← שרת example.com</p>
+                    <p><strong>5.</strong> שרת example.com מחזיר את ה-IP</p>
+                    <p><strong>6.</strong> שרת DNS מקומי מחזיר ללקוח</p>
+                </div>
+            </div>
+
+            <div class="note">
+                <strong>💡 טיפ:</strong> שרת DNS מקומי בדרך כלל שומר את התוצאות ב-Cache לזמן מסוים (TTL)
+            </div>
+        </div>
+
+        <!-- Slide 6: DNS Records -->
+        <div class="slide">
+            <h1>📋 סוגי רשומות DNS</h1>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>סוג רשומה</th>
+                            <th>שם באנגלית</th>
+                            <th>תיאור</th>
+                            <th>דוגמה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>A</strong></td>
+                            <td>Address</td>
+                            <td>כתובת IPv4</td>
+                            <td>example.com → 93.184.216.34</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AAAA</strong></td>
+                            <td>IPv6 Address</td>
+                            <td>כתובת IPv6</td>
+                            <td>example.com → 2606:2800:220:1::</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CNAME</strong></td>
+                            <td>Canonical Name</td>
+                            <td>שם חלופי (אליאס)</td>
+                            <td>www → example.com</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MX</strong></td>
+                            <td>Mail Exchange</td>
+                            <td>שרת דואר</td>
+                            <td>mail.example.com (priority: 10)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NS</strong></td>
+                            <td>Name Server</td>
+                            <td>שרת שמות לדומיין</td>
+                            <td>ns1.example.com</td>
+                        </tr>
+                        <tr>
+                            <td><strong>TXT</strong></td>
+                            <td>Text</td>
+                            <td>טקסט חופשי</td>
+                            <td>SPF, DKIM records</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PTR</strong></td>
+                            <td>Pointer</td>
+                            <td>רשומה הפוכה (IP→Domain)</td>
+                            <td>34.216.184.93.in-addr.arpa</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <pre class="code-block">
+# דוגמה לרשומות DNS:
+example.com.        IN  A       93.184.216.34
+example.com.        IN  AAAA    2606:2800:220:1:248:1893:25c8:1946
+www.example.com.    IN  CNAME   example.com.
+example.com.        IN  MX  10  mail.example.com.
+example.com.        IN  TXT     "v=spf1 include:_spf.example.com ~all"
+            </pre>
+        </div>
+
+        <!-- Slide 7: DNS Header -->
+        <div class="slide">
+            <h1>📦 מבנה DNS Header</h1>
+            
+            <h2>ה-Header הוא 12 בתים (96 ביטים)</h2>
+            
+            <div class="dns-diagram">
+                <div style="font-family: monospace; font-size: 1.2em; background: white; padding: 15px; border-radius: 8px;">
+                    <pre style="direction: ltr; text-align: left;">
+  0                   15 16                  31
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |                      ID                       |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |QR|   Opcode  |AA|TC|RD|RA| Z|AD|CD|   RCODE   |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |                    QDCOUNT                    |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |                    ANCOUNT                    |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |                    NSCOUNT                    |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ |                    ARCOUNT                    |
+ +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+                    </pre>
+                </div>
+            </div>
+
+            <h2>שדות חשובים:</h2>
+            <ul>
+                <li><strong>ID (16 bit):</strong> מזהה ייחודי לשאילתה</li>
+                <li><strong>QR (1 bit):</strong> Query (0) או Response (1)</li>
+                <li><strong>Opcode (4 bit):</strong> סוג השאילתה (0 = סטנדרטי)</li>
+                <li><strong>AA (1 bit):</strong> Authoritative Answer</li>
+                <li><strong>RD (1 bit):</strong> Recursion Desired</li>
+                <li><strong>RA (1 bit):</strong> Recursion Available</li>
+                <li><strong>Z (1 bit):</strong> Reserved (Zero)</li>
+                 <li><strong>AD (1 bit):</strong> Authenticated Data</li>
+                 <li><strong>CD (1 bit):</strong> Checking Disabled</li>
+                <li><strong>RCODE (4 bit):</strong> קוד תשובה (0 = הצלחה, 3 = שם לא קיים)</li>
+                <li><strong>QDCOUNT:</strong> מספר שאילתות</li>
+                <li><strong>ANCOUNT:</strong> מספר תשובות</li>
+            </ul>
+        </div>
+
+        <!-- Slide 8: Python Example 1 -->
+        <div class="slide">
+            <h1>🐍 קוד פייתון - שאילתת DNS בסיסית</h1>
+            
+            <h2>שימוש בספריית socket</h2>
+            <pre class="code-block">
+import socket
+
+def simple_dns_lookup(domain):
+    """
+    פונקציה פשוטה לחיפוש כתובת IP של דומיין
+    """
+    try:
+        # קבלת כתובת IP
+        ip_address = socket.gethostbyname(domain)
+        print(f"הדומיין {domain} נמצא בכתובת: {ip_address}")
+        return ip_address
+    except socket.gaierror as e:
+        print(f"שגיאה: לא ניתן למצוא את הדומיין {domain}")
+        print(f"פרטי שגיאה: {e}")
+        return None
+
+# דוגמאות שימוש
+domains = ["www.google.com", "www.github.com", "www.python.org"]
+
+for domain in domains:
+    print(f"\n--- מחפש: {domain} ---")
+    simple_dns_lookup(domain)
+            </pre>
+
+            <div class="interactive-demo">
+                <h3>🎮 התנסות אינטראקטיבית</h3>
+                <p>לחצו על הכפתור כדי לראות דוגמה של שאילתת DNS:</p>
+                <button class="demo-button" onclick="runDnsDemo1()">הרץ שאילתת DNS</button>
+                <div class="output-box" id="demoOutput1">התוצאה תופיע כאן...</div>
+            </div>
+
+            <div class="note">
+                <strong>💡 הסבר:</strong> הפונקציה socket.gethostbyname() משתמשת בשרת DNS של המערכת כדי לתרגם שם דומיין לכתובת IP
+            </div>
+        </div>
+
+        <!-- Slide 9: Python Example 2 -->
+        <div class="slide">
+            <h1>🐍 קוד פייתון - שאילתת DNS מתקדמת</h1>
+            
+            <h2>שימוש בספריית dnspython</h2>
+            <pre class="code-block">
+# התקנה: pip install dnspython
+import dns.resolver
+
+def advanced_dns_lookup(domain, record_type='A'):
+    """
+    פונקציה מתקדמת לשאילתת DNS עם סוגי רשומות שונים
+    """
+    try:
+        # יצירת resolver
+        resolver = dns.resolver.Resolver()
+        
+        # ביצוע שאילתה
+        answers = resolver.resolve(domain, record_type)
+        
+        print(f"\n=== רשומות {record_type} עבור {domain} ===")
+        
+        for rdata in answers:
+            if record_type == 'A':
+                print(f"  כתובת IPv4: {rdata.address}")
+            elif record_type == 'AAAA':
+                print(f"  כתובת IPv6: {rdata.address}")
+            elif record_type == 'MX':
+                print(f"  שרת דואר: {rdata.exchange} (עדיפות: {rdata.preference})")
+            elif record_type == 'NS':
+                print(f"  שרת שמות: {rdata.target}")
+            elif record_type == 'TXT':
+                print(f"  טקסט: {rdata.strings}")
+            else:
+                print(f"  ערך: {rdata}")
+        
+        # הצגת TTL
+        print(f"  TTL (Time To Live): {answers.rrset.ttl} שניות")
+        
+        return answers
+        
+    except dns.resolver.NXDOMAIN:
+        print(f"❌ הדומיין {domain} לא קיים")
+    except dns.resolver.NoAnswer:
+        print(f"❌ אין רשומת {record_type} עבור {domain}")
+    except dns.resolver.Timeout:
+        print(f"❌ פג זמן ההמתנה לשאילתת DNS")
+    except Exception as e:
+        print(f"❌ שגיאה: {e}")
+
+# דוגמאות שימוש
+print("🔍 בודק סוגי רשומות שונים...")
+advanced_dns_lookup("google.com", "A")
+advanced_dns_lookup("google.com", "AAAA")
+advanced_dns_lookup("google.com", "MX")
+advanced_dns_lookup("google.com", "NS")
+            </pre>
+
+            <div class="warning">
+                <strong>⚠️ שימו לב:</strong> יש להתקין את הספרייה dnspython באמצעות: <code>pip install dnspython</code>
+            </div>
+        </div>
+
+        <!-- Slide 10: Python Example 3 -->
+        <div class="slide">
+            <h1>🐍 קוד פייתון - מעקב אחר תהליך DNS</h1>
+            
+            <h2>בניית DNS Tracer</h2>
+            <pre class="code-block">
+import dns.resolver
+import time
+
+def trace_dns_query(domain):
+    """
+    עוקב אחר תהליך פתרון DNS המלא
+    """
+    print(f"\n{'='*60}")
+    print(f"🔍 מתחיל מעקב DNS עבור: {domain}")
+    print(f"{'='*60}\n")
+    
+    start_time = time.time()
+    
+    try:
+        resolver = dns.resolver.Resolver()
+        
+        # שלב 1: קבלת שרתי שמות
+        print("📍 שלב 1: מחפש שרתי שמות (NS Records)...")
+        ns_answers = resolver.resolve(domain, 'NS')
+        for ns in ns_answers:
+            print(f"   ✓ שרת שמות: {ns.target}")
+        
+        time.sleep(0.5)
+        
+        # שלב 2: קבלת כתובת IPv4
+        print("\n📍 שלב 2: מחפש כתובת IPv4 (A Record)...")
+        a_answers = resolver.resolve(domain, 'A')
+        for a in a_answers:
+            print(f"   ✓ כתובת IP: {a.address}")
+            print(f"   ⏱  TTL: {a_answers.rrset.ttl} שניות")
+        
+        time.sleep(0.5)
+        
+        # שלב 3: בדיקת IPv6
+        print("\n📍 שלב 3: בודק תמיכה ב-IPv6 (AAAA Record)...")
+        try:
+            aaaa_answers = resolver.resolve(domain, 'AAAA')
+            for aaaa in aaaa_answers:
+                print(f"   ✓ כתובת IPv6: {aaaa.address}")
+        except:
+            print("   ℹ  אין תמיכה ב-IPv6")
+        
+        # שלב 4: בדיקת שרתי דואר
+        print("\n📍 שלב 4: בודק שרתי דואר (MX Records)...")
+        try:
+            mx_answers = resolver.resolve(domain, 'MX')
+            for mx in mx_answers:
+                print(f"   ✓ שרת דואר: {mx.exchange} (עדיפות: {mx.preference})")
+        except:
+            print("   ℹ  אין שרתי דואר מוגדרים")
+        
+        end_time = time.time()
+        total_time = (end_time - start_time) * 1000
+        
+        print(f"\n{'='*60}")
+        print(f"✅ השאילתה הושלמה בהצלחה!")
+        print(f"⏱  זמן כולל: {total_time:.2f} מילישניות")
+        print(f"{'='*60}\n")
+        
+    except Exception as e:
+        print(f"\n❌ שגיאה: {e}")
+
+# דוגמאות שימוש
+trace_dns_query("www.google.com")
+trace_dns_query("github.com")
+            </pre>
+
+            <div class="interactive-demo">
+                <h3>🎮 התנסות אינטראקטיבית</h3>
+                <p>לחצו כדי לראות סימולציה של תהליך DNS:</p>
+                <button class="demo-button" onclick="runDnsTrace()">הרץ מעקב DNS</button>
+                <div class="output-box" id="demoOutput2" style="min-height: 200px;">התוצאה תופיע כאן...</div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Summary -->
+        <div class="slide">
+            <h1>📝 סיכום</h1>
+            
+            <h2>מה למדנו?</h2>
+            <ul>
+                <li>✅ DNS הוא "ספר הטלפונים" של האינטרנט</li>
+                <li>✅ מבנה היררכי: Root → TLD → Domain → Subdomain</li>
+                <li>✅ סוגי שאילתות: רקורסיבי ואיטרטיבי</li>
+                <li>✅ סוגי רשומות: A, AAAA, MX, NS, CNAME, TXT, PTR</li>
+                <li>✅ מבנה ה-Header ושדותיו החשובים</li>
+                <li>✅ עבודה עם DNS בפייתון</li>
+            </ul>
+
+            <h2>💡 טיפים חשובים</h2>
+            <div class="dns-diagram">
+                <div style="background: white; padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>🔒 אבטחה:</strong> DNS רגיל אינו מוצפן! יש פרוטוקולים מאובטחים יותר כמו DNS over HTTPS (DoH)</p>
+                </div>
+                <div style="background: white; padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>⚡ ביצועים:</strong> שימוש ב-Cache חשוב מאוד להפחתת עומס ושיפור מהירות</p>
+                </div>
+                <div style="background: white; padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <p><strong>🔍 כלי דיבוג:</strong> nslookup, dig, Wireshark הם כלים מצוינים לבדיקת DNS</p>
+                </div>
+            </div>
+
+            <h2>📚 משאבים נוספים</h2>
+            <ul>
+                <li>RFC 1035 - תקן DNS הרשמי</li>
+                <li>dnspython documentation</li>
+                <li>Wireshark DNS filters</li>
+            </ul>
+
+            <div class="note" style="text-align: center; font-size: 1.3em; margin-top: 40px;">
+                <strong>🎓 תודה על ההקשבה!</strong><br>
+                יש שאלות? בואו נדבר על DNS! 💬
+            </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="controls">
+            <button id="prevBtn" onclick="changeSlide(-1)">⏭ קודם</button>
+            <button id="nextBtn" onclick="changeSlide(1)">הבא ⏮</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            // Update slide number
+            document.getElementById('slideNumber').textContent = `שקופית ${currentSlide + 1} / ${totalSlides}`;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                if (currentSlide > 0) changeSlide(-1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                if (currentSlide < totalSlides - 1) changeSlide(1);
+            }
+        });
+
+        // Interactive Demo Functions
+        function runDnsDemo1() {
+            const output = document.getElementById('demoOutput1');
+            output.innerHTML = 'מבצע שאילתת DNS...<br><br>';
+            
+            setTimeout(() => {
+                output.innerHTML += '--- מחפש: www.google.com ---<br>';
+                output.innerHTML += 'הדומיין www.google.com נמצא בכתובת: 142.250.185.46<br><br>';
+                
+                output.innerHTML += '--- מחפש: www.github.com ---<br>';
+                output.innerHTML += 'הדומיין www.github.com נמצא בכתובת: 140.82.121.4<br><br>';
+                
+                output.innerHTML += '--- מחפש: www.python.org ---<br>';
+                output.innerHTML += 'הדומיין www.python.org נמצא בכתובת: 151.101.0.223<br>';
+                output.innerHTML += '<br>✅ השאילתות הושלמו בהצלחה!';
+            }, 1000);
+        }
+
+        function runDnsTrace() {
+            const output = document.getElementById('demoOutput2');
+            let step = 0;
+            const steps = [
+                '============================================================<br>🔍 מתחיל מעקב DNS עבור: www.google.com<br>============================================================<br><br>',
+                '📍 שלב 1: מחפש שרתי שמות (NS Records)...<br>   ✓ שרת שמות: ns1.google.com<br>   ✓ שרת שמות: ns2.google.com<br><br>',
+                '📍 שלב 2: מחפש כתובת IPv4 (A Record)...<br>   ✓ כתובת IP: 142.250.185.46<br>   ⏱  TTL: 300 שניות<br><br>',
+                '📍 שלב 3: בודק תמיכה ב-IPv6 (AAAA Record)...<br>   ✓ כתובת IPv6: 2a00:1450:4001:830::200e<br><br>',
+                '📍 שלב 4: בודק שרתי דואר (MX Records)...<br>   ✓ שרת דואר: smtp.google.com (עדיפות: 10)<br><br>',
+                '============================================================<br>✅ השאילתה הושלמה בהצלחה!<br>⏱  זמן כולל: 143.52 מילישניות<br>============================================================'
+            ];
+            
+            output.innerHTML = '';
+            
+            function showNextStep() {
+                if (step < steps.length) {
+                    output.innerHTML += steps[step];
+                    step++;
+                    setTimeout(showNextStep, 800);
+                }
+            }
+            
+            showNextStep();
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

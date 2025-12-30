@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕵️ מבצע "מפתח הזהב" - ניתוח קוד הצפנה חשוד</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        .slide {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            min-height: 600px;
+            display: none;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.5em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .code-box {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .demo-box {
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .matrix {
+            display: grid;
+            gap: 5px;
+            margin: 20px auto;
+            width: fit-content;
+            font-family: monospace;
+            font-size: 1.2em;
+        }
+
+        .matrix-cell {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .matrix-cell.header {
+            background: #667eea;
+            color: white;
+        }
+
+        .matrix-cell.highlight {
+            background: #ffd700;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .weakness-card {
+            background: #fff5f5;
+            border-right: 5px solid #e53e3e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .weakness-card:hover {
+            transform: translateX(-5px);
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .weakness-card.critical {
+            border-right-color: #c53030;
+            background: #fff0f0;
+        }
+
+        .weakness-card.security {
+            border-right-color: #dd6b20;
+            background: #fffaf0;
+        }
+
+        .weakness-card.design {
+            border-right-color: #d69e2e;
+            background: #fffff0;
+        }
+
+        .test-section {
+            background: #f0fff4;
+            border: 2px solid #48bb78;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .interactive-demo {
+            background: #e6fffa;
+            border: 3px solid #319795;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2d3748;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #cbd5e0;
+            border-radius: 5px;
+            font-size: 1em;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .output-box {
+            background: #2d3748;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 15px;
+            min-height: 60px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+        }
+
+        .nav-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .slide-counter {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        ul, ol {
+            margin: 15px 0;
+            padding-right: 30px;
+        }
+
+        li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .emoji {
+            font-size: 1.3em;
+            margin-left: 5px;
+        }
+
+        .example-box {
+            background: #fefcbf;
+            border-right: 4px solid #d69e2e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .note-box {
+            background: #bee3f8;
+            border-right: 4px solid #3182ce;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 2px solid #667eea;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .step {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .step-number {
+            background: white;
+            color: #667eea;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-item {
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .comparison-item.before {
+            background: #fff5f5;
+            border: 2px solid #e53e3e;
+        }
+
+        .comparison-item.after {
+            background: #f0fff4;
+            border: 2px solid #48bb78;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Slide 1: כותרת -->
+        <div class="slide active" data-slide="1">
+            <h1>🕵️ מבצע "מפתח הזהב"</h1>
+            <div style="text-align: center; margin-top: 30px;">
+                <div style="background: #2d2d2d; color: #00ff00; padding: 20px; border-radius: 10px; font-family: monospace; margin-bottom: 20px;">
+                    <p style="font-size: 1.1em;">MISSION-ID: SPY-2024-CRYPTO-TEST</p>
+                    <p style="font-size: 0.9em; margin-top: 5px;">CLASSIFICATION: TOP SECRET</p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #c53030 0%, #9b2c2c 100%); color: white; padding: 30px; border-radius: 20px; margin: 20px 0;">
+                    <h2 style="color: white; border: none;">⚠️ תדריך המשימה</h2>
+                    <p style="font-size: 1.2em; margin-top: 15px; line-height: 1.6;">
+                        סוכן יקר, ברכותינו על קבלתך למחלקת הסייבר של המוסד!
+                    </p>
+                </div>
+
+                <div style="background: #f7fafc; padding: 30px; border-radius: 15px; border: 3px solid #667eea;">
+                    <h3>📋 הרקע למשימה:</h3>
+                    <p style="text-align: right; font-size: 1.1em; line-height: 1.8; margin-top: 15px;">
+                        לפני שבוע, צוות המוסד בטוקיו השיג דיסק-און-קי המכיל קוד הצפנה של ארגון פשע בינלאומי. 
+                        הקוד נכתב על ידי מתכנת מוכשר בשם <strong>"The Phantom"</strong> שנעלם ללא עקבות לפני שנה.
+                    </p>
+                    <p style="text-align: right; font-size: 1.1em; line-height: 1.8; margin-top: 10px; color: #c53030; font-weight: bold;">
+                        ⚠️ אנחנו חושדים שהפושעים השאירו בקוד באגים מכוונים או מלכודות!
+                    </p>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; margin: 30px 0;">
+                    <h2 style="color: white; border: none;">🎯 המשימה שלך:</h2>
+                    <ul style="text-align: right; font-size: 1.15em; list-style: none; margin-top: 15px;">
+                        <li>🔍 לנתח את קוד ההצפנה שהושג</li>
+                        <li>🐛 לזהות באגים וחולשות</li>
+                        <li>🧪 לכתוב בדיקות מקיפות</li>
+                        <li>✅ לאשר תקינות לפני שימוש בשטח</li>
+                    </ul>
+                </div>
+
+                <div style="background: #fff5f5; border: 3px solid #e53e3e; border-radius: 15px; padding: 20px; margin-top: 20px;">
+                    <p style="font-size: 1.2em; color: #c53030; font-weight: bold;">
+                        🚨 אזהרה: חיי סוכנים בשטח תלויים במהימנות הקוד הזה!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: מה זה Transposition Cipher? -->
+        <div class="slide" data-slide="2">
+            <h2>🔄 הקוד של "The Phantom"</h2>
+            
+            <div dir="ltr" style="background: #2d2d2d; color: #00ff00; padding: 15px; border-radius: 10px; font-family: monospace; margin-bottom: 20px;">
+                <p>📁 secret_cipher.py</p>
+                <p style="font-size: 0.9em; margin-top: 5px;">STATUS: Recovered from criminal lab</p>
+                <p style="font-size: 0.9em; color: #ffd700;">⚠️ WARNING: Not verified - Use with extreme caution</p>
+            </div>
+
+            <div class="demo-box">
+                <h3>מה זה Transposition Cipher?</h3>
+                <p style="font-size: 1.2em; line-height: 1.8;">
+                    זוהי שיטת הצפנה המבוססת על <strong>שינוי סדר</strong> התווים בהודעה
+                    (ולא החלפתם בתווים אחרים כמו ב-Caesar Cipher).
+                </p>
+            </div>
+
+            <div class="comparison">
+                <div class="comparison-item before">
+                    <h3>❌ מה זה לא עושה</h3>
+                    <p>לא מחליף אותיות:<br>A → D, B → E</p>
+                    <p style="margin-top: 15px; font-size: 1.5em;">HELLO ≠ KHOOR</p>
+                </div>
+                <div class="comparison-item after">
+                    <h3>✅ מה זה כן עושה</h3>
+                    <p>משנה סדר אותיות:<br>מיקום 1 → מיקום 4</p>
+                    <p style="margin-top: 15px; font-size: 1.5em;">HELLO → LOHEL</p>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <strong>📌 למה הפושעים בחרו בשיטה הזו?</strong>
+                <p style="margin-top: 10px;">
+                    שיטה זו נחשבת פשוטה יחסית, אך עם סיסמה מורכבת היא יכולה להיות יעילה.
+                    כל האותיות המקוריות נשארות בטקסט המוצפן - רק המיקום שלהן משתנה!
+                </p>
+            </div>
+
+            <div class="example-box">
+                <strong>🕵️ דוגמה ממסרון מיירט:</strong>
+                <p style="margin-top: 10px; font-size: 1.1em;">
+                    הודעה: <code>ATTACK</code><br>
+                    מוצפן: <code>TAATKC</code><br>
+                    שימו לב: אותן אותיות, סדר שונה!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 3: איך זה עובד - שלב 1 -->
+        <div class="slide" data-slide="3">
+            <h2>🔐 איך ההצפנה עובדת - שלב 1</h2>
+            
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>יצירת מפתח מהסיסמה</strong><br>
+                        הסיסמה הופכת למפתח מספרי
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-box">
+                <h3>דוגמה: סיסמה "SECRET"</h3>
+                
+                <table>
+                    <tr>
+                        <th>מיקום מקורי</th>
+                        <td>5</td>
+                        <td>4</td>
+                        <td>3</td>
+                        <td>2</td>
+                        <td>1</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <th>תו</th>
+                        <td>T</td>
+                        <td>E</td>
+                        <td>R</td>
+                        <td>C</td>
+                        <td>E</td>
+                        <td>S</td>
+                    </tr>
+                </table>
+
+                <div style="margin: 30px 0; padding: 20px; background: #fff; border-radius: 10px;">
+                    <p><strong>מיון אלפביתי (שומרים את המיקום המקורי):</strong></p>
+                    <ul style="font-size: 1.1em; margin-top: 15px;">
+                        <li><strong>C</strong> במיקום 2 → מספר <span style="color: #e53e3e;">0</span> במפתח</li>
+                        <li><strong>E</strong> במיקום 1 → מספר <span style="color: #e53e3e;">1</span> במפתח</li>
+                        <li><strong>E</strong> במיקום 4 → מספר <span style="color: #e53e3e;">2</span> במפתח</li>
+                        <li><strong>R</strong> במיקום 3 → מספר <span style="color: #e53e3e;">3</span> במפתח</li>
+                        <li><strong>S</strong> במיקום 0 → מספר <span style="color: #e53e3e;">4</span> במפתח</li>
+                        <li><strong>T</strong> במיקום 5 → מספר <span style="color: #e53e3e;">5</span> במפתח</li>
+                    </ul>
+                </div>
+
+                <div style="background: #667eea; color: white; padding: 20px; border-radius: 10px; font-size: 1.3em; text-align: center;">
+                    <strong>המפתח הסופי:</strong> [5, 0, 3, 4, 1, 2]
+                </div>
+
+                <div class="note-box" style="margin-top: 20px;">
+                    <strong>המשמעות:</strong> "קרא תחילה מעמודה 2, אחר כך מעמודה 1, אחר כך מעמודה 4..."
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: איך זה עובד - שלב 2 -->
+        <div class="slide" data-slide="4">
+            <h2>📝 איך ההצפנה עובדת - שלב 2</h2>
+            
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>כתיבת ההודעה בטבלה</strong><br>
+                        מספר העמודות = אורך הסיסמה
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-box">
+                <h3>הודעה: "ATTACK AT DAWN"</h3>
+                <h3>סיסמה: "SECRET" (6 עמודות)</h3>
+
+                <div style="margin: 30px 0;">
+                    <p style="font-size: 1.1em; margin-bottom: 15px;">
+                        <strong>הסיסמה קובעת את מספר העמודות:</strong>
+                    </p>
+                    <table dir="ltr">
+                        <tr>
+                            <th>S</th>
+                            <th>E</th>
+                            <th>C</th>
+                            <th>R</th>
+                            <th>E</th>
+                            <th>T</th>
+                        </tr>
+                        <tr>
+                            <td>A</td>
+                            <td>T</td>
+                            <td>T</td>
+                            <td>A</td>
+                            <td>C</td>
+                            <td>K</td>
+                        </tr>
+                        <tr>
+                            <td>␣</td>
+                            <td>A</td>
+                            <td>T</td>
+                            <td>␣</td>
+                            <td>D</td>
+                            <td>A</td>
+                        </tr>
+                        <tr>
+                            <td>W</td>
+                            <td>N</td>
+                            <td>␣</td>
+                            <td>␣</td>
+                            <td>␣</td>
+                            <td>␣</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="note-box">
+                    <strong>שימו לב:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li>ההודעה "נשפכת" שורה אחר שורה</li>
+                        <li>אם חסרות אותיות - ממלאים ברווחים (␣)</li>
+                        <li>זה שלב רגיל לגמרי - כמו כתיבה רגילה!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: איך זה עובד - שלב 3 -->
+        <div class="slide" data-slide="5">
+            <h2>🎯 איך ההצפנה עובדת - שלב 3</h2>
+            
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>קריאה לפי סדר המפתח</strong><br>
+                        כאן הקסם קורה! 🪄
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-box">
+                <h3>                    המפתח:
+                    <span dir="ltr">[2, 1, 4, 3, 0, 5]</span>
+                </h3>
+                <p style="font-size: 1.1em; margin: 15px 0;">
+                    במקום לקרוא שורה-שורה, קוראים <strong>עמודה-עמודה</strong> לפי סדר המפתח:
+                </p>
+
+                <div dir="ltr" style="background: #f7fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <table>
+                        <tr>
+                            <th>עמודה 0 (S)</th>
+                            <th>עמודה 1 (E)</th>
+                            <th style="background: #48bb78;">עמודה 2 (C)</th>
+                            <th>עמודה 3 (R)</th>
+                            <th>עמודה 4 (E)</th>
+                            <th>עמודה 5 (T)</th>
+                        </tr>
+                        <tr>
+                            <td>A</td>
+                            <td>T</td>
+                            <td style="background: #c6f6d5;">T</td>
+                            <td>A</td>
+                            <td>C</td>
+                            <td>K</td>
+                        </tr>
+                        <tr>
+                            <td>␣</td>
+                            <td>A</td>
+                            <td style="background: #c6f6d5;">T</td>
+                            <td>␣</td>
+                            <td>D</td>
+                            <td>A</td>
+                        </tr>
+                        <tr>
+                            <td>W</td>
+                            <td>N</td>
+                            <td style="background: #c6f6d5;">␣</td>
+                            <td>␣</td>
+                            <td>␣</td>
+                            <td>␣</td>
+                        </tr>
+                    </table>
+                    <p style="text-align: center; margin-top: 15px; font-size: 1.2em;">
+                        ↑ קוראים תחילה מעמודה 2 (מודגשת בירוק)
+                    </p>
+                </div>
+
+                <div style="background: #fff; padding: 20px; border-radius: 10px;">
+                    <h3 style="color: #667eea;">סדר הקריאה:</h3>
+                    <ol style="font-size: 1.1em; margin-top: 15px;">
+                        <li>עמודה 2 (C): <code>T, T, ␣</code> → <strong>"TT␣"</strong></li>
+                        <li>עמודה 1 (E): <code>T, A, N</code> → <strong>"TAN"</strong></li>
+                        <li>עמודה 4 (E): <code>C, D, ␣</code> → <strong>"CD␣"</strong></li>
+                        <li>עמודה 3 (R): <code>A, ␣, ␣</code> → <strong>"A␣␣"</strong></li>
+                        <li>עמודה 0 (S): <code>A, ␣, W</code> → <strong>"A␣W"</strong></li>
+                        <li>עמודה 5 (T): <code>K, A, ␣</code> → <strong>"KA␣"</strong></li>
+                    </ol>
+                </div>
+
+                <div style="background: #667eea; color: white; padding: 20px; border-radius: 10px; font-size: 1.3em; text-align: center; margin-top: 20px;">
+                    <strong>הטקסט המוצפן:</strong><br>
+                    <code dir="ltr" style="font-size: 1.2em;">"TT␣TANCD␣A␣␣A␣WKA␣"</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: הפענוח -->
+        <div class="slide" data-slide="6">
+            <h2>🔓 איך הפענוח עובד?</h2>
+            
+            <div class="note-box">
+                <strong>עיקרון חשוב:</strong>
+                <p style="margin-top: 10px; font-size: 1.1em;">
+                    הפענוח הוא <strong>בדיוק ההפוך</strong> מההצפנה!<br>
+                    אם ההצפנה קוראת עמודות ← הפענוח ממלא עמודות
+                </p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>יוצרים מטריצה ריקה (יודעים את הגודל מאורך הסיסמה והטקסט)</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>ממלאים עמודות לפי אותו סדר שהצפנה קראה</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>קוראים שורה-שורה → מקבלים הודעה מקורית!</div>
+                </div>
+            </div>
+
+            <div class="demo-box">
+                <h3 dir="ltr">דוגמה: פענוח "TT␣TANCD␣A␣␣A␣WKA␣"</h3>
+                
+                <div style="margin: 20px 0;">
+                    <p><strong>שלב 1: מילוי המטריצה לפי המפתח </strong>
+                        <strong dir="ltr">
+                        [2, 1, 4, 3, 0, 5]
+                    </strong></p>
+                    <ul style="margin: 15px 0; font-size: 1.1em;">
+                        <li>לוקחים "TT␣" → שמים בעמודה 2</li>
+                        <li>לוקחים "TAN" → שמים בעמודה 1</li>
+                        <li>לוקחים "CD␣" → שמים בעמודה 4</li>
+                        <li>וכן הלאה...</li>
+                    </ul>
+                </div>
+
+                <table dir="ltr">
+                    <tr>
+                        <th>S</th>
+                        <th>E</th>
+                        <th>C</th>
+                        <th>R</th>
+                        <th>E</th>
+                        <th>T</th>
+                    </tr>
+                    <tr>
+                        <td>A</td>
+                        <td>T</td>
+                        <td>T</td>
+                        <td>A</td>
+                        <td>C</td>
+                        <td>K</td>
+                    </tr>
+                    <tr>
+                        <td>␣</td>
+                        <td>A</td>
+                        <td>T</td>
+                        <td>␣</td>
+                        <td>D</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>W</td>
+                        <td>N</td>
+                        <td>␣</td>
+                        <td>␣</td>
+                        <td>␣</td>
+                        <td>␣</td>
+                    </tr>
+                </table>
+
+                <p style="margin-top: 20px;"><strong>שלב 2: קריאה שורה-שורה</strong></p>
+                <div style="background: #48bb78; color: white; padding: 20px; border-radius: 10px; font-size: 1.3em; text-align: center; margin-top: 15px;">
+                    <strong>תוצאה:</strong> "ATTACK AT DAWN" ✓
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: סיכום -->
+        <div class="slide" data-slide="15">
+            <h2>📚 סיכום המשימה</h2>
+            
+            <div style="background: #2d2d2d; color: #00ff00; padding: 20px; border-radius: 10px; font-family: monospace; margin-bottom: 20px;">
+                <p dir="ltr" style="font-size: 1.1em;">✅ MISSION BRIEFING COMPLETE</p>
+                <p dir="ltr" style="font-size: 0.9em; margin-top: 5px;">STATUS: Ready for field testing phase</p>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 20px; margin: 30px 0;">
+                <h3 style="color: white; border: none;">🎓 מה למדת במשימה הזו?</h3>
+                <ul style="font-size: 1.2em; margin-top: 20px; list-style: none;">
+                    <li>✅ איך עובד קוד ההצפנה של "The Phantom"</li>
+                    <li>✅ זיהוי החולשות והמלכודות שהשאיר</li>
+                    <li>✅ כיצד לבנות פרוטוקול בדיקות מקיף</li>
+                    <li>✅ חשיבות הבדיקות לביטחון מבצעי</li>
+                </ul>
+            </div>
+
+
+                <div class="comparison-item after">
+                    <h3>✅ מה הקוד כן מלמד אותנו:</h3>
+                    <ul style="margin-top: 15px;">
+                        <li>📖 עקרון Transposition Cipher</li>
+                        <li>🧮 עבודה עם מטריצות ואלגוריתמים</li>
+                        <li>🔍 זיהוי חולשות בקוד</li>
+                        <li>🧪 חשיבות בדיקות מקיפות</li>
+                        <li>💡 חשיבה ביקורתית על אבטחה</li>
+                        <li>🎯 תכנון מקרי קצה</li>
+                    </ul>
+                </div>
+
+
+
+
+            <div style="background: #fff5f5; border: 3px solid #e53e3e; border-radius: 15px; padding: 30px; margin: 30px 0;">
+                <h3 style="color: #c53030;">🚨 תזכורת אבטחה סופית</h3>
+                <p style="font-size: 1.3em; margin-top: 15px; text-align: center; line-height: 1.6;">
+                    <strong>הקוד הזה לא מאושר לשימוש מבצעי!</strong><br>
+                    לאחר שתסיים את הבדיקות והתיקונים,<br>
+                    צוות האבטחה יבצע סקירה נוספת לפני האישור הסופי.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <div style="background: #2d2d2d; color: #00ff00; padding: 30px; border-radius: 10px; font-family: monospace;">
+                    <p style="font-size: 1.5em;">🎖️ סוכן, בהצלחה במשימה!</p>
+                    <p style="font-size: 1em; margin-top: 15px;">הביטחון של סוכנינו בשטח תלוי בך.</p>
+                </div>
+            </div>
+
+            <div class="note-box" style="margin-top: 30px;">
+                <strong>💡 טיפ מקצועי:</strong>
+                <p style="margin-top: 10px;">
+                    באפליקציות אמיתיות, השתמש בספריות קריפטוגרפיה מקצועיות כמו 
+                    <code>cryptography</code>, <code>PyCryptodome</code> או <code>libsodium</code>.
+                    אל תכתוב קוד הצפנה משלך למערכות ייצור!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="previousSlide()">▶</button>
+        <span class="slide-counter" id="slideCounter">1 / 7</span>
+        <button class="nav-btn" id="nextBtn" onclick="nextSlide()">◀</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 7;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+            
+            slides[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('slideCounter').textContent = `${currentSlide} / ${totalSlides}`;
+            document.getElementById('prevBtn').disabled = (currentSlide === 1);
+            document.getElementById('nextBtn').disabled = (currentSlide === totalSlides);
+        }
+
+        function nextSlide() {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+
+        function previousSlide() {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') previousSlide();
+        });
+
+        // Interactive demo functions
+        function createKeyFromPassword(password) {
+            if (!password) return [];
+            const indexed = password.split('').map((char, idx) => [idx, char]);
+            const sorted = indexed.slice().sort((a, b) => a[1].localeCompare(b[1]));
+            return sorted.map(item => item[0]);
+        }
+
+        function encryptMessage(message, password) {
+            if (!message || !password || password.length < 2) return "";
+            
+            const keyOrder = createKeyFromPassword(password);
+            const cols = password.length;
+            const rows = Math.ceil(message.length / cols);
+            const paddedMessage = message.padEnd(rows * cols, " ");
+            
+            // Create matrix
+            const matrix = [];
+            for (let r = 0; r < rows; r++) {
+                const row = [];
+                for (let c = 0; c < cols; c++) {
+                    row.push(paddedMessage[r * cols + c]);
+                }
+                matrix.push(row);
+            }
+            
+            // Read by key order
+            let cipherText = "";
+            for (let keyPos = 0; keyPos < cols; keyPos++) {
+                const colToRead = keyOrder.indexOf(keyPos);
+                for (let r = 0; r < rows; r++) {
+                    cipherText += matrix[r][colToRead];
+                }
+            }
+            
+            return cipherText;
+        }
+
+        function decryptMessage(cipherText, password) {
+            if (!cipherText || !password || password.length < 2) return "";
+            
+            const keyOrder = createKeyFromPassword(password);
+            const cols = password.length;
+            const rows = Math.floor(cipherText.length / cols);
+            
+            // Create empty matrix
+            const matrix = Array(rows).fill().map(() => Array(cols).fill(""));
+            
+            // Fill matrix by key order
+            let charIndex = 0;
+            for (let keyPos = 0; keyPos < cols; keyPos++) {
+                const colToFill = keyOrder.indexOf(keyPos);
+                for (let r = 0; r < rows; r++) {
+                    matrix[r][colToFill] = cipherText[charIndex++];
+                }
+            }
+            
+            // Read row by row
+            let decrypted = "";
+            for (let r = 0; r < rows; r++) {
+                decrypted += matrix[r].join("");
+            }
+            
+            return decrypted.trimEnd();
+        }
+
+        function runDemo() {
+            const message = document.getElementById('testMessage').value.toUpperCase();
+            const password = document.getElementById('testPassword').value.toUpperCase();
+            const output = document.getElementById('demoOutput');
+            
+            if (!message || !password) {
+                output.innerHTML = "❌ אנא הזן הודעה וסיסמה!";
+                return;
+            }
+            
+            try {
+                const key = createKeyFromPassword(password);
+                const encrypted = encryptMessage(message, password);
+                const decrypted = decryptMessage(encrypted, password);
+                
+                let result = `📊 תוצאות:\n\n`;
+                result += `הודעה מקורית: "${message}"\n`;
+                result += `סיסמה: "${password}"\n`;
+                result += `מפתח: [${key.join(', ')}]\n\n`;
+                result += `🔐 מוצפן: "${encrypted}"\n`;
+                result += `🔓 מפוענח: "${decrypted}"\n\n`;
+                
+                if (decrypted === message) {
+                    result += `✅ הצלחה! ההודעה זהה למקור`;
+                } else {
+                    result += `❌ שגיאה! ההודעות לא זהות:\n`;
+                    result += `  אורך מקור: ${message.length}\n`;
+                    result += `  אורך מפוענח: ${decrypted.length}`;
+                }
+                
+                output.textContent = result;
+            } catch (e) {
+                output.textContent = `❌ שגיאה: ${e.message}`;
+            }
+        }
+
+        function testDuplicates() {
+            const output = document.getElementById('demoOutput');
+            const message = "ABCD";
+            const password = "TREE"; // E appears twice
+            
+            try {
+                const encrypted = encryptMessage(message, password);
+                const decrypted = decryptMessage(encrypted, password);
+                
+                let result = `🔍 בדיקת אותיות חוזרות:\n\n`;
+                result += `הודעה: "${message}"\n`;
+                result += `סיסמה: "${password}" (E מופיעה פעמיים!)\n\n`;
+                result += `מוצפן: "${encrypted}"\n`;
+                result += `מפוענח: "${decrypted}"\n\n`;
+                
+                if (decrypted !== message) {
+                    result += `❌ באג נמצא! אותיות חוזרות גורמות לבעיות!\n`;
+                    result += `המקור והפענוח שונים!`;
+                } else {
+                    result += `⚠️ במקרה זה הבדיקה לא חושפת את הבאג`;
+                }
+                
+                output.textContent = result;
+            } catch (e) {
+                output.textContent = `❌ שגיאה: ${e.message}`;
+            }
+        }
+
+        function testTrailingSpaces() {
+            const output = document.getElementById('demoOutput');
+            const message = "HELLO   "; // 3 trailing spaces
+            const password = "KEY";
+            
+            try {
+                const encrypted = encryptMessage(message, password);
+                const decrypted = decryptMessage(encrypted, password);
+                
+                let result = `🔍 בדיקת רווחים בסוף:\n\n`;
+                result += `הודעה מקורית: "${message}" (${message.length} תווים)\n`;
+                result += `סיסמה: "${password}"\n\n`;
+                result += `מוצפן: "${encrypted}"\n`;
+                result += `מפוענח: "${decrypted}" (${decrypted.length} תווים)\n\n`;
+                
+                if (decrypted.length !== message.length) {
+                    result += `❌ באג נמצא! רווחים בסוף אבדו!\n`;
+                    result += `אורך מקור: ${message.length}\n`;
+                    result += `אורך מפוענח: ${decrypted.length}\n`;
+                    result += `הפרש: ${message.length - decrypted.length} תווים`;
+                } else {
+                    result += `✅ רווחים נשמרו`;
+                }
+                
+                output.textContent = result;
+            } catch (e) {
+                output.textContent = `❌ שגיאה: ${e.message}`;
+            }
+        }
+
+        // Initialize
+        showSlide(1);
+    </script>
+</body>
+</html>

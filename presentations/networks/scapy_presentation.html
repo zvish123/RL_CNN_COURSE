@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מצגת Scapy - כלי רשתות מתקדם</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            direction: rtl;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            display: none;
+            width: 90%;
+            max-width: 1200px;
+            height: 85vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 50px;
+            overflow-y: auto;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin: 30px 0 20px 0;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            font-size: 1.5em;
+            margin: 20px 0 15px 0;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin-right: 30px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+            font-size: 1.3em;
+        }
+
+        .code-block code {
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffeb3b 0%, #ffc107 100%);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-right: 5px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .tip-box {
+            background: #d1ecf1;
+            border-right: 5px solid #17a2b8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-right: 5px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 50%;
+            transform: translateX(50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-prev {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-number {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .demo-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+
+        .demo-button:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .demo-output {
+            background: #2d2d2d;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-family: monospace;
+            min-height: 100px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            border: 2px solid #667eea;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .quiz-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .quiz-option {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-option:hover {
+            border-color: #667eea;
+            transform: translateX(-5px);
+        }
+
+        .quiz-option.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .quiz-option.wrong {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .network-diagram {
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.5em;
+        }
+
+        .layer-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            margin: 5px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+                width: 95%;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            p, li {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-number" id="slideNumber">שקופית 1 / 15</div>
+
+    <div class="presentation">
+        <!-- Slide 1: כותרת -->
+        <div class="slide active">
+            <h1>🔍 Scapy</h1>
+            <h2 style="text-align: center; color: #764ba2;">כלי מתקדם למניפולציה והסנפת פקטות רשת</h2>
+
+            <div style="text-align: center; margin-top: 50px;">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='%23667eea'%3E%3Ccircle cx='100' cy='100' r='80' opacity='0.3'/%3E%3Cpath d='M100 40 L140 80 L140 120 L100 160 L60 120 L60 80 Z' fill='%23764ba2'/%3E%3C/g%3E%3C/svg%3E" alt="Scapy Logo" style="width: 200px; height: 200px;">
+            </div>
+
+            <div style="text-align: center; margin-top: 50px; font-size: 1.3em; color: #666;">
+                <p>📚 קורס סייבר לתיכוניסטים</p>
+                <p>💻 מודול רשתות מתקדמות</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: מה נלמד היום? -->
+        <div class="slide">
+            <h1>📋 מה נלמד היום?</h1>
+
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-top: 40px;">
+                <div class="tip-box">
+                    <h3>🎯 מטרות</h3>
+                    <ul>
+                        <li>להכיר את Scapy ויכולותיו</li>
+                        <li>לבנות ולשלוח פקטות רשת</li>
+                        <li>להסניף ולנתח תעבורה</li>
+                        <li>ליישם פילטרים מתקדמים</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h3>💡 מה נדע בסוף?</h3>
+                    <ul>
+                        <li>יצירת פקטות מותאמות אישית</li>
+                        <li>ניטור וניתוח תעבורת רשת</li>
+                        <li>כתיבת סקריפטים למשימות רשת</li>
+                        <li>בדיקות אבטחה בסיסיות</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <h3>⚠️ חשוב לזכור!</h3>
+                <p>Scapy הוא כלי חזק שיכול לשמש גם לטוב וגם לרע. נשתמש בו אך ורק במסגרת חוקית ואתית, על רשתות שיש לנו הרשאה לבדוק.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: למה לא Wireshark? -->
+        <div class="slide">
+            <h1>🤔 למה לא Wireshark?</h1>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>תכונה</th>
+                        <th>Wireshark</th>
+                        <th>Scapy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>הסנפה</strong></td>
+                        <td>✅ מצוין</td>
+                        <td>✅ מצוין</td>
+                    </tr>
+                    <tr>
+                        <td><strong>שליחת פקטות</strong></td>
+                        <td>❌ לא</td>
+                        <td>✅ כן</td>
+                    </tr>
+                    <tr>
+                        <td><strong>אוטומציה</strong></td>
+                        <td>⚠️ מוגבל</td>
+                        <td>✅ מלא</td>
+                    </tr>
+                    <tr>
+                        <td><strong>פילטרים מתקדמים</strong></td>
+                        <td>⚠️ תחביר מיוחד</td>
+                        <td>✅ Python מלא</td>
+                    </tr>
+                    <tr>
+                        <td><strong>מניפולציה של פקטות</strong></td>
+                        <td>❌ לא</td>
+                        <td>✅ כן</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ממשק משתמש</strong></td>
+                        <td>✅ GUI נוח</td>
+                        <td>⚠️ שורת פקודה</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="tip-box" style="margin-top: 30px;">
+                <h3>💡 המסקנה</h3>
+                <p><strong>Wireshark</strong> מצוין לניתוח חזותי ולמידה ראשונית.</p>
+                <p><strong>Scapy</strong> מושלם לאוטומציה, מניפולציה, ופיתוח כלי רשת מתקדמים!</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: מהו Scapy? -->
+        <div class="slide">
+            <h1>🎭 מהו Scapy?</h1>
+
+            <div class="success-box">
+                <h2>הגדרה</h2>
+                <p><span class="highlight">Scapy</span> היא ספריית Python רבת עוצמה המאפשרת:</p>
+                <ul>
+                    <li>📦 <strong>בניה</strong> של פקטות רשת בכל שכבה</li>
+                    <li>📡 <strong>שליחה</strong> של הפקטות לרשת</li>
+                    <li>🎣 <strong>הסנפה</strong> של תעבורת רשת</li>
+                    <li>🔬 <strong>ניתוח</strong> של פקטות שהתקבלו</li>
+                    <li>🔄 <strong>מניפולציה</strong> של תעבורה קיימת</li>
+                </ul>
+            </div>
+
+            <h2>👥 למי זה מיועד?</h2>
+            <ul>
+                <li>🔐 <strong>חוקרי אבטחה</strong> - לבדיקות חדירה וניתוח פרצות</li>
+                <li>🌐 <strong>מנהלי רשת</strong> - לאבחון ופתרון בעיות</li>
+                <li>👨‍💻 <strong>מפתחים</strong> - לבניית כלי רשת מותאמים אישית</li>
+                <li>🎓 <strong>סטודנטים</strong> - ללמידה והבנת פרוטוקולי רשת</li>
+            </ul>
+
+            <div class="warning-box">
+                <h3>⚖️ שימוש אתי וחוקי</h3>
+                <p>Scapy הוא כלי לגיטימי לחלוטין, אך יש להשתמש בו רק:</p>
+                <ul>
+                    <li>על רשתות שאתם בעלים עליהן</li>
+                    <li>עם הרשאה מפורשת בכתב</li>
+                    <li>במסגרת חוקית בלבד</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 5: התקנה ושימוש ראשוני -->
+        <div class="slide">
+            <h1>🚀 התקנה ושימוש ראשוני</h1>
+
+            <h2>התקנה</h2>
+            <pre class="code-block">
+                <code># התקנה באמצעות pip
+pip install scapy
+
+# התקנה עם הרשאות administrator (Windows)
+pip install scapy
+
+# ייבוא בקוד Python
+from scapy.all import *</code>
+            </pre>
+
+            <h2>שתי דרכים לעבודה</h2>
+
+            <h3>1️⃣ מצב אינטראקטיבי (Terminal)</h3>
+            <pre class="code-block">
+                <code># הפעלת Scapy במצב אינטראקטיבי
+scapy
+
+# או דרך Python
+python
+>>> from scapy.all import *</code>
+            </pre>
+
+            <div class="tip-box">
+                <p><strong>מתי להשתמש:</strong> מצוין לניסויים מהירים, לימוד, ובדיקות קצרות</p>
+            </div>
+
+            <h3>2️⃣ סקריפטים (קבצי .py)</h3>
+            <pre class="code-block">
+                <code>#!/usr/bin/env python3
+from scapy.all import *
+
+# הקוד שלך כאן
+packet = IP(dst="www.google.com")/ICMP()
+send(packet)</code>
+            </pre>
+
+            <div class="tip-box">
+                <p><strong>מתי להשתמש:</strong> לאוטומציה, משימות חוזרות, וכלים מורכבים</p>
+            </div>
+        </div>
+
+        <!-- Slide 6: תזכורת - שכבות OSI -->
+        <div class="slide">
+            <h1>📚 תזכורת: מודל שכבות הרשת</h1>
+
+            <div class="network-diagram">
+                <div class="layer-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    7️⃣ Application (HTTP, DNS, SMTP)
+                </div>
+                <div class="layer-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    4️⃣ Transport (TCP, UDP)
+                </div>
+                <div class="layer-box" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    3️⃣ Network (IP, ICMP)
+                </div>
+                <div class="layer-box" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    2️⃣ Data Link (Ethernet, WiFi)
+                </div>
+            </div>
+
+            <h2>מושגים חשובים</h2>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="tip-box">
+                    <h3>📋 Headers (כותרות)</h3>
+                    <p>מידע מטא-דאטה על הפקטה:</p>
+                    <ul>
+                        <li>כתובות מקור ויעד</li>
+                        <li>פורטים</li>
+                        <li>דגלים (flags)</li>
+                        <li>מספרי רצף</li>
+                    </ul>
+                </div>
+
+                <div class="tip-box">
+                    <h3>📦 Payload (תוכן)</h3>
+                    <p>הדאטה בפועל שמועבר:</p>
+                    <ul>
+                        <li>תוכן HTTP</li>
+                        <li>קבצים</li>
+                        <li>הודעות</li>
+                        <li>פקטות מכימות פנימיות</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="success-box" style="margin-top: 20px;">
+                <h3>🎯 Encapsulation (אנקפסולציה)</h3>
+                <p>כל שכבה עוטפת את השכבה שמעליה:</p>
+                <div style="text-align: center; font-family: monospace; font-size: 1.1em; margin-top: 15px;">
+                    Ethernet [ IP [ TCP [ HTTP Data ] ] ]
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: יצירת פקטות בסיסיות -->
+        <div class="slide">
+            <h1>🔨 יצירת פקטות בסיסיות</h1>
+
+            <h2>יצירת פקטת IP</h2>
+            <pre class="code-block">
+                <code># יצירת פקטת IP פשוטה
+ip = IP()
+ip.show()
+
+# עם פרמטרים
+ip = IP(src="192.168.1.100", dst="8.8.8.8", ttl=64)
+
+# הצגת שדה מסוים
+print(ip.src)  # 192.168.1.100
+print(ip.ttl)  # 64</code>
+            </pre>
+
+            <h2>פקודת ls() - מה השדות הזמינים?</h2>
+            <pre class="code-block">
+                <code># הצגת כל השדות של פרוטוקול
+ls(IP)
+
+# פלט לדוגמה:
+# version : IP version (4)
+# ihl : Internet Header Length
+# tos : Type of Service
+# len : Total Length
+# id : Identification
+# flags : Flags (DF, MF)
+# frag : Fragment offset
+# ttl : Time to Live
+# proto : Protocol
+# chksum : Header checksum
+# src : Source address
+# dst : Destination address</code>
+            </pre>
+
+            <div class="tip-box">
+                <h3>💡 טיפ חשוב</h3>
+                <p>Scapy ממלא אוטומטית שדות שלא הגדרתם בערכי ברירת מחדל הגיוניים!</p>
+                <ul>
+                    <li>כתובת מקור - IP המחשב שלך</li>
+                    <li>TTL - 64 (לרוב)</li>
+                    <li>Checksum - מחושב אוטומטית</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 8: שילוב שכבות -->
+        <div class="slide">
+            <h1>🔗 שילוב שכבות - האופרטור /</h1>
+
+            <h2>בניית פקטה מלאה</h2>
+            <pre class="code-block">
+                <code># יצירת פקטה עם מספר שכבות
+packet = Ether() / IP() / TCP()
+
+# עם פרמטרים
+packet = Ether() / IP(dst="www.google.com") / TCP(dport=80, flags="S")
+
+# הוספת payload
+packet = IP(dst="8.8.8.8") / UDP(dport=53) / DNS(qd=DNSQR(qname="example.com"))
+
+# הצגת המבנה
+packet.show()
+packet.summary()  # תצוגה מקוצרת</code>
+            </pre>
+
+            <div class="success-box">
+                <h3>✨ הקסם של /</h3>
+                <p>האופרטור <code>/</code> מבצע אנקפסולציה אוטומטית:</p>
+                <ul>
+                    <li>מזהה את השכבה הנכונה</li>
+                    <li>ממלא את שדה ה-protocol בשכבה התחתונה</li>
+                    <li>מעדכן checksums</li>
+                    <li>מתאים את האורכים</li>
+                </ul>
+            </div>
+
+            <h2>גישה לשכבות ספציפיות</h2>
+            <pre class="code-block">
+                <code># גישה לשכבות ספציפיות
+packet = Ether() / IP(dst="1.1.1.1") / ICMP()
+
+# שיטה 1: עם סוגריים מרובעים
+ip_layer = packet[IP]
+print(ip_layer.dst)  # 1.1.1.1
+
+# שיטה 2: עם payload
+inner = packet.payload  # מחזיר את שכבת ה-IP
+next_layer = inner.payload  # מחזיר את שכבת ה-ICMP
+
+# שיטה 3: בדיקת קיום שכבה
+if TCP in packet:
+    print("יש TCP!")
+if packet.haslayer(ICMP):
+    print("יש ICMP!")</code>
+            </pre>
+        </div>
+
+        <!-- Slide 9: שליחת פקטות -->
+        <div class="slide">
+            <h1>📤 שליחת פקטות</h1>
+
+            <h2>הבדלים בין פונקציות השליחה</h2>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>פונקציה</th>
+                        <th>שכבה</th>
+                        <th>מחכה לתשובה?</th>
+                        <th>תשובות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>send()</code></td>
+                        <td>Layer 3 (IP)</td>
+                        <td>❌ לא</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><code>sendp()</code></td>
+                        <td>Layer 2 (Ethernet)</td>
+                        <td>❌ לא</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><code>sr()</code></td>
+                        <td>Layer 3 (IP)</td>
+                        <td>✅ כן</td>
+                        <td>כל התשובות</td>
+                    </tr>
+                    <tr>
+                        <td><code>sr1()</code></td>
+                        <td>Layer 3 (IP)</td>
+                        <td>✅ כן</td>
+                        <td>תשובה ראשונה</td>
+                    </tr>
+                    <tr>
+                        <td><code>srp()</code></td>
+                        <td>Layer 2 (Ethernet)</td>
+                        <td>✅ כן</td>
+                        <td>כל התשובות</td>
+                    </tr>
+                    <tr>
+                        <td><code>srp1()</code></td>
+                        <td>Layer 2 (Ethernet)</td>
+                        <td>✅ כן</td>
+                        <td>תשובה ראשונה</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>דוגמאות</h2>
+            <pre class="code-block">
+                <code># שליחה פשוטה ללא המתנה לתשובה
+send(IP(dst="8.8.8.8")/ICMP())
+
+# שליחה והמתנה לתשובה אחת
+ans = sr1(IP(dst="8.8.8.8")/ICMP())
+if ans:
+    ans.show()
+
+# שליחה והמתנה לכל התשובות (עם timeout)
+ans, unans = sr(IP(dst="8.8.8.8")/ICMP(), timeout=2)
+
+# שליחה בשכבה 2
+sendp(Ether()/IP(dst="8.8.8.8")/ICMP())
+
+# שליחה עם פרמטרים נוספים
+send(packet, verbose=0)  # ללא הדפסה
+send(packet, count=5)    # שליחה 5 פעמים</code>
+            </pre>
+        </div>
+
+        <!-- Slide 10: דוגמאות מעשיות -->
+        <div class="slide">
+            <h1>💼 דוגמאות מעשיות</h1>
+
+            <h2>1️⃣ Ping מותאם אישית</h2>
+            <pre class="code-block">
+                <code>from scapy.all import *
+
+def custom_ping(target, count=4):
+    """שולח ping עם ספירת תשובות"""
+    replies = 0
+
+    for i in range(count):
+        # יצירת פקטת ICMP Echo Request
+        packet = IP(dst=target)/ICMP()
+
+        # שליחה והמתנה לתשובה
+        reply = sr1(packet, timeout=2, verbose=0)
+
+        if reply:
+            replies += 1
+            print(f"✅ תשובה מ-{reply.src} תוך {reply.time}ms")
+        else:
+            print(f"❌ אין תשובה")
+
+    print(f"\nסיכום: {replies}/{count} תשובות התקבלו")
+
+# שימוש
+custom_ping("8.8.8.8", 4)</code>
+            </pre>
+
+            <h2>2️⃣ בדיקת פורטים פתוחים (TCP SYN Scan)</h2>
+            <pre class="code-block">
+                <code>def port_scan(target, ports):
+    """סורק פורטים פתוחים עם TCP SYN"""
+    open_ports = []
+
+    for port in ports:
+        # יצירת פקטת TCP SYN
+        packet = IP(dst=target)/TCP(dport=port, flags="S")
+
+        # שליחה והמתנה לתשובה
+        reply = sr1(packet, timeout=1, verbose=0)
+
+        if reply and reply.haslayer(TCP):
+            if reply[TCP].flags == "SA":  # SYN-ACK
+                open_ports.append(port)
+                print(f"✅ פורט {port} פתוח")
+
+                # שליחת RST לסגירת החיבור
+                rst = IP(dst=target)/TCP(dport=port, flags="R")
+                send(rst, verbose=0)
+
+    return open_ports
+
+# שימוש (רק על רשתות שיש לך הרשאה!)
+# open_ports = port_scan("192.168.1.1", [80, 443, 22, 21, 3389])</code>
+            </pre>
+        </div>
+
+        <!-- Slide 11: הסנפה (Sniffing) -->
+        <div class="slide">
+            <h1>🎣 הסנפה - ניטור תעבורת רשת</h1>
+
+            <h2>הסנפה בסיסית</h2>
+            <pre class="code-block">
+                <code>from scapy.all import *
+
+# הסנפת 10 פקטות
+packets = sniff(count=10)
+
+# הסנפה ללא הגבלה (עצור עם Ctrl+C)
+packets = sniff()
+
+# הסנפה עם timeout
+packets = sniff(timeout=30)  # 30 שניות
+
+# הצגת הפקטות
+packets.show()
+packets.summary()
+
+# גישה לפקטה ספציפית
+packets[0].show()</code>
+            </pre>
+
+            <h2>פילטרים (BPF Filters)</h2>
+            <pre class="code-block">
+                <code># פילטר לפי פרוטוקול
+packets = sniff(filter="tcp", count=10)
+packets = sniff(filter="udp", count=10)
+packets = sniff(filter="icmp", count=5)
+
+# פילטר לפי פורט
+packets = sniff(filter="tcp port 80", count=10)
+packets = sniff(filter="udp port 53", count=10)
+
+# פילטר לפי IP
+packets = sniff(filter="host 8.8.8.8", count=10)
+packets = sniff(filter="src 192.168.1.1", count=10)
+
+# פילטרים מורכבים
+packets = sniff(filter="tcp and port 443", count=10)
+packets = sniff(filter="host 8.8.8.8 and icmp", count=5)</code>
+            </pre>
+
+            <div class="warning-box">
+                <h3>⚠️ הרשאות</h3>
+                <p>הסנפה דורשת הרשאות administrator/root!</p>
+                <ul>
+                    <li><strong>Windows:</strong> הרץ Python/CMD כ-Administrator</li>
+                    <li><strong>Linux/Mac:</strong> השתמש ב-sudo</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 12: פילטרים מתקדמים -->
+        <div class="slide">
+            <h1>🔍 פילטרים מתקדמים ב-Python</h1>
+
+            <h2>פונקציית lfilter</h2>
+            <pre class="code-block">
+                <code># פילטר פשוט - רק TCP
+def tcp_filter(packet):
+    return TCP in packet
+
+packets = sniff(lfilter=tcp_filter, count=10)
+
+# פילטר מורכב - TCP לפורט 80
+def http_filter(packet):
+    return TCP in packet and packet[TCP].dport == 80
+
+packets = sniff(lfilter=http_filter, count=10)
+
+# פילטר עם תנאים מרובים
+def complex_filter(packet):
+    # רק פקטות TCP שהגיעו מרשת מסוימת
+    if not IP in packet or not TCP in packet:
+        return False
+
+    src_ip = packet[IP].src
+    return src_ip.startswith("192.168")</code>
+            </pre>
+
+            <h2>עיבוד בזמן אמת - prn</h2>
+            <pre class="code-block">
+                <code># הדפסת מידע על כל פקטה
+def packet_callback(packet):
+    if IP in packet:
+        print(f"📦 {packet[IP].src} → {packet[IP].dst}")
+
+sniff(prn=packet_callback, count=10)
+
+# ניתוח DNS
+def dns_callback(packet):
+    if DNS in packet and packet[DNS].qr == 0:  # query
+        query = packet[DNSQR].qname.decode()
+        print(f"🔍 DNS Query: {query}")
+
+sniff(filter="udp port 53", prn=dns_callback, count=10)
+
+# ניתוח HTTP
+def http_callback(packet):
+    if TCP in packet and Raw in packet:
+        payload = packet[Raw].load.decode('utf-8', errors='ignore')
+        if payload.startswith('GET') or payload.startswith('POST'):
+            lines = payload.split('\r\n')
+            print(f"🌐 HTTP Request: {lines[0]}")
+
+sniff(filter="tcp port 80", prn=http_callback, count=10)</code>
+            </pre>
+        </div>
+
+        <!-- Slide 13: תרגילים -->
+        <div class="slide">
+            <h1>📝 תרגילים ליישום</h1>
+
+            <div class="quiz-container">
+                <h2>תרגיל 1: Ping Scanner</h2>
+                <p><strong>משימה:</strong> כתוב פונקציה שסורקת טווח IP (למשל 192.168.1.1-254) ובודקת אילו מחשבים מגיבים ל-ping.</p>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; font-weight: bold;">💡 רמז</summary>
+                    <pre class="code-block">
+                        <code>for i in range(1, 255):
+    ip = f"192.168.1.{i}"
+    reply = sr1(IP(dst=ip)/ICMP(), timeout=1, verbose=0)
+    if reply:
+        print(f"✅ {ip} מגיב!")</code>
+                    </pre>
+                </details>
+            </div>
+
+            <div class="quiz-container">
+                <h2>תרגיל 2: HTTP Monitor</h2>
+                <p><strong>משימה:</strong> כתוב סקריפט שמסניף תעבורת HTTP ושומר לקובץ את כל ה-URLs שביקרו.</p>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; font-weight: bold;">💡 רמז</summary>
+                    <pre class="code-block">
+                        <code>def save_url(packet):
+    if TCP in packet and Raw in packet:
+        try:
+            payload = packet[Raw].load.decode()
+            if 'Host:' in payload and 'GET' in payload:
+                # חלץ את ה-URL ושמור לקובץ
+                pass
+        except:
+            pass</code>
+                    </pre>
+                </details>
+            </div>
+
+            <div class="quiz-container">
+                <h2>תרגיל 3: DNS Logger</h2>
+                <p><strong>משימה:</strong> כתוב סקריפט שרושם את כל שאילתות ה-DNS עם timestamp לקובץ log.</p>
+                <details>
+                    <summary style="cursor: pointer; color: #667eea; font-weight: bold;">💡 רמז</summary>
+                    <pre class="code-block">
+                        <code>from datetime import datetime
+
+def log_dns(packet):
+    if DNS in packet and packet[DNS].qr == 0:
+        timestamp = datetime.now()
+        domain = packet[DNSQR].qname.decode()
+        with open('dns_log.txt', 'a') as f:
+            f.write(f"{timestamp} - {domain}\n")</code>
+                    </pre>
+                </details>
+            </div>
+        </div>
+
+        <!-- Slide 14: שאלות הבנה -->
+        <div class="slide">
+            <h1>❓ שאלות הבנה</h1>
+
+            <div class="quiz-container">
+                <h2>שאלה 1</h2>
+                <p>מה ההבדל בין <code>send()</code> ל-<code>sr1()</code>?</p>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    A) sr1() מחכה לתשובה אחת, send() לא מחכה בכלל
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    B) send() שולח ב-Layer 2, sr1() ב-Layer 3
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    C) אין הבדל, שתיהן עושות את אותו הדבר
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h2>שאלה 2</h2>
+                <p>איזה פילטר נכון לסינון פקטות HTTPS?</p>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    A) <code>sniff(filter="https")</code>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    B) <code>sniff(filter="tcp port 443")</code>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    C) <code>sniff(filter="ssl")</code>
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h2>שאלה 3</h2>
+                <p>מה עושה האופרטור <code>/</code> ב-Scapy?</p>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    A) מחלק שתי פקטות
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    B) מבצע אנקפסולציה - מחבר שכבות
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    C) בודק אם שכבה קיימת בפקטה
+                </div>
+            </div>
+
+            <div class="quiz-container">
+                <h2>שאלה 4</h2>
+                <p>איך נבדוק אם פקטה מכילה שכבת TCP?</p>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    A) <code>if packet.TCP:</code>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true)">
+                    B) <code>if TCP in packet:</code>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false)">
+                    C) <code>if packet.has(TCP):</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: סיכום ומשאבים -->
+        <div class="slide">
+            <h1>🎓 סיכום ומשאבים נוספים</h1>
+
+            <h2>✨ מה למדנו?</h2>
+            <ul>
+                <li>🔧 יצירה ושליחה של פקטות רשת מותאמות אישית</li>
+                <li>🎣 הסנפה וניתוח של תעבורת רשת</li>
+                <li>🔍 שימוש בפילטרים בסיסיים ומתקדמים</li>
+                <li>💻 כתיבת סקריפטים לאוטומציה של משימות רשת</li>
+                <li>🛡️ הבנת פרוטוקולי רשת ברמת המימוש</li>
+            </ul>
+
+            <div class="success-box">
+                <h3>🚀 מה הלאה?</h3>
+                <ul>
+                    <li>תרגול עם הדוגמאות שנתנו</li>
+                    <li>ניסוי על רשת ביתית (בהרשאה!)</li>
+                    <li>בניית כלי רשת משלך</li>
+                    <li>למידת פרוטוקולים מתקדמים</li>
+                </ul>
+            </div>
+
+            <h2>📚 משאבים להמשך למידה</h2>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                <div class="tip-box">
+                    <h3>📖 תיעוד רשמי</h3>
+                    <ul>
+                        <li>scapy.net - אתר רשמי</li>
+                        <li>scapy.readthedocs.io - תיעוד מלא</li>
+                        <li>github.com/secdev/scapy - קוד מקור</li>
+                    </ul>
+                </div>
+
+                <div class="tip-box">
+                    <h3>🎥 סרטונים ומדריכים</h3>
+                    <ul>
+                        <li>Scapy Tutorial - YouTube</li>
+                        <li>Network Programming - Udemy</li>
+                        <li>Cyber Security courses</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <h2>⚖️ תזכורת אתית חשובה</h2>
+                <p><strong>Scapy הוא כלי חזק - השתמשו בו באחריות!</strong></p>
+                <ul>
+                    <li>🚫 אל תסנפו רשתות שלא שייכות לכם</li>
+                    <li>🚫 אל תבצעו התקפות או סריקות ללא הרשאה</li>
+                    <li>✅ השתמשו רק במסגרת לגיטימית ולמידתית</li>
+                    <li>✅ קבלו הרשאה בכתב לפני בדיקות אבטחה</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 50px; font-size: 2em;">
+                <p>🎉 תודה ובהצלחה! 🎉</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-prev" id="prevBtn" onclick="changeSlide(-1)">⏭️ הקודם</button>
+        <button class="btn btn-next" id="nextBtn" onclick="changeSlide(1)">הבא ⏮️</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+
+            document.getElementById('slideNumber').textContent = `שקופית ${currentSlide + 1} / ${totalSlides}`;
+
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(1);
+            if (e.key === 'ArrowRight') changeSlide(-1);
+        });
+
+        function checkAnswer(element, isCorrect) {
+            // Remove all previous states
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.classList.remove('correct', 'wrong');
+            });
+
+            // Add new state
+            if (isCorrect) {
+                element.classList.add('correct');
+                setTimeout(() => {
+                    alert('✅ נכון! כל הכבוד!');
+                }, 100);
+            } else {
+                element.classList.add('wrong');
+                setTimeout(() => {
+                    alert('❌ לא נכון, נסה שוב!');
+                }, 100);
+            }
+        }
+
+        // Interactive demo functions
+        function runDemo(demoType) {
+            const output = document.getElementById('demoOutput');
+
+            if (demoType === 'packet') {
+                output.innerHTML = `>>> packet = IP(dst="8.8.8.8")/ICMP()
+>>> packet.show()
+###[ IP ]###
+  version= 4
+  ihl= None
+  tos= 0x0
+  len= None
+  id= 1
+  flags=
+  frag= 0
+  ttl= 64
+  proto= icmp
+  chksum= None
+  src= 192.168.1.100
+  dst= 8.8.8.8
+###[ ICMP ]###
+     type= echo-request
+     code= 0
+     chksum= None
+     id= 0x0
+     seq= 0x0`;
+            } else if (demoType === 'sniff') {
+                output.innerHTML = `>>> packets = sniff(count=3)
+Sniffing...
+<Sniffed: TCP:2 UDP:1 ICMP:0 Other:0>
+>>> packets.summary()
+Ether / IP / TCP 192.168.1.5:443 > 192.168.1.100:54321 PA
+Ether / IP / TCP 192.168.1.100:54321 > 192.168.1.5:443 A
+Ether / IP / UDP 192.168.1.1:53 > 192.168.1.100:12345`;
+            }
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>עבודה עם קבצים בפייתון | Python File Handling</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-card: #141b3d;
+            --accent-primary: #00d9ff;
+            --accent-secondary: #00ff88;
+            --accent-tertiary: #ff6b6b;
+            --accent-warning: #ffd93d;
+            --text-primary: #e8f0ff;
+            --text-secondary: #a0b0d0;
+            --code-bg: #1a1f3a;
+            --success: #00ff88;
+            --error: #ff6b6b;
+        }
+
+        body {
+            font-family: 'Heebo', 'Rubik', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 217, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(255, 107, 107, 0.05) 0%, transparent 50%);
+            animation: bgPulse 15s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes bgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0, 217, 255, 0.1) 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 217, 255, 0.1), transparent);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        h1 {
+            font-size: 3.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: var(--text-secondary);
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            background: rgba(10, 14, 39, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+        }
+
+        .nav-btn {
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            color: var(--text-primary);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.95em;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-btn:hover::before {
+            left: 100%;
+        }
+
+        .nav-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-color: var(--accent-primary);
+            color: var(--bg-dark);
+            font-weight: 600;
+        }
+
+        .slide {
+            display: none;
+            animation: slideIn 0.5s ease-out;
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide h2 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: var(--accent-primary);
+            border-right: 5px solid var(--accent-secondary);
+            padding-right: 20px;
+            animation: fadeInRight 0.6s ease-out;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide h3 {
+            font-size: 1.8em;
+            margin: 30px 0 20px 0;
+            color: var(--accent-secondary);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slide h3::before {
+            content: '▶';
+            color: var(--accent-primary);
+            font-size: 0.7em;
+        }
+
+        .content {
+            line-height: 1.8;
+            font-size: 1.15em;
+            color: var(--text-secondary);
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            border-right: 4px solid var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2em;
+            direction: ltr;
+            text-align: left;
+            position: relative;
+            overflow-x: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .code-block pre {
+            margin-top: 30px;
+            color: #e8f0ff;
+            line-height: 1.6;
+        }
+
+        .keyword { color: #ff6b6b; font-weight: 600; }
+        .string { color: #00ff88; }
+        .function { color: #00d9ff; }
+        .comment { color: #6c7a96; font-style: italic; }
+        .number { color: #ffd93d; }
+
+        .explanation {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(0, 255, 136, 0.1));
+            padding: 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border-right: 4px solid var(--accent-secondary);
+            line-height: 1.7;
+        }
+
+        .explanation strong {
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .important-note {
+            background: rgba(255, 215, 61, 0.1);
+            border: 2px solid var(--accent-warning);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            position: relative;
+            padding-right: 50px;
+        }
+
+        .important-note::before {
+            content: '⚠️';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2em;
+        }
+
+        .quiz-section {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.05), rgba(255, 107, 107, 0.05));
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 2px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .quiz-question {
+            font-size: 1.3em;
+            margin-bottom: 25px;
+            color: var(--accent-primary);
+            font-weight: 600;
+            padding-right: 40px;
+            position: relative;
+        }
+
+        .quiz-question::before {
+            content: '?';
+            position: absolute;
+            right: 0;
+            top: -5px;
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-option {
+            background: var(--bg-card);
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            padding: 18px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.1));
+            transition: width 0.3s ease;
+        }
+
+        .quiz-option:hover::before {
+            width: 100%;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent-primary);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(0, 217, 255, 0.2);
+        }
+
+        .quiz-option.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--success);
+            animation: correctPulse 0.6s ease;
+        }
+
+        .quiz-option.wrong {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: var(--error);
+            animation: wrongShake 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .quiz-feedback {
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-weight: 500;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .quiz-feedback.show {
+            display: block;
+        }
+
+        .quiz-feedback.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .quiz-feedback.wrong {
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid var(--error);
+            color: var(--error);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 25px 0;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--code-bg);
+            font-size: 1em;
+        }
+
+        th, td {
+            padding: 18px;
+            text-align: right;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-dark);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+        }
+
+        tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        td code {
+            background: var(--bg-dark);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-primary);
+            font-size: 0.9em;
+        }
+
+        .arrow-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            gap: 20px;
+        }
+
+        .arrow-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            font-family: 'Heebo', sans-serif;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+        }
+
+        .arrow-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 217, 255, 0.5);
+        }
+
+        .arrow-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 215, 61, 0.1));
+            border-right: 5px solid var(--accent-tertiary);
+            padding: 20px 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .code-example-title {
+            color: var(--accent-secondary);
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-example-title::before {
+            content: '💻';
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+
+            .slide h2 {
+                font-size: 2em;
+            }
+
+            .slide {
+                padding: 25px;
+            }
+
+            .nav-btn {
+                padding: 10px 16px;
+                font-size: 0.85em;
+            }
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            z-index: 1000;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📂 עבודה עם קבצים בפייתון</h1>
+            <p class="subtitle">Python File Handling - מדריך מקיף ואינטראקטיבי</p>
+        </div>
+
+        <div class="slide-navigation" id="slideNav">
+            <button class="nav-btn active" onclick="goToSlide(0)">הקדמה</button>
+            <button class="nav-btn" onclick="goToSlide(1)">פתיחת קבצים</button>
+            <button class="nav-btn" onclick="goToSlide(2)">קריאה מקובץ</button>
+            <button class="nav-btn" onclick="goToSlide(3)">כתיבה לקובץ</button>
+            <button class="nav-btn" onclick="goToSlide(4)">הוספה לקובץ</button>
+            <button class="nav-btn" onclick="goToSlide(5)">seek & tell</button>
+            <button class="nav-btn" onclick="goToSlide(6)">שאלות 1</button>
+            <button class="nav-btn" onclick="goToSlide(7)">שאלות 2</button>
+            <button class="nav-btn" onclick="goToSlide(8)">סיכום</button>
+        </div>
+
+        <!-- Slide 0: Introduction -->
+        <div class="slide active" id="slide0">
+            <h2>🎯 ברוכים הבאים!</h2>
+            <div class="content">
+                <p style="font-size: 1.2em; margin-bottom: 30px;">
+                    במצגת זו נלמד כיצד לעבוד עם קבצים בפייתון - מיומנות בסיסית וחשובה בכל פרויקט תכנות.
+                </p>
+
+                <h3>מה נלמד היום?</h3>
+                <div class="explanation">
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin: 15px 0; font-size: 1.1em;">🔓 <strong>פתיחת קבצים</strong> - שימוש בפונקציה open() במצבים שונים</li>
+                        <li style="margin: 15px 0; font-size: 1.1em;">📖 <strong>קריאה מקובץ</strong> - שיטות שונות לקריאת מידע</li>
+                        <li style="margin: 15px 0; font-size: 1.1em;">✍️ <strong>כתיבה לקובץ</strong> - יצירה ועדכון של קבצים</li>
+                        <li style="margin: 15px 0; font-size: 1.1em;">➕ <strong>הוספה לקובץ</strong> - הוספת תוכן לקובץ קיים</li>
+                        <li style="margin: 15px 0; font-size: 1.1em;">🎯 <strong>seek() ו-tell()</strong> - ניווט מתקדם בקובץ</li>
+                    </ul>
+                </div>
+
+                <div class="important-note">
+                    <strong style="display: block; margin-bottom: 10px; font-size: 1.1em;">חשוב לזכור!</strong>
+                    עבודה עם קבצים מצריכה תמיד לסגור את הקובץ לאחר השימוש בו. נשתמש ב-context manager (with) כדי להבטיח זאת.
+                </div>
+
+                <div class="highlight-box">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 15px;">למה חשוב ללמוד עבודה עם קבצים?</h4>
+                    <ul style="line-height: 2; font-size: 1.05em;">
+                        <li>💾 שמירה של נתונים בצורה קבועה</li>
+                        <li>📊 קריאה וניתוח של קבצי נתונים</li>
+                        <li>📝 יצירת דוחות ולוגים</li>
+                        <li>🔄 העברת מידע בין תוכניות</li>
+                        <li>⚙️ הגדרות והתאמה אישית (configuration files)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 1: Opening Files -->
+        <div class="slide" id="slide1">
+            <h2>🔓 פתיחת קבצים - open()</h2>
+            <div class="content">
+                <p style="font-size: 1.15em; margin-bottom: 25px;">
+                    פונקציית <code style="background: var(--code-bg); padding: 4px 8px; border-radius: 4px; color: var(--accent-primary);">open()</code> היא הכלי המרכזי לעבודה עם קבצים בפייתון.
+                </p>
+
+                <h3>תחביר בסיסי</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="comment"># תחביר כללי</span>
+<span class="keyword">file</span> = <span class="function">open</span>(<span class="string">"filename.txt"</span>, <span class="string">"mode"</span>)
+
+<span class="comment"># שימוש מומלץ עם context manager</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"filename.txt"</span>, <span class="string">"mode"</span>) <span class="keyword">as</span> file:
+    <span class="comment"># פעולות על הקובץ</span>
+    content = file.<span class="function">read</span>()
+<span class="comment"># הקובץ נסגר אוטומטית!</span></pre>
+                </div>
+
+                <h3>מצבי פתיחה (Modes)</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>הסבר</th>
+                                <th>פעולה</th>
+                                <th>Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>פתיחה לקריאה בלבד (ברירת מחדל)</td>
+                                <td>קריאה</td>
+                                <td><code>'r'</code></td>
+                            </tr>
+                            <tr>
+                                <td>פתיחה לכתיבה (מוחק תוכן קיים, יוצר קובץ חדש אם לא קיים)</td>
+                                <td>כתיבה</td>
+                                <td><code>'w'</code></td>
+                            </tr>
+                            <tr>
+                                <td>פתיחה להוספה (מוסיף לסוף הקובץ, יוצר קובץ חדש אם לא קיים)</td>
+                                <td>הוספה</td>
+                                <td><code>'a'</code></td>
+                            </tr>
+                            <tr>
+                                <td>פתיחה לקריאה וכתיבה</td>
+                                <td>קריאה + כתיבה</td>
+                                <td><code>'r+'</code></td>
+                            </tr>
+                            <tr>
+                                <td>פתיחה לכתיבה וקריאה (מוחק תוכן קיים)</td>
+                                <td>כתיבה + קריאה</td>
+                                <td><code>'w+'</code></td>
+                            </tr>
+                            <tr>
+                                <td>פתיחה להוספה וקריאה</td>
+                                <td>הוספה + קריאה</td>
+                                <td><code>'a+'</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="explanation">
+                    <strong>💡 טיפ חשוב:</strong> תמיד השתמש ב-<code style="background: var(--bg-dark); padding: 4px 8px; border-radius: 4px; color: var(--accent-primary);">with</code> statement!
+                    הוא מבטיח שהקובץ ייסגר אוטומטית גם אם יש שגיאה בקוד.
+                </div>
+
+                <div class="code-example-title">דוגמה מעשית</div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="comment"># ❌ לא מומלץ - צריך לזכור לסגור</span>
+file = <span class="function">open</span>(<span class="string">"data.txt"</span>, <span class="string">"r"</span>)
+content = file.<span class="function">read</span>()
+file.<span class="function">close</span>()  <span class="comment"># אם יש שגיאה לפני זה, הקובץ לא ייסגר!</span>
+
+<span class="comment"># ✅ מומלץ - סגירה אוטומטית</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"data.txt"</span>, <span class="string">"r"</span>) <span class="keyword">as</span> file:
+    content = file.<span class="function">read</span>()
+    <span class="function">print</span>(content)
+<span class="comment"># הקובץ נסגר אוטומטית כאן!</span></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Reading from Files -->
+        <div class="slide" id="slide2">
+            <h2>📖 קריאה מקובץ</h2>
+            <div class="content">
+                <p style="font-size: 1.15em; margin-bottom: 25px;">
+                    פייתון מציעה מספר שיטות לקריאת תוכן מקובץ, כל אחת מתאימה למצב שונה.
+                </p>
+
+                <h3>1️⃣ read() - קריאת כל הקובץ</h3>
+                <div class="explanation">
+                    <strong>read()</strong> קוראת את כל תוכן הקובץ כמחרוזת אחת. ניתן להגביל את מספר התווים עם פרמטר size.
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">with</span> <span class="function">open</span>(<span class="string">"story.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="comment"># קריאת כל הקובץ</span>
+    content = file.<span class="function">read</span>()
+    <span class="function">print</span>(content)
+    
+    <span class="comment"># קריאת 100 תווים ראשונים בלבד</span>
+    file.<span class="function">seek</span>(<span class="number">0</span>)  <span class="comment"># חזרה להתחלה</span>
+    preview = file.<span class="function">read</span>(<span class="number">100</span>)
+    <span class="function">print</span>(preview)</pre>
+                </div>
+
+                <h3>2️⃣ readline() - קריאת שורה אחת</h3>
+                <div class="explanation">
+                    <strong>readline()</strong> קוראת שורה אחת מהקובץ בכל קריאה. שימושית לקריאה הדרגתית של קבצים גדולים.
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">with</span> <span class="function">open</span>(<span class="string">"students.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="comment"># קריאת השורה הראשונה</span>
+    first_line = file.<span class="function">readline</span>()
+    <span class="function">print</span>(<span class="string">"שורה ראשונה:"</span>, first_line)
+    
+    <span class="comment"># קריאת השורה השנייה</span>
+    second_line = file.<span class="function">readline</span>()
+    <span class="function">print</span>(<span class="string">"שורה שנייה:"</span>, second_line)
+    
+    <span class="comment"># קריאת שאר השורות בלולאה</span>
+    <span class="keyword">for</span> line <span class="keyword">in</span> file:
+        <span class="function">print</span>(<span class="string">"שורה נוספת:"</span>, line.<span class="function">strip</span>())</pre>
+                </div>
+
+                <h3>3️⃣ readlines() - קריאת כל השורות לרשימה</h3>
+                <div class="explanation">
+                    <strong>readlines()</strong> קוראת את כל השורות ומחזירה רשימה, כאשר כל אלמנט הוא שורה מהקובץ.
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">with</span> <span class="function">open</span>(<span class="string">"tasks.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="comment"># קריאת כל השורות לרשימה</span>
+    lines = file.<span class="function">readlines</span>()
+    
+    <span class="comment"># עיבוד השורות</span>
+    <span class="function">print</span>(<span class="string">f"מספר משימות: </span><span class="keyword">{</span><span class="function">len</span>(lines)<span class="keyword">}</span><span class="string">"</span>)
+    
+    <span class="keyword">for</span> i, task <span class="keyword">in</span> <span class="function">enumerate</span>(lines, <span class="number">1</span>):
+        <span class="function">print</span>(<span class="string">f"</span><span class="keyword">{</span>i<span class="keyword">}</span><span class="string">. </span><span class="keyword">{</span>task.<span class="function">strip</span>()<span class="keyword">}</span><span class="string">"</span>)</pre>
+                </div>
+
+                <div class="important-note">
+                    <strong>זיכרון וביצועים:</strong><br>
+                    • <code>read()</code> טוען את כל הקובץ לזיכרון - לא מתאים לקבצים גדולים מאוד<br>
+                    • <code>readline()</code> חסכוני בזיכרון - קורא שורה אחת בכל פעם<br>
+                    • <code>readlines()</code> טוען את כל השורות לרשימה - שימושי לקבצים בינוניים
+                </div>
+
+                <div class="highlight-box">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 15px;">💡 איזו שיטה לבחור?</h4>
+                    <ul style="line-height: 2;">
+                        <li>קובץ קטן שצריך לעבד כולו → <code>read()</code></li>
+                        <li>קובץ גדול שצריך לעבד שורה שורה → <code>readline()</code> או לולאה על הקובץ</li>
+                        <li>צריך לגשת לשורות מרובות פעמים → <code>readlines()</code></li>
+                        <li>עיבוד אופטימלי של קובץ גדול → לולאה ישירות על הקובץ</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Writing to Files -->
+        <div class="slide" id="slide3">
+            <h2>✍️ כתיבה לקובץ</h2>
+            <div class="content">
+                <p style="font-size: 1.15em; margin-bottom: 25px;">
+                    כתיבה לקבצים מאפשרת לנו לשמור מידע, ליצור דוחות ולתעד את פעילות התוכנית.
+                </p>
+
+                <h3>write() - כתיבת מחרוזת</h3>
+                <div class="explanation">
+                    <strong>write()</strong> כותבת מחרוזת לקובץ. במצב 'w' היא מוחקת תוכן קיים, במצב 'a' היא מוסיפה בסוף.
+                    החזרת ערך: מספר התווים שנכתבו.
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="comment"># יצירת קובץ חדש וכתיבה אליו</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"output.txt"</span>, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    file.<span class="function">write</span>(<span class="string">"שלום עולם!\n"</span>)
+    file.<span class="function">write</span>(<span class="string">"זוהי שורה שנייה.\n"</span>)
+    <span class="comment"># ⚠️ שים לב: write() לא מוסיפה \n אוטומטית!</span>
+
+<span class="comment"># הדפסת תוכן הקובץ</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"output.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="function">print</span>(file.<span class="function">read</span>())</pre>
+                </div>
+
+                <h3>writelines() - כתיבת רשימת מחרוזות</h3>
+                <div class="explanation">
+                    <strong>writelines()</strong> כותבת רשימה של מחרוזות לקובץ. גם כאן צריך להוסיף \n ידנית.
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="comment"># יצירת רשימת שורות</span>
+lines = [
+    <span class="string">"תלמיד 1: אריאל\n"</span>,
+    <span class="string">"תלמיד 2: נועה\n"</span>,
+    <span class="string">"תלמיד 3: יואב\n"</span>
+]
+
+<span class="comment"># כתיבה לקובץ</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"students.txt"</span>, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    file.<span class="function">writelines</span>(lines)
+
+<span class="comment"># דרך נוחה יותר עם join:</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"students.txt"</span>, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    content = <span class="string">"\n"</span>.<span class="function">join</span>(lines)
+    file.<span class="function">write</span>(content)</pre>
+                </div>
+
+                <h3>דוגמה מקיפה - יצירת לוג</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+<span class="keyword">def</span> <span class="function">write_log</span>(message, filename=<span class="string">"app.log"</span>):
+    <span class="string">"""כותבת הודעת לוג עם חותמת זמן"""</span>
+    timestamp = datetime.<span class="function">now</span>().<span class="function">strftime</span>(<span class="string">"%Y-%m-%d %H:%M:%S"</span>)
+    log_entry = <span class="string">f"[</span><span class="keyword">{</span>timestamp<span class="keyword">}</span><span class="string">] </span><span class="keyword">{</span>message<span class="keyword">}</span><span class="string">\n"</span>
+    
+    <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">"a"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+        file.<span class="function">write</span>(log_entry)
+
+<span class="comment"># שימוש</span>
+<span class="function">write_log</span>(<span class="string">"התוכנית התחילה לפעול"</span>)
+<span class="function">write_log</span>(<span class="string">"משתמש נכנס למערכת"</span>)
+<span class="function">write_log</span>(<span class="string">"שגיאה בעיבוד נתונים"</span>)</pre>
+                </div>
+
+                <div class="important-note">
+                    <strong>זהירות במצב 'w'!</strong><br>
+                    פתיחת קובץ במצב 'w' <strong>מוחקת</strong> את כל התוכן הקיים בקובץ!<br>
+                    אם אתה רוצה להוסיף תוכן לקובץ קיים, השתמש במצב 'a' (append).
+                </div>
+
+                <div class="highlight-box">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 15px;">🎯 טיפים לכתיבה יעילה</h4>
+                    <ul style="line-height: 2;">
+                        <li>תמיד הוסף <code>\n</code> בסוף כל שורה</li>
+                        <li>השתמש ב-<code>encoding="utf-8"</code> לתמיכה בעברית</li>
+                        <li>לקבצים גדולים - כתוב במנות קטנות במקום הכל ביחד</li>
+                        <li>בדוק אם הקובץ קיים לפני שכותבים עליו במצב 'w'</li>
+                        <li>שמור גיבויים של קבצים חשובים לפני שינוי</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Appending to Files -->
+        <div class="slide" id="slide4">
+            <h2>➕ הוספה לקובץ קיים</h2>
+            <div class="content">
+                <p style="font-size: 1.15em; margin-bottom: 25px;">
+                    מצב 'a' (append) מאפשר להוסיף תוכן לסוף קובץ קיים מבלי למחוק את תוכנו.
+                </p>
+
+                <h3>הבדלים בין w ו-a</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Append ('a')</th>
+                                <th>Write ('w')</th>
+                                <th>היבט</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>שומר על תוכן קיים</td>
+                                <td>מוחק תוכן קיים</td>
+                                <td>תוכן קיים</td>
+                            </tr>
+                            <tr>
+                                <td>כותב בסוף הקובץ</td>
+                                <td>כותב מההתחלה</td>
+                                <td>מיקום כתיבה</td>
+                            </tr>
+                            <tr>
+                                <td>יוצר קובץ חדש אם לא קיים</td>
+                                <td>יוצר קובץ חדש אם לא קיים</td>
+                                <td>קובץ לא קיים</td>
+                            </tr>
+                            <tr>
+                                <td>מתאים ללוגים והיסטוריה</td>
+                                <td>מתאים ליצירת קובץ מאפס</td>
+                                <td>שימוש מומלץ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>דוגמה - הוספה לקובץ לוג</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="comment"># יצירת קובץ לוג ראשוני</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"activity.log"</span>, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    file.<span class="function">write</span>(<span class="string">"=== לוג פעילות ===\n"</span>)
+    file.<span class="function">write</span>(<span class="string">"2025-01-07: התוכנית התחילה\n"</span>)
+
+<span class="comment"># הוספת רשומות נוספות בזמן ריצה</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"activity.log"</span>, <span class="string">"a"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    file.<span class="function">write</span>(<span class="string">"2025-01-07: משתמש נכנס למערכת\n"</span>)
+    file.<span class="function">write</span>(<span class="string">"2025-01-07: נוצר קובץ חדש\n"</span>)
+
+<span class="comment"># הוספת עוד רשומות מאוחר יותר</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"activity.log"</span>, <span class="string">"a"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    file.<span class="function">write</span>(<span class="string">"2025-01-07: התוכנית הסתיימה בהצלחה\n"</span>)
+
+<span class="comment"># קריאת הלוג המלא</span>
+<span class="keyword">with</span> <span class="function">open</span>(<span class="string">"activity.log"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="function">print</span>(file.<span class="function">read</span>())</pre>
+                </div>
+
+                <h3>דוגמה מתקדמת - מעקב אחר ציונים</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">def</span> <span class="function">add_grade</span>(student_name, subject, grade):
+    <span class="string">"""מוסיפה ציון חדש לקובץ הציונים"""</span>
+    <span class="keyword">with</span> <span class="function">open</span>(<span class="string">"grades.txt"</span>, <span class="string">"a"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+        entry = <span class="string">f"</span><span class="keyword">{</span>student_name<span class="keyword">}</span><span class="string">,</span><span class="keyword">{</span>subject<span class="keyword">}</span><span class="string">,</span><span class="keyword">{</span>grade<span class="keyword">}</span><span class="string">\n"</span>
+        file.<span class="function">write</span>(entry)
+        <span class="function">print</span>(<span class="string">f"✅ ציון נוסף: </span><span class="keyword">{</span>student_name<span class="keyword">}</span><span class="string"> - </span><span class="keyword">{</span>subject<span class="keyword">}</span><span class="string">: </span><span class="keyword">{</span>grade<span class="keyword">}</span><span class="string">"</span>)
+
+<span class="keyword">def</span> <span class="function">show_all_grades</span>():
+    <span class="string">"""מציגה את כל הציונים מהקובץ"""</span>
+    <span class="keyword">try</span>:
+        <span class="keyword">with</span> <span class="function">open</span>(<span class="string">"grades.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+            <span class="function">print</span>(<span class="string">"\n📊 כל הציונים:"</span>)
+            <span class="keyword">for</span> line <span class="keyword">in</span> file:
+                name, subject, grade = line.<span class="function">strip</span>().<span class="function">split</span>(<span class="string">","</span>)
+                <span class="function">print</span>(<span class="string">f"  {name} - {subject}: {grade}"</span>)
+    <span class="keyword">except</span> <span class="function">FileNotFoundError</span>:
+        <span class="function">print</span>(<span class="string">"❌ קובץ הציונים עדיין לא קיים"</span>)
+
+<span class="comment"># שימוש</span>
+<span class="function">add_grade</span>(<span class="string">"שרה"</span>, <span class="string">"מתמטיקה"</span>, <span class="number">95</span>)
+<span class="function">add_grade</span>(<span class="string">"דני"</span>, <span class="string">"אנגלית"</span>, <span class="number">88</span>)
+<span class="function">add_grade</span>(<span class="string">"שרה"</span>, <span class="string">"פיזיקה"</span>, <span class="number">92</span>)
+<span class="function">show_all_grades</span>()</pre>
+                </div>
+
+                <div class="explanation">
+                    <strong>💡 שימושים נפוצים למצב 'a':</strong>
+                    <ul style="margin-top: 10px; line-height: 1.8;">
+                        <li>📝 <strong>קבצי לוג</strong> - תיעוד פעילות התוכנית לאורך זמן</li>
+                        <li>💾 <strong>שמירת נתונים הדרגתית</strong> - הוספת רשומות ללא מחיקת קיימות</li>
+                        <li>📊 <strong>איסוף נתונים</strong> - צבירת מידע מריצות שונות</li>
+                        <li>🔔 <strong>התראות</strong> - הוספת הודעות לקובץ התראות</li>
+                    </ul>
+                </div>
+
+                <div class="important-note">
+                    <strong>זהירות:</strong> במצב 'a' הקובץ תמיד נפתח מהסוף. אי אפשר לכתוב במיקום ספציפי בקובץ.
+                    לשליטה מלאה במיקום הכתיבה, יש להשתמש במצב 'r+' עם seek().
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: seek() and tell() -->
+        <div class="slide" id="slide5">
+            <h2>🎯 seek() ו-tell() - ניווט בקובץ</h2>
+            <div class="content">
+                <p style="font-size: 1.15em; margin-bottom: 25px;">
+                    הפונקציות seek() ו-tell() מאפשרות לנו לשלוט במיקום הסמן (file pointer) בתוך הקובץ.
+                </p>
+
+                <h3>tell() - מציאת המיקום הנוכחי</h3>
+                <div class="explanation">
+                    <strong>tell()</strong> מחזירה את המיקום הנוכחי של הסמן בקובץ (מספר בתים מתחילת הקובץ).
+                </div>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">with</span> <span class="function">open</span>(<span class="string">"example.txt"</span>, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="function">print</span>(<span class="string">f"מיקום התחלתי: </span><span class="keyword">{</span>file.<span class="function">tell</span>()<span class="keyword">}</span><span class="string">"</span>)  <span class="comment"># 0</span>
+    
+    <span class="comment"># קריאת 10 תווים</span>
+    content = file.<span class="function">read</span>(<span class="number">10</span>)
+    <span class="function">print</span>(<span class="string">f"מיקום לאחר קריאה: </span><span class="keyword">{</span>file.<span class="function">tell</span>()<span class="keyword">}</span><span class="string">"</span>)  <span class="comment"># 10</span>
+    
+    <span class="comment"># קריאת שורה</span>
+    line = file.<span class="function">readline</span>()
+    <span class="function">print</span>(<span class="string">f"מיקום לאחר readline: </span><span class="keyword">{</span>file.<span class="function">tell</span>()<span class="keyword">}</span><span class="string">"</span>)</pre>
+                </div>
+
+                <h3>seek() - קפיצה למיקום מסוים</h3>
+                <div class="explanation">
+                    <strong>seek(offset, whence)</strong> מזיזה את הסמן למיקום מסוים בקובץ.
+                    <ul style="margin-top: 10px; line-height: 1.8;">
+                        <li><code>offset</code> - מספר הבתים להזיז</li>
+                        <li><code>whence</code> - נקודת התייחסות (ברירת מחדל: 0)</li>
+                    </ul>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>משמעות</th>
+                                <th>ערך</th>
+                                <th>whence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>תחילת הקובץ (ברירת מחדל)</td>
+                                <td><code>0</code></td>
+                                <td>SEEK_SET</td>
+                            </tr>
+                            <tr>
+                                <td>מיקום נוכחי</td>
+                                <td><code>1</code></td>
+                                <td>SEEK_CUR</td>
+                            </tr>
+                            <tr>
+                                <td>סוף הקובץ</td>
+                                <td><code>2</code></td>
+                                <td>SEEK_END</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>דוגמאות שימוש</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">with</span> <span class="function">open</span>(<span class="string">"data.txt"</span>, <span class="string">"r+"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+    <span class="comment"># 1. חזרה להתחלת הקובץ</span>
+    file.<span class="function">seek</span>(<span class="number">0</span>)  <span class="comment"># או: file.seek(0, 0)</span>
+    
+    <span class="comment"># 2. קפיצה ל-50 בתים מהתחילה</span>
+    file.<span class="function">seek</span>(<span class="number">50</span>)
+    <span class="function">print</span>(file.<span class="function">read</span>(<span class="number">20</span>))  <span class="comment"># קרא 20 תווים ממיקום 50</span>
+    
+    <span class="comment"># 3. הזיזה קדימה 10 בתים מהמיקום הנוכחי</span>
+    file.<span class="function">seek</span>(<span class="number">10</span>, <span class="number">1</span>)  <span class="comment"># SEEK_CUR</span>
+    
+    <span class="comment"># 4. קפיצה לתו האחרון בקובץ</span>
+    file.<span class="function">seek</span>(-<span class="number">1</span>, <span class="number">2</span>)  <span class="comment"># SEEK_END</span>
+    last_char = file.<span class="function">read</span>(<span class="number">1</span>)
+    
+    <span class="comment"># 5. קפיצה ל-100 תווים לפני הסוף</span>
+    file.<span class="function">seek</span>(-<span class="number">100</span>, <span class="number">2</span>)</pre>
+                </div>
+
+                <h3>דוגמה מעשית - עדכון שורה ספציפית</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">def</span> <span class="function">update_line</span>(filename, line_num, new_content):
+    <span class="string">"""מעדכנת שורה ספציפית בקובץ"""</span>
+    <span class="comment"># קריאת כל הקובץ</span>
+    <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+        lines = file.<span class="function">readlines</span>()
+    
+    <span class="comment"># עדכון השורה</span>
+    <span class="keyword">if</span> <span class="number">0</span> <= line_num < <span class="function">len</span>(lines):
+        lines[line_num] = new_content + <span class="string">"\n"</span>
+        
+        <span class="comment"># כתיבה חזרה</span>
+        <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+            file.<span class="function">writelines</span>(lines)
+        
+        <span class="function">print</span>(<span class="string">f"✅ שורה </span><span class="keyword">{</span>line_num<span class="keyword">}</span><span class="string"> עודכנה בהצלחה"</span>)
+    <span class="keyword">else</span>:
+        <span class="function">print</span>(<span class="string">"❌ מספר שורה לא תקין"</span>)
+
+<span class="comment"># דוגמת שימוש</span>
+<span class="function">update_line</span>(<span class="string">"config.txt"</span>, <span class="number">2</span>, <span class="string">"port=8080"</span>)</pre>
+                </div>
+
+                <h3>דוגמה - קריאה הפוכה</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">def</span> <span class="function">read_last_n_chars</span>(filename, n=<span class="number">100</span>):
+    <span class="string">"""קוראת n תווים אחרונים מהקובץ"""</span>
+    <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> file:
+        <span class="comment"># קפיצה ל-n תווים לפני הסוף</span>
+        file.<span class="function">seek</span>(-n, <span class="number">2</span>)
+        content = file.<span class="function">read</span>()
+        <span class="keyword">return</span> content
+
+<span class="comment"># קריאת 50 תווים אחרונים מקובץ לוג</span>
+tail = <span class="function">read_last_n_chars</span>(<span class="string">"app.log"</span>, <span class="number">50</span>)
+<span class="function">print</span>(<span class="string">"תווים אחרונים:"</span>, tail)</pre>
+                </div>
+
+                <div class="important-note">
+                    <strong>חשוב לדעת:</strong><br>
+                    • במצב טקסט (text mode), seek() עובד אמין רק עם ערך 0 (התחלה) או ערכים שהתקבלו מ-tell()<br>
+                    • במצב בינארי (binary mode), יש חופש תנועה מלא<br>
+                    • ב-UTF-8, תו אחד יכול לתפוס יותר מבית אחד - היזהר עם seek() באמצע מחרוזת
+                </div>
+
+                <div class="highlight-box">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 15px;">🎯 שימושים מתקדמים</h4>
+                    <ul style="line-height: 2;">
+                        <li>📖 קריאה חוזרת של חלק מהקובץ ללא טעינה מחדש</li>
+                        <li>✏️ עדכון חלקים ספציפיים בקובץ גדול</li>
+                        <li>📊 קפיצה למיקומים ידועים בקובץ מובנה</li>
+                        <li>🔍 חיפוש אופטימלי בקובץ גדול</li>
+                        <li>📝 יצירת אינדקס למיקומים חשובים בקובץ</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Quiz 1 -->
+        <div class="slide" id="slide6">
+            <h2>🧪 שאלות הבנה - חלק 1</h2>
+            <div class="content">
+                
+                <!-- Question 1 -->
+                <div class="quiz-section" data-quiz="q1">
+                    <div class="quiz-question">
+                        1. איזה מצב פתיחה יוצר קובץ חדש אם הוא לא קיים ומוחק את תוכנו אם הוא כן קיים?
+                    </div>
+                    <div class="quiz-options" id="q1-options"></div>
+                    <div class="quiz-feedback" id="q1-feedback"></div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="quiz-section" data-quiz="q2">
+                    <div class="quiz-question">
+                        2. מה תעשה הקוד הבא?<br>
+                        <code style="background: var(--code-bg); padding: 8px 12px; border-radius: 6px; display: inline-block; margin-top: 10px;">
+                            with open("test.txt", "a") as f:<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;f.write("Hello")
+                        </code>
+                    </div>
+                    <div class="quiz-options" id="q2-options"></div>
+                    <div class="quiz-feedback" id="q2-feedback"></div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="quiz-section" data-quiz="q3">
+                    <div class="quiz-question">
+                        3. איזו מהפונקציות הבאות קוראת את כל השורות ומחזירה אותן כרשימה?
+                    </div>
+                    <div class="quiz-options" id="q3-options"></div>
+                    <div class="quiz-feedback" id="q3-feedback"></div>
+                </div>
+
+                <!-- Question 4 -->
+                <div class="quiz-section" data-quiz="q4">
+                    <div class="quiz-question">
+                        4. מה יקרה אם תפתח קובץ שלא קיים במצב 'r'?
+                    </div>
+                    <div class="quiz-options" id="q4-options"></div>
+                    <div class="quiz-feedback" id="q4-feedback"></div>
+                </div>
+
+                <!-- Question 5 -->
+                <div class="quiz-section" data-quiz="q5">
+                    <div class="quiz-question">
+                        5. מדוע מומלץ להשתמש ב-with statement בעבודה עם קבצים?
+                    </div>
+                    <div class="quiz-options" id="q5-options"></div>
+                    <div class="quiz-feedback" id="q5-feedback"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Slide 7: Quiz 2 -->
+        <div class="slide" id="slide7">
+            <h2>🎓 שאלות יישום - חלק 2</h2>
+            <div class="content">
+                
+                <!-- Question 6 -->
+                <div class="quiz-section" data-quiz="q6">
+                    <div class="quiz-question">
+                        6. מה יחזיר file.tell() מיד לאחר פתיחת קובץ למעט במצב 'a'?
+                    </div>
+                    <div class="quiz-options" id="q6-options"></div>
+                    <div class="quiz-feedback" id="q6-feedback"></div>
+                </div>
+
+                <!-- Question 7 -->
+                <div class="quiz-section" data-quiz="q7">
+                    <div class="quiz-question">
+                        7. מה יעשה הקוד: file.seek(-10, 2)?
+                    </div>
+                    <div class="quiz-options" id="q7-options"></div>
+                    <div class="quiz-feedback" id="q7-feedback"></div>
+                </div>
+
+                <!-- Question 8 -->
+                <div class="quiz-section" data-quiz="q8">
+                    <div class="quiz-question">
+                        8. איזו פונקציה הכי חסכונית בזיכרון לקריאת קובץ גדול מאוד?
+                    </div>
+                    <div class="quiz-options" id="q8-options"></div>
+                    <div class="quiz-feedback" id="q8-feedback"></div>
+                </div>
+
+                <!-- Question 9 -->
+                <div class="quiz-section" data-quiz="q9">
+                    <div class="quiz-question">
+                        9. מה ההבדל בין write() ל-writelines()?
+                    </div>
+                    <div class="quiz-options" id="q9-options"></div>
+                    <div class="quiz-feedback" id="q9-feedback"></div>
+                </div>
+
+                <!-- Question 10 -->
+                <div class="quiz-section" data-quiz="q10">
+                    <div class="quiz-question">
+                        10. איזה מצב פתיחה מאפשר גם קריאה וגם כתיבה מבלי למחוק תוכן קיים?
+                    </div>
+                    <div class="quiz-options" id="q10-options"></div>
+                    <div class="quiz-feedback" id="q10-feedback"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Slide 8: Summary -->
+        <div class="slide" id="slide8">
+            <h2>📚 סיכום ועצות לסיום</h2>
+            <div class="content">
+                <h3>מה למדנו היום?</h3>
+                <div class="explanation">
+                    <ul style="list-style: none; padding: 0; line-height: 2.2;">
+                        <li>✅ <strong>פתיחת קבצים</strong> - מצבים שונים (r, w, a, r+, w+, a+)</li>
+                        <li>✅ <strong>קריאה</strong> - read(), readline(), readlines()</li>
+                        <li>✅ <strong>כתיבה</strong> - write(), writelines()</li>
+                        <li>✅ <strong>הוספה</strong> - append mode לשמירת תוכן קיים</li>
+                        <li>✅ <strong>ניווט</strong> - seek() ו-tell() לשליטה במיקום</li>
+                    </ul>
+                </div>
+
+                <h3>טבלת סיכום - מצבי פתיחה</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>מחיק תוכן?</th>
+                                <th>יוצר קובץ?</th>
+                                <th>פעולה</th>
+                                <th>Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>לא</td>
+                                <td>לא</td>
+                                <td>קריאה בלבד</td>
+                                <td><code>'r'</code></td>
+                            </tr>
+                            <tr>
+                                <td>כן</td>
+                                <td>כן</td>
+                                <td>כתיבה</td>
+                                <td><code>'w'</code></td>
+                            </tr>
+                            <tr>
+                                <td>לא</td>
+                                <td>כן</td>
+                                <td>הוספה</td>
+                                <td><code>'a'</code></td>
+                            </tr>
+                            <tr>
+                                <td>לא</td>
+                                <td>לא</td>
+                                <td>קריאה + כתיבה</td>
+                                <td><code>'r+'</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>💎 עצות חשובות</h3>
+                <div class="highlight-box">
+                    <ul style="line-height: 2;">
+                        <li><strong>תמיד השתמש ב-with statement</strong> - הוא מבטיח סגירה אוטומטית</li>
+                        <li><strong>הוסף encoding="utf-8"</strong> - לתמיכה בעברית ושפות אחרות</li>
+                        <li><strong>בדוק קיום קובץ</strong> - לפני פעולות שעלולות למחוק תוכן</li>
+                        <li><strong>טפל בשגיאות</strong> - השתמש ב-try/except עבור FileNotFoundError</li>
+                        <li><strong>סגור תמיד קבצים</strong> - אם לא משתמש ב-with</li>
+                    </ul>
+                </div>
+
+                <h3>דוגמה מקיפה לסיום</h3>
+                <div class="code-block" data-lang="python">
+                    <pre><span class="keyword">import</span> os
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+<span class="keyword">class</span> <span class="function">FileManager</span>:
+    <span class="string">"""מחלקה לניהול קבצים בצורה בטוחה"""</span>
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="keyword">self</span>, filename):
+        <span class="keyword">self</span>.filename = filename
+    
+    <span class="keyword">def</span> <span class="function">write_log</span>(<span class="keyword">self</span>, message):
+        <span class="string">"""כותבת הודעת לוג עם חותמת זמן"""</span>
+        timestamp = datetime.<span class="function">now</span>().<span class="function">strftime</span>(<span class="string">"%Y-%m-%d %H:%M:%S"</span>)
+        log_entry = <span class="string">f"[</span><span class="keyword">{</span>timestamp<span class="keyword">}</span><span class="string">] </span><span class="keyword">{</span>message<span class="keyword">}</span><span class="string">\n"</span>
+        
+        <span class="keyword">with</span> <span class="function">open</span>(<span class="keyword">self</span>.filename, <span class="string">"a"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> f:
+            f.<span class="function">write</span>(log_entry)
+    
+    <span class="keyword">def</span> <span class="function">read_logs</span>(<span class="keyword">self</span>, last_n_lines=<span class="number">10</span>):
+        <span class="string">"""קוראת את n השורות האחרונות"""</span>
+        <span class="keyword">if</span> <span class="keyword">not</span> os.path.<span class="function">exists</span>(<span class="keyword">self</span>.filename):
+            <span class="keyword">return</span> []
+        
+        <span class="keyword">with</span> <span class="function">open</span>(<span class="keyword">self</span>.filename, <span class="string">"r"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> f:
+            lines = f.<span class="function">readlines</span>()
+            <span class="keyword">return</span> lines[-last_n_lines:]
+    
+    <span class="keyword">def</span> <span class="function">clear</span>(<span class="keyword">self</span>):
+        <span class="string">"""מנקה את הקובץ"""</span>
+        <span class="keyword">with</span> <span class="function">open</span>(<span class="keyword">self</span>.filename, <span class="string">"w"</span>, encoding=<span class="string">"utf-8"</span>) <span class="keyword">as</span> f:
+            <span class="keyword">pass</span>  <span class="comment"># יוצר קובץ ריק</span>
+
+<span class="comment"># שימוש</span>
+logger = <span class="function">FileManager</span>(<span class="string">"app.log"</span>)
+logger.<span class="function">write_log</span>(<span class="string">"התוכנית התחילה"</span>)
+logger.<span class="function">write_log</span>(<span class="string">"משתמש נכנס"</span>)
+<span class="function">print</span>(logger.<span class="function">read_logs</span>(<span class="number">5</span>))</pre>
+                </div>
+
+                <div class="important-note">
+                    <strong>זכור:</strong> עבודה עם קבצים היא מיומנות בסיסית שתשתמש בה כמעט בכל פרויקט.
+                    תרגל את כל השיטות שלמדת והקפד על כתיבה נקייה ובטוחה!
+                </div>
+
+                <h3 style="text-align: center; margin-top: 40px; color: var(--accent-primary);">
+                    🎉 כל הכבוד! סיימת את המצגת בהצלחה! 🎉
+                </h3>
+                <p style="text-align: center; font-size: 1.2em; margin-top: 20px;">
+                    המשך לתרגל ותהפוך למומחה בעבודה עם קבצים בפייתון! 💪
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Quiz data with randomized answer positions
+        const quizData = {
+            q1: {
+                question: "question 1",
+                options: [
+                    { text: "'w' - Write mode שמוחק תוכן קיים", correct: true },
+                    { text: "'a' - Append mode שמוסיף לסוף", correct: false },
+                    { text: "'r+' - Read plus mode לקריאה וכתיבה", correct: false },
+                    { text: "'x' - Exclusive mode שנכשל אם קובץ קיים", correct: false }
+                ]
+            },
+            q2: {
+                question: "question 2",
+                options: [
+                    { text: "יוסיף 'Hello' לסוף הקובץ, יצור קובץ אם לא קיים", correct: true },
+                    { text: "ימחק את הקובץ ויכתוב 'Hello' מההתחלה מחדש", correct: false },
+                    { text: "יגרום לשגיאה אם הקובץ לא קיים כבר במערכת", correct: false },
+                    { text: "יקרא את הקובץ ויחזיר את התוכן עם 'Hello'", correct: false }
+                ]
+            },
+            q3: {
+                question: "question 3",
+                options: [
+                    { text: "readlines() - קוראת ומחזירה רשימה של שורות", correct: true },
+                    { text: "read() - קוראת את כל הקובץ כמחרוזת אחת גדולה", correct: false },
+                    { text: "readline() - קוראת שורה בודדת אחת בלבד", correct: false },
+                    { text: "readall() - פונקציה שלא קיימת בפייתון סטנדרטי", correct: false }
+                ]
+            },
+            q4: {
+                question: "question 4",
+                options: [
+                    { text: "תתרחש שגיאה מסוג FileNotFoundError", correct: true },
+                    { text: "ייווצר קובץ חדש ריק אוטומטית במערכת", correct: false },
+                    { text: "הפונקציה תחזיר None מבלי לבצע פעולה", correct: false },
+                    { text: "הקוד ימשיך לפעול אבל file יהיה None", correct: false }
+                ]
+            },
+            q5: {
+                question: "question 5",
+                options: [
+                    { text: "הוא מבטיח סגירה אוטומטית גם במקרה של שגיאות", correct: true },
+                    { text: "הוא מאפשר לפתוח מספר קבצים בו-זמנית בקלות", correct: false },
+                    { text: "הוא מזהה אוטומטית את סוג הקידוד של הקובץ", correct: false },
+                    { text: "הוא יוצר גיבוי אוטומטי לפני כל פעולת כתיבה", correct: false }
+                ]
+            },
+            q6: {
+                question: "question 6",
+                options: [
+                    { text: "0 - המיקום בתחילת הקובץ תמיד", correct: true },
+                    { text: "None - כי עדיין לא בוצעה שום פעולה", correct: false },
+                    { text: "-1 - ערך ברירת מחדל לפני כל פעולה", correct: false },
+                    { text: "1 - התו הראשון בקובץ בעמדה הראשונה", correct: false }
+                ]
+            },
+            q7: {
+                question: "question 7",
+                options: [
+                    { text: "יקפוץ 10 בתים לפני סוף הקובץ ממש", correct: true },
+                    { text: "יקפוץ 10 בתים קדימה מהמיקום הנוכחי בלבד", correct: false },
+                    { text: "יקפוץ להתחלת הקובץ ואז 10 בתים קדימה", correct: false },
+                    { text: "יגרום לשגיאה כי המספר הוא שלילי בטעות", correct: false }
+                ]
+            },
+            q8: {
+                question: "question 8",
+                options: [
+                    { text: "לולאה על הקובץ או readline() לקריאה הדרגתית", correct: true },
+                    { text: "read() כי היא מהירה וקוראת הכל בבת אחת", correct: false },
+                    { text: "readlines() כי היא מייעלת את הפעולות אחר כך", correct: false },
+                    { text: "seek() כי היא מאפשרת לדלג על חלקים מיותרים", correct: false }
+                ]
+            },
+            q9: {
+                question: "question 9",
+                options: [
+                    { text: "write מקבל מחרוזת, writelines מקבל רשימה של מחרוזות", correct: true },
+                    { text: "write כותב שורה אחת, writelines כותב מספר שורות", correct: false },
+                    { text: "write מוסיף \\n אוטומטית, writelines לא מוסיף כלל", correct: false },
+                    { text: "אין הבדל אמיתי, הן רק שמות שונים לאותה פונקציה", correct: false }
+                ]
+            },
+            q10: {
+                question: "question 10",
+                options: [
+                    { text: "'r+' - מצב קריאה וכתיבה ללא מחיקת תוכן", correct: true },
+                    { text: "'w+' - כותב וקורא אבל מוחק תוכן קיים תחילה", correct: false },
+                    { text: "'a+' - מוסיף וקורא אבל רק מהסוף של הקובץ", correct: false },
+                    { text: "'rw' - מצב מיוחד לקריאה וכתיבה מעורבות", correct: false }
+                ]
+            }
+        };
+
+        let currentSlide = 0;
+        const totalSlides = 9;
+
+        function goToSlide(n) {
+            // Hide all slides
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            // Show selected slide
+            slides[n].classList.add('active');
+            
+            // Update navigation buttons
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach((btn, index) => {
+                if (index === n) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            currentSlide = n;
+            
+            // Update progress bar
+            const progress = ((n + 1) / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                goToSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                goToSlide(currentSlide - 1);
+            }
+        }
+
+        // Initialize quiz questions with randomized answers
+        function initializeQuizzes() {
+            Object.keys(quizData).forEach(quizId => {
+                const quiz = quizData[quizId];
+                const optionsContainer = document.getElementById(`${quizId}-options`);
+                
+                // Shuffle options
+                const shuffled = [...quiz.options].sort(() => Math.random() - 0.5);
+                
+                // Create option buttons
+                shuffled.forEach((option, index) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'quiz-option';
+                    optionDiv.textContent = option.text;
+                    optionDiv.onclick = () => checkAnswer(quizId, option.correct, optionDiv);
+                    optionsContainer.appendChild(optionDiv);
+                });
+            });
+        }
+
+        function checkAnswer(quizId, isCorrect, element) {
+            const feedback = document.getElementById(`${quizId}-feedback`);
+            const allOptions = element.parentElement.querySelectorAll('.quiz-option');
+            
+            // Disable all options
+            allOptions.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                feedback.className = 'quiz-feedback correct show';
+                feedback.textContent = '✅ מצוין! תשובה נכונה!';
+            } else {
+                element.classList.add('wrong');
+                feedback.className = 'quiz-feedback wrong show';
+                feedback.textContent = '❌ לא נכון. נסה לחשוב שוב על מה שלמדנו...';
+                
+                // Show correct answer after 1 second
+                setTimeout(() => {
+                    allOptions.forEach(opt => {
+                        const optionText = opt.textContent;
+                        const correctOption = quizData[quizId].options.find(o => o.correct);
+                        if (optionText === correctOption.text) {
+                            opt.classList.add('correct');
+                        }
+                    });
+                }, 1000);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                if (e.key === 'ArrowRight') {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+            }
+        });
+
+        // Initialize on load
+        window.onload = () => {
+            initializeQuizzes();
+            goToSlide(0);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מצגת אינטראקטיבית - התקפות DOS ו-DDOS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;600;700;900&family=Alef:wght@400;700&family=Heebo:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151932;
+            --accent-cyan: #00f0ff;
+            --accent-purple: #8b5cf6;
+            --accent-red: #ff006e;
+            --accent-green: #00ff88;
+            --text-primary: #e0e7ff;
+            --text-secondary: #94a3b8;
+            --warning: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background Animation */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            display: none;
+            width: 90%;
+            max-width: 1200px;
+            height: 85vh;
+            background: rgba(21, 25, 50, 0.8);
+            border-radius: 20px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0, 240, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        h1 {
+            font-family: 'Rubik', sans-serif;
+            font-size: 3.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.3)); }
+            to { filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.5)); }
+        }
+
+        h2 {
+            font-family: 'Rubik', sans-serif;
+            font-size: 2.2em;
+            color: var(--accent-cyan);
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            color: var(--accent-purple);
+            margin: 30px 0 15px;
+            font-weight: 600;
+        }
+
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            color: var(--accent-cyan);
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .danger {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .success {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        /* Attack Visualization */
+        .attack-demo {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 40px 0;
+            height: 300px;
+        }
+
+        .server, .attacker {
+            text-align: center;
+        }
+
+        .icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .server .icon {
+            background: linear-gradient(135deg, var(--accent-purple), #6366f1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .attacker .icon {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 15px 40px rgba(139, 92, 246, 0.6); }
+        }
+
+        .arrows {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .arrow {
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-red), transparent);
+            animation: shoot 1s ease-in-out infinite;
+            border-radius: 2px;
+        }
+
+        @keyframes shoot {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(100px); opacity: 0; }
+        }
+
+        /* Questions */
+        .question-container {
+            margin-top: 40px;
+        }
+
+        .question {
+            font-size: 1.4em;
+            color: var(--accent-cyan);
+            margin-bottom: 30px;
+            font-weight: 600;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 240, 255, 0.05);
+            border-radius: 15px;
+            border: 2px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .answer-btn {
+            padding: 25px 30px;
+            font-size: 1.1em;
+            font-family: 'Heebo', sans-serif;
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid var(--accent-purple);
+            color: var(--text-primary);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .answer-btn:hover {
+            background: rgba(139, 92, 246, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+
+        .answer-btn.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--accent-green);
+            animation: correctPulse 0.6s ease;
+        }
+
+        .answer-btn.wrong {
+            background: rgba(255, 0, 110, 0.2);
+            border-color: var(--accent-red);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .feedback {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 600;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        .feedback.correct {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .feedback.wrong {
+            background: rgba(255, 0, 110, 0.1);
+            border: 2px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            padding: 15px 35px;
+            font-size: 1.1em;
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border: none;
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 240, 255, 0.3);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 240, 255, 0.5);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Progress */
+        .progress {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-cyan);
+            transform: scale(1.3);
+        }
+
+        /* Info Boxes */
+        .info-box {
+            padding: 25px;
+            background: rgba(0, 240, 255, 0.05);
+            border-right: 4px solid var(--accent-cyan);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .warning-box {
+            padding: 25px;
+            background: rgba(251, 191, 36, 0.05);
+            border-right: 4px solid var(--warning);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .code-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            direction: ltr;
+            text-align: left;
+        }
+
+        /* Stats Display */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: rgba(139, 92, 246, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid var(--accent-purple);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: var(--accent-cyan);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1em;
+            color: var(--text-secondary);
+        }
+
+        ul {
+            list-style: none;
+            margin-right: 20px;
+        }
+
+        li::before {
+            content: "▸ ";
+            color: var(--accent-cyan);
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* Score Display */
+        .score-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 240, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 2px solid var(--accent-cyan);
+            font-size: 1.2em;
+            font-weight: 600;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    
+    <div class="score-display">
+        ניקוד: <span id="score">0</span> / <span id="total">0</span>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="container">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🛡️ התקפות DOS ו-DDOS</h1>
+            <h2>מדריך אינטראקטיבי למתחילים</h2>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">48%</div>
+                    <div class="stat-label">מהתקפות הסייבר הן DDOS</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">$120K</div>
+                    <div class="stat-label">עלות ממוצעת להתקפה</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2.3M</div>
+                    <div class="stat-label">התקפות DDOS בשנה</div>
+                </div>
+            </div>
+
+            <div class="info-box" style="margin-top: 50px;">
+                <h3>🎯 מה נלמד היום?</h3>
+                <ul>
+                    <li>מהן התקפות DOS ו-DDOS</li>
+                    <li>איך התקפות אלו עובדות</li>
+                    <li>איך לזהות התקפה</li>
+                    <li>שיטות הגנה וביטחון</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is DOS -->
+        <div class="slide">
+            <h2>💥 מה זה DOS?</h2>
+            
+            <div class="info-box">
+                <h3>DOS = Denial of Service (מניעת שירות)</h3>
+                <p><span class="highlight">מטרה:</span> לגרום לשרת או שירות להפסיק לעבוד</p>
+                <p><span class="highlight">איך?</span> על ידי הצפה שלו בבקשות עד שהוא קורס</p>
+                <p><span class="highlight">מקור:</span> <span class="danger">מחשב יחיד</span></p>
+            </div>
+
+            <div class="attack-demo">
+                 <div class="server">
+                    <div class="icon">🖥️</div>
+                    <p>שרת</p>
+                </div>
+                <div class="arrows">
+                    <div class="arrow" style="animation-delay: 0s;"></div>
+                    <div class="arrow" style="animation-delay: 0.2s;"></div>
+                    <div class="arrow" style="animation-delay: 0.4s;"></div>
+                    <div class="arrow" style="animation-delay: 0.6s;"></div>
+                </div>
+                <div class="attacker">
+                    <div class="icon">💻</div>
+                    <p>תוקף</p>
+                </div>
+
+
+            </div>
+
+            <div class="warning-box">
+                <p>⚠️ <strong>אנלוגיה:</strong> אדם אחד מתקשר למסעדה 1000 פעמים ומזמין פיצה - המסעדה לא יכולה לענות ללקוחות אמיתיים!</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: What is DDOS -->
+        <div class="slide">
+            <h2>⚡ מה זה DDOS?</h2>
+            
+            <div class="info-box">
+                <h3>DDOS = Distributed Denial of Service</h3>
+                <p><span class="highlight">ההבדל:</span> התקפה מ<span class="danger">אלפי מחשבים</span> בו-זמנית!</p>
+                <p><span class="highlight">עוצמה:</span> פי 1000 יותר חזק מ-DOS רגיל</p>
+                <p><span class="highlight">בעיה:</span> קשה מאוד לעצור - צריך לחסום אלפי מקורות</p>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">10,000+</div>
+                    <div class="stat-label">מחשבים בבוטנט ממוצע</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">1 Tbps</div>
+                    <div class="stat-label">גודל התקפה שיא</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">24 שעות</div>
+                    <div class="stat-label">משך התקפה ממוצע</div>
+                </div>
+            </div>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <p>⚠️ <strong>אנלוגיה:</strong> 1000 אנשים מתקשרים למסעדה בו-זמנית - אין שום דרך להתמודד!</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Question 1 -->
+        <div class="slide">
+            <h2>🤔 שאלת הבנה #1</h2>
+            
+            <div class="question-container">
+                <div class="question">
+                    מה ההבדל המרכזי בין DOS ל-DDOS?
+                </div>
+                
+                <div class="answers">
+                    <!-- Answers will be randomized by JavaScript -->
+                </div>
+                
+                <div class="feedback" id="feedback1"></div>
+            </div>
+        </div>
+
+        <!-- Slide 5: How Attacks Work -->
+        <div class="slide">
+            <h2>⚙️ איך התקפות עובדות?</h2>
+            
+            <h3>🔹 SYN Flood</h3>
+            <pre class="code-box">
+תוקף → SYN → שרת
+שרת → SYN-ACK → (מחכה לתשובה...)
+תוקף לא עונה → שרת מחזיק חיבור פתוח
+חוזר ×10,000 → שרת קורס 💥
+            </pre>
+
+            <h3>🔹 HTTP Flood</h3>
+            <div class="info-box">
+                <p>שליחת <span class="highlight">מיליוני בקשות HTTP</span> לגיטימיות</p>
+                <p>השרת לא יכול להבדיל בין משתמש אמיתי לתוקף</p>
+            </div>
+
+            <h3>🔹 UDP Flood</h3>
+            <div class="info-box">
+                <p>הצפת השרת ב<span class="highlight">חבילות UDP</span> אקראיות</p>
+                <p>השרת מבזבז משאבים על עיבוד חבילות מזויפות</p>
+            </div>
+        </div>
+
+        <!-- Slide 6: Question 2 -->
+        <div class="slide">
+            <h2>🤔 שאלת הבנה #2</h2>
+            
+            <div class="question-container">
+                <div class="question">
+                    באיזו שיטת התקפה התוקף מתחיל חיבור אבל לא משלים אותו?
+                </div>
+                
+                <div class="answers">
+                    <!-- Answers will be randomized by JavaScript -->
+                </div>
+                
+                <div class="feedback" id="feedback2"></div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Detection -->
+        <div class="slide">
+            <h2>🔍 איך מזהים התקפת DDOS?</h2>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">📈</div>
+                    <div class="stat-label">עלייה פתאומית בתעבורה (×100)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">⏱️</div>
+                    <div class="stat-label">האתר איטי מאוד או "תקוע"</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">🌍</div>
+                    <div class="stat-label">תעבורה ממדינות לא צפויות</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 40px;">🚨 סימנים נוספים:</h3>
+            <div class="info-box">
+                <ul>
+                    <li><span class="highlight">דפוסים חוזרים:</span> אותה בקשה מאלפי IP שונים</li>
+                    <li><span class="highlight">לוגים מלאים:</span> אותן בקשות חוזרות ונשנות</li>
+                    <li><span class="highlight">ערכי User-Agent זהים:</span> כל הבקשות מאותו דפדפן מדומה</li>
+                    <li><span class="highlight">שעות לא רגילות:</span> פעילות חריגה ב-3 בלילה</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 8: Question 3 -->
+        <div class="slide">
+            <h2>🤔 שאלת הבנה #3</h2>
+            
+            <div class="question-container">
+                <div class="question">
+                    איזה מהבאים הוא סימן אזהרה להתקפת DDOS?
+                </div>
+                
+                <div class="answers">
+                    <!-- Answers will be randomized by JavaScript -->
+                </div>
+                
+                <div class="feedback" id="feedback3"></div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Prevention -->
+        <div class="slide">
+            <h2>🛡️ איך מונעים התקפות?</h2>
+            
+            <h3>🔹 הגנות בסיסיות</h3>
+            <div class="info-box">
+                <ul>
+                    <li><span class="highlight">Rate Limiting:</span> הגבלת מספר בקשות למשתמש (10 בדקה)</li>
+                    <li><span class="highlight">Firewall Rules:</span> חסימת IP חשודים אוטומטית</li>
+                    <li><span class="highlight">IP Blacklisting:</span> רשימה שחורה של תוקפים ידועים</li>
+                    <li><span class="highlight">CAPTCHA:</span> אימות שהמשתמש הוא אנושי</li>
+                </ul>
+            </div>
+
+            <h3>🔹 הגנות מתקדמות</h3>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">☁️</div>
+                    <div class="stat-label">CDN - פיזור העומס</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">⚖️</div>
+                    <div class="stat-label">Load Balancers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">🤖</div>
+                    <div class="stat-label">AI Detection</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Question 4 -->
+        <div class="slide">
+            <h2>🤔 שאלת הבנה #4</h2>
+            
+            <div class="question-container">
+                <div class="question">
+                    מהי הדרך הטובה ביותר למנוע משתמש אחד לשלוח אלפי בקשות?
+                </div>
+                
+                <div class="answers">
+                    <!-- Answers will be randomized by JavaScript -->
+                </div>
+                
+                <div class="feedback" id="feedback4"></div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Legal & Ethical -->
+        <div class="slide">
+            <h2>⚖️ היבטים חוקיים ואתיים</h2>
+            
+            <div class="warning-box">
+                <h3>⚠️ התקפת DDOS היא פשע!</h3>
+                <p>עונש: <span class="danger">עד 5 שנות מאסר + קנס כבד</span></p>
+                <p>זה כולל גם סימולציות על שרתים שלא שייכים לך!</p>
+            </div>
+
+            <h3 style="margin-top: 40px;">✅ שימוש לגיטימי</h3>
+            <div class="info-box">
+                <ul>
+                    <li><span class="success">בדיקות אבטחה</span> ברשת שלך בלבד</li>
+                    <li><span class="success">סימולציות על localhost</span> (127.0.0.1)</li>
+                    <li><span class="success">מעבדות סייבר</span> בסביבות מבוקרות</li>
+                    <li><span class="success">תרגילי סיימולציה</span> בהרשאה מלאה</li>
+                </ul>
+            </div>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <p>💡 <strong>זכור:</strong> הידע שלך הוא כלי - השתמש בו לטוב בלבד!</p>
+            </div>
+        </div>
+
+        <!-- Slide 12: Question 5 -->
+        <div class="slide">
+            <h2>🤔 שאלת הבנה #5</h2>
+            
+            <div class="question-container">
+                <div class="question">
+                    האם מותר לבצע בדיקת DDOS על אתר של בית הספר?
+                </div>
+                
+                <div class="answers">
+                    <!-- Answers will be randomized by JavaScript -->
+                </div>
+                
+                <div class="feedback" id="feedback5"></div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Summary -->
+        <div class="slide">
+            <h2>📚 סיכום</h2>
+            
+            <div class="stats" style="margin-bottom: 30px;">
+                <div class="stat-card">
+                    <div class="stat-number">✅</div>
+                    <div class="stat-label">הבנו מה זה DOS/DDOS</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">🔍</div>
+                    <div class="stat-label">למדנו לזהות התקפות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">🛡️</div>
+                    <div class="stat-label">יודעים למנוע נזק</div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h3>💡 נקודות מפתח</h3>
+                <ul>
+                    <li>DOS = מחשב אחד, DDOS = אלפי מחשבים</li>
+                    <li>זיהוי: עלייה חדה בתעבורה, דפוסים חוזרים</li>
+                    <li>הגנה: Rate Limiting, Firewall, CDN</li>
+                    <li>חוקיות: פשע חמור - רק בסביבות מבוקרות!</li>
+                </ul>
+            </div>
+
+            <div class="warning-box" style="margin-top: 30px;">
+                <h3>🎯 הצעדים הבאים</h3>
+                <p>עכשיו אתם יכולים:</p>
+                <ul>
+                    <li>לבנות שרת עם הגנת Rate Limiting</li>
+                    <li>ליצור סימולציה חינוכית ב-Python</li>
+                    <li>להבין דוחות אבטחה של התקפות</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 50px; font-size: 2em;">
+                <span class="highlight">הניקוד הסופי שלכם:</span> 
+                <span id="finalScore" style="font-size: 1.5em; color: var(--accent-cyan);">0/5</span> 🎯
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">► הקודם</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ◄</button>
+    </div>
+
+    <script>
+        // Questions and Answers Data
+        const questionsData = {
+            q1: {
+                question: "מה ההבדל המרכזי בין DOS ל-DDOS?",
+                answers: [
+                    { text: "DOS = מחשב יחיד, DDOS = אלפי מחשבים תוקפים בו-זמנית", correct: true },
+                    { text: "DOS = התקפה מהירה, DDOS = התקפה איטית למשך זמן", correct: false },
+                    { text: "DOS = התקפה על שרתים, DDOS = התקפה על מחשבים אישיים", correct: false },
+                    { text: "DOS = חוקי לחלוטין, DDOS = לא חוקי במדינות מסוימות בלבד", correct: false }
+                ],
+                explanation: {
+                    correct: "🎉 נכון! DDOS מסוכן יותר כי הוא מגיע מאלפי מקורות שונים בו-זמנית, מה שהופך אותו לקשה בהרבה לחסימה.",
+                    wrong: "❌ לא מדויק. ההבדל העיקרי הוא במספר המחשבים התוקפים: DOS = יחיד, DDOS = רבים."
+                }
+            },
+            q2: {
+                question: "באיזו שיטת התקפה התוקף מתחיל חיבור אבל לא משלים אותו?",
+                answers: [
+                    { text: "SYN Flood - תוקף שולח SYN אבל לא עונה ל-SYN-ACK", correct: true },
+                    { text: "HTTP Flood - תוקף שולח בקשות GET ו-POST ללא הפסקה", correct: false },
+                    { text: "UDP Flood - תוקף ממטיר חבילות אקראיות על השרת", correct: false },
+                    { text: "Ping Flood - תוקף שולח אלפי בדיקות ping בשנייה", correct: false }
+                ],
+                explanation: {
+                    correct: "🎯 מצוין! SYN Flood מנצל את תהליך ה-TCP handshake - השרת מחכה לתשובה שלא מגיעה לעולם.",
+                    wrong: "❌ לא זה. התשובה הנכונה היא SYN Flood - התקפה שמנצלת את תהליך יצירת החיבור."
+                }
+            },
+            q3: {
+                question: "איזה מהבאים הוא סימן אזהרה להתקפת DDOS?",
+                answers: [
+                    { text: "עלייה פתאומית של פי 100 בתעבורה מאלפי IP שונים", correct: true },
+                    { text: "משתמש אחד שולח 50 בקשות ביום בשעות שונות לגמרי", correct: false },
+                    { text: "השרת מקבל תעבורה רגילה ממדינות שונות כרגיל", correct: false },
+                    { text: "לוג הגישה מראה פעילות נורמלית של משתמשים מגוונים", correct: false }
+                ],
+                explanation: {
+                    correct: "✨ מעולה! עלייה חדה ומאסיבית בתעבורה ממקורות רבים היא הסימן הבולט ביותר.",
+                    wrong: "❌ טעות. התשובה הנכונה: עלייה פתאומית ומשמעותית בתעבורה ממקורות מרובים."
+                }
+            },
+            q4: {
+                question: "מהי הדרך הטובה ביותר למנוע משתמש אחד לשלוח אלפי בקשות?",
+                answers: [
+                    { text: "Rate Limiting - הגבלת מספר הבקשות לכל IP בזמן נתון", correct: true },
+                    { text: "סגירת השרת לחלוטין כך שאף אחד לא יכול לגשת אליו", correct: false },
+                    { text: "שליחת הודעת אזהרה למשתמש שהוא שולח יותר מדי בקשות", correct: false },
+                    { text: "העברת השרת למדינה אחרת כדי להתחמק מהתוקף", correct: false }
+                ],
+                explanation: {
+                    correct: "💯 בדיוק! Rate Limiting מאפשר לשרת לפעול רגיל אך מגביל שימוש חריג.",
+                    wrong: "❌ לא נכון. Rate Limiting היא השיטה האפקטיבית ביותר לניהול בקשות חריגות."
+                }
+            },
+            q5: {
+                question: "האם מותר לבצע בדיקת DDOS על אתר של בית הספר?",
+                answers: [
+                    { text: "לא! זה פשע חמור גם אם התכוונת 'רק לבדוק' - צריך הרשאה מפורשת", correct: true },
+                    { text: "כן, כי זה חלק מלימודי הסייבר ומותר לתלמידים בתחום", correct: false },
+                    { text: "כן, אבל רק בשעות הלילה כשאף אחד לא משתמש באתר", correct: false },
+                    { text: "כן, כי בית הספר שלך ולכן זה כמו לבדוק את הרשת הביתית", correct: false }
+                ],
+                explanation: {
+                    correct: "👏 נכון לגמרי! התקפה על כל שרת ללא הרשאה היא פשע, גם אם 'לימודית'.",
+                    wrong: "❌ שגיאה חמורה! התקפה על שרתים ללא הרשאה היא פשע - גם על שרתים 'מוכרים'."
+                }
+            }
+        };
+
+        let currentSlide = 0;
+        let score = 0;
+        let totalQuestions = 0;
+        const slides = document.querySelectorAll('.slide');
+        const progress = document.getElementById('progress');
+
+        // Initialize
+        function init() {
+            // Create progress dots
+            slides.forEach((_, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                if (index === 0) dot.classList.add('active');
+                progress.appendChild(dot);
+            });
+
+            // Setup questions
+            setupQuestion(3, 'q1', 'feedback1');
+            setupQuestion(5, 'q2', 'feedback2');
+            setupQuestion(7, 'q3', 'feedback3');
+            setupQuestion(9, 'q4', 'feedback4');
+            setupQuestion(11, 'q5', 'feedback5');
+
+            updateNavigation();
+        }
+
+        function setupQuestion(slideIndex, questionKey, feedbackId) {
+            const questionSlide = slides[slideIndex];
+            const answersContainer = questionSlide.querySelector('.answers');
+            const data = questionsData[questionKey];
+            
+            // Shuffle answers
+            const shuffled = [...data.answers].sort(() => Math.random() - 0.5);
+            
+            // Create answer buttons
+            shuffled.forEach((answer, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = answer.text;
+                btn.onclick = () => checkAnswer(btn, answer.correct, data.explanation, feedbackId);
+                answersContainer.appendChild(btn);
+            });
+
+            totalQuestions++;
+        }
+
+        function checkAnswer(btn, isCorrect, explanation, feedbackId) {
+            const feedback = document.getElementById(feedbackId);
+            const allButtons = btn.parentElement.querySelectorAll('.answer-btn');
+            
+            // Disable all buttons
+            allButtons.forEach(b => {
+                b.style.pointerEvents = 'none';
+                if (b === btn) {
+                    b.classList.add(isCorrect ? 'correct' : 'wrong');
+                }
+            });
+
+            // Show feedback
+            feedback.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+            feedback.textContent = isCorrect ? explanation.correct : explanation.wrong;
+
+            // Update score
+            if (isCorrect) {
+                score++;
+                document.getElementById('score').textContent = score;
+            }
+            document.getElementById('total').textContent = totalQuestions;
+        }
+
+        function changeSlide(direction) {
+            const dots = progress.querySelectorAll('.progress-dot');
+            dots[currentSlide].classList.remove('active');
+            
+            currentSlide += direction;
+            currentSlide = Math.max(0, Math.min(currentSlide, slides.length - 1));
+            
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                }
+            });
+
+            dots[currentSlide].classList.add('active');
+            updateNavigation();
+
+            // Update final score on last slide
+            if (currentSlide === slides.length - 1) {
+                document.getElementById('finalScore').textContent = `${score}/${totalQuestions}`;
+            }
+        }
+
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slides.length - 1;
+            
+            if (currentSlide === slides.length - 1) {
+                nextBtn.textContent = 'סיום ✓';
+            } else {
+                nextBtn.textContent = 'הבא ◄';
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSlide < slides.length - 1) {
+                changeSlide(1);
+            } else if (e.key === 'ArrowRight' && currentSlide > 0) {
+                changeSlide(-1);
+            }
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

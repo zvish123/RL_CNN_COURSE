@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הגנות DOS/DDOS בקוד - מצגת טכנית</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Heebo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1e1e2e;
+            --bg-darker: #181825;
+            --bg-code: #11111b;
+            --text-primary: #cdd6f4;
+            --text-secondary: #a6adc8;
+            --accent-blue: #89b4fa;
+            --accent-green: #a6e3a1;
+            --accent-red: #f38ba8;
+            --accent-yellow: #f9e2af;
+            --accent-purple: #cba6f7;
+            --accent-pink: #f5c2e7;
+            --border: #313244;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        .terminal-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(137, 180, 250, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(137, 180, 250, 0.03) 3px
+                );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .slide {
+            display: none;
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            background: var(--bg-darker);
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Terminal Header */
+        .terminal-header {
+            background: var(--bg-code);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: var(--accent-red); }
+        .dot-yellow { background: var(--accent-yellow); }
+        .dot-green { background: var(--accent-green); }
+
+        .terminal-title {
+            margin-right: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        /* Slide Content */
+        .slide-content {
+            flex: 1;
+            padding: 50px 60px;
+            overflow-y: auto;
+        }
+
+        .slide-content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .slide-content::-webkit-scrollbar-track {
+            background: var(--bg-code);
+        }
+
+        .slide-content::-webkit-scrollbar-thumb {
+            background: var(--accent-blue);
+            border-radius: 5px;
+        }
+
+        h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3em;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(137, 180, 250, 0.3);
+        }
+
+        h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2em;
+            color: var(--accent-purple);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: "▸";
+            color: var(--accent-green);
+        }
+
+        h3 {
+            font-size: 1.4em;
+            color: var(--accent-yellow);
+            margin: 25px 0 15px;
+            font-weight: 600;
+        }
+
+        p {
+            font-size: 1.15em;
+            line-height: 1.8;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            color: var(--accent-green);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .danger {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95em;
+            direction: ltr;
+            text-align: left;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 8px;
+            right: 15px;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+
+        .code-line {
+            display: block;
+            line-height: 1.8;
+        }
+
+        .code-comment {
+            color: #6c7086;
+            font-style: italic;
+        }
+
+        .code-keyword {
+            color: var(--accent-purple);
+            font-weight: 600;
+        }
+
+        .code-function {
+            color: var(--accent-blue);
+        }
+
+        .code-string {
+            color: var(--accent-green);
+        }
+
+        .code-number {
+            color: var(--accent-pink);
+        }
+
+        /* Info Boxes */
+        .info-box {
+            background: rgba(137, 180, 250, 0.1);
+            border-right: 4px solid var(--accent-blue);
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .warning-box {
+            background: rgba(243, 139, 168, 0.1);
+            border-right: 4px solid var(--accent-red);
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .success-box {
+            background: rgba(166, 227, 161, 0.1);
+            border-right: 4px solid var(--accent-green);
+            padding: 20px 25px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        /* Lists */
+        ul {
+            list-style: none;
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin: 10px 0;
+            padding-right: 25px;
+            position: relative;
+            font-size: 1.1em;
+        }
+
+        li::before {
+            content: "→";
+            position: absolute;
+            right: 0;
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Questions */
+        .question-container {
+            margin-top: 40px;
+        }
+
+        .question {
+            background: var(--bg-code);
+            border: 2px solid var(--accent-blue);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .answer-btn {
+            background: var(--bg-code);
+            border: 2px solid var(--border);
+            padding: 20px 25px;
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1.05em;
+            font-family: 'Heebo', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .answer-btn:hover {
+            border-color: var(--accent-blue);
+            background: rgba(137, 180, 250, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .answer-btn.correct {
+            border-color: var(--accent-green);
+            background: rgba(166, 227, 161, 0.2);
+            animation: correctShake 0.5s ease;
+        }
+
+        .answer-btn.wrong {
+            border-color: var(--accent-red);
+            background: rgba(243, 139, 168, 0.2);
+            animation: wrongShake 0.5s ease;
+        }
+
+        @keyframes correctShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(10px); }
+            50% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .feedback {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        .feedback.correct {
+            background: rgba(166, 227, 161, 0.2);
+            border: 2px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .feedback.wrong {
+            background: rgba(243, 139, 168, 0.2);
+            border: 2px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            padding: 12px 30px;
+            font-size: 1.05em;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-code);
+            border: 2px solid var(--accent-blue);
+            color: var(--accent-blue);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--accent-blue);
+            color: var(--bg-dark);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Progress */
+        .progress {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .progress-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--accent-blue);
+            box-shadow: 0 0 15px var(--accent-blue);
+            transform: scale(1.3);
+        }
+
+        /* Score */
+        .score-display {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            background: var(--bg-code);
+            border: 2px solid var(--accent-green);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1em;
+            color: var(--accent-green);
+            z-index: 100;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 1.05em;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-code);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(137, 180, 250, 0.05);
+        }
+
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 25px 0;
+        }
+
+        .card {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .card h4 {
+            color: var(--accent-blue);
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Title Slide Specific */
+        .title-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 30px;
+        }
+
+        .title-slide h1 {
+            font-size: 4em;
+            margin-bottom: 0;
+        }
+
+        .title-slide .subtitle {
+            font-size: 1.5em;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .ascii-art {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-green);
+            font-size: 0.6em;
+            line-height: 1.2;
+            white-space: pre;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-bg"></div>
+    
+    <div class="score-display">
+        ניקוד: <span id="score">0</span>/<span id="total">0</span>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="container">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/dos-ddos-protection.py</div>
+            </div>
+            <div class="slide-content title-slide">
+                <div class="ascii-art">
+     ___  ___  ___   ___  ___  ___  ___
+    |   \| _ \/ __| |   \|   \/ _ \/ __|
+    | |) | _ \ (__  | |) | |) | (_)__ \
+    |___/|___/\___| |___/|___/ \___/___/
+                </div>
+                <h1>🛡️ הגנות קוד מפני DOS/DDOS</h1>
+                <div class="subtitle">מימוש מעשי בשרת-לקוח מבוסס Sockets</div>
+                
+                <div class="info-box" style="max-width: 800px; margin-top: 50px;">
+                    <h3>מה נלמד?</h3>
+                    <ul>
+                        <li>Rate Limiting - הגבלת קצב בקשות</li>
+                        <li>Firewall Rules - זיהוי דפוסים חשודים</li>
+                        <li>IP Blacklist - רשימה שחורה דינמית</li>
+                        <li>CAPTCHA - אימות משתמשים</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Overview -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/overview.md</div>
+            </div>
+            <div class="slide-content">
+                <h2>סקירת ההגנות</h2>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h4>1️⃣ Rate Limiting</h4>
+                        <p>מונה בקשות לכל IP בחלון זמן</p>
+                        <p><span class="highlight">מטרה:</span> למנוע הצפה מיחיד</p>
+                        <p><span class="highlight">יישום:</span> dictionary + timestamps</p>
+                    </div>
+
+                    <div class="card">
+                        <h4>2️⃣ Firewall Rules</h4>
+                        <p>זיהוי דפוסי התנהגות חשודים</p>
+                        <p><span class="highlight">מטרה:</span> לזהות תוקפים חכמים</p>
+                        <p><span class="highlight">יישום:</span> pattern matching</p>
+                    </div>
+
+                    <div class="card">
+                        <h4>3️⃣ IP Blacklist</h4>
+                        <p>חסימה זמנית או קבועה</p>
+                        <p><span class="highlight">מטרה:</span> לחסום תוקפים ידועים</p>
+                        <p><span class="highlight">יישום:</span> set + file persistence</p>
+                    </div>
+
+                    <div class="card">
+                        <h4>4️⃣ CAPTCHA</h4>
+                        <p>אימות שהמשתמש אנושי</p>
+                        <p><span class="highlight">מטרה:</span> להבדיל בוט מאדם</p>
+                        <p><span class="highlight">יישום:</span> challenge-response</p>
+                    </div>
+                </div>
+
+                <div class="warning-box" style="margin-top: 30px;">
+                    <h3>⚠️ עקרון חשוב: Defense in Depth</h3>
+                    <p>אין הגנה מושלמת! כל שכבה מוסיפה קושי לתוקף. ביחד - הן יוצרות מערכת חזקה.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Rate Limiting - Theory -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/rate_limiting.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>Rate Limiting - הגבלת קצב</h2>
+
+                <div class="info-box">
+                    <h3>💡 הרעיון</h3>
+                    <p>משתמש רגיל לא שולח 100 בקשות בדקה. אם מישהו עושה זאת - <span class="danger">חשוד!</span></p>
+                </div>
+
+                <h3>📊 מבנה הנתונים</h3>
+                <pre class="code-block" data-lang="python">
+<span class="code-comment"># עבור כל IP שומרים רשימת timestamps</span>
+<span class="code-keyword">self</span>.<span class="code-function">request_history</span> = <span class="code-function">defaultdict</span>(<span class="code-function">list</span>)
+
+<span class="code-comment"># דוגמה:</span>
+<span class="code-comment"># '127.0.0.1' -> [1704712345.1, 1704712346.5, 1704712348.2]</span>
+                </pre>
+
+                <h3>🔍 אלגוריתם</h3>
+                <pre class="code-block" data-lang="python">
+<span class="code-keyword">def</span> <span class="code-function">check_rate_limit</span>(<span class="code-keyword">self</span>, ip):
+    current_time = <span class="code-function">time</span>.<span class="code-function">time</span>()
+    
+    <span class="code-comment"># שלב 1: נקה בקשות ישנות (מחוץ לחלון הזמן)</span>
+    <span class="code-keyword">self</span>.request_history[ip] = [
+        t <span class="code-keyword">for</span> t <span class="code-keyword">in</span> <span class="code-keyword">self</span>.request_history[ip]
+        <span class="code-keyword">if</span> current_time - t < <span class="code-number">60</span>  <span class="code-comment"># 60 שניות</span>
+    ]
+    
+    <span class="code-comment"># שלב 2: ספור בקשות בחלון</span>
+    num_requests = <span class="code-function">len</span>(<span class="code-keyword">self</span>.request_history[ip])
+    
+    <span class="code-comment"># שלב 3: בדוק מגבלה</span>
+    <span class="code-keyword">if</span> num_requests >= <span class="code-number">10</span>:
+        <span class="code-keyword">return</span> <span class="code-keyword">False</span>  <span class="code-comment"># חסום!</span>
+    
+    <span class="code-comment"># שלב 4: הוסף בקשה נוכחית</span>
+    <span class="code-keyword">self</span>.request_history[ip].<span class="code-function">append</span>(current_time)
+    <span class="code-keyword">return</span> <span class="code-keyword">True</span>
+                </pre>
+
+                <div class="success-box">
+                    <h3>✅ יתרונות</h3>
+                    <ul>
+                        <li>פשוט ליישום</li>
+                        <li>יעיל מבחינת ביצועים O(n)</li>
+                        <li>עובד מצוין נגד DOS פשוט</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Rate Limiting - Questions -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/tests/rate_limiting_test.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>בחן את הבנתך - Rate Limiting</h2>
+
+                <div class="question-container">
+                    <div class="question">
+                        שאלה 1: מדוע אנחנו מנקים בקשות ישנות לפני הבדיקה?
+                    </div>
+                    <div class="answers" id="q1-answers"></div>
+                    <div class="feedback" id="feedback1"></div>
+                </div>
+
+                <div class="question-container" style="margin-top: 50px;">
+                    <div class="question">
+                        שאלה 2: מה יקרה אם תוקף ישלח 15 בקשות תוך 10 שניות?
+                    </div>
+                    <div class="answers" id="q2-answers"></div>
+                    <div class="feedback" id="feedback2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Firewall Rules - Theory -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/firewall_rules.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>Firewall Rules - זיהוי דפוסים</h2>
+
+                <div class="info-box">
+                    <h3>💡 הרעיון</h3>
+                    <p>תוקף חכם יכול לעבור את Rate Limit על ידי שליחה איטית יותר. אבל יש דפוסים שחושפים אותו!</p>
+                </div>
+
+                <h3>🔍 דפוסים חשודים</h3>
+                
+                <table>
+                    <tr>
+                        <th>דפוס</th>
+                        <th>איך מזהים</th>
+                        <th>למה חשוד</th>
+                    </tr>
+                    <tr>
+                        <td>בקשות מהירות מדי</td>
+                        <td>5 בקשות תוך 2 שניות</td>
+                        <td>אדם לא יכול כל כך מהר</td>
+                    </tr>
+                    <tr>
+                        <td>תוכן חשוד</td>
+                        <td>מילים: "attack", "flood"</td>
+                        <td>בקשה לגיטימית לא תכלול</td>
+                    </tr>
+                    <tr>
+                        <td>גודל חריג</td>
+                        <td>בקשה > 10KB</td>
+                        <td>בקשה רגילה קטנה יותר</td>
+                    </tr>
+                    <tr>
+                        <td>בקשות זהות</td>
+                        <td>אותו תוכן חוזר</td>
+                        <td>משתמש אמיתי מגוון</td>
+                    </tr>
+                </table>
+
+                <h3>📝 קוד מימוש</h3>
+                <pre class="code-block" data-lang="python">
+<span class="code-keyword">def</span> <span class="code-function">detect_suspicious_pattern</span>(<span class="code-keyword">self</span>, ip, request_data):
+    suspicious = <span class="code-keyword">False</span>
+    reasons = []
+    
+    <span class="code-comment"># דפוס 1: בקשות מהירות</span>
+    recent = <span class="code-keyword">self</span>.request_history[ip][-<span class="code-number">5</span>:]
+    <span class="code-keyword">if</span> <span class="code-function">len</span>(recent) >= <span class="code-number">5</span>:
+        <span class="code-keyword">if</span> recent[-<span class="code-number">1</span>] - recent[<span class="code-number">0</span>] < <span class="code-number">2</span>:
+            suspicious = <span class="code-keyword">True</span>
+            reasons.<span class="code-function">append</span>(<span class="code-string">"בקשות מהירות"</span>)
+    
+    <span class="code-comment"># דפוס 2: תוכן חשוד</span>
+    <span class="code-keyword">if</span> <span class="code-string">'attack'</span> <span class="code-keyword">in</span> request_data.<span class="code-function">lower</span>():
+        suspicious = <span class="code-keyword">True</span>
+        reasons.<span class="code-function">append</span>(<span class="code-string">"תוכן חשוד"</span>)
+    
+    <span class="code-comment"># דפוס 3: גודל חריג</span>
+    <span class="code-keyword">if</span> <span class="code-function">len</span>(request_data) > <span class="code-number">10000</span>:
+        suspicious = <span class="code-keyword">True</span>
+        reasons.<span class="code-function">append</span>(<span class="code-string">"בקשה גדולה"</span>)
+    
+    <span class="code-keyword">return</span> suspicious, reasons
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 6: Firewall Rules - Questions -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/tests/firewall_rules_test.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>בחן את הבנתך - Firewall Rules</h2>
+
+                <div class="question-container">
+                    <div class="question">
+                        שאלה 3: למה Firewall Rules טוב יותר מ-Rate Limiting בלבד?
+                    </div>
+                    <div class="answers" id="q3-answers"></div>
+                    <div class="feedback" id="feedback3"></div>
+                </div>
+
+                <div class="question-container" style="margin-top: 50px;">
+                    <div class="question">
+                        שאלה 4: איזה מהדפוסים הבאים הכי חשוד?
+                    </div>
+                    <div class="answers" id="q4-answers"></div>
+                    <div class="feedback" id="feedback4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: IP Blacklist - Theory -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/ip_blacklist.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>IP Blacklist - רשימה שחורה</h2>
+
+                <div class="info-box">
+                    <h3>💡 הרעיון</h3>
+                    <p>אם זיהינו תוקף - למה לתת לו להמשיך? <span class="highlight">חסימה מידית!</span></p>
+                </div>
+
+                <h3>🔄 שני סוגי חסימה</h3>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h4>חסימה זמנית</h4>
+                        <p>⏱️ משך: 5-15 דקות</p>
+                        <p>📍 שימוש: הפרות קלות</p>
+                        <p>💾 אחסון: זיכרון בלבד</p>
+                        <pre class="code-block" data-lang="python" style="margin-top: 15px;">
+<span class="code-comment"># מבנה נתונים</span>
+temp_blocked = {
+    <span class="code-string">'IP'</span>: timestamp_unblock
+}
+                        </pre>
+                    </div>
+
+                    <div class="card">
+                        <h4>רשימה שחורה קבועה</h4>
+                        <p>⛔ משך: קבוע</p>
+                        <p>📍 שימוש: הפרות חמורות</p>
+                        <p>💾 אחסון: קובץ + זיכרון</p>
+                        <pre class="code-block" data-lang="python" style="margin-top: 15px;">
+<span class="code-comment"># מבנה נתונים</span>
+blacklist = <span class="code-function">set</span>([
+    <span class="code-string">'192.168.1.100'</span>,
+    <span class="code-string">'10.0.0.50'</span>
+])
+                        </pre>
+                    </div>
+                </div>
+
+                <h3>📝 קוד מימוש</h3>
+                <pre class="code-block" data-lang="python">
+<span class="code-keyword">def</span> <span class="code-function">is_ip_blocked</span>(<span class="code-keyword">self</span>, ip):
+    <span class="code-comment"># בדיקה 1: רשימה שחורה קבועה</span>
+    <span class="code-keyword">if</span> ip <span class="code-keyword">in</span> <span class="code-keyword">self</span>.blacklist:
+        <span class="code-keyword">return</span> <span class="code-keyword">True</span>
+    
+    <span class="code-comment"># בדיקה 2: חסימה זמנית</span>
+    <span class="code-keyword">if</span> ip <span class="code-keyword">in</span> <span class="code-keyword">self</span>.temp_blocked:
+        <span class="code-keyword">if</span> <span class="code-function">time</span>.<span class="code-function">time</span>() < <span class="code-keyword">self</span>.temp_blocked[ip]:
+            <span class="code-keyword">return</span> <span class="code-keyword">True</span>  <span class="code-comment"># עדיין חסום</span>
+        <span class="code-keyword">else</span>:
+            <span class="code-keyword">del</span> <span class="code-keyword">self</span>.temp_blocked[ip]  <span class="code-comment"># פג תוקף</span>
+    
+    <span class="code-keyword">return</span> <span class="code-keyword">False</span>
+
+<span class="code-keyword">def</span> <span class="code-function">add_to_blacklist</span>(<span class="code-keyword">self</span>, ip, reason):
+    <span class="code-keyword">self</span>.blacklist.<span class="code-function">add</span>(ip)
+    
+    <span class="code-comment"># שמירה לקובץ</span>
+    <span class="code-keyword">with</span> <span class="code-function">open</span>(<span class="code-string">'blacklist.txt'</span>, <span class="code-string">'a'</span>) <span class="code-keyword">as</span> f:
+        f.<span class="code-function">write</span>(<span class="code-string">f"<span class="code-keyword">{ip}</span> - <span class="code-keyword">{reason}</span>\n"</span>)
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 8: IP Blacklist - Questions -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/tests/blacklist_test.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>בחן את הבנתך - IP Blacklist</h2>
+
+                <div class="question-container">
+                    <div class="question">
+                        שאלה 5: למה צריך שני סוגי חסימה (זמנית וקבועה)?
+                    </div>
+                    <div class="answers" id="q5-answers"></div>
+                    <div class="feedback" id="feedback5"></div>
+                </div>
+
+                <div class="question-container" style="margin-top: 50px;">
+                    <div class="question">
+                        שאלה 6: מה יקרה ל-IP שבחסימה זמנית אחרי 10 דקות?
+                    </div>
+                    <div class="answers" id="q6-answers"></div>
+                    <div class="feedback" id="feedback6"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: CAPTCHA - Theory -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/captcha.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>CAPTCHA - אימות אנושי</h2>
+
+                <div class="info-box">
+                    <h3>💡 הרעיון</h3>
+                    <p>בוטים לא יכולים לפתור בעיות פשוטות. אנשים - כן!</p>
+                    <p><strong>CAPTCHA</strong> = <strong>C</strong>ompletely <strong>A</strong>utomated <strong>P</strong>ublic <strong>T</strong>uring test to tell <strong>C</strong>omputers and <strong>H</strong>umans <strong>A</strong>part</p>
+                </div>
+
+                <h3>🔄 תהליך Challenge-Response</h3>
+
+                <pre class="code-block" data-lang="text">
+┌─────────┐                          ┌─────────┐
+│ Client │                          │  Server │
+└────┬────┘                          └────┬────┘
+     │                                   │
+     │   1. בקשה חשודה                     │
+     ├─────────────────────────────────────>│
+     │                                   │
+     │   2. "פתור: 7 + 3 = ?"             │
+     │<─────────────────────────────────────┤
+     │                                   │
+     │  3. תשובה: "10"                    │
+     ├─────────────────────────────────────>│
+     │                                   │
+     │    4. ✅ נכון / ❌ לא נכון           │
+     │<─────────────────────────────────────┤
+                </pre>
+
+                <h3>📝 קוד מימוש</h3>
+                <pre class="code-block" data-lang="python">
+<span class="code-keyword">def</span> <span class="code-function">generate_captcha</span>(<span class="code-keyword">self</span>):
+    <span class="code-string">"""יצירת אתגר פשוט"""</span>
+    num1 = <span class="code-function">random</span>.<span class="code-function">randint</span>(<span class="code-number">1</span>, <span class="code-number">10</span>)
+    num2 = <span class="code-function">random</span>.<span class="code-function">randint</span>(<span class="code-number">1</span>, <span class="code-number">10</span>)
+    answer = num1 + num2
+    
+    challenge = <span class="code-string">f"פתור: <span class="code-keyword">{num1}</span> + <span class="code-keyword">{num2}</span> = ?"</span>
+    <span class="code-keyword">return</span> challenge, <span class="code-function">str</span>(answer)
+
+<span class="code-keyword">def</span> <span class="code-function">verify_captcha</span>(<span class="code-keyword">self</span>, ip, user_answer):
+    <span class="code-string">"""אימות תשובה"""</span>
+    correct_answer = <span class="code-keyword">self</span>.captcha_challenges[ip]
+    
+    <span class="code-keyword">if</span> user_answer.<span class="code-function">strip</span>() == correct_answer:
+        <span class="code-comment"># הצלחה - איפוס חשדות</span>
+        <span class="code-keyword">self</span>.suspicious_patterns[ip] = <span class="code-number">0</span>
+        <span class="code-keyword">return</span> <span class="code-keyword">True</span>
+    <span class="code-keyword">else</span>:
+        <span class="code-comment"># כשלון - הוספת חשד</span>
+        <span class="code-keyword">self</span>.suspicious_patterns[ip] += <span class="code-number">1</span>
+        
+        <span class="code-comment"># אחרי 3 כשלונות -> רשימה שחורה</span>
+        <span class="code-keyword">if</span> <span class="code-keyword">self</span>.suspicious_patterns[ip] >= <span class="code-number">5</span>:
+            <span class="code-keyword">self</span>.<span class="code-function">add_to_blacklist</span>(ip, <span class="code-string">"CAPTCHA נכשל"</span>)
+        
+        <span class="code-keyword">return</span> <span class="code-keyword">False</span>
+                </pre>
+
+                <div class="warning-box">
+                    <h3>⚠️ מתי לדרוש CAPTCHA?</h3>
+                    <ul>
+                        <li>אחרי 2+ דפוסים חשודים</li>
+                        <li>אחרי חריגת Rate Limit חוזרת</li>
+                        <li>IP שחזר אחרי חסימה זמנית</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: CAPTCHA - Questions -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/tests/captcha_test.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>בחן את הבנתך - CAPTCHA</h2>
+
+                <div class="question-container">
+                    <div class="question">
+                        שאלה 7: מדוע CAPTCHA לא מופעל לכל בקשה?
+                    </div>
+                    <div class="answers" id="q7-answers"></div>
+                    <div class="feedback" id="feedback7"></div>
+                </div>
+
+                <div class="question-container" style="margin-top: 50px;">
+                    <div class="question">
+                        שאלה 8: מה יקרה אם משתמש ייכשל ב-CAPTCHA 5 פעמים?
+                    </div>
+                    <div class="answers" id="q8-answers"></div>
+                    <div class="feedback" id="feedback8"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Implementation Questions -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/tests/implementation_test.py</div>
+            </div>
+            <div class="slide-content">
+                <h2>שאלות יישום מעשיות</h2>
+
+                <div class="question-container">
+                    <div class="question">
+                        שאלה 9: באיזה סדר צריך לבצע את הבדיקות?
+                    </div>
+                    <div class="answers" id="q9-answers"></div>
+                    <div class="feedback" id="feedback9"></div>
+                </div>
+
+                <div class="question-container" style="margin-top: 50px;">
+                    <div class="question">
+                        שאלה 10: מה מבנה הנתונים הטוב ביותר לשמור blacklist?
+                    </div>
+                    <div class="answers" id="q10-answers"></div>
+                    <div class="feedback" id="feedback10"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">~/defense-systems/summary.md</div>
+            </div>
+            <div class="slide-content">
+                <h2>סיכום - 4 שכבות ההגנה</h2>
+
+                <table style="margin-top: 30px;">
+                    <tr>
+                        <th>הגנה</th>
+                        <th>מה זה עושה</th>
+                        <th>מתי עוצר</th>
+                        <th>מבנה נתונים</th>
+                    </tr>
+                    <tr>
+                        <td>Rate Limiting</td>
+                        <td>ספירת בקשות בחלון זמן</td>
+                        <td>יותר מ-10/דקה</td>
+                        <td>dict + list</td>
+                    </tr>
+                    <tr>
+                        <td>Firewall Rules</td>
+                        <td>זיהוי דפוסים חשודים</td>
+                        <td>3+ התנהגויות חשודות</td>
+                        <td>dict (counters)</td>
+                    </tr>
+                    <tr>
+                        <td>IP Blacklist</td>
+                        <td>חסימת תוקפים ידועים</td>
+                        <td>מיידי אם ברשימה</td>
+                        <td>set + file</td>
+                    </tr>
+                    <tr>
+                        <td>CAPTCHA</td>
+                        <td>אימות שזה אדם</td>
+                        <td>5+ כשלונות</td>
+                        <td>dict (challenges)</td>
+                    </tr>
+                </table>
+
+                <div class="success-box" style="margin-top: 40px;">
+                    <h3>✅ מה למדנו?</h3>
+                    <ul>
+                        <li>כל הגנה מוסיפה שכבת אבטחה</li>
+                        <li>ביחד הן יוצרות מערכת חזקה</li>
+                        <li>חשוב לשמור סטטיסטיקות ולוגים</li>
+                        <li>תמיד לבדוק בסדר: Blacklist → Rate → Pattern → CAPTCHA</li>
+                    </ul>
+                </div>
+
+                <div class="info-box" style="margin-top: 30px;">
+                    <h3>🚀 הצעדים הבאים</h3>
+                    <ul>
+                        <li>הריצו את הקוד המלא שקיבלתם</li>
+                        <li>נסו את סימולציית ההתקפות</li>
+                        <li>שפרו את ההגנות - הוסיפו Whitelist</li>
+                        <li>צרו dashboard לניטור בזמן אמת</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin-top: 50px; font-size: 2em;">
+                    <span class="highlight">הניקוד הסופי שלכם:</span><br>
+                    <span id="finalScore" style="font-size: 1.8em; color: var(--accent-green);">0/10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">→ הקודם</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ←</button>
+    </div>
+
+    <script>
+        // Questions Data
+        const questionsData = {
+            q1: {
+                answers: [
+                    { text: "כדי לשמור רק בקשות מהדקה האחרונה ולא לספור בקשות ישנות שלא רלוונטיות", correct: true },
+                    { text: "כדי לחסוך זיכרון ולמחוק את כל המידע על המשתמש אחרי דקה שהוא לא פעיל", correct: false },
+                    { text: "כדי לאפס את ההיסטוריה של המשתמש ולתת לו התחלה טובה מחדש בכל פעם", correct: false },
+                    { text: "כדי למנוע מהשרת לקרוס מעומס של מידע רב מדי במבנה הנתונים שלנו", correct: false }
+                ],
+                explanation: {
+                    correct: "✅ נכון! אנחנו רוצים לבדוק רק את החלון הרלוונטי (60 שניות). בקשות מלפני 5 דקות לא רלוונטיות.",
+                    wrong: "❌ לא מדויק. הסיבה העיקרית היא שאנחנו רוצים לספור רק בקשות מהדקה האחרונה - זה החלון הזמן שלנו."
+                }
+            },
+            q2: {
+                answers: [
+                    { text: "10 הבקשות הראשונות יעברו בהצלחה, ו-5 הבקשות הנוספות ייחסמו בגלל Rate Limit", correct: true },
+                    { text: "כל 15 הבקשות יעברו כי הן בתוך חלון הזמן של דקה אחת שהוגדר במערכת", correct: false },
+                    { text: "השרת יקרוס מייד כי זה מספר בקשות גבוה מדי בזמן קצר כל כך לשרת לטפל", correct: false },
+                    { text: "הבקשה הראשונה תעבור והשאר ייחסמו כי התוקף זוהה מיד אחרי הבקשה הראשונה", correct: false }
+                ],
+                explanation: {
+                    correct: "💯 מצוין! Rate Limit מאפשר 10 בקשות לדקה, אז הבקשות 11-15 ייחסמו.",
+                    wrong: "❌ טעות. Rate Limit מגביל ל-10 בקשות לדקה, אז רק 10 הראשונות יעברו."
+                }
+            },
+            q3: {
+                answers: [
+                    { text: "תוקף חכם יכול לעקוף Rate Limit על ידי שליחה איטית, אבל דפוסים חשודים יחשפו אותו", correct: true },
+                    { text: "Firewall מהיר יותר מ-Rate Limiting ולכן מצליח לעצור יותר בקשות במהירות רבה יותר", correct: false },
+                    { text: "Rate Limiting לא עובד בכלל על שרתים מודרניים ולכן צריך Firewall במקום זאת תמיד", correct: false },
+                    { text: "Firewall Rules זול יותר להפעלה ולכן עדיף להשתמש בו במקום Rate Limiting תמיד", correct: false }
+                ],
+                explanation: {
+                    correct: "🎯 נכון! תוקף יכול לשלוח 9 בקשות לדקה (מתחת למגבלה), אבל אם הן זהות או מהירות מדי - Firewall יזהה.",
+                    wrong: "❌ לא מדויק. Firewall Rules משלים את Rate Limiting - הוא תופס תוקפים חכמים שיודעים לעקוף מגבלות."
+                }
+            },
+            q4: {
+                answers: [
+                    { text: "כל הבקשות מכילות את המילה 'attack' בתוכן ונשלחות ממקור יחיד באופן רציף", correct: true },
+                    { text: "משתמש שולח בקשה אחת גדולה של 5KB עם המון מידע לגיטימי בתוך הבקשה שלו", correct: false },
+                    { text: "10 משתמשים שונים שולחים בקשות דומות באותו זמן ממדינות שונות ברחבי העולם", correct: false },
+                    { text: "משתמש שולח 3 בקשות בדקה עם תוכן שונה לגמרי בכל פעם מכתובת IP קבועה", correct: false }
+                ],
+                explanation: {
+                    correct: "🔥 מצוין! שילוב של תוכן חשוד + דפוס חוזר = חשוד מאוד!",
+                    wrong: "❌ לא הכי חשוד. תוכן עם מילה 'attack' + בקשות זהות חוזרות - זה הדפוס החשוד ביותר."
+                }
+            },
+            q5: {
+                answers: [
+                    { text: "חסימה זמנית למשתמשים שעשו טעויות קלות, קבועה לתוקפים אמיתיים וחוזרים", correct: true },
+                    { text: "חסימה זמנית זולה יותר מבחינת משאבים וקבועה יקרה יותר לכן משתמשים בשתיהן", correct: false },
+                    { text: "חסימה זמנית היא backup למקרה שהקבועה לא עובדת והחסימה הקבועה היא העיקרית", correct: false },
+                    { text: "חסימה זמנית מיועדת לשרתים קטנים וקבועה לשרתים גדולים בלבד עם הרבה משאבים", correct: false }
+                ],
+                explanation: {
+                    correct: "✨ נכון לחלוטין! חשוב להיות גמיש - לא כל טעות היא התקפה. חסימה זמנית נותנת הזדמנות שנייה.",
+                    wrong: "❌ לא מדויק. חסימה זמנית מיועדת לטעויות/חשדות קלים, קבועה לתוקפים אמיתיים שהוכחו."
+                }
+            },
+            q6: {
+                answers: [
+                    { text: "החסימה תוסר אוטומטית אם הגדרנו 10 דקות, והוא יוכל לנסות שוב עם התחלה נקייה", correct: true },
+                    { text: "הוא יועבר אוטומטית לרשימה השחורה הקבועה ולא יוכל לחזור לשרת לעולם", correct: false },
+                    { text: "השרת ישלח לו הודעת אימייל ויבקש ממנו להסביר למה הוא התנהג בצורה חשודה", correct: false },
+                    { text: "הוא יצטרך לפתור CAPTCHA מורכב של 10 שאלות קשות לפני שיוכל להיכנס שוב", correct: false }
+                ],
+                explanation: {
+                    correct: "👍 נכון! החסימה הזמנית פוגת אחרי הזמן שהוגדר. הקוד בודק ומוחק חסימות שפגו.",
+                    wrong: "❌ טעות. חסימה זמנית פוגה אחרי הזמן שהוגדר - הקוד בודק את זה ומאפשר גישה מחדש."
+                }
+            },
+            q7: {
+                answers: [
+                    { text: "כי זה מעצבן למשתמשים רגילים ומאט את השרת - CAPTCHA רק למי שנראה חשוד", correct: true },
+                    { text: "כי CAPTCHA יקר מדי להפעיל על כל בקשה והשרת לא יכול להרשות לעצמו את זה", correct: false },
+                    { text: "כי CAPTCHA לא באמת עובד טוב נגד בוטים מודרניים ולכן אין טעם להשתמש בו הרבה", correct: false },
+                    { text: "כי CAPTCHA צריך אינטרנט מהיר מאוד והרבה משתמשים לא יכולים לפתור אותו אחרת", correct: false }
+                ],
+                explanation: {
+                    correct: "💡 בדיוק! CAPTCHA הוא trade-off - הוא טוב אבל מפריע. נשתמש בו רק כשצריך.",
+                    wrong: "❌ לא נכון. CAPTCHA יעיל אבל מעצבן - אז אנחנו דורשים אותו רק ממשתמשים חשודים."
+                }
+            },
+            q8: {
+                answers: [
+                    { text: "הוא יתווסף לרשימה השחורה הקבועה ולא יוכל לגשת לשרת עד שמנהל יסיר אותו", correct: true },
+                    { text: "השרת ישלח התראה למשטרה כי זה כנראה פושע סייבר מסוכן שצריך לעצור מיד", correct: false },
+                    { text: "הוא יקבל עוד 5 ניסיונות נוספים כי אולי הוא פשוט עייף או לא הבין את השאלה", correct: false },
+                    { text: "החיבור שלו יועבר למצב איטי במיוחד שבו כל בקשה תיקח 5 דקות לטעון", correct: false }
+                ],
+                explanation: {
+                    correct: "⛔ נכון! 5 כשלונות ב-CAPTCHA = תוקף ברור. רשימה שחורה קבועה היא המענה.",
+                    wrong: "❌ טעות. אחרי 5 כשלונות המערכת מוסיפה אותו לרשימה השחורה הקבועה - זה בוט ברור."
+                }
+            },
+            q9: {
+                answers: [
+                    { text: "ראשון Blacklist (הכי מהיר), אחר כך Rate Limit, Firewall, ולבסוף CAPTCHA", correct: true },
+                    { text: "ראשון CAPTCHA כי זה הכי חזק, ורק אם עובר אז בודקים את השאר אחר כך", correct: false },
+                    { text: "ראשון Rate Limit כי זה הכי פשוט, ואז Blacklist, CAPTCHA, ולבסוף Firewall", correct: false },
+                    { text: "לא משנה הסדר - כל הבדיקות רצות במקביל ואז השרת מחליט מה לעשות", correct: false }
+                ],
+                explanation: {
+                    correct: "🎖️ מושלם! Blacklist הוא הכי מהיר (O(1)), אז בודקים אותו ראשון. אין טעם לבדוק Rate Limit למי שחסום.",
+                    wrong: "❌ לא יעיל. הסדר הנכון: Blacklist (מהיר) → Rate → Firewall → CAPTCHA. מהמהיר למורכב."
+                }
+            },
+            q10: {
+                answers: [
+                    { text: "Set - כי בדיקת חברות היא O(1) מהירה מאוד וכל IP מופיע רק פעם אחת", correct: true },
+                    { text: "List - כי אפשר לעבור על כל ה-IP-ים בקלות וכי מה שקרה קודם חשוב לזכור", correct: false },
+                    { text: "Dictionary - כי אפשר לשמור מידע נוסף על כל IP כמו תאריך ושעת החסימה המדויקת", correct: false },
+                    { text: "Tuple - כי אי אפשר לשנות אותו אחרי שיצרנו והוא הכי מהיר מכל המבנים האלה", correct: false }
+                ],
+                explanation: {
+                    correct: "🏆 מעולה! Set נותן לנו בדיקה מהירה של O(1) וכל IP מופיע פעם אחת - מושלם!",
+                    wrong: "❌ לא אופטימלי. Set הוא הטוב ביותר - בדיקת חברות מהירה (O(1)) וכל IP יחיד."
+                }
+            }
+        };
+
+        let currentSlide = 0;
+        let score = 0;
+        let totalQuestions = 10;
+        const slides = document.querySelectorAll('.slide');
+        const progress = document.getElementById('progress');
+
+        // Initialize
+        function init() {
+            // Create progress dots
+            slides.forEach((_, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                if (index === 0) dot.classList.add('active');
+                progress.appendChild(dot);
+            });
+
+            // Setup questions
+            setupQuestion('q1', 'q1-answers', 'feedback1');
+            setupQuestion('q2', 'q2-answers', 'feedback2');
+            setupQuestion('q3', 'q3-answers', 'feedback3');
+            setupQuestion('q4', 'q4-answers', 'feedback4');
+            setupQuestion('q5', 'q5-answers', 'feedback5');
+            setupQuestion('q6', 'q6-answers', 'feedback6');
+            setupQuestion('q7', 'q7-answers', 'feedback7');
+            setupQuestion('q8', 'q8-answers', 'feedback8');
+            setupQuestion('q9', 'q9-answers', 'feedback9');
+            setupQuestion('q10', 'q10-answers', 'feedback10');
+
+            updateNavigation();
+            document.getElementById('total').textContent = totalQuestions;
+        }
+
+        function setupQuestion(questionKey, containerId, feedbackId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const data = questionsData[questionKey];
+            
+            // Shuffle answers
+            const shuffled = [...data.answers].sort(() => Math.random() - 0.5);
+            
+            // Create answer buttons
+            shuffled.forEach(answer => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = answer.text;
+                btn.onclick = () => checkAnswer(btn, answer.correct, data.explanation, feedbackId);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(btn, isCorrect, explanation, feedbackId) {
+            const feedback = document.getElementById(feedbackId);
+            const allButtons = btn.parentElement.querySelectorAll('.answer-btn');
+            
+            // Disable all buttons
+            allButtons.forEach(b => {
+                b.style.pointerEvents = 'none';
+                if (b === btn) {
+                    b.classList.add(isCorrect ? 'correct' : 'wrong');
+                }
+            });
+
+            // Show feedback
+            feedback.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+            feedback.textContent = isCorrect ? explanation.correct : explanation.wrong;
+
+            // Update score
+            if (isCorrect) {
+                score++;
+                document.getElementById('score').textContent = score;
+            }
+        }
+
+        function changeSlide(direction) {
+            const dots = progress.querySelectorAll('.progress-dot');
+            dots[currentSlide].classList.remove('active');
+            
+            currentSlide += direction;
+            currentSlide = Math.max(0, Math.min(currentSlide, slides.length - 1));
+            
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                }
+            });
+
+            dots[currentSlide].classList.add('active');
+            updateNavigation();
+
+            // Update final score on last slide
+            if (currentSlide === slides.length - 1) {
+                document.getElementById('finalScore').textContent = `${score}/${totalQuestions}`;
+            }
+        }
+
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slides.length - 1;
+            
+            if (currentSlide === slides.length - 1) {
+                nextBtn.textContent = 'סיום ✓';
+            } else {
+                nextBtn.textContent = 'הבא ←';
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' && currentSlide > 0) {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowLeft' && currentSlide < slides.length - 1) {
+                changeSlide(1);
+            }
+        });
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

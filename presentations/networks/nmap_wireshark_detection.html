@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nmap & Wireshark - זיהוי תעבורת סריקה</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Assistant:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0ea5e9;
+            --primary-cyan: #06b6d4;
+            --accent-orange: #f97316;
+            --accent-yellow: #fbbf24;
+            --dark-1: #0f172a;
+            --dark-2: #1e293b;
+            --dark-3: #334155;
+            --light-text: #f1f5f9;
+            --dim-text: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--dark-1);
+            color: var(--light-text);
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-gradient {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(249, 115, 22, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+            animation: gradientShift 15s ease infinite alternate;
+        }
+
+        @keyframes gradientShift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 30px) scale(1.1); }
+        }
+
+        .grid-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(14, 165, 233, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(14, 165, 233, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(14, 165, 233, 0.3);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .logo-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .progress-container {
+            flex: 1;
+            max-width: 400px;
+            margin: 0 2rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-blue), var(--primary-cyan), var(--accent-orange));
+            border-radius: 10px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.6);
+        }
+
+        .slide-info {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary-cyan);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .slide {
+            display: none;
+            width: 100%;
+            max-width: 1400px;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-content {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Typography */
+        h1 {
+            font-family: 'Heebo', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan), var(--accent-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-family: 'Heebo', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-cyan);
+            margin-bottom: 1.5rem;
+            text-shadow: 0 2px 10px rgba(6, 182, 212, 0.3);
+        }
+
+        h3 {
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin: 1.5rem 0 1rem;
+        }
+
+        h4 {
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin: 1rem 0 0.5rem;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.9;
+            margin-bottom: 1rem;
+            color: var(--light-text);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            text-align: left;
+            overflow-x: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .code-block code {
+            color: var(--primary-cyan);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .code-comment {
+            color: var(--dim-text);
+        }
+
+        /* Terminal */
+        .terminal {
+            background: #000;
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            text-align: left;
+            box-shadow: 0 0 30px rgba(14, 165, 233, 0.3);
+        }
+
+        .terminal-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot:nth-child(1) { background: #ef4444; }
+        .terminal-dot:nth-child(2) { background: #f59e0b; }
+        .terminal-dot:nth-child(3) { background: #10b981; }
+
+        .terminal-line {
+            color: var(--primary-cyan);
+            margin: 0.5rem 0;
+        }
+
+        .terminal-prompt {
+            color: var(--accent-orange);
+        }
+
+        .terminal-output {
+            color: var(--success);
+        }
+
+        /* Info Boxes */
+        .info-box {
+            background: rgba(14, 165, 233, 0.1);
+            border-right: 4px solid var(--primary-blue);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .warning-box {
+            background: rgba(249, 115, 22, 0.1);
+            border-right: 4px solid var(--accent-orange);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .success-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-right: 4px solid var(--success);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .danger-box {
+            background: rgba(239, 68, 68, 0.1);
+            border-right: 4px solid var(--danger);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        /* Lists */
+        ul {
+            margin: 1rem 0 1rem 2rem;
+        }
+
+        li {
+            margin: 0.8rem 0;
+            font-size: 1.15rem;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        li::before {
+            content: '▸';
+            color: var(--primary-blue);
+            font-weight: bold;
+            position: absolute;
+            right: -1.5rem;
+        }
+
+        /* Tables */
+        .comparison-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 2rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: rgba(14, 165, 233, 0.2);
+            padding: 1rem;
+            text-align: right;
+            font-weight: 600;
+            color: var(--primary-cyan);
+            border-bottom: 2px solid rgba(14, 165, 233, 0.3);
+        }
+
+        .comparison-table td {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Filter Breakdown */
+        .filter-section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .filter-line {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--primary-cyan);
+            margin: 0.8rem 0;
+            padding: 0.8rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .filter-explanation {
+            background: rgba(249, 115, 22, 0.1);
+            border-right: 3px solid var(--accent-orange);
+            padding: 1rem;
+            margin: 1rem 0 1.5rem;
+            border-radius: 8px;
+        }
+
+        /* Questions */
+        .question-card {
+            background: rgba(51, 65, 85, 0.6);
+            border: 2px solid rgba(249, 115, 22, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .question-card h3 {
+            color: var(--accent-orange);
+            margin-bottom: 1.5rem;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .option {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.1rem;
+        }
+
+        .option:hover {
+            background: rgba(14, 165, 233, 0.15);
+            border-color: var(--primary-blue);
+            transform: translateX(-8px);
+        }
+
+        .option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .option.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--danger);
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .feedback {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Navigation */
+        .navigation {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid rgba(14, 165, 233, 0.3);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Heebo', sans-serif;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(14, 165, 233, 0.6);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .nav-dots {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--primary-cyan);
+            box-shadow: 0 0 15px var(--primary-cyan);
+            transform: scale(1.3);
+        }
+
+        .dot:hover {
+            background: var(--primary-blue);
+        }
+
+        /* Scrollable Content */
+        .scrollable {
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
+            padding-left: 1rem;
+        }
+
+        .scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb {
+            background: var(--primary-blue);
+            border-radius: 10px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-cyan);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            background: rgba(14, 165, 233, 0.2);
+            border: 1px solid var(--primary-blue);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-cyan);
+            margin: 0 0.3rem;
+        }
+
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .grid-card {
+            background: rgba(51, 65, 85, 0.4);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        /* Highlight */
+        .highlight {
+            color: var(--accent-orange);
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.8rem; }
+            .slide-content { padding: 1.5rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 1rem; }
+            .progress-container { max-width: 100%; margin: 1rem 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-container">
+        <div class="bg-gradient"></div>
+        <div class="grid-overlay"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">NM</div>
+                <div class="logo-text">nmap_scanner.sh</div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            <div class="slide-info">
+                <span id="currentSlide">1</span> / <span id="totalSlides">15</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Slide 1: Title -->
+            <div class="slide active" data-slide="1">
+                <div class="slide-content">
+                    <h1 style="text-align: center;">nmap & Wireshark</h1>
+                    <h2 style="text-align: center; color: var(--accent-orange);">זיהוי ומניעת סריקת רשתות</h2>
+                    <div class="warning-box" style="margin-top: 3rem;">
+                        <h3>⚠️ הערה חשובה</h3>
+                        <p>סריקת רשתות ומחשבים ללא הרשאה מפורשת היא <strong>פעילות בלתי חוקית</strong> ועלולה להיחשב כניסיון פריצה. השתמשו בכלים אלו אך ורק:</p>
+                        <ul style="margin-right: 1.5rem;">
+                            <li>בסביבת מעבדה מבוקרת</li>
+                            <li>ברשתות שיש לכם הרשאה מלאה לבדוק</li>
+                            <li>למטרות לימודיות ושיפור אבטחה בלבד</li>
+                        </ul>
+                    </div>
+                    <p style="text-align: center; font-size: 1.4rem; margin-top: 3rem; color: var(--primary-cyan);">
+                        נלמד כיצד לזהות ולהבין סריקות רשת באמצעות Wireshark
+                    </p>
+                </div>
+            </div>
+
+            <!-- Slide 2: What is nmap -->
+            <div class="slide" data-slide="2">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>מהו nmap? 🔍</h2>
+                        <p><span class="highlight">nmap</span> (Network Mapper) הוא כלי קוד פתוח לסריקת רשתות וגילוי שירותים. זהו הכלי הפופולרי ביותר בתחום אבטחת המידע.</p>
+
+                        <div class="info-box">
+                            <h3>למה משתמשים ב-nmap?</h3>
+                            <ul style="margin-right: 1.5rem;">
+                                <li><strong>גילוי מכשירים:</strong> מציאת כל המחשברים והמכשירים ברשת</li>
+                                <li><strong>סריקת פורטים:</strong> בדיקה אילו שירותים פתוחים</li>
+                                <li><strong>זיהוי מערכות הפעלה:</strong> איתור מה רץ על כל מכשיר</li>
+                                <li><strong>גילוי גרסאות:</strong> זיהוי גרסאות שירותים ותוכנות</li>
+                                <li><strong>בדיקות אבטחה:</strong> מציאת חולשות אבטחה אפשריות</li>
+                            </ul>
+                        </div>
+
+                        <h3>דוגמה בסיסית:</h3>
+                        <div class="terminal">
+                            <div class="terminal-header">
+                                <div class="terminal-dot"></div>
+                                <div class="terminal-dot"></div>
+                                <div class="terminal-dot"></div>
+                            </div>
+                            <div class="terminal-line"><span class="terminal-prompt">$</span> nmap 192.168.1.50</div>
+                            <div class="terminal-line terminal-output">Starting Nmap scan...</div>
+                            <div class="terminal-line terminal-output">PORT     STATE SERVICE</div>
+                            <div class="terminal-line terminal-output">22/tcp   open  ssh</div>
+                            <div class="terminal-line terminal-output">80/tcp   open  http</div>
+                            <div class="terminal-line terminal-output">443/tcp  open  https</div>
+                        </div>
+
+                        <div class="success-box">
+                            <p><strong>מה קרה כאן?</strong> nmap בדק את המחשב 192.168.1.50 ומצא 3 פורטים פתוחים: SSH (22), HTTP (80), ו-HTTPS (443).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3: Scan Types -->
+            <div class="slide" data-slide="3">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>סוגי סריקות nmap 📡</h2>
+                        
+                        <div class="grid-2">
+                            <div class="grid-card">
+                                <h3>1. SYN Scan <span class="badge">-sS</span></h3>
+                                <p><strong>הסריקה הנפוצה ביותר</strong></p>
+                                <p>שולח חבילות SYN ומחכה לתשובה:</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>SYN-ACK ← פורט פתוח</li>
+                                    <li>RST ← פורט סגור</li>
+                                    <li>אין תשובה ← מסונן</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sS 192.168.1.50</code></div>
+                            </div>
+
+                            <div class="grid-card">
+                                <h3>2. TCP Connect <span class="badge">-sT</span></h3>
+                                <p><strong>סריקה מלאה</strong></p>
+                                <p>משלים את כל תהליך ה-handshake:</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>SYN → SYN-ACK → ACK</li>
+                                    <li>איטי יותר</li>
+                                    <li>נרשם בלוגים</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sT 192.168.1.50</code></div>
+                            </div>
+
+                            <div class="grid-card">
+                                <h3>3. NULL Scan <span class="badge">-sN</span></h3>
+                                <p><strong>חבילה ללא דגלים</strong></p>
+                                <p>שולח חבילה ריקה מדגלים:</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>RST ← פורט סגור</li>
+                                    <li>שקט ← פורט פתוח/מסונן</li>
+                                    <li>עוקף חומות אש ישנות</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sN 192.168.1.50</code></div>
+                            </div>
+
+                            <div class="grid-card">
+                                <h3>4. FIN Scan <span class="badge">-sF</span></h3>
+                                <p><strong>דגל FIN בלבד</strong></p>
+                                <p>שולח FIN (סגירת חיבור):</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>RST ← פורט סגור</li>
+                                    <li>שקט ← פורט פתוח/מסונן</li>
+                                    <li>מתחמק מלוגים</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sF 192.168.1.50</code></div>
+                            </div>
+
+                            <div class="grid-card">
+                                <h3>5. XMAS Scan <span class="badge">-sX</span></h3>
+                                <p><strong>FIN+PSH+URG</strong></p>
+                                <p>שילוב של 3 דגלים:</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>נקרא "XMAS" - כמו עץ חג מולד</li>
+                                    <li>RST ← פורט סגור</li>
+                                    <li>שקט ← פורט פתוח/מסונן</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sX 192.168.1.50</code></div>
+                            </div>
+
+                            <div class="grid-card">
+                                <h3>6. Ping Sweep <span class="badge">-sn</span></h3>
+                                <p><strong>גילוי מכשירים</strong></p>
+                                <p>בודק מי חי ברשת:</p>
+                                <ul style="margin-right: 1.5rem; font-size: 1rem;">
+                                    <li>שולח ICMP Echo</li>
+                                    <li>לא סורק פורטים</li>
+                                    <li>מהיר מאוד</li>
+                                </ul>
+                                <div class="code-block"><code>nmap -sn 192.168.1.0/24</code></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: Question - Scan Types -->
+            <div class="slide" data-slide="4">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>שאלת הבנה - סוגי סריקות 🤔</h2>
+                        <div class="question-card">
+                            <h3>איזו סריקת nmap משלימה את כל תהליך ה-TCP handshake ונרשמת בדרך כלל בלוגים של השרת?</h3>
+                            <div class="options" id="q1-options"></div>
+                            <div class="feedback" id="q1-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Traffic Patterns -->
+            <div class="slide" data-slide="5">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>סימנים אופייניים לסריקת nmap 🚨</h2>
+                        <p>כיצד מזהים סריקת nmap ב-Wireshark? יש 5 סימנים עיקריים:</p>
+
+                        <div class="info-box">
+                            <h3>1️⃣ מהירות גבוהה מאוד</h3>
+                            <p><strong>מאות חבילות בשניות</strong></p>
+                            <p>תעבורה רגילה: משתמש פותח 1-5 חיבורים בו-זמנית</p>
+                            <p>סריקת nmap: מאות/אלפי חיבורים בשניה אחת!</p>
+                            <div class="code-block" style="direction: rtl; text-align: right;">
+<code>זמן 10:00:00 - 3 חבילות
+זמן 10:00:01 - 2 חבילות  
+זמן 10:00:02 - 287 חבילות ⚠️ חשוד!
+זמן 10:00:03 - 312 חבילות ⚠️ חשוד!</code>
+                            </div>
+                            <p><strong>איך לבדוק:</strong> Statistics → IO Graph ב-Wireshark</p>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>2️⃣ פורטים רציפים</h3>
+                            <p><strong>1, 2, 3, 4, 5...</strong></p>
+                            <p>תעבורה רגילה: פורטים אקראיים (443, 80, 8080...)</p>
+                            <p>סריקת nmap: פורטים ברצף 1→2→3→4→5...</p>
+                            <div class="grid-2" style="margin: 1rem 0;">
+                                <div>
+                                    <h4>תעבורה רגילה:</h4>
+                                    <div class="code-block"><code>Port: 443
+Port: 80
+Port: 8080
+Port: 443</code></div>
+                                </div>
+                                <div>
+                                    <h4>תעבורה של nmap:</h4>
+                                    <div class="code-block"><code>Port: 1
+Port: 2
+Port: 3
+Port: 4</code></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>3️⃣ TTL אופייני</h3>
+                            <p><strong>64 או 128 קבוע</strong></p>
+                            <p>TTL (Time To Live) = מספר "קפיצות" שחבילה יכולה לעשות</p>
+                            <ul style="margin-right: 1.5rem;">
+                                <li>Linux/Unix: TTL = 64</li>
+                                <li>Windows: TTL = 128</li>
+                                <li>Network devices: TTL = 255</li>
+                            </ul>
+                            <p>אם כל החבילות עם אותו TTL → כנראה מכונה אחת סורקת</p>
+                            <p><strong>פילטר:</strong> <code class="badge">ip.ttl == 64 && tcp.flags.syn==1</code></p>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>4️⃣ Window Size קטן</h3>
+                            <p><strong>1024 bytes או פחות</strong></p>
+                            <p>Window Size = כמה נתונים אפשר לשלוח בלי לחכות ל-ACK</p>
+                            <ul style="margin-right: 1.5rem;">
+                                <li>תעבורה רגילה: 8192, 65535 (רוצה מהירות)</li>
+                                <li>nmap: 1024 או פחות (רק בודק פתיחה)</li>
+                            </ul>
+                            <p><strong>פילטר:</strong> <code class="badge">tcp.window_size <= 1024</code></p>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>5️⃣ Sequence Number = 0</h3>
+                            <p><strong>מספר רצף אפס או קבוע</strong></p>
+                            <p>בחיבור רגיל: Sequence Number אקראי גדול (3847291047)</p>
+                            <p>ב-nmap SYN Scan: לעיתים 0 או מספר קבוע</p>
+                            <p>nmap לא מתכנן להקים חיבור מלא, אז לא טורח ליצור מספר אקראי אמיתי</p>
+                            <p><strong>פילטר:</strong> <code class="badge">tcp.seq == 0 && tcp.flags.syn==1</code></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Question - Traffic Patterns -->
+            <div class="slide" data-slide="6">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>שאלת יישום - זיהוי דפוסים 🤔</h2>
+                        <div class="question-card">
+                            <h3>ראיתם ב-Wireshark 350 חבילות SYN בשנייה אחת, לפורטים 1-350, כולן עם TTL=64. מה זה מעיד?</h3>
+                            <div class="options" id="q2-options"></div>
+                            <div class="feedback" id="q2-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 7: Comprehensive Filter Explanation Part 1 -->
+            <div class="slide" data-slide="7">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>הפילטר המקיף - חלק 1 🎯</h2>
+                        <p>הפילטר הבא תופס את <strong>כל</strong> סוגי סריקות nmap הנפוצות:</p>
+
+                        <div class="code-block">
+<code>(tcp.flags.syn==1 && tcp.flags.ack==0) || 
+(tcp.flags == 0x000) || 
+(tcp.flags.fin==1 && tcp.flags.ack==0) || 
+(tcp.flags.fin==1 && tcp.flags.push==1 && tcp.flags.urg==1) ||
+(icmp.type==8)</code>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>חשוב להבין!</h3>
+                            <p>הפילטר בנוי משורות המחוברות ב-<code class="badge">||</code> (OR)</p>
+                            <p>כל שורה תופסת סוג סריקה אחר</p>
+                            <p>נסביר כל שורה בנפרד...</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h3>שורה 1: SYN Scan</h3>
+                            <div class="filter-line">(tcp.flags.syn==1 && tcp.flags.ack==0)</div>
+                            
+                            <div class="filter-explanation">
+                                <h4>הסבר המבנה:</h4>
+                                <p><code class="badge">tcp.flags.syn==1</code> - דגל SYN מופעל (שווה ל-1)</p>
+                                <p><code class="badge">&&</code> - אופרטור AND (וגם)</p>
+                                <p><code class="badge">tcp.flags.ack==0</code> - דגל ACK כבוי (שווה ל-0)</p>
+                            </div>
+
+                            <div class="success-box">
+                                <h4>למה זה תופס SYN Scan?</h4>
+                                <p>ב-SYN Scan (<code>nmap -sS</code>), nmap שולח חבילות עם:</p>
+                                <ul style="margin-right: 1.5rem;">
+                                    <li>SYN = 1 (פתיחת חיבור)</li>
+                                    <li>ACK = 0 (לא אישור)</li>
+                                    <li>כל שאר הדגלים = 0</li>
+                                </ul>
+                                <p><strong>זו הסריקה הנפוצה ביותר!</strong> ברירת המחדל של nmap.</p>
+                            </div>
+
+                            <div class="info-box">
+                                <h4>איך זה נראה בפועל:</h4>
+                                <div class="terminal" style="margin-top: 1rem;">
+                                    <div class="terminal-header">
+                                        <div class="terminal-dot"></div>
+                                        <div class="terminal-dot"></div>
+                                        <div class="terminal-dot"></div>
+                                    </div>
+                                    <div class="terminal-line">Kali → [SYN] → Target (port 80)</div>
+                                    <div class="terminal-line" style="color: var(--success);">
+If open: Target → [SYN-ACK] → Kali</div>
+                                    <div class="terminal-line" style="color: var(--accent-orange);">Then: Kali → [RST] → Target (מפסיק מיד!)</div>
+                                </div>
+                            </div>
+
+                            <p style="margin-top: 1rem;"><strong>מה רואים ב-Wireshark:</strong></p>
+                            <ul style="margin-right: 1.5rem;">
+                                <li>מאות חבילות עם SYN=1, ACK=0</li>
+                                <li>לפורטים שונים</li>
+                                <li>ללא המשך ה-handshake (לא רואים את ה-ACK השלישי)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 8: Comprehensive Filter Part 2 -->
+            <div class="slide" data-slide="8">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>הפילטר המקיף - חלק 2 🎯</h2>
+
+                        <div class="filter-section">
+                            <h3>שורה 2: NULL Scan</h3>
+                            <div class="filter-line">(tcp.flags == 0x000)</div>
+                            
+                            <div class="filter-explanation">
+                                <h4>הסבר המבנה:</h4>
+                                <p><code class="badge">tcp.flags</code> - כל דגלי ה-TCP</p>
+                                <p><code class="badge">==</code> - שווה ל...</p>
+                                <p><code class="badge">0x000</code> - הקסדצימלי לאפס (כל הדגלים כבויים)</p>
+                            </div>
+
+                            <div class="success-box">
+                                <h4>למה זה תופס NULL Scan?</h4>
+                                <p>ב-NULL Scan (<code>nmap -sN</code>), nmap שולח חבילה:</p>
+                                <ul style="margin-right: 1.5rem;">
+                                    <li>SYN = 0</li>
+                                    <li>FIN = 0</li>
+                                    <li>ACK = 0</li>
+                                    <li>כל הדגלים = 0 (חבילה "ריקה")</li>
+                                </ul>
+                                <p><strong>למה זה עובד?</strong> פורט סגור ישלח RST, פורט פתוח ישתוק.</p>
+                            </div>
+
+                            <div class="warning-box">
+                                <h4>מטרת הסריקה:</h4>
+                                <p>חומות אש ישנות לא מזהות חבילות ללא דגלים</p>
+                                <p>יכול לעקוף מערכות הגנה מסוימות</p>
+                            </div>
+                        </div>
+
+                        <div class="filter-section" style="margin-top: 2rem;">
+                            <h3>שורה 3: FIN Scan</h3>
+                            <div class="filter-line">(tcp.flags.fin==1 && tcp.flags.ack==0)</div>
+                            
+                            <div class="filter-explanation">
+                                <h4>הסבר המבנה:</h4>
+                                <p><code class="badge">tcp.flags.fin==1</code> - דגל FIN מופעל</p>
+                                <p><code class="badge">&&</code> - וגם</p>
+                                <p><code class="badge">tcp.flags.ack==0</code> - דגל ACK כבוי</p>
+                            </div>
+
+                            <div class="success-box">
+                                <h4>למה זה תופס FIN Scan?</h4>
+                                <p>ב-FIN Scan (<code>nmap -sF</code>), nmap שולח:</p>
+                                <ul style="margin-right: 1.5rem;">
+                                    <li>FIN = 1 (בדרך כלל אומר "סגור חיבור")</li>
+                                    <li>ACK = 0</li>
+                                    <li>כל שאר הדגלים = 0</li>
+                                </ul>
+                                <p><strong>הבעיה:</strong> אין חיבור פתוח לסגור!</p>
+                                <p>פורט סגור ישלח RST, פורט פתוח יתעלם</p>
+                            </div>
+
+                            <div class="info-box">
+                                <h4>יתרון:</h4>
+                                <p>מערכות לוגים רבות לא מתריעות על חבילות FIN</p>
+                                <p>נחשב "פחות חשוד" מ-SYN</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 9: Comprehensive Filter Part 3 -->
+            <div class="slide" data-slide="9">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>הפילטר המקיף - חלק 3 🎯</h2>
+
+                        <div class="filter-section">
+                            <h3>שורה 4: XMAS Scan</h3>
+                            <div class="filter-line">(tcp.flags.fin==1 && tcp.flags.push==1 && tcp.flags.urg==1)</div>
+                            
+                            <div class="filter-explanation">
+                                <h4>הסבר המבנה:</h4>
+                                <p><code class="badge">tcp.flags.fin==1</code> - דגל FIN מופעל</p>
+                                <p><code class="badge">&&</code> - וגם</p>
+                                <p><code class="badge">tcp.flags.push==1</code> - דגל PSH מופעל</p>
+                                <p><code class="badge">&&</code> - וגם</p>
+                                <p><code class="badge">tcp.flags.urg==1</code> - דגל URG מופעל</p>
+                            </div>
+
+                            <div class="success-box">
+                                <h4>למה זה תופס XMAS Scan?</h4>
+                                <p>ב-XMAS Scan (<code>nmap -sX</code>), nmap שולח:</p>
+                                <ul style="margin-right: 1.5rem;">
+                                    <li>FIN = 1</li>
+                                    <li>PSH = 1</li>
+                                    <li>URG = 1</li>
+                                    <li>שלושה דגלים דולקים בו-זמנית!</li>
+                                </ul>
+                                <p><strong>למה "XMAS"?</strong> נראה כמו עץ חג המולד עם כל האורות 🎄</p>
+                            </div>
+
+                            <div class="warning-box">
+                                <h4>שילוב לא הגיוני!</h4>
+                                <p>אף חיבור TCP רגיל לא נראה ככה</p>
+                                <p>FIN+PSH+URG ביחד = חשוד מאוד</p>
+                                <p>פורט סגור: RST | פורט פתוח: שתיקה</p>
+                            </div>
+
+                            <div class="code-block" style="direction: rtl; text-align: right;">
+<code>דגלי TCP:
+SYN  FIN  RST  PSH  ACK  URG
+ 0    1    0    1    0    1   ← XMAS Scan
+(3 דגלים דולקים!)</code>
+                            </div>
+                        </div>
+
+                        <div class="filter-section" style="margin-top: 2rem;">
+                            <h3>שורה 5: Ping Sweep</h3>
+                            <div class="filter-line">(icmp.type==8)</div>
+                            
+                            <div class="filter-explanation">
+                                <h4>הסבר המבנה:</h4>
+                                <p><code class="badge">icmp.type</code> - סוג הודעת ICMP</p>
+                                <p><code class="badge">==</code> - שווה ל...</p>
+                                <p><code class="badge">8</code> - ICMP Echo Request ("ping")</p>
+                            </div>
+
+                            <div class="success-box">
+                                <h4>למה זה תופס Ping Sweep?</h4>
+                                <p>ב-Ping Sweep (<code>nmap -sn</code>), nmap:</p>
+                                <ul style="margin-right: 1.5rem;">
+                                    <li>לא סורק פורטים</li>
+                                    <li>רק בודק מי "חי" ברשת</li>
+                                    <li>שולח ICMP Echo Request לכל IP</li>
+                                    <li>מחכה ל-ICMP Echo Reply</li>
+                                </ul>
+                            </div>
+
+                            <div class="info-box">
+                                <h4>דוגמה:</h4>
+                                <div class="terminal" style="margin-top: 1rem;">
+                                    <div class="terminal-header">
+                                        <div class="terminal-dot"></div>
+                                        <div class="terminal-dot"></div>
+                                        <div class="terminal-dot"></div>
+                                    </div>
+                                    <div class="terminal-line">Kali → [ICMP Echo] → 192.168.1.1</div>
+                                    <div class="terminal-line" style="color: var(--success);">     ← [ICMP Reply] ← (חי!)</div>
+                                    <div class="terminal-line">Kali → [ICMP Echo] → 192.168.1.2</div>
+                                    <div class="terminal-line" style="color: var(--success);">     ← [ICMP Reply] ← (חי!)</div>
+                                    <div class="terminal-line">...</div>
+                                </div>
+                                <p style="margin-top: 1rem;">מה רואים: עשרות ICMP Echo Requests לכתובות רציפות</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 10: Question - Filter Understanding -->
+            <div class="slide" data-slide="10">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>שאלת הבנה - הפילטר 🤔</h2>
+                        <div class="question-card">
+                            <h3>מה תפקיד האופרטור || בפילטר המקיף?</h3>
+                            <div class="options" id="q3-options"></div>
+                            <div class="feedback" id="q3-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 11: Practical Detection -->
+            <div class="slide" data-slide="11">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>זיהוי מעשי ב-Wireshark 🔬</h2>
+                        
+                        <div class="warning-box">
+                            <h3>תרחיש: מישהו סורק את הרשת שלכם!</h3>
+                            <p>בואו נלמד כיצד לזהות זאת צעד אחר צעד...</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h3>שלב 1: הפעלת הפילטר המקיף</h3>
+                            <p>פתחו Wireshark והזינו:</p>
+                            <div class="code-block">
+<code>(tcp.flags.syn==1 && tcp.flags.ack==0) || 
+(tcp.flags == 0x000) || 
+(tcp.flags.fin==1 && tcp.flags.ack==0) || 
+(tcp.flags.fin==1 && tcp.flags.push==1 && tcp.flags.urg==1) ||
+(icmp.type==8)</code>
+                            </div>
+                            <p>זה יסנן את כל סוגי סריקות nmap הנפוצות</p>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>שלב 2: בדיקת מהירות התעבורה</h3>
+                            <p><strong>Statistics → IO Graph</strong></p>
+                            <ol style="margin-right: 1.5rem;">
+                                <li>לחצו על Statistics בתפריט העליון</li>
+                                <li>בחרו IO Graph</li>
+                                <li>תראו גרף של חבילות לאורך זמן</li>
+                                <li>חפשו "קפיצות" חדות - 100+ packets/sec</li>
+                            </ol>
+                            <div class="code-block" style="direction: rtl; text-align: right;">
+<code>דוגמה לגרף חשוד:
+Time      Packets/sec
+10:00:00  3
+10:00:01  2
+10:00:02  587    ← התקפה מתחילה!
+10:00:03  612
+10:00:04  534
+10:00:05  4      ← התקפה נגמרה</code>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>שלב 3: בדיקת רצף פורטים</h3>
+                            <p>לחצו על עמודה <strong>Destination Port</strong> למיון</p>
+                            <p>חפשו רצפים: 1, 2, 3, 4, 5, 6...</p>
+                            <div class="grid-2">
+                                <div>
+                                    <h4 style="color: var(--success);">תעבורה רגילה ✓</h4>
+                                    <div class="code-block"><code>443
+80
+8080
+22
+443</code></div>
+                                </div>
+                                <div>
+                                    <h4 style="color: var(--danger);">סריקת nmap ✗</h4>
+                                    <div class="code-block"><code>1
+2
+3
+4
+5</code></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="success-box">
+                            <h3>שלב 4: איתור המקור</h3>
+                            <p><strong>Statistics → Conversations → IPv4</strong></p>
+                            <p>מיינו לפי <strong>Packets</strong></p>
+                            <p>הכתובת עם הכי הרבה חבילות = התוקף!</p>
+                            <div class="code-block" style="direction: rtl; text-align: right;">
+<code>דוגמה:
+192.168.1.100 → 15,247 packets  ← זה הסורק!
+192.168.1.50  → 342 packets
+192.168.1.75  → 189 packets</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 12: Question - Practical Detection -->
+            <div class="slide" data-slide="12">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>שאלת יישום - זיהוי מעשי 🤔</h2>
+                        <div class="question-card">
+                            <h3>איך תוכלו לראות בגרף את התחלת וסיום סריקת nmap ב-Wireshark?</h3>
+                            <div class="options" id="q4-options"></div>
+                            <div class="feedback" id="q4-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 13: Advanced Filters -->
+            <div class="slide" data-slide="13">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>פילטרים מתקדמים 🎓</h2>
+                        
+                        <div class="info-box">
+                            <h3>פילטרים נוספים שימושיים:</h3>
+                        </div>
+
+                        <div class="filter-section">
+                            <h4>1. סינון לפי כתובת ספציפית</h4>
+                            <div class="filter-line">ip.src == 192.168.1.100 && tcp.flags.syn==1</div>
+                            <p>מציג רק סריקות שמגיעות מכתובת מסוימת</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h4>2. זיהוי Window Size חשוד</h4>
+                            <div class="filter-line">tcp.window_size <= 1024 && tcp.flags.syn==1</div>
+                            <p>תופס חבילות עם Window Size קטן מאוד (טיפוסי ל-nmap)</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h4>3. זיהוי Sequence Number חשוד</h4>
+                            <div class="filter-line">tcp.seq == 0 && tcp.flags.syn==1</div>
+                            <p>מזהה חבילות SYN עם Sequence Number = 0</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h4>4. סריקה לטווח פורטים</h4>
+                            <div class="filter-line">tcp.dstport >= 1 && tcp.dstport <= 1024</div>
+                            <p>מציג סריקות לפורטים הנפוצים (1-1024)</p>
+                        </div>
+
+                        <div class="filter-section">
+                            <h4>5. שילוב מתקדם</h4>
+                            <div class="filter-line">ip.src == 192.168.1.100 && tcp.flags.syn==1 && tcp.window_size <= 1024</div>
+                            <p>כתובת מקור + SYN + Window קטן = סריקה מאומתת!</p>
+                        </div>
+
+                        <div class="success-box">
+                            <h3>טבלת השוואה מהירה:</h3>
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>פילטר</th>
+                                        <th>מה הוא תופס</th>
+                                        <th>מתי להשתמש</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>tcp.flags.syn==1 && tcp.flags.ack==0</code></td>
+                                        <td>SYN Scan</td>
+                                        <td>הסריקה הנפוצה ביותר</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>tcp.flags == 0x000</code></td>
+                                        <td>NULL Scan</td>
+                                        <td>סריקות חמקניות</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>tcp.window_size <= 1024</code></td>
+                                        <td>כל סוגי nmap</td>
+                                        <td>איתור כללי</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>icmp.type==8</code></td>
+                                        <td>Ping Sweep</td>
+                                        <td>גילוי מכשירים</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 14: Question - Advanced Filters -->
+            <div class="slide" data-slide="14">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>שאלת הבנה - פילטרים מתקדמים 🤔</h2>
+                        <div class="question-card">
+                            <h3>איזה פילטר יזהה בצורה הכי טובה NULL Scan?</h3>
+                            <div class="options" id="q5-options"></div>
+                            <div class="feedback" id="q5-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 15: Summary -->
+            <div class="slide" data-slide="15">
+                <div class="slide-content">
+                    <div class="scrollable">
+                        <h2>סיכום וטיפים 🎯</h2>
+
+                        <div class="success-box">
+                            <h3>✅ למדנו היום:</h3>
+                            <ul style="margin-right: 1.5rem;">
+                                <li>מהו nmap ולמה משתמשים בו</li>
+                                <li>6 סוגי סריקות עיקריים: SYN, TCP Connect, NULL, FIN, XMAS, Ping</li>
+                                <li>5 סימנים אופייניים לזיהוי: מהירות, פורטים רציפים, TTL, Window Size, Sequence</li>
+                                <li>הפילטר המקיף שתופס את כל סוגי הסריקות</li>
+                                <li>הסבר מפורט לכל תנאי בפילטר</li>
+                                <li>כיצד לזהות סריקות בפועל ב-Wireshark</li>
+                            </ul>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>📋 Cheat Sheet - זיהוי מהיר</h3>
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>סימן</th>
+                                        <th>איך לבדוק</th>
+                                        <th>ערך חשוד</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>מהירות</td>
+                                        <td>Statistics → IO Graph</td>
+                                        <td>100+ packets/sec</td>
+                                    </tr>
+                                    <tr>
+                                        <td>פורטים</td>
+                                        <td>מיון Dst Port</td>
+                                        <td>1,2,3,4...</td>
+                                    </tr>
+                                    <tr>
+                                        <td>TTL</td>
+                                        <td><code>ip.ttl == 64</code></td>
+                                        <td>כולם זהים</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Window</td>
+                                        <td><code>tcp.window_size</code></td>
+                                        <td>≤ 1024</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sequence</td>
+                                        <td><code>tcp.seq</code></td>
+                                        <td>0 או קבוע</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ הגנה מפני סריקות:</h3>
+                            <ul style="margin-right: 1.5rem;">
+                                <li><strong>חומת אש:</strong> הגדירו חוקים לחסימת סריקות</li>
+                                <li><strong>IDS/IPS:</strong> מערכות איתור ומניעת חדירות</li>
+                                <li><strong>Rate Limiting:</strong> הגבלת מספר בקשות מאותה כתובת</li>
+                                <li><strong>Port Knocking:</strong> הסתרת פורטים פתוחים</li>
+                                <li><strong>ניטור:</strong> בדיקה קבועה של לוגים ותעבורה</li>
+                            </ul>
+                        </div>
+
+                        <div class="danger-box">
+                            <h3>🔴 זכרו תמיד!</h3>
+                            <p style="font-size: 1.3rem; font-weight: 700;">סריקת רשתות ללא הרשאה = פשע!</p>
+                            <p>השתמשו בידע זה אך ורק:</p>
+                            <ul style="margin-right: 1.5rem;">
+                                <li>למטרות הגנה ושיפור אבטחה</li>
+                                <li>בסביבה מעבדתית מבוקרת</li>
+                                <li>עם הרשאה מפורשת בכתב</li>
+                                <li>באופן אתי ואחראי</li>
+                            </ul>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: rgba(14, 165, 233, 0.1); border-radius: 12px;">
+                            <h1 style="font-size: 3rem; margin-bottom: 1rem;">🎉 כל הכבוד! 🎉</h1>
+                            <p style="font-size: 1.5rem; color: var(--primary-cyan);">סיימתם בהצלחה את המדריך לזיהוי סריקות nmap!</p>
+                            <p style="font-size: 1.2rem; margin-top: 1rem; color: var(--dim-text);">עכשיו אתם יודעים לזהות ולהתגונן מפני סריקות רשת</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◄ הקודם</button>
+            <div class="nav-dots" id="navDots"></div>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ►</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 15;
+
+        // Questions database
+        const questions = {
+            q1: {
+                question: "איזו סריקת nmap משלימה את כל תהליך ה-TCP handshake ונרשמת בדרך כלל בלוגים של השרת?",
+                options: [
+                    { text: "TCP Connect Scan (-sT) - משלימה את כל שלבי ה-handshake ונרשמת בלוגים", correct: true },
+                    { text: "SYN Scan (-sS) - שולחת רק SYN ומקבלת SYN-ACK אבל לא משלימה", correct: false },
+                    { text: "NULL Scan (-sN) - שולחת חבילה ללא דגלים ולא מתחברת בכלל", correct: false },
+                    { text: "FIN Scan (-sF) - שולחת רק FIN ולא יוצרת חיבור אמיתי", correct: false }
+                ],
+                explanation: "TCP Connect Scan היא היחידה שמשלימה את כל תהליך ה-handshake המלא (SYN → SYN-ACK → ACK), ולכן היא נרשמת בלוגים של השרת. SYN Scan נקראת 'Half-Open' כי היא לא משלימה את ה-handshake."
+            },
+            q2: {
+                question: "ראיתם ב-Wireshark 350 חבילות SYN בשנייה אחת, לפורטים 1-350, כולן עם TTL=64. מה זה מעיד?",
+                options: [
+                    { text: "סריקת nmap ממכונת Linux/Kali - כל הסימנים מצביעים על סריקה מאורגנת", correct: true },
+                    { text: "תעבורה רגילה של משתמשים רבים - זה נורמלי ברשת גדולה ועמוסה", correct: false },
+                    { text: "התקפת DDoS - ניסיון להציף את השרת בבקשות רבות במקביל", correct: false },
+                    { text: "בעיה טכנית ברשת - כנראה תקלה בנתב או במתג שגורמת לשכפול חבילות", correct: false }
+                ],
+                explanation: "שלושה סימנים ברורים: (1) מהירות גבוהה מאוד - 350 חבילות בשנייה, (2) פורטים רציפים 1-350, (3) TTL=64 קבוע = Linux. כל אלה מצביעים בבירור על סריקת nmap מאורגנת!"
+            },
+            q3: {
+                question: "מה תפקיד האופרטור || בפילטר המקיף?",
+                options: [
+                    { text: "מחבר בין תנאים שונים ב-OR - מספיק שתנאי אחד מתקיים", correct: true },
+                    { text: "מחבר בין תנאים שונים ב-AND - כל התנאים חייבים להתקיים", correct: false },
+                    { text: "מסמן הערה או תיאור - הטקסט אחריו הוא רק הסבר ולא פילטר", correct: false },
+                    { text: "מבטל את התנאי הבא - NOT - מחפש את ההיפך מהתנאי שאחריו", correct: false }
+                ],
+                explanation: "האופרטור || הוא OR לוגי. הפילטר מורכב מ-5 תנאים: SYN Scan OR NULL Scan OR FIN Scan OR XMAS Scan OR Ping Sweep. מספיק שאחד מהם מתקיים כדי שהחבילה תיתפס!"
+            },
+            q4: {
+                question: "איך תוכלו לראות בגרף את התחלת וסיום סריקת nmap ב-Wireshark?",
+                options: [
+                    { text: "Statistics → IO Graph - קפיצה חדה במספר החבילות ואז ירידה פתאומית", correct: true },
+                    { text: "File → Export - שמירת הקובץ ובדיקה ידנית של כל החבילות", correct: false },
+                    { text: "View → Coloring Rules - צביעה אוטומטית של חבילות חשודות בצבע אדום", correct: false },
+                    { text: "Analyze → Protocol Hierarchy - בדיקת התפלגות הפרוטוקולים ברשת", correct: false }
+                ],
+                explanation: "IO Graph מציג גרף של מספר חבילות לאורך זמן. סריקת nmap תיראה כ'פס' - עלייה פתאומית למאות חבילות בשנייה (התחלה) ואז ירידה חזרה לרמה נורמלית (סיום)."
+            },
+            q5: {
+                question: "איזה פילטר יזהה בצורה הכי טובה NULL Scan?",
+                options: [
+                    { text: "tcp.flags == 0x000 - בודק שכל דגלי ה-TCP כבויים (אפס)", correct: true },
+                    { text: "tcp.flags.syn==1 - בודק שדגל SYN מופעל בחבילה", correct: false },
+                    { text: "tcp.flags.fin==1 - בודק שדגל FIN מופעל בחבילה", correct: false },
+                    { text: "icmp.type==8 - בודק הודעות ICMP Echo Request (ping)", correct: false }
+                ],
+                explanation: "NULL Scan שולח חבילות ללא שום דגלים - כל הדגלים כבויים (0). הפילטר tcp.flags == 0x000 בודק בדיוק זאת - שכל הביטים של הדגלים שווים לאפס."
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            createNavDots();
+            showSlide(currentSlide);
+            initializeQuestions();
+        });
+
+        function createNavDots() {
+            const navDots = document.getElementById('navDots');
+            for (let i = 1; i <= totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.onclick = () => showSlide(i);
+                navDots.appendChild(dot);
+            }
+        }
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            const dots = document.querySelectorAll('.dot');
+            
+            if (n > totalSlides) currentSlide = 1;
+            if (n < 1) currentSlide = totalSlides;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            dots.forEach(dot => dot.classList.remove('active'));
+            
+            slides[currentSlide - 1].classList.add('active');
+            dots[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide;
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+            
+            updateProgress();
+        }
+
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+        }
+
+        function updateProgress() {
+            const progressFill = document.getElementById('progressFill');
+            const progress = (currentSlide / totalSlides) * 100;
+            progressFill.style.width = progress + '%';
+        }
+
+        function initializeQuestions() {
+            Object.keys(questions).forEach(qKey => {
+                const optionsContainer = document.getElementById(`${qKey}-options`);
+                if (!optionsContainer) return;
+
+                const questionData = questions[qKey];
+                const shuffled = shuffleArray([...questionData.options]);
+
+                shuffled.forEach(option => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option';
+                    optionDiv.textContent = option.text;
+                    optionDiv.onclick = () => checkAnswer(qKey, option.correct, optionDiv);
+                    optionsContainer.appendChild(optionDiv);
+                });
+            });
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function checkAnswer(qKey, isCorrect, optionElement) {
+            const feedback = document.getElementById(`${qKey}-feedback`);
+            const allOptions = optionElement.parentElement.querySelectorAll('.option');
+            
+            allOptions.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+
+            if (isCorrect) {
+                optionElement.classList.add('correct');
+                feedback.className = 'feedback show success-box';
+                feedback.innerHTML = `<h4 style="color: var(--success);">✅ תשובה נכונה!</h4><p>${questions[qKey].explanation}</p>`;
+            } else {
+                optionElement.classList.add('wrong');
+                feedback.className = 'feedback show danger-box';
+                feedback.innerHTML = `<h4 style="color: var(--danger);">❌ לא נכון</h4><p>נסו שוב או עברו לשקף הבא כדי להמשיך ללמוד.</p>`;
+                
+                setTimeout(() => {
+                    optionElement.classList.remove('wrong');
+                    allOptions.forEach(opt => {
+                        opt.style.pointerEvents = 'auto';
+                    });
+                    feedback.classList.remove('show');
+                }, 2500);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') changeSlide(-1);
+            if (e.key === 'ArrowLeft') changeSlide(1);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wireshark + ARP Spoofing/MITM — זיהוי פעילות arpspoof</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#111b2e;
+      --card2:#0f172a;
+      --text:#e7eefc;
+      --muted:#b6c3df;
+      --accent:#4f8cff;
+      --good:#3ddc97;
+      --bad:#ff5c7a;
+      --warn:#ffd166;
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans Hebrew", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: radial-gradient(1200px 600px at 20% 10%, rgba(79,140,255,.25), transparent 60%),
+                  radial-gradient(900px 500px at 90% 40%, rgba(61,220,151,.18), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      overflow:hidden;
+    }
+
+    /* Top bar */
+    .topbar{
+      position:fixed; inset:0 0 auto 0;
+      padding:14px 18px;
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      background: linear-gradient(to bottom, rgba(11,18,32,.92), rgba(11,18,32,.65));
+      backdrop-filter: blur(10px);
+      z-index:10;
+      border-bottom:1px solid rgba(231,238,252,.08);
+    }
+    .brand{
+      display:flex; gap:12px; align-items:center;
+      min-width: 260px;
+    }
+    .badge{
+      width:44px; height:44px; border-radius:14px;
+      display:grid; place-items:center;
+      background: rgba(79,140,255,.18);
+      border:1px solid rgba(79,140,255,.35);
+      box-shadow: var(--shadow);
+      font-size:22px;
+    }
+    .brand h1{
+      margin:0;
+      font-size:15px;
+      line-height:1.2;
+      letter-spacing:.2px;
+    }
+    .brand p{
+      margin:2px 0 0 0;
+      font-size:18px;
+      color:var(--muted);
+    }
+    .controls{
+      display:flex; gap:10px; align-items:center;
+    }
+    button{
+      border:0;
+      background: rgba(231,238,252,.08);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      border:1px solid rgba(231,238,252,.10);
+      font-weight:600;
+    }
+    button:hover{ background: rgba(231,238,252,.12); }
+    button:active{ transform: translateY(1px); }
+    .primary{
+      background: rgba(79,140,255,.20);
+      border-color: rgba(79,140,255,.40);
+    }
+    .primary:hover{ background: rgba(79,140,255,.28); }
+    .ghost{
+      background: transparent;
+      border-color: rgba(231,238,252,.14);
+    }
+
+    /* Progress */
+    .progress-wrap{
+      position:fixed; inset:auto 0 0 0;
+      padding: 10px 18px 14px;
+      z-index:10;
+      background: linear-gradient(to top, rgba(11,18,32,.92), rgba(11,18,32,.55));
+      backdrop-filter: blur(10px);
+      border-top:1px solid rgba(231,238,252,.08);
+    }
+    .progress{
+      height:10px;
+      background: rgba(231,238,252,.10);
+      border-radius: 999px;
+      overflow:hidden;
+      border:1px solid rgba(231,238,252,.10);
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(79,140,255,.95), rgba(61,220,151,.85));
+      border-radius: 999px;
+      transition: width .25s ease;
+    }
+    .progress-meta{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-top:8px;
+      font-size:18px; color:var(--muted);
+    }
+
+    /* Slides */
+    .stage{
+      position:fixed;
+      inset: 74px 0 62px 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .deck{
+      width:min(1100px, 100%);
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .slide{
+      display:none;
+      width:100%;
+      max-height:100%;
+      overflow:auto;
+      padding: 26px;
+    }
+    .slide.active{ display:block; }
+    .card{
+      background: linear-gradient(180deg, rgba(17,27,46,.96), rgba(15,23,42,.92));
+      border:1px solid rgba(231,238,252,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+    .title{
+      font-size: 34px;
+      margin: 0 0 10px 0;
+      line-height:1.1;
+      letter-spacing:.2px;
+    }
+    .subtitle{
+      margin: 0 0 18px 0;
+      color: var(--muted);
+      font-size: 20px;
+      line-height:1.6;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:16px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+      .brand{ min-width: 0; }
+    }
+
+    .kpi{
+      background: rgba(231,238,252,.06);
+      border:1px solid rgba(231,238,252,.10);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .kpi h3{
+      margin:0 0 8px 0;
+      font-size:14px;
+      color: var(--muted);
+      letter-spacing:.2px;
+    }
+    .kpi .big{
+      font-size:18px;
+      font-weight:800;
+      line-height:1.35;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(79,140,255,.14);
+      border:1px solid rgba(79,140,255,.35);
+      color: var(--text);
+      font-size:16px;
+      font-weight:700;
+      margin: 4px 8px 4px 0;
+    }
+    .pill.warn{
+      background: rgba(255,209,102,.12);
+      border-color: rgba(255,209,102,.35);
+    }
+    .pill.good{
+      background: rgba(61,220,151,.12);
+      border-color: rgba(61,220,151,.35);
+    }
+
+    .bullets{
+      margin: 12px 0 0 0;
+      padding: 0 18px 0 0;
+      color: var(--text);
+      line-height:1.75;
+    }
+    .bullets li{ margin: 6px 0; }
+    .muted{ color: var(--muted); }
+
+    .code{
+      direction:ltr;
+      text-align:left;
+      font-family: var(--mono);
+      background: rgba(3,7,18,.55);
+      border:1px solid rgba(231,238,252,.12);
+      border-radius: 14px;
+      padding: 14px 16px;
+      overflow:auto;
+      font-size: 16px;
+      line-height:1.55;
+      margin: 12px 0;
+      white-space: pre;
+    }
+    .callout{
+      border-right: 5px solid rgba(79,140,255,.75);
+      background: rgba(79,140,255,.10);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 12px 0;
+      line-height:1.7;
+    }
+    .callout.warn{
+      border-right-color: rgba(255,209,102,.85);
+      background: rgba(255,209,102,.10);
+    }
+    .callout.good{
+      border-right-color: rgba(61,220,151,.85);
+      background: rgba(61,220,151,.10);
+    }
+
+    /* Quiz */
+    .quiz{
+      margin-top: 14px;
+      display:grid;
+      gap:10px;
+    }
+    .option{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(231,238,252,.14);
+      background: rgba(231,238,252,.06);
+      cursor:pointer;
+      transition: background .15s ease, border-color .15s ease, transform .08s ease;
+      user-select:none;
+    }
+    .option:hover{
+      background: rgba(231,238,252,.08);
+      border-color: rgba(231,238,252,.20);
+    }
+    .option:active{ transform: translateY(1px); }
+    .dot{
+      width:14px; height:14px; border-radius:999px;
+      margin-top: 4px;
+      background: rgba(231,238,252,.25);
+      border:1px solid rgba(231,238,252,.28);
+      flex:0 0 auto;
+    }
+    .option.correct{
+      border-color: rgba(61,220,151,.55);
+      background: rgba(61,220,151,.10);
+    }
+    .option.wrong{
+      border-color: rgba(255,92,122,.55);
+      background: rgba(255,92,122,.10);
+    }
+    .option.correct .dot{ background: rgba(61,220,151,.85); border-color: rgba(61,220,151,.85); }
+    .option.wrong .dot{ background: rgba(255,92,122,.85); border-color: rgba(255,92,122,.85); }
+
+    .feedback{
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(231,238,252,.14);
+      background: rgba(231,238,252,.05);
+      color: var(--muted);
+      line-height:1.7;
+      display:none;
+    }
+    .feedback.show{ display:block; }
+    .feedback.good{ border-color: rgba(61,220,151,.35); color: var(--text); background: rgba(61,220,151,.08); }
+    .feedback.bad{ border-color: rgba(255,92,122,.35); color: var(--text); background: rgba(255,92,122,.08); }
+
+    .small{ font-size: 13px; color: var(--muted); }
+
+    /* Footer hint */
+    .hint{
+      position: fixed;
+      right: 18px;
+      bottom: 76px;
+      z-index: 9;
+      background: rgba(231,238,252,.06);
+      border:1px solid rgba(231,238,252,.12);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      backdrop-filter: blur(10px);
+    }
+    .kbd{
+      direction:ltr;
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      border:1px solid rgba(231,238,252,.18);
+      background: rgba(3,7,18,.55);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      margin:0 4px;
+    }
+    a { color: #a8c7ff; text-decoration: none; }
+    a:hover{ text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="badge">🧪</div>
+      <div>
+        <h1>זיהוי ARP Spoofing & MITM ב-Wireshark (לאחר arpspoof)</h1>
+        <p>כיתה י"א סייבר • מעבדה מורשית בלבד • Wireshark + Kali VM</p>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="ghost" id="btnOverview" title="רשימת שקפים">📚 תוכן</button>
+      <button class="ghost" id="btnRestart" title="התחלה מחדש">🔁 אתחול</button>
+      <button id="btnPrev" title="שקף קודם">➡️ קודם</button>
+      <button class="primary" id="btnNext" title="שקף הבא">הבא ⬅️</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="deck">
+
+      <!-- Slide 1 -->
+      <section class="slide active" data-title="פתיחה">
+        <div class="card">
+          <h2 class="title">ARP Spoofing + MITM: איך מזהים ב-Wireshark?</h2>
+          <p class="subtitle">
+            היום נלמד לזהות ברשת את <b>הפעילות שנוצרת אחרי הרצת</b>:
+          </p>
+          <div class="code">arpspoof -i eth0 -t 192.168.1.1 192.168.1.10</div>
+
+          <div class="grid" style="margin-top:12px;">
+            <div>
+              <div class="callout warn">
+                <b>כלל ברזל:</b> עובדים רק בסביבת מעבדה/כיתה עם אישור.
+                Arp spoofing הוא כלי התקפי שמטרתו להטעות טבלאות ARP.
+              </div>
+              <ul class="bullets">
+                <li><b>נבין</b> מה ARP עושה ולמה קל להטעות אותו.</li>
+                <li><b>נראה</b> מה arpspoof “משדר” בפועל.</li>
+                <li><b>נלמד</b> פילטרים ב-Wireshark שמבודדים את ההתנהגות.</li>
+                <li><b>נבדוק</b> אם זה רק Poisoning לכיוון אחד או MITM מלא.</li>
+              </ul>
+            </div>
+            <div>
+              <div class="kpi">
+                <h3>יעדי התרגול</h3>
+                <div class="big">לזהות ARP Replies מזויפים</div>
+                <div class="muted">ולהסיק מי “משקר” למי, ובאיזה כיוון.</div>
+              </div>
+              <div class="kpi" style="margin-top:12px;">
+                <h3>הגדרות דוגמה</h3>
+                <div class="big">
+                  Gateway: <span class="pill">192.168.1.1</span><br/>
+                  Victim: <span class="pill">192.168.1.10</span><br/>
+                  Attacker: <span class="pill warn">Kali (eth0)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="small">טיפ ניווט: מקשים <span class="kbd">←</span> <span class="kbd">→</span> לשקפים, <span class="kbd">R</span> אתחול.</p>
+        </div>
+      </section>
+
+      <!-- Slide 2 -->
+      <section class="slide" data-title="מה זה ARP?">
+        <div class="card">
+          <h2 class="title">מה זה ARP (בפשטות)?</h2>
+          <p class="subtitle">
+            ARP הוא פרוטוקול שמתרגם <b>IP → MAC</b> בתוך רשת מקומית (LAN).
+            כדי לשלוח מסגרת Ethernet צריך לדעת MAC של היעד.
+          </p>
+
+          <div class="grid">
+            <div>
+              <div class="pill good">ARP Request</div>
+              <div class="code">Who has 192.168.1.10? Tell 192.168.1.20</div>
+
+              <div class="pill good" style="margin-top:8px;">ARP Reply</div>
+              <div class="code">192.168.1.10 is-at AA:BB:CC:DD:EE:FF</div>
+
+              <div class="callout">
+                <b>חשוב:</b> ARP “סומך” על תשובות — אין חתימה קריפטוגרפית.
+                לכן אפשר לשקר ולהחליף שיוך IP↔MAC.
+              </div>
+            </div>
+
+            <div>
+              <div class="kpi">
+                <h3>איפה זה נשמר?</h3>
+                <div class="big">ARP Table / Neighbor Cache</div>
+                <div class="muted">מיפוי זמני: IP ↔ MAC</div>
+              </div>
+              <div class="kpi" style="margin-top:12px;">
+                <h3>מטרה של התוקף</h3>
+                <div class="big">לגרום לקורבן/נתב לשלוח אליו תעבורה</div>
+                <div class="muted">כדי ליירט (MITM) או לשבש (DoS).</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Slide 3 -->
+      <section class="slide" data-title="ARP Spoofing ו-MITM">
+        <div class="card">
+          <h2 class="title">ARP Spoofing ≠ MITM (אבל זה השער אליו)</h2>
+          <p class="subtitle">
+            <b>ARP Spoofing</b> = “הרעלה” של טבלת ARP: <span class="muted">IP של מישהו → MAC שלי</span><br/>
+            <b>MITM</b> = תעבורה עוברת דרכי בפועל, ואני יכול לצפות/לשנות/להעביר הלאה.
+          </p>
+
+          <div class="grid">
+            <div>
+              <div class="kpi">
+                <h3>מה קורה אחרי הפקודה שלנו?</h3>
+                <div class="big">אנחנו “מדברים” אל הנתב (Gateway)</div>
+                <div class="muted">ומנסים לשכנע אותו שהקורבן 192.168.1.10 הוא ה-MAC של Kali.</div>
+              </div>
+
+              <div class="callout warn">
+                <b>שים לב:</b> הפקודה שסיפקת מרעילה בעיקר את <b>הנתב</b>.
+                כדי MITM “מלא” לרוב מריצים גם את הכיוון ההפוך (אל הקורבן)
+                ומפעילים העברת IP (IP forwarding).
+              </div>
+            </div>
+
+            <div>
+              <div class="kpi">
+                <h3>הפקודה</h3>
+                <div class="code">arpspoof -i eth0 -t 192.168.1.1 192.168.1.10</div>
+                <div class="muted">
+                  <b>-t</b> = היעד שמקבל את השקר (הנתב)<br/>
+                  הארגומנט האחרון = מי “מתחזה” (הקורבן)
+                </div>
+              </div>
+
+              <div class="kpi" style="margin-top:12px;">
+                <h3>הטענה המזויפת</h3>
+                <div class="big">“192.168.1.10 is-at &lt;MAC של Kali&gt;”</div>
+                <div class="muted">נשלח שוב ושוב אל 192.168.1.1</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Slide 4 -->
+      <section class="slide" data-title="הכנה ללכידה">
+        <div class="card">
+          <h2 class="title">לפני שמסתכלים: איך ללכוד נכון?</h2>
+          <p class="subtitle">
+            אם הלכידה לא נכונה — לא תראו את הדפוס. זה מה שעושים בכיתה/מעבדה.
+          </p>
+
+          <ul class="bullets">
+            <li>ב-Wireshark בחרו את הממשק של Kali: לרוב <b>eth0</b> (וודאו תעבורה נעה).</li>
+            <li>התחילו Capture ואז הריצו את arpspoof.</li>
+            <li>רצוי ללכוד <b>30–60 שניות</b> כדי לראות חזרתיות.</li>
+            <li>פתחו עמודות ARP (אם אין): <span class="muted">Sender IP, Sender MAC, Target IP, Target MAC</span>.</li>
+          </ul>
+
+          <div class="callout good">
+            <b>תוצר צפוי בלכידה:</b> הרבה מסגרות ARP Reply שחוזרות על אותה “הצהרה”
+            בתדירות קבועה — זה סימן “חתימה” של arpspoof.
+          </div>
+
+          <div class="code">פילטר פתיחה מהיר ב-Wireshark:
+arp</div>
+        </div>
+      </section>
+
+      <!-- Slide 5 -->
+      <section class="slide" data-title="החתימה של arpspoof">
+        <div class="card">
+          <h2 class="title">החתימה של arpspoof בלכידה</h2>
+          <p class="subtitle">
+            אחרי הפקודה שלך, חפשו ARP Replies (“is-at”) שמציגים <b>שקר עקבי</b>.
+          </p>
+
+          <div class="grid">
+            <div>
+              <div class="pill">מה רואים?</div>
+              <ul class="bullets">
+                <li><b>Opcode = Reply</b> (בדרך כלל opcode 2).</li>
+                <li><b>Sender IP</b> נראה כמו הקורבן: <b>192.168.1.10</b></li>
+                <li><b>Sender MAC</b> בפועל הוא ה-MAC של Kali (התוקף).</li>
+                <li><b>Target IP</b> הוא הנתב: <b>192.168.1.1</b></li>
+                <li>אותו משפט חוזר <b>הרבה פעמים</b> כדי “לשמר” את ההרעלה.</li>
+              </ul>
+
+              <div class="callout warn">
+                <b>Unsolicited ARP:</b> לעיתים תראו Replies בלי Requests קודמים — זה חשוד מאוד.
+              </div>
+            </div>
+
+            <div>
+              <div class="pill">פילטרים ממוקדים</div>
+              <div class="code">arp.opcode == 2</div>
+              <div class="code">arp.opcode == 2 && arp.dst.proto_ipv4 == 192.168.1.1</div>
+              <div class="code">arp.opcode == 2 && arp.src.proto_ipv4 == 192.168.1.10</div>
+
+              <div class="callout">
+                <b>מה עושים בפועל?</b><br/>
+                1) מסננים ל־ARP Reply<br/>
+                2) מבודדים מי מקבל (Gateway)<br/>
+                3) בודקים האם Sender IP “מתחזה” לקורבן
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Slide 6 -->
+      <section class="slide" data-title="בדיקת MITM מלא">
+        <div class="card">
+          <h2 class="title">איך מזהים אם זה MITM מלא או רק כיוון אחד?</h2>
+          <p class="subtitle">
+            MITM מלא לרוב אומר: גם הנתב וגם הקורבן “מאמינים” שה-MAC של Kali שייך לצד השני.
+          </p>
+
+          <div class="grid">
+            <div>
+              <div class="kpi">
+                <h3>בפקודה שלך (כיוון אחד)</h3>
+                <div class="big">Gateway מורעל לגבי 192.168.1.10</div>
+                <div class="muted">תראה ARP Reply לכיוון 192.168.1.1</div>
+              </div>
+
+              <div class="kpi" style="margin-top:12px;">
+                <h3>ב-MITM מלא (שני כיוונים)</h3>
+                <div class="big">גם Victim מורעל לגבי 192.168.1.1</div>
+                <div class="muted">תראה ARP Reply גם לכיוון 192.168.1.10</div>
+              </div>
+
+              <div class="callout warn">
+                <b>רמז לזיהוי:</b> חפשו גם מסגרות ARP שמצהירות<br/>
+                “192.168.1.1 is-at &lt;MAC של Kali&gt;” אל הקורבן.
+              </div>
+            </div>
+
+            <div>
+              <div class="pill">פילטר “כיוון לקורבן”</div>
+              <div class="code">arp.opcode == 2 && arp.dst.proto_ipv4 == 192.168.1.10</div>
+
+              <div class="pill">סימן חזק: כפילות IP</div>
+              <ul class="bullets">
+                <li>Statistics → <b>Endpoints</b> (Ethernet/ARP)</li>
+                <li>Analyze → <b>Expert Information</b> (לעיתים “Duplicate IP address”)</li>
+                <li>אותו IP מופיע עם <b>יותר מ-MAC אחד</b> לאורך הזמן</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Slide 7 -->
+      <section class="slide" data-title="משימת מעבדה">
+        <div class="card">
+          <h2 class="title">משימת מעבדה (10–15 דק׳)</h2>
+          <p class="subtitle">
+            המטרה: להוכיח ב-Wireshark ש-ARP Poisoning מתרחש ולהצביע על “מי משקר למי”.
+          </p>
+
+          <ol class="bullets">
+            <li>התחילו Capture על <b>eth0</b> ב-Kali.</li>
+            <li>הריצו את הפקודה:
+              <div class="code">arpspoof -i eth0 -t 192.168.1.1 192.168.1.10</div>
+            </li>
+            <li>ב-Wireshark הפעילו פילטר:
+              <div class="code">arp.opcode == 2</div>
+            </li>
+            <li>מצאו 3 מסגרות חשודות והשלימו:
+              <ul class="bullets">
+                <li>Sender IP = ?</li>
+                <li>Sender MAC = ? (למי הוא שייך באמת?)</li>
+                <li>Target IP = ?</li>
+              </ul>
+            </li>
+            <li>צילום מסך + משפט מסכם: “הנתב מאמין ש-_____ נמצא על MAC של _____”.</li>
+          </ol>
+
+          <div class="callout good">
+            <b>בונוס:</b> נסו לזהות האם יש גם “כיוון הפוך” אל הקורבן בעזרת פילטר
+            <span class="muted">arp.dst.proto_ipv4 == 192.168.1.10</span>.
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 8: Quiz 1 -->
+      <section class="slide" data-title="שאלה 1">
+        <div class="card">
+          <h2 class="title">שאלת הבנה 1</h2>
+          <p class="subtitle">מהו הסימן המיידי ביותר ב-Wireshark לכך שרץ arpspoof?</p>
+
+          <div class="quiz" data-quiz
+               data-correct="c"
+               data-explain-good="נכון. arpspoof מייצר זרם של ARP Replies (is-at) שחוזרים בתדירות קבועה כדי לשמר את ההרעלה."
+               data-explain-bad="כמעט. חפש בעיקר ARP Replies שחוזרים שוב ושוב ומצהירים על IP→MAC לא אמין.">
+            <div class="option" data-id="a"><span class="dot"></span><div>רצף גדול של DNS Queries עם אותו שם דומיין</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>פינגים רבים (ICMP) עם TTL חריג ברשת המקומית</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>הרבה ARP Replies חוזרים שמצהירים על IP→MAC</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>סדרות TCP SYN מהירות לפורטים רבים באותו יעד</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+          <p class="small">טיפ: התשובות מסודרות כל טעינה מחדש באופן רנדומלי.</p>
+        </div>
+      </section>
+
+      <!-- Slide 9: Quiz 2 -->
+      <section class="slide" data-title="שאלה 2">
+        <div class="card">
+          <h2 class="title">שאלת יישום 2</h2>
+          <p class="subtitle">איזה פילטר הכי מתאים כדי לראות ARP Replies שמיועדים ל-Gateway (192.168.1.1)?</p>
+
+          <div class="quiz" data-quiz
+               data-correct="b"
+               data-explain-good="נכון. אתה מסנן גם Reply וגם יעד פרוטוקולי (Target IP) של ה-Gateway."
+               data-explain-bad="לא בדיוק. צריך למקד ל-ARP Reply וגם שהיעד יהיה 192.168.1.1.">
+            <div class="option" data-id="a"><span class="dot"></span><div>ip.addr == 192.168.1.1 && tcp</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>arp.opcode == 2 && arp.dst.proto_ipv4 == 192.168.1.1</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>arp && arp.src.proto_ipv4 == 192.168.1.1</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>eth.dst == ff:ff:ff:ff:ff:ff && arp</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Slide 10: Quiz 3 -->
+      <section class="slide" data-title="שאלה 3">
+        <div class="card">
+          <h2 class="title">שאלת הבנה 3</h2>
+          <p class="subtitle">
+            לפי הפקודה: <span class="muted">-t 192.168.1.1 192.168.1.10</span>
+            — מי “מקבל” את השקר ומי “מתחזה”?
+          </p>
+
+          <div class="quiz" data-quiz
+               data-correct="d"
+               data-explain-good="נכון. ה-Gateway הוא היעד שמקבל את ה-ARP Reply המזויף, וה-Kali מתחזה לקורבן 192.168.1.10."
+               data-explain-bad="לא. בפקודה הזו ה-Target הוא ה-Gateway, וה-IP האחרון הוא זה שהתוקף מתחזה אליו.">
+            <div class="option" data-id="a"><span class="dot"></span><div>הקורבן מקבל, והנתב מתחזה ל-Kali לאורך זמן</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>Kali מקבל, והנתב מתחזה לקורבן ברמת MAC</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>הקורבן מקבל, ו-Kali מתחזה לנתב ברשת מקומית</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>הנתב מקבל, ו-Kali מתחזה לקורבן 192.168.1.10</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Slide 11: Quiz 4 -->
+      <section class="slide" data-title="שאלה 4">
+        <div class="card">
+          <h2 class="title">שאלת יישום 4</h2>
+          <p class="subtitle">איזה מאפיין הופך את ה-ARP Replies של arpspoof לחשודים במיוחד?</p>
+
+          <div class="quiz" data-quiz
+               data-correct="a"
+               data-explain-good="נכון. Replies שחוזרים בלי Request קודם, ובתדירות גבוהה, הם חתימה קלאסית להרעלה."
+               data-explain-bad="לא. החשד המרכזי הוא Replies לא מבוקשים שחוזרים שוב ושוב כדי לשמר ARP poisoning.">
+            <div class="option" data-id="a"><span class="dot"></span><div>Replies חוזרים ללא Requests קודמים, בקצב קבוע ומהיר</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>Requests משודרים לכולם עם כתובת Broadcast בקביעות</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>UDP Traffic גבוה עם פורט 53 היוצא מרשת מקומית</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>TCP RST מרובים שמופיעים בסיום חיבורים רגילים</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Slide 12: Quiz 5 -->
+      <section class="slide" data-title="שאלה 5">
+        <div class="card">
+          <h2 class="title">שאלת חשיבה 5</h2>
+          <p class="subtitle">איך Wireshark יכול לעזור לזהות “כפילות IP” כתוצאה מהרעלה?</p>
+
+          <div class="quiz" data-quiz
+               data-correct="c"
+               data-explain-good="נכון. Endpoints/Expert Information יכולים להראות אותו IP עם MACים שונים או אזהרות כפילות."
+               data-explain-bad="לא. התשובה הנכונה מערבת סטטיסטיקות Endpoints/Expert שמבליטות IP שמופיע עם MACים שונים.">
+            <div class="option" data-id="a"><span class="dot"></span><div>בגרף I/O ניתן לראות עליה חדה ב-TCP Retransmissions</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>ב-HTTP Object List יופיעו כותרות “X-Forwarded-For”</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>Statistics/Expert מציגים אותו IP עם יותר מ-MAC אחד</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>ב-DNS Statistics נראה שינוי בסדר הרשומות לאורך זמן</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Slide 13: Quiz 6 -->
+      <section class="slide" data-title="שאלה 6">
+        <div class="card">
+          <h2 class="title">שאלת יישום 6</h2>
+          <p class="subtitle">מה תבדוק בשדות ARP כדי להוכיח שהשולח “מתחזה”?</p>
+
+          <div class="quiz" data-quiz
+               data-correct="b"
+               data-explain-good="נכון. מסתכלים על Sender IP מול Sender MAC: ה-IP של הקורבן, אבל MAC של Kali."
+               data-explain-bad="לא. צריך להתמקד בצימוד Sender IP מול Sender MAC ולגלות אי-תאימות.">
+            <div class="option" data-id="a"><span class="dot"></span><div>Target MAC מול Broadcast כדי לוודא שזו בקשת ARP רגילה</div></div>
+            <div class="option" data-id="b"><span class="dot"></span><div>Sender IP הוא 192.168.1.10 אבל Sender MAC הוא של Kali</div></div>
+            <div class="option" data-id="c"><span class="dot"></span><div>Protocol Type שווה IPv6 כדי לזהות שכבת רשת</div></div>
+            <div class="option" data-id="d"><span class="dot"></span><div>TCP Window Size קטן שמרמז על תוקף בתשתית</div></div>
+          </div>
+
+          <div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- Slide 14 -->
+      <section class="slide" data-title="סיכום">
+        <div class="card">
+          <h2 class="title">סיכום: “מה לראות בעיניים” תוך 60 שניות</h2>
+          <p class="subtitle">תסריט עבודה מהיר לזיהוי arpspoof לאחר הפקודה הנתונה.</p>
+
+          <div class="grid">
+            <div>
+              <div class="kpi">
+                <h3>שלב 1 — בידוד ARP</h3>
+                <div class="code">arp</div>
+                <div class="muted">אם אין הרבה ARP — חכו 20–30 שניות.</div>
+              </div>
+
+              <div class="kpi" style="margin-top:12px;">
+                <h3>שלב 2 — רק Replies</h3>
+                <div class="code">arp.opcode == 2</div>
+                <div class="muted">חפשו חזרתיות (Flood) וסגנון “is-at”.</div>
+              </div>
+
+              <div class="kpi" style="margin-top:12px;">
+                <h3>שלב 3 — הוכחת ההתחזות</h3>
+                <div class="muted">בדקו: Sender IP = 192.168.1.10, אבל Sender MAC = Kali</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="kpi">
+                <h3>פילטר ממוקד לפקודה</h3>
+                <div class="code">arp.opcode == 2 && arp.dst.proto_ipv4 == 192.168.1.1</div>
+                <div class="muted">זה מראה את השקר שנשלח אל ה-Gateway.</div>
+              </div>
+
+              <div class="kpi" style="margin-top:12px;">
+                <h3>בדיקת MITM מלא</h3>
+                <div class="code">arp.opcode == 2 && arp.dst.proto_ipv4 == 192.168.1.10</div>
+                <div class="muted">אם רואים גם לכיוון הקורבן — זה כבר “שני כיוונים”.</div>
+              </div>
+
+              <div class="callout good" style="margin-top:12px;">
+                <b>מסקנה שאתה כותב בדוח:</b><br/>
+                “זוהתה הרעלה של טבלת ARP: ה-Gateway קיבל ARP Replies שמייחסים את IP של הקורבן ל-MAC של Kali.”
+              </div>
+            </div>
+          </div>
+
+          <p class="small">סיום. אפשר לחזור לשאלות בעזרת “קודם” או אתחול.</p>
+        </div>
+      </section>
+
+      <!-- Slide 15: Overview -->
+      <section class="slide" data-title="תוכן">
+        <div class="card">
+          <h2 class="title">תוכן המצגת</h2>
+          <p class="subtitle">לחצו על שקף כדי לקפוץ אליו.</p>
+          <div id="toc" class="quiz" style="gap:8px;"></div>
+          <div class="callout warn" style="margin-top:14px;">
+            <b>תזכורת:</b> עבודה עם ARP Spoofing רק במעבדה מורשית/תרגול בית-ספרי.
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="hint">קיצורים: <span class="kbd">←</span> הבא • <span class="kbd">→</span> קודם • <span class="kbd">R</span> אתחול</div>
+
+  <footer class="progress-wrap">
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="progress-meta">
+      <div id="metaLeft">שקף 1/1</div>
+      <div id="metaRight" class="muted">—</div>
+    </div>
+  </footer>
+
+<script>
+(function(){
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const btnNext = document.getElementById('btnNext');
+  const btnPrev = document.getElementById('btnPrev');
+  const btnRestart = document.getElementById('btnRestart');
+  const btnOverview = document.getElementById('btnOverview');
+  const bar = document.getElementById('bar');
+  const metaLeft = document.getElementById('metaLeft');
+  const metaRight = document.getElementById('metaRight');
+  const toc = document.getElementById('toc');
+
+  // Keep last slide as TOC
+  const tocIndex = slides.findIndex(s => s.id === "" && s.dataset.title === "תוכן");
+  // If not found by id, use last
+  const overviewIndex = (tocIndex >= 0) ? tocIndex : slides.length - 1;
+
+  let index = 0;
+
+  function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+  function setSlide(i){
+    index = clamp(i, 0, slides.length - 1);
+    slides.forEach((s, k) => s.classList.toggle('active', k === index));
+
+    const human = index + 1;
+    metaLeft.textContent = `שקף ${human} / ${slides.length}`;
+    metaRight.textContent = slides[index].dataset.title ? slides[index].dataset.title : '—';
+
+    const pct = ((index) / (slides.length - 1)) * 100;
+    bar.style.width = `${isFinite(pct) ? pct : 0}%`;
+
+    // Disable prev/next at ends
+    btnPrev.disabled = (index === 0);
+    btnNext.disabled = (index === slides.length - 1);
+
+    // Scroll slide to top on navigation
+    const active = slides[index];
+    active.scrollTop = 0;
+  }
+
+  function next(){ setSlide(index + 1); }
+  function prev(){ setSlide(index - 1); }
+  function restart(){ setSlide(0); resetAllQuizzes(); }
+
+  btnNext.addEventListener('click', next);
+  btnPrev.addEventListener('click', prev);
+  btnRestart.addEventListener('click', restart);
+  btnOverview.addEventListener('click', () => setSlide(overviewIndex));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
+    if (e.key.toLowerCase() === 'r') restart();
+    if (e.key.toLowerCase() === 't') setSlide(overviewIndex);
+  });
+
+  // Build TOC
+  function buildTOC(){
+    if(!toc) return;
+    toc.innerHTML = '';
+    slides.forEach((s, i) => {
+      if(i === overviewIndex) return;
+      const title = s.dataset.title ? s.dataset.title : `שקף ${i+1}`;
+      const item = document.createElement('div');
+      item.className = 'option';
+      item.innerHTML = `<span class="dot"></span><div>${title}</div>`;
+      item.addEventListener('click', () => setSlide(i));
+      toc.appendChild(item);
+    });
+  }
+
+  // Quiz logic: shuffle options randomly, keep correct by data-id
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function initQuiz(quizEl){
+    const correctId = quizEl.dataset.correct;
+    const explainGood = quizEl.dataset.explainGood || '';
+    const explainBad  = quizEl.dataset.explainBad  || '';
+    const options = Array.from(quizEl.querySelectorAll('.option'));
+    const feedback = quizEl.parentElement.querySelector('.feedback');
+
+    // Shuffle DOM order
+    const shuffled = shuffle(options.slice());
+    shuffled.forEach(opt => quizEl.appendChild(opt));
+
+    function clearMarks(){
+      shuffled.forEach(o => o.classList.remove('correct','wrong'));
+      if(feedback){
+        feedback.classList.remove('show','good','bad');
+        feedback.textContent = '';
+      }
+    }
+
+    function onPick(opt){
+      if(opt.classList.contains('correct') || opt.classList.contains('wrong')) return; // prevent repeat spam
+      clearMarks();
+      const pickedId = opt.dataset.id;
+
+      // mark picked
+      if(pickedId === correctId){
+        opt.classList.add('correct');
+        if(feedback){
+          feedback.classList.add('show','good');
+          feedback.textContent = '✅ ' + explainGood;
+        }
+      }else{
+        opt.classList.add('wrong');
+        // also highlight correct
+        const right = shuffled.find(x => x.dataset.id === correctId);
+        if(right) right.classList.add('correct');
+        if(feedback){
+          feedback.classList.add('show','bad');
+          feedback.textContent = '❌ ' + explainBad;
+        }
+      }
+    }
+
+    shuffled.forEach(opt => opt.addEventListener('click', () => onPick(opt)));
+
+    // expose reset
+    quizEl._reset = clearMarks;
+  }
+
+  function initAllQuizzes(){
+    document.querySelectorAll('[data-quiz]').forEach(initQuiz);
+  }
+
+  function resetAllQuizzes(){
+    document.querySelectorAll('[data-quiz]').forEach(q => q._reset && q._reset());
+  }
+
+  // Boot
+  buildTOC();
+  initAllQuizzes();
+  setSlide(0);
+})();
+</script>
+
+</body>
+</html>

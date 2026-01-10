@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תרגיל Scapy - תקשורת בין משתמשים</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #141824;
+            --bg-code: #1a1f2e;
+            --accent-primary: #00ff88;
+            --accent-secondary: #00d4ff;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border-color: #2d3748;
+            --warning: #ff6b6b;
+            --success: #00ff88;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 3rem 2rem;
+            border-bottom: 2px solid var(--accent-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 136, 0.03) 2px,
+                rgba(0, 255, 136, 0.03) 4px
+            );
+            animation: scan 10s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Navigation - Horizontal Sticky Menu */
+        .nav {
+            position: sticky;
+            top: 0;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--accent-primary);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 30px rgba(0, 255, 136, 0.2);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            width: 0%;
+            transition: width 0.1s ease;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-title-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-indicator {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.85rem;
+            color: var(--accent-primary);
+            font-weight: 700;
+            font-family: 'Fira Code', monospace;
+            white-space: nowrap;
+        }
+
+        .nav h3 {
+            color: var(--accent-primary);
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav h3::before {
+            content: '▶';
+            font-size: 0.8rem;
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 0;
+        }
+
+        .nav li {
+            margin: 0;
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.6rem 1.2rem;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            font-size: 0.95rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .nav a:hover {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .nav a.active {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        /* Section Styles */
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            box-shadow: 0 8px 30px rgba(0, 255, 136, 0.15);
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        h2 {
+            color: var(--accent-primary);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        h2::before {
+            content: '//';
+            color: var(--accent-secondary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        h3 {
+            color: var(--accent-secondary);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            font-weight: 600;
+        }
+
+        /* Collapsible Sections */
+        .collapsible {
+            cursor: pointer;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .collapsible:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .collapsible::after {
+            content: '▼';
+            position: absolute;
+            left: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.3s ease;
+            color: var(--accent-primary);
+            font-size: 1.2rem;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .collapsible-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding-left: 2rem;
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .collapsible-content.active {
+            max-height: 5000px;
+        }
+
+        .collapsible-inner {
+            padding-top: 1.5rem;
+        }
+
+        /* Code Blocks */
+        .code-container {
+            position: relative;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-label {
+            color: var(--text-secondary);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .copy-btn {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Syntax Highlighting */
+        .keyword { color: #ff79c6; }
+        .string { color: #50fa7b; }
+        .comment { color: #6272a4; font-style: italic; }
+        .function { color: #8be9fd; }
+        .number { color: #bd93f9; }
+
+        /* Alert Boxes */
+        .alert {
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            border-right: 4px solid;
+            position: relative;
+        }
+
+        .alert-warning {
+            background: rgba(255, 107, 107, 0.1);
+            border-color: var(--warning);
+            color: var(--text-primary);
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--success);
+            color: var(--text-primary);
+        }
+
+        .alert-info {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-secondary);
+            color: var(--text-primary);
+        }
+
+        .alert strong {
+            color: var(--accent-primary);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+            color: var(--text-primary);
+        }
+
+        li strong {
+            color: var(--accent-primary);
+        }
+
+        /* Terminal Style */
+        .terminal {
+            background: #000;
+            border: 2px solid var(--accent-primary);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .terminal::before {
+            content: '● ● ●';
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            color: var(--accent-primary);
+            font-size: 0.8rem;
+        }
+
+        .terminal-line {
+            margin: 0.5rem 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .prompt {
+            color: var(--accent-primary);
+        }
+
+        .command {
+            color: var(--accent-secondary);
+        }
+
+        /* Task Checklist */
+        .checklist {
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            transform: translateX(-5px);
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--accent-primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-item.checked .checkbox {
+            background: var(--accent-primary);
+        }
+
+        .checklist-item.checked .checkbox::after {
+            content: '✓';
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .checklist-item.checked {
+            opacity: 0.6;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 2px solid var(--accent-primary);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .nav-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .nav-title-section {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .nav h3 {
+                font-size: 0.9rem;
+            }
+
+            .progress-indicator {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.6rem;
+            }
+
+            .nav ul {
+                width: 100%;
+                overflow-x: auto;
+                padding-bottom: 0.5rem;
+                scrollbar-width: thin;
+                scrollbar-color: var(--accent-primary) var(--bg-primary);
+            }
+
+            .nav ul::-webkit-scrollbar {
+                height: 6px;
+            }
+
+            .nav ul::-webkit-scrollbar-track {
+                background: var(--bg-primary);
+            }
+
+            .nav ul::-webkit-scrollbar-thumb {
+                background: var(--accent-primary);
+                border-radius: 3px;
+            }
+
+            .nav a {
+                font-size: 0.85rem;
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-secondary);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .section:nth-child(1) { animation-delay: 0.1s; }
+        .section:nth-child(2) { animation-delay: 0.2s; }
+        .section:nth-child(3) { animation-delay: 0.3s; }
+        .section:nth-child(4) { animation-delay: 0.4s; }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--bg-primary);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 255, 136, 0.6);
+        }
+
+        .back-to-top:active {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .back-to-top {
+                bottom: 1rem;
+                left: 1rem;
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>תרגיל: תקשורת בין משתמשים באמצעות Scapy</h1>
+            <p class="subtitle">מבוא לשליחה וסינון פקטות ברשת | Windows Environment</p>
+        </div>
+    </header>
+
+    <div class="container">
+    <nav class="nav">
+        <div class="progress-bar"></div>
+        <div class="nav-container">
+            <div class="nav-title-section">
+                <h3>תוכן עניינים</h3>
+                <span class="progress-indicator">0%</span>
+            </div>
+            <ul>
+                <li><a href="#task">המשימה</a></li>
+                <li><a href="#code">שלד קוד</a></li>
+                <li><a href="#bonus">בונוס</a></li>
+                <li><a href="#intro">מהי Scapy?</a></li>
+                <li><a href="#basics">פונקציות בסיסיות</a></li>
+                <li><a href="#filters">פילטרים</a></li>
+                <li><a href="#security">אבטחת מידע</a></li>
+
+            </ul>
+        </div>
+    </nav>
+
+        <section id="task" class="section">
+            <h2>המשימה שלכם</h2>
+
+            <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+                <strong>עליכם לבנות מערכת תקשורת פשוטה המורכבת משני תוכנות:</strong>
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                <div style="background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1)); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <h3 style="margin-top: 0; color: var(--accent-primary);">1️⃣ תוכנת שרת</h3>
+                    <p>מאזינה לפקטות ברשת ומזהה הודעות שנשלחות אליה</p>
+                </div>
+                <div style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.1)); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <h3 style="margin-top: 0; color: var(--accent-secondary);">2️⃣ תוכנת לקוח</h3>
+                    <p>שולחת הודעות לשרת דרך הרשת</p>
+                </div>
+            </div>
+
+            <h3>דרישות התרגיל:</h3>
+            <div class="checklist">
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>כל הודעה חייבת לכלול <strong>מזהה יחודי</strong> שיאפשר לשרת לזהות שהפקטה מיועדת אליו</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>השרת צריך לסנן ולקבל <strong>רק</strong> פקטות עם המזהה הספציפי</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>המערכת צריכה לתמוך בשיחה בין 2 משתמשים (כל משתמש יכול לשלוח ולקבל)</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>כל הודעה שמתקבלת צריכה להדפס למסך</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div><strong>המזהה חייב להיות שמור במשתנה סביבה או Registry!</strong></div>
+                </div>
+            </div>
+
+            <h3>שאלות מנחות - עליכם לחשוב!</h3>
+            <ol>
+                <li><strong>איפה לשמור את המזהה היחודי?</strong>
+                    <ul>
+                        <li>ברמה של IP? (IP Options)</li>
+                        <li>ברמה של TCP/UDP? (בפורט? בשדה אחר?)</li>
+                        <li>בתוך ה-payload (המידע) עצמו?</li>
+                    </ul>
+                </li>
+                <li><strong>איך לסנן את הפקטות?</strong>
+                    <ul>
+                        <li>האם להשתמש ב-BPF filter?</li>
+                        <li>האם להשתמש ב-lfilter עם פונקציה מותאמת?</li>
+                    </ul>
+                </li>
+                <li><strong>איך להבטיח שכל משתמש יכול גם לשלוח וגם לקבל?</strong></li>
+            </ol>
+        </section>
+
+        <section id="code" class="section">
+            <h2>שלד קוד להתחלה</h2>
+
+            <h3>קוד לקוח (sender.py)</h3>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-label">sender.py - Windows</span>
+                    <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                </div>
+                <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+<span class="keyword">import</span> os
+
+<span class="comment"># TODO: טענו את המזהה ממשתנה סביבה או Registry</span>
+UNIQUE_ID = os.getenv(<span class="string">"MY_UNIQUE_ID"</span>)
+<span class="keyword">if</span> UNIQUE_ID <span class="keyword">is</span> <span class="keyword">None</span>:
+    <span class="function">print</span>(<span class="string">"Error: Please set MY_UNIQUE_ID environment variable!"</span>)
+    <span class="function">print</span>(<span class="string">"Run: setx MY_UNIQUE_ID 'your_id_here'"</span>)
+    exit(<span class="number">1</span>)
+
+<span class="keyword">def</span> <span class="function">send_message</span>(target_ip, message):
+    <span class="comment"># TODO: בנו פקטה עם המזהה וההודעה</span>
+    <span class="comment"># רמז: השתמשו ב-IP/TCP/Raw או IP/UDP/Raw</span>
+    <span class="keyword">pass</span>
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    target = <span class="function">input</span>(<span class="string">"Enter target IP: "</span>)
+    <span class="keyword">while</span> <span class="keyword">True</span>:
+        msg = <span class="function">input</span>(<span class="string">"Message: "</span>)
+        <span class="keyword">if</span> msg.lower() == <span class="string">"exit"</span>:
+            <span class="keyword">break</span>
+        send_message(target, msg)</code></pre>
+            </div>
+
+            <h3>קוד שרת (receiver.py)</h3>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-label">receiver.py - Windows</span>
+                    <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                </div>
+                <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+<span class="keyword">import</span> os
+
+<span class="comment"># TODO: טענו את המזהה ממשתנה סביבה או Registry (אותו אחד כמו בלקוח!)</span>
+UNIQUE_ID = os.getenv(<span class="string">"MY_UNIQUE_ID"</span>)
+<span class="keyword">if</span> UNIQUE_ID <span class="keyword">is</span> <span class="keyword">None</span>:
+    <span class="function">print</span>(<span class="string">"Error: Please set MY_UNIQUE_ID environment variable!"</span>)
+    <span class="function">print</span>(<span class="string">"Run: setx MY_UNIQUE_ID 'your_id_here'"</span>)
+    exit(<span class="number">1</span>)
+
+<span class="keyword">def</span> <span class="function">packet_filter</span>(packet):
+    <span class="comment"># TODO: בדקו אם הפקטה מכילה את המזהה שלכם</span>
+    <span class="comment"># רמז: packet.haslayer(Raw)</span>
+    <span class="keyword">pass</span>
+
+<span class="keyword">def</span> <span class="function">packet_handler</span>(packet):
+    <span class="comment"># TODO: חלצו את ההודעה והדפיסו אותה</span>
+    <span class="keyword">pass</span>
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    <span class="function">print</span>(<span class="string">"Listening for messages..."</span>)
+    <span class="comment"># TODO: השתמשו ב-sniff עם lfilter ו-prn</span>
+    sniff(lfilter=packet_filter, prn=packet_handler)</code></pre>
+            </div>
+
+            <div class="alert alert-info" style="margin-top: 2rem;">
+                <strong>💡 טיפים לקוד:</strong>
+                <ul>
+                    <li><strong>טיפ 1:</strong> הדרך הפשוטה ביותר היא לשמור את המזהה כחלק מה-payload. לדוגמה: <code>"MY_ID:Hello World!"</code></li>
+                    <li><strong>טיפ 2:</strong> כדי לסנן לפי payload, תצטרכו להשתמש ב-lfilter מכיוון ש-BPF לא יכול לבדוק תוכן</li>
+                    <li><strong>טיפ 3:</strong> כדי ליצור שיחה דו-כיוונית, כל משתמש יצטרך להריץ גם sniff וגם send. אפשר להשתמש ב-threading!</li>
+                    <li><strong>טיפ 4:</strong> זכרו להריץ את הקוד כמנהל (Run as Administrator) כדי לגשת לכרטיס הרשת</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="bonus" class="section">
+            <h2>🎯 אתגרי בונוס</h2>
+
+            <div style="display: grid; gap: 1.5rem;">
+<!--                <div style="background: rgba(0, 255, 136, 0.05); padding: 1.5rem; border-radius: 12px; border-right: 4px solid var(&#45;&#45;accent-primary);">-->
+<!--                    <h3 style="margin-top: 0;">1️⃣ תקשורת דו-כיוונית</h3>-->
+<!--                    <p>שנו את הקוד כך שכל תוכנה תוכל גם לשלוח וגם לקבל הודעות באמצעות threading</p>-->
+<!--                </div>-->
+
+                <div style="background: rgba(0, 212, 255, 0.05); padding: 1.5rem; border-radius: 12px; border-right: 4px solid var(--accent-secondary);">
+                    <h3 style="margin-top: 0;">1️⃣ הצפנה</h3>
+                    <p>הוסיפו הצפנה פשוטה להודעות (למשל Caesar cipher או Base64)</p>
+                </div>
+
+                <div style="background: rgba(0, 255, 136, 0.05); padding: 1.5rem; border-radius: 12px; border-right: 4px solid var(--accent-primary);">
+                    <h3 style="margin-top: 0;">2️⃣ מזהים מתקדמים</h3>
+                    <p>השתמשו בשדות ייעודיים בפרוטוקול (למשל IP ID או TCP sequence number)</p>
+                </div>
+
+<!--                <div style="background: rgba(0, 212, 255, 0.05); padding: 1.5rem; border-radius: 12px; border-right: 4px solid var(&#45;&#45;accent-secondary);">-->
+<!--                    <h3 style="margin-top: 0;">3️⃣4️⃣ Chat Room</h3>-->
+<!--                    <p>הרחיבו את המערכת לתמוך ביותר משני משתמשים</p>-->
+<!--                </div>-->
+            </div>
+        </section>
+
+        <section id="intro" class="section">
+            <h2>מהי Scapy?</h2>
+            <p>Scapy היא ספריית Python רבת עוצמה המאפשרת לנו לייצר, לשלוח, ולנתח פקטות רשת בצורה פשוטה ונוחה. בתרגיל זה נשתמש ב-Scapy כדי ליצור תקשורת בין שני משתמשים (שרת ולקוח) דרך הרשת.</p>
+            
+            <div class="alert alert-info">
+                <strong>💡 למה Scapy?</strong>
+                Scapy מאפשרת לנו שליטה מלאה על כל שכבות הרשת - מה-Ethernet ועד לשכבת האפליקציה. זהו כלי חשוב ללימוד רשתות ואבטחת מידע!
+            </div>
+
+            <div class="terminal">
+                <div class="terminal-line">
+                    <span class="prompt">C:\></span>
+                    <span class="command">pip install scapy</span>
+                </div>
+                <div class="terminal-line" style="color: var(--text-secondary);">
+                    Successfully installed scapy-2.5.0
+                </div>
+            </div>
+        </section>
+
+        <section id="basics" class="section">
+            <h2>פונקציות בסיסיות ב-Scapy</h2>
+
+            <div class="collapsible">
+                <div class="collapsible-title">שליחת פקטות - send()</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>הפונקציה <code>send()</code> משמשת לשליחת פקטות ברשת ברמה 3 (Network Layer):</p>
+                    
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+
+<span class="comment"># שליחת פקטת ICMP (ping)</span>
+send(IP(dst=<span class="string">"192.168.1.100"</span>)/ICMP())
+
+<span class="comment"># שליחת פקטת TCP</span>
+send(IP(dst=<span class="string">"192.168.1.100"</span>)/TCP(dport=<span class="number">80</span>))</code></pre>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>⚠️ הרשאות מנהל</strong>
+                        ב-Windows, תצטרכו להריץ את הסקריפט כמנהל (Run as Administrator) כדי לשלוח פקטות!
+                    </div>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <div class="collapsible-title">האזנה לפקטות - sniff()</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>הפונקציה <code>sniff()</code> משמשת להאזנה ולכידת פקטות ברשת:</p>
+                    
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+
+<span class="comment"># לוכד 10 פקטות</span>
+packets = sniff(count=<span class="number">10</span>)
+
+<span class="comment"># מאזין למשך 5 שניות</span>
+packets = sniff(timeout=<span class="number">5</span>)
+
+<span class="comment"># מאזין באינטרפייס ספציפי (ב-Windows)</span>
+<span class="comment"># בדוק את שם הכרטיס עם: conf.iface</span>
+packets = sniff(iface=<span class="string">"Ethernet"</span>, count=<span class="number">10</span>)</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="filters" class="section">
+            <h2>שימוש בפילטרים (Filters)</h2>
+            <p>פילטרים מאפשרים לנו ללכוד רק פקטות ספציפיות. ישנן שתי דרכים עיקריות לסנן:</p>
+
+            <div class="collapsible">
+                <div class="collapsible-title">1. פילטר BPF (Berkeley Packet Filter)</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>זוהי שפת פילטרים מיוחדת המתבצעת ברמת כרטיס הרשת (מהירה מאוד!):</p>
+                    
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+
+<span class="comment"># לוכד רק פקטות ICMP</span>
+sniff(filter=<span class="string">"icmp"</span>, count=<span class="number">5</span>)
+
+<span class="comment"># לוכד פקטות TCP לפורט 80</span>
+sniff(filter=<span class="string">"tcp and port 80"</span>, count=<span class="number">10</span>)
+
+<span class="comment"># לוכד פקטות מכתובת IP ספציפית</span>
+sniff(filter=<span class="string">"host 192.168.1.100"</span>, count=<span class="number">10</span>)</code></pre>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <strong>✅ יתרונות BPF</strong>
+                        מהיר מאוד כי הסינון מתבצע ברמת החומרה/דרייבר של כרטיס הרשת!
+                    </div>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <div class="collapsible-title">2. פילטר Python (lfilter)</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>ניתן להשתמש בפונקציית Python שבודקת כל פקטה:</p>
+                    
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">from</span> scapy.all <span class="keyword">import</span> *
+
+<span class="keyword">def</span> <span class="function">my_filter</span>(packet):
+    <span class="comment"># מחזיר True רק לפקטות ICMP</span>
+    <span class="keyword">return</span> ICMP <span class="keyword">in</span> packet
+
+<span class="comment"># שימוש בפילטר</span>
+sniff(lfilter=my_filter, count=<span class="number">5</span>)
+
+<span class="comment"># פילטר מורכב יותר</span>
+<span class="keyword">def</span> <span class="function">complex_filter</span>(packet):
+    <span class="keyword">if</span> packet.haslayer(Raw):
+        data = packet[Raw].load.decode(<span class="string">'utf-8'</span>, errors=<span class="string">'ignore'</span>)
+        <span class="keyword">return</span> <span class="string">"my_id"</span> <span class="keyword">in</span> data
+    <span class="keyword">return</span> <span class="keyword">False</span></code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="security" class="section">
+            <h2>🔒 חשוב! אבטחת מידע - שמירת מזהים</h2>
+            
+            <div class="alert alert-warning">
+                <strong>⚠️ אף פעם לא שומרים מידע רגיש ישירות בקוד!</strong>
+                מזהים, ססמאות, מפתחות API, וכל מידע רגיש אחר שנשמרים בתוך הקוד עצמו מהווים סיכון אבטחה חמור. כאשר אתם משתפים את הקוד (GitHub, GitLab, עם חברים לפרויקט), כל אחד יכול לראות את המידע הזה!
+            </div>
+
+            <h3>❌ דוגמה לקוד לא מאובטח (אל תעשו ככה!)</h3>
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="code-label">⚠️ לא טוב!</span>
+                    <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                </div>
+                <pre><code><span class="comment"># ❌ לא טוב - המזהה חשוף!</span>
+UNIQUE_ID = <span class="string">"my_secret_id_12345"</span>
+API_KEY = <span class="string">"sk-1234567890abcdef"</span></code></pre>
+            </div>
+
+            <div class="collapsible">
+                <div class="collapsible-title">✅ פתרון 1: משתני סביבה (Environment Variables)</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>משתני סביבה הם משתנים שנשמרים ברמת מערכת ההפעלה ולא בקוד עצמו. כך המידע הרגיש נשאר במחשב שלכם ולא מועלה ל-GitHub.</p>
+                    
+                    <h4>הגדרת משתנה סביבה ב-Windows:</h4>
+                    <div class="terminal">
+                        <div class="terminal-line">
+                            <span class="prompt">C:\></span>
+                            <span class="command">setx MY_UNIQUE_ID "my_secret_id_12345"</span>
+                        </div>
+                        <div class="terminal-line" style="color: var(--text-secondary);">
+                            SUCCESS: Specified value was saved.
+                        </div>
+                        <div class="terminal-line" style="color: var(--warning); margin-top: 10px;">
+                            לאחר הגדרה, סגור וצור מחדש את ה-Command Prompt!
+                        </div>
+                    </div>
+
+                    <h4>שימוש ב-Python:</h4>
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">import</span> os
+
+<span class="comment"># ✅ טוב - קריאה ממשתנה סביבה</span>
+UNIQUE_ID = os.getenv(<span class="string">"MY_UNIQUE_ID"</span>)
+
+<span class="comment"># בדיקה שהמשתנה אכן קיים</span>
+<span class="keyword">if</span> UNIQUE_ID <span class="keyword">is</span> <span class="keyword">None</span>:
+    <span class="function">print</span>(<span class="string">"Error: MY_UNIQUE_ID environment variable not set!"</span>)
+    <span class="function">print</span>(<span class="string">"הרץ בטרמינל: setx MY_UNIQUE_ID 'your_id_here'"</span>)
+    exit(<span class="number">1</span>)</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <div class="collapsible-title">✅ פתרון 2: Windows Registry</div>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <p>ה-Registry הוא מאגר מידע מרכזי של Windows שבו ניתן לשמור הגדרות ומידע של תוכנות. זוהי שיטה מקצועית לשמירת הגדרות ב-Windows.</p>
+                    
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="code-label">Python - Windows Registry</span>
+                            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+                        </div>
+                        <pre><code><span class="keyword">import</span> winreg
+
+<span class="keyword">def</span> <span class="function">save_to_registry</span>(key_name, value):
+    <span class="string">"""שמירת ערך ל-Registry"""</span>
+    key_path = <span class="string">r"Software\MyScapyApp"</span>
+    key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
+    winreg.SetValueEx(key, key_name, <span class="number">0</span>, winreg.REG_SZ, value)
+    winreg.CloseKey(key)
+    <span class="function">print</span>(<span class="string">f"נשמר ב-Registry: {key_name}"</span>)
+
+<span class="keyword">def</span> <span class="function">read_from_registry</span>(key_name):
+    <span class="string">"""קריאת ערך מ-Registry"""</span>
+    <span class="keyword">try</span>:
+        key_path = <span class="string">r"Software\MyScapyApp"</span>
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+        value, _ = winreg.QueryValueEx(key, key_name)
+        winreg.CloseKey(key)
+        <span class="keyword">return</span> value
+    <span class="keyword">except</span> <span class="function">FileNotFoundError</span>:
+        <span class="keyword">return</span> <span class="keyword">None</span>
+
+<span class="comment"># דוגמת שימוש:</span>
+<span class="comment"># save_to_registry("UNIQUE_ID", "my_secret_id_12345")</span>
+UNIQUE_ID = read_from_registry(<span class="string">"UNIQUE_ID"</span>)
+
+<span class="keyword">if</span> UNIQUE_ID <span class="keyword">is</span> <span class="keyword">None</span>:
+    <span class="function">print</span>(<span class="string">"המזהה לא נמצא ב-Registry!"</span>)
+    <span class="comment"># תוכל לבקש מהמשתמש להזין</span></code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>💡 השוואה</strong>
+                        <ul>
+                            <li><strong>משתני סביבה:</strong> פשוט, קל לשנות, חוצה פלטפורמות</li>
+                            <li><strong>Registry:</strong> מקצועי יותר, ספציפי ל-Windows, מאורגן טוב יותר</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning" style="margin-top: 2rem;">
+                <strong>📝 המשימה שלכם - חובה!</strong>
+                בקוד שתגישו, אתם חייבים להשתמש באחת מהשיטות לעיל! לא תקבלו ציון מלא אם המזהה היחודי שלכם שמור ישירות בקוד.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>📋 קריטריונים להגשה</h2>
+            
+            <div class="checklist">
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>קוד עובד ומתועד (עם הערות)</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div><strong>שימוש נכון באבטחת מידע</strong> - המזהה חייב להיות שמור במשתנה סביבה או Registry (לא בקוד!)</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>הסבר כתוב על הבחירה שלכם: איפה שמרתם את המזהה ולמה?</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>תיעוד של בדיקות שביצעתם (screenshots או תיאור)</div>
+                </div>
+                <div class="checklist-item" onclick="toggleCheck(this)">
+                    <div class="checkbox"></div>
+                    <div>דוגמאות לשימוש בקוד</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" style="background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));">
+            <h2>🎓 סיכום</h2>
+            <p style="font-size: 1.1rem; line-height: 1.8;">
+                תרגיל זה מלמד אתכם את היסודות של עבודה עם Scapy ומציג לכם את האתגרים של תקשורת ברשת. 
+                חשבו יצירתית על הפתרון שלכם, נסו גישות שונות, והכי חשוב - תהנו מהלמידה!
+            </p>
+            
+            <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-primary); border-radius: 12px; text-align: center;">
+                <p style="font-size: 2rem; margin-bottom: 0.5rem;">בהצלחה! 🚀</p>
+                <p style="color: var(--text-secondary); font-style: italic;">שאלות? אל תהססו לפנות למורה</p>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>תרגיל Scapy - תקשורת בין משתמשים | בית ספר בליך | 2026</p>
+        </div>
+    </footer>
+
+    <button class="back-to-top" onclick="scrollToTop()" title="חזור למעלה">↑</button>
+
+    <script>
+        // Collapsible sections
+        document.querySelectorAll('.collapsible').forEach((item, index) => {
+            const content = item.nextElementSibling;
+            
+            item.addEventListener('click', () => {
+                item.classList.toggle('active');
+                content.classList.toggle('active');
+            });
+        });
+
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-container').querySelector('code');
+            const text = codeBlock.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ הועתק!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Checklist functionality
+        function toggleCheck(item) {
+            item.classList.toggle('checked');
+        }
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('.nav a').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        // Highlight active section in navigation
+        const sections = document.querySelectorAll('.section[id]');
+        const navLinks = document.querySelectorAll('.nav a');
+        const progressBar = document.querySelector('.progress-bar');
+        const progressIndicator = document.querySelector('.progress-indicator');
+        const backToTopBtn = document.querySelector('.back-to-top');
+
+        window.addEventListener('scroll', () => {
+            // Update progress bar and indicator
+            const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (window.scrollY / windowHeight) * 100;
+            progressBar.style.width = scrolled + '%';
+            progressIndicator.textContent = Math.round(scrolled) + '%';
+
+            // Show/hide back to top button
+            if (window.scrollY > 500) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+
+            // Update active section
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 300) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').slice(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Scroll to top function
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+</body>
+</html>

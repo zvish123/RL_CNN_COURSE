@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lambda Expressions - מבוא לפונקציות אנונימיות</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Alef:wght@400;700&family=Secular+One&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #1a0a2e;
+            --primary-purple: #6a0dad;
+            --accent-gold: #ffd700;
+            --accent-cyan: #00e5ff;
+            --text-light: #e8e8e8;
+            --code-bg: #2d1b4e;
+            --success: #4ade80;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #16213e 50%, var(--primary-purple) 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(106, 13, 173, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 20%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            background: rgba(26, 10, 46, 0.6);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Secular One', sans-serif;
+            font-size: 3em;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: var(--accent-cyan);
+            font-weight: 300;
+        }
+
+        .slide {
+            display: none;
+            background: rgba(45, 27, 78, 0.7);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(106, 13, 173, 0.4);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        .slide h2 {
+            font-family: 'Secular One', sans-serif;
+            font-size: 2.2em;
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .slide h3 {
+            font-size: 1.6em;
+            color: var(--accent-cyan);
+            margin: 25px 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            font-size: 1.2em;
+        }
+
+        ul {
+            list-style: none;
+            padding-right: 20px;
+        }
+
+        ul li {
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-right: 4px solid var(--accent-cyan);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        ul li:hover {
+            transform: translateX(-5px);
+            background: rgba(0, 229, 255, 0.15);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+        }
+
+        .story-box {
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.3), rgba(0, 229, 255, 0.2));
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+        }
+
+        .story-box p {
+            line-height: 1.8;
+            font-size: 1.1em;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            overflow-x: auto;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+            direction:ltr;
+        }
+
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #e8e8e8;
+        }
+
+        .comment {
+            color: #808080;
+        }
+
+        .keyword {
+            color: #ff79c6;
+        }
+
+        .string {
+            color: #50fa7b;
+        }
+
+        .function {
+            color: #8be9fd;
+        }
+
+        .number {
+            color: #bd93f9;
+        }
+
+        .question-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+        }
+
+        .question-box h4 {
+            color: var(--accent-gold);
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .option {
+            background: rgba(106, 13, 173, 0.3);
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option:hover {
+            background: rgba(106, 13, 173, 0.5);
+            transform: translateX(-5px);
+            border-color: var(--accent-cyan);
+        }
+
+        .option.selected {
+            border-color: var(--accent-gold);
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .option.correct {
+            border-color: var(--success);
+            background: rgba(74, 222, 128, 0.2);
+        }
+
+        .option.wrong {
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: rgba(74, 222, 128, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .feedback.wrong {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid var(--error);
+            color: var(--error);
+        }
+
+        .challenge-box {
+            background: linear-gradient(135deg, rgba(26, 10, 46, 0.8), rgba(45, 27, 78, 0.8));
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 2px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+        }
+
+        .challenge-box h4 {
+            color: var(--accent-gold);
+            font-size: 1.4em;
+            margin-bottom: 15px;
+        }
+
+        .solution {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            border: 2px solid var(--success);
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .solution.show {
+            display: block;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--primary-purple), var(--accent-cyan));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
+            font-family: 'Heebo', sans-serif;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 229, 255, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(26, 10, 46, 0.6);
+            border-radius: 15px;
+            border: 2px solid rgba(106, 13, 173, 0.4);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--accent-gold), #ff8c00);
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            border: none;
+            color: var(--primary-dark);
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-indicator {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--accent-gold);
+            box-shadow: 0 0 15px var(--accent-gold);
+            width: 30px;
+            border-radius: 6px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 1000px;
+            }
+        }
+
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float 6s infinite;
+            opacity: 0;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                opacity: 0;
+                transform: translateY(0) translateX(0);
+            }
+            10%, 90% {
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-100vh) translateX(50px);
+            }
+        }
+
+        .tip-box {
+            background: rgba(255, 215, 0, 0.1);
+            border-right: 4px solid var(--accent-gold);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .tip-box strong {
+            color: var(--accent-gold);
+        }
+
+        .level-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .level-easy {
+            background: rgba(74, 222, 128, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .level-medium {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .level-hard {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid var(--error);
+            color: var(--error);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .slide {
+                padding: 25px;
+            }
+
+            .slide h2 {
+                font-size: 1.6em;
+            }
+
+            .code-block pre {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ Lambda Expressions ✨</h1>
+            <p class="subtitle">מבוא לפונקציות אנונימיות - ספר הלחשים של Python</p>
+        </header>
+
+        <!-- Slide 1: Introduction -->
+        <div class="slide active" id="slide1">
+            <h2>🔮 מהי פונקציית Lambda?</h2>
+            <ul>
+                <li>📝 פונקציה קצרה וחד-פעמית</li>
+                <li>⚡ נכתבת בשורה אחת</li>
+                <li>👻 לא צריכה שם (אנונימית)</li>
+                <li>🎯 מחזירה ערך אחד בלבד</li>
+                <li>🚀 שימושית במיוחד כפרמטר לפונקציות אחרות</li>
+            </ul>
+
+            <div class="story-box">
+                <p>🌟 בעיירה הקסומה <strong>CodeVille</strong> חי סוחר מסתורי שמוכר פריטים קסומים. הוא משתמש בנוסחאות מיוחדות - בדיוק כמו פונקציות Lambda!</p>
+            </div>
+
+            <h3>📐 תחביר פונקציית Lambda</h3>
+            <div class="code-block">
+                <pre><span class="comment"># המבנה הכללי:</span>
+<span class="keyword">lambda</span> פרמטרים: ביטוי_להחזרה
+
+<span class="comment"># דוגמה:</span>
+<span class="keyword">lambda</span> x: x * <span class="number">2</span>
+       ↑    ↑
+   פרמטר  מה להחזיר</pre>
+            </div>
+            
+            <div class="challenge-box">
+                <button onclick="toggleSolution('syntax_explain')">📖 לחצו להסבר מפורט על התחביר</button>
+                <div class="solution" id="syntax_explain">
+                    <strong>🎯 פירוק התחביר:</strong>
+                    <div class="code-block">
+                        <pre><span class="keyword">lambda</span> x, y: x + y
+  ↑     ↑  ↑    ↑
+  │     │  │    └─ הביטוי שיוחזר (אין צורך ב-return)
+  │     │  └────── הפרדה בין פרמטרים לביטוי
+  │     └───────── פרמטרים (מופרדים בפסיקים)
+  └─────────────── מילת המפתח lambda</pre>
+                    </div>
+                    <p><strong>חשוב לזכור:</strong></p>
+                    <ul style="list-style: disc; padding-right: 20px; margin-top: 10px;">
+                        <li>אין צורך במילה <code>return</code> - הביטוי מוחזר אוטומטית</li>
+                        <li>אפשר פרמטר אחד, כמה פרמטרים, או אפילו אפס פרמטרים</li>
+                        <li>הביטוי חייב להיות בשורה אחת בלבד</li>
+                        <li>אפשר לשמור את ה-lambda במשתנה או להשתמש בה ישירות</li>
+                    </ul>
+                    <div class="code-block" style="margin-top: 15px;">
+                        <pre><span class="comment"># דוגמאות נוספות:</span>
+<span class="keyword">lambda</span> x: x ** <span class="number">2</span>              <span class="comment"># פרמטר אחד</span>
+<span class="keyword">lambda</span> x, y, z: x + y + z    <span class="comment"># שלושה פרמטרים</span>
+<span class="keyword">lambda</span>: <span class="number">42</span>                   <span class="comment"># בלי פרמטרים</span>
+<span class="keyword">lambda</span> x: x > <span class="number">10</span>            <span class="comment"># מחזירה True/False</span></pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>🔄 השוואה: פונקציה רגילה מול Lambda</h3>
+            <div class="code-block">
+                <pre><span class="comment"># פונקציה רגילה</span>
+<span class="keyword">def</span> <span class="function">add</span>(x, y):
+    <span class="keyword">return</span> x + y
+
+<span class="comment"># אותה פונקציה כ-lambda</span>
+add_lambda = <span class="keyword">lambda</span> x, y: x + y
+
+<span class="comment"># שימוש זהה</span>
+<span class="function">print</span>(add(<span class="number">5</span>, <span class="number">3</span>))        <span class="comment"># 8</span>
+<span class="function">print</span>(add_lambda(<span class="number">5</span>, <span class="number">3</span>))  <span class="comment"># 8</span></pre>
+            </div>
+
+            <h3>🔍 פונקציית filter</h3>
+            <div class="code-block">
+                <pre><span class="comment"># תחביר: filter(פונקציה, רשימה)</span>
+numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
+even = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x % <span class="number">2</span> == <span class="number">0</span>, numbers))
+<span class="function">print</span>(even)  <span class="comment"># [2, 4, 6]</span></pre>
+            </div>
+
+            <div class="challenge-box">
+                <button onclick="toggleSolution('filter_explain')">📖 לחצו להסבר מפורט על filter</button>
+                <div class="solution" id="filter_explain">
+                    <strong>🎯 איך filter עובדת?</strong>
+                    <p style="margin: 15px 0;">filter עוברת על כל איבר ברשימה ובודקת אותו עם הפונקציה. אם הפונקציה מחזירה <code>True</code> - האיבר נשמר, אם <code>False</code> - האיבר נמחק.</p>
+                    
+                    <div class="code-block">
+                        <pre><span class="comment"># תהליך השלב-אחר-שלב:</span>
+numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
+<span class="function">filter</span>(<span class="keyword">lambda</span> x: x % <span class="number">2</span> == <span class="number">0</span>, numbers)
+
+<span class="comment"># מה קורה פנימית:</span>
+<span class="number">1</span> % <span class="number">2</span> == <span class="number">0</span>  →  False  →  ❌ לא נשמר
+<span class="number">2</span> % <span class="number">2</span> == <span class="number">0</span>  →  True   →  ✅ נשמר!
+<span class="number">3</span> % <span class="number">2</span> == <span class="number">0</span>  →  False  →  ❌ לא נשמר
+<span class="number">4</span> % <span class="number">2</span> == <span class="number">0</span>  →  True   →  ✅ נשמר!
+<span class="number">5</span> % <span class="number">2</span> == <span class="number">0</span>  →  False  →  ❌ לא נשמר
+<span class="number">6</span> % <span class="number">2</span> == <span class="number">0</span>  →  True   →  ✅ נשמר!
+
+<span class="comment"># תוצאה: [2, 4, 6]</span></pre>
+                    </div>
+
+                    <p><strong>💡 טיפים:</strong></p>
+                    <ul style="list-style: disc; padding-right: 20px; margin-top: 10px;">
+                        <li>הפונקציה ב-filter חייבת להחזיר <code>True</code> או <code>False</code></li>
+                        <li>צריך לעטוף ב-<code>list()</code> כדי לקבל רשימה (אחרת מקבלים filter object)</li>
+                        <li>filter לא משנה את הרשימה המקורית - יוצרת רשימה חדשה</li>
+                    </ul>
+
+                    <div class="code-block" style="margin-top: 15px;">
+                        <pre><span class="comment"># דוגמאות נוספות:</span>
+words = [<span class="string">"אש"</span>, <span class="string">"מים"</span>, <span class="string">"רוח"</span>]
+
+<span class="comment"># מילים באורך 3 תווים</span>
+short = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> w: <span class="function">len</span>(w) == <span class="number">3</span>, words))
+
+<span class="comment"># מילים שמתחילות ב'א'</span>
+starts_alef = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> w: w[<span class="number">0</span>] == <span class="string">'א'</span>, words))</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>📊 פונקציית sorted</h3>
+            <div class="code-block">
+                <pre><span class="comment"># תחביר: sorted(רשימה, key=פונקציה)</span>
+numbers = [<span class="number">5</span>, <span class="number">-2</span>, <span class="number">8</span>, <span class="number">-9</span>, <span class="number">1</span>]
+by_absolute = <span class="function">sorted</span>(numbers, key=<span class="keyword">lambda</span> x: <span class="function">abs</span>(x))
+<span class="function">print</span>(by_absolute)  <span class="comment"># [1, -2, 5, 8, -9]</span></pre>
+            </div>
+
+            <div class="challenge-box">
+                <button onclick="toggleSolution('sorted_explain')">📖 לחצו להסבר מפורט על sorted</button>
+                <div class="solution" id="sorted_explain">
+                    <strong>🎯 איך sorted עובדת?</strong>
+                    <p style="margin: 15px 0;">sorted ממיינת רשימה לפי קריטריון מסוים. הפרמטר <code>key</code> מגדיר לפי מה למיין.</p>
+                    
+                    <div class="code-block">
+                        <pre><span class="comment"># ללא key - מיון רגיל:</span>
+numbers = [<span class="number">5</span>, <span class="number">-2</span>, <span class="number">8</span>, <span class="number">-9</span>]
+<span class="function">sorted</span>(numbers)  
+<span class="comment"># תוצאה: [-9, -2, 5, 8]  (מיון רגיל)</span>
+
+<span class="comment"># עם key - מיון מותאם אישית:</span>
+<span class="function">sorted</span>(numbers, key=<span class="keyword">lambda</span> x: <span class="function">abs</span>(x))
+<span class="comment"># תהליך:</span>
+<span class="number">5</span>  → <span class="function">abs</span>(<span class="number">5</span>)  = <span class="number">5</span>
+<span class="number">-2</span> → <span class="function">abs</span>(<span class="number">-2</span>) = <span class="number">2</span>
+<span class="number">8</span>  → <span class="function">abs</span>(<span class="number">8</span>)  = <span class="number">8</span>
+<span class="number">-9</span> → <span class="function">abs</span>(<span class="number">-9</span>) = <span class="number">9</span>
+
+<span class="comment"># ממיין לפי הערכים המוחלטים: 2, 5, 8, 9</span>
+<span class="comment"># תוצאה: [-2, 5, 8, -9]</span></pre>
+                    </div>
+
+                    <p><strong>⚙️ פרמטרים נוספים:</strong></p>
+                    <ul style="list-style: disc; padding-right: 20px; margin-top: 10px;">
+                        <li><code>reverse=True</code> - מיון הפוך (מהגדול לקטן)</li>
+                        <li><code>key</code> - פונקציה שמגדירה לפי מה למיין</li>
+                        <li>בלי <code>key</code> - מיון רגיל (מספרים/אלפביתי)</li>
+                    </ul>
+
+                    <div class="code-block" style="margin-top: 15px;">
+                        <pre><span class="comment"># דוגמאות שימושיות:</span>
+words = [<span class="string">"פיל"</span>, <span class="string">"ארי"</span>, <span class="string">"דוב"</span>]
+
+<span class="comment"># מיון אלפביתי רגיל</span>
+<span class="function">sorted</span>(words)  
+<span class="comment"># ['אריה', 'דוב', 'פיל']</span>
+
+<span class="comment"># מיון לפי אורך</span>
+<span class="function">sorted</span>(words, key=<span class="keyword">lambda</span> w: <span class="function">len</span>(w))
+<span class="comment"># ['דוב', 'פיל', 'ארי']</span>
+
+<span class="comment"># מיון לפי האות האחרונה</span>
+<span class="function">sorted</span>(words, key=<span class="keyword">lambda</span> w: w[-<span class="number">1</span>])
+
+<span class="comment"># מיון הפוך</span>
+<span class="function">sorted</span>(words, reverse=<span class="keyword">True</span>)</pre>
+                    </div>
+
+                    <p><strong>💡 הבדל חשוב:</strong></p>
+                    <ul style="list-style: disc; padding-right: 20px; margin-top: 10px;">
+                        <li><code>sorted()</code> - יוצרת רשימה חדשה ממוינת</li>
+                        <li><code>list.sort()</code> - ממיינת את הרשימה במקום (משנה את המקור)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 1</h4>
+                <p>מה המשמעות של "פונקציה אנונימית"?</p>
+                <div class="options" data-answer="1">
+                    <div class="option" data-value="0">פונקציה שהקוד שלה לא נראה למשתמש</div>
+                    <div class="option" data-value="1">פונקציה שאין לה שם ומוגדרת בשורה אחת</div>
+                    <div class="option" data-value="2">פונקציה שרק משתמשים מורשים יכולים להשתמש בה</div>
+                    <div class="option" data-value="3">פונקציה שחייבת להיקרא בתוך פונקציה אחרת</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Simple Examples with Numbers -->
+        <div class="slide" id="slide2">
+            <span class="level-badge level-easy">🟢 רמה: בסיסי</span>
+            <h2>🔢 התחלה פשוטה: עבודה עם מספרים</h2>
+            
+            <h3>✨ דוגמה 1: סינון מספרים (filter)</h3>
+            <div class="code-block">
+                <pre>numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>]
+
+<span class="comment"># סינון מספרים זוגיים</span>
+even_numbers = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x % <span class="number">2</span> == <span class="number">0</span>, numbers))
+<span class="function">print</span>(even_numbers)  <span class="comment"># [2, 4, 6, 8, 10]</span>
+
+<span class="comment"># סינון מספרים גדולים מ-5</span>
+big_numbers = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x > <span class="number">5</span>, numbers))
+<span class="function">print</span>(big_numbers)  <span class="comment"># [6, 7, 8, 9, 10]</span></pre>
+            </div>
+
+            <h3>⚡ דוגמה 2: שינוי ערכים (map)</h3>
+            <div class="code-block">
+                <pre>numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+
+<span class="comment"># הכפלה ב-2</span>
+doubled = <span class="function">list</span>(<span class="function">map</span>(<span class="keyword">lambda</span> x: x * <span class="number">2</span>, numbers))
+<span class="function">print</span>(doubled)  <span class="comment"># [2, 4, 6, 8, 10]</span>
+
+<span class="comment"># בניית ריבוע</span>
+squared = <span class="function">list</span>(<span class="function">map</span>(<span class="keyword">lambda</span> x: x ** <span class="number">2</span>, numbers))
+<span class="function">print</span>(squared)  <span class="comment"># [1, 4, 9, 16, 25]</span></pre>
+            </div>
+
+            <h3>🎯 דוגמה 3: מיון מספרים (sorted)</h3>
+            <div class="code-block">
+                <pre>numbers = [<span class="number">-5</span>, <span class="number">3</span>, <span class="number">-2</span>, <span class="number">8</span>, <span class="number">-9</span>, <span class="number">1</span>]
+
+<span class="comment"># מיון לפי ערך מוחלט</span>
+by_absolute = <span class="function">sorted</span>(numbers, key=<span class="keyword">lambda</span> x: <span class="function">abs</span>(x))
+<span class="function">print</span>(by_absolute)  <span class="comment"># [1, -2, 3, -5, 8, -9]</span>
+
+<span class="comment"># מיון מהגדול לקטן</span>
+descending = <span class="function">sorted</span>(numbers, key=<span class="keyword">lambda</span> x: -x)
+<span class="function">print</span>(descending)  <span class="comment"># [8, 3, 1, -2, -5, -9]</span></pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 2</h4>
+                <p>מה התוצאה של הקוד הבא?</p>
+                <div class="code-block">
+                    <pre>numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+result = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x > <span class="number">3</span>, numbers))
+<span class="function">print</span>(result)</pre>
+                </div>
+                <div class="options" data-answer="2">
+                    <div class="option" data-value="0">[1, 2, 3]</div>
+                    <div class="option" data-value="1">[3, 4, 5]</div>
+                    <div class="option" data-value="2">[4, 5]</div>
+                    <div class="option" data-value="3">[1, 2, 3, 4, 5]</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💡 תרגיל מעשי 1</h4>
+                <p><strong>משימה:</strong> צרו lambda שמסננת מספרים שמתחלקים ב-3</p>
+                <div class="code-block">
+                    <pre>numbers = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">12</span>, <span class="number">15</span>]
+
+<span class="comment"># השלימו:</span>
+divisible_by_3 = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> ___: ___, numbers))</pre>
+                </div>
+                <button onclick="toggleSolution('sol1')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol1">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>divisible_by_3 = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x % <span class="number">3</span> == <span class="number">0</span>, numbers))
+<span class="function">print</span>(divisible_by_3)  <span class="comment"># [3, 6, 9, 12, 15]</span></pre>
+                    </div>
+                    <p><strong>הסבר:</strong> האופרטור % (modulo) מחזיר את השארית של חלוקה. אם המספר מתחלק ב-3, השארית היא 0.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Working with Strings -->
+        <div class="slide" id="slide3">
+            <span class="level-badge level-easy">🟢 רמה: בסיסי</span>
+            <h2>📝 עבודה עם מחרוזות</h2>
+            
+            <h3>✨ סינון מחרוזות</h3>
+            <div class="code-block">
+                <pre>words = [<span class="string">"אש"</span>, <span class="string">"מים"</span>, <span class="string">"רוח"</span>, <span class="string">"עפר"</span>, <span class="string">"קרח"</span>]
+
+<span class="comment"># מילים באורך 3 תווים בדיוק</span>
+short_words = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> w: <span class="function">len</span>(w) == <span class="number">3</span>, words))
+<span class="function">print</span>(short_words)  <span class="comment"># ['אש', 'עפר']</span>
+
+<span class="comment"># מילים שמכילות את האות 'ר'</span>
+with_resh = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> w: <span class="string">'ר'</span> <span class="keyword">in</span> w, words))
+<span class="function">print</span>(with_resh)  <span class="comment"># ['רוח', 'עפר']</span></pre>
+            </div>
+
+            <h3>🎨 שינוי מחרוזות</h3>
+            <div class="code-block">
+                <pre>spells = [<span class="string">"אברה"</span>, <span class="string">"כדברה"</span>, <span class="string">"הוקוס"</span>]
+
+<span class="comment"># הוספת קריאה לכל לחש</span>
+excited = <span class="function">list</span>(<span class="function">map</span>(<span class="keyword">lambda</span> s: s + <span class="string">"!"</span>, spells))
+<span class="function">print</span>(excited)  <span class="comment"># ['אברה!', 'כדברה!', 'הוקוס!']</span>
+
+<span class="comment"># הפיכת מחרוזות לאורכן</span>
+lengths = <span class="function">list</span>(<span class="function">map</span>(<span class="keyword">lambda</span> s: <span class="function">len</span>(s), spells))
+<span class="function">print</span>(lengths)  <span class="comment"># [4, 5, 5]</span></pre>
+            </div>
+
+            <h3>📊 מיון מחרוזות</h3>
+            <div class="code-block">
+                <pre>magic_words = [<span class="string">"אברה כדברה"</span>, <span class="string">"הוקוס פוקוס"</span>, <span class="string">"אלקזאם"</span>, <span class="string">"סים סלה בים"</span>]
+
+<span class="comment"># מיון לפי אורך המחרוזת</span>
+by_length = <span class="function">sorted</span>(magic_words, key=<span class="keyword">lambda</span> s: <span class="function">len</span>(s))
+
+<span class="comment"># מיון לפי האות האחרונה</span>
+by_last = <span class="function">sorted</span>(magic_words, key=<span class="keyword">lambda</span> s: s[-<span class="number">1</span>])
+
+<span class="comment"># מיון לפי מספר המילים</span>
+by_words = <span class="function">sorted</span>(magic_words, key=<span class="keyword">lambda</span> s: <span class="function">len</span>(s.split()))</pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 3</h4>
+                <p>מה יהיה תוצאת הקוד הבא?</p>
+                <div class="code-block">
+                    <pre>words = [<span class="string">"אש"</span>, <span class="string">"מים"</span>, <span class="string">"רוח"</span>]
+result = <span class="function">sorted</span>(words, key=<span class="keyword">lambda</span> w: w[::-<span class="number">1</span>])
+<span class="function">print</span>(result)</pre>
+                </div>
+                <div class="options" data-answer="1">
+                    <div class="option" data-value="0">מיון לפי סדר אלפביתי רגיל</div>
+                    <div class="option" data-value="1">מיון לפי המילים הפוכות (סדר אלפביתי של המילה ההפוכה)</div>
+                    <div class="option" data-value="2">מיון לפי האות האחרונה בלבד</div>
+                    <div class="option" data-value="3">מיון לפי אורך המחרוזת</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💡 תרגיל מעשי 2</h4>
+                <p><strong>משימה:</strong> מיינו מילים לפי אורך, ובאותו אורך - אלפביתית</p>
+                <div class="code-block">
+                    <pre>words = [<span class="string">"זום"</span>, <span class="string">"אברה"</span>, <span class="string">"בום"</span>, <span class="string">"אלף"</span>, <span class="string">"דברה"</span>]
+
+<span class="comment"># השלימו:</span>
+sorted_words = <span class="function">sorted</span>(words, key=<span class="keyword">lambda</span> ___: ___)</pre>
+                </div>
+                <button onclick="toggleSolution('sol2')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol2">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>sorted_words = <span class="function">sorted</span>(words, key=<span class="keyword">lambda</span> w: (<span class="function">len</span>(w), w))
+<span class="function">print</span>(sorted_words)  
+<span class="comment"># ['בום', 'זום', 'אברה', 'אלף', 'דברה']</span></pre>
+                    </div>
+                    <p><strong>הסבר:</strong> כשמחזירים tuple, Python ממיין תחילה לפי האלמנט הראשון (אורך), ואז לפי השני (המילה עצמה).</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Tuples -->
+        <div class="slide" id="slide4">
+            <span class="level-badge level-medium">🟡 רמה: בינוני</span>
+            <h2>🎲 עבודה עם טאפלים (Tuples)</h2>
+            <p>הסוחר שומר מידע על לקוחות במבנה של טאפלים:</p>
+
+            <div class="code-block">
+                <pre><span class="comment"># כל טאפל: (שם, גיל, כסף)</span>
+customers = [
+    (<span class="string">"דוד"</span>, <span class="number">25</span>, <span class="number">500</span>),
+    (<span class="string">"שרה"</span>, <span class="number">30</span>, <span class="number">750</span>),
+    (<span class="string">"יוסי"</span>, <span class="number">20</span>, <span class="number">300</span>),
+    (<span class="string">"רחל"</span>, <span class="number">28</span>, <span class="number">600</span>)
+]
+
+<span class="comment"># מיון לפי גיל (אינדקס 1)</span>
+by_age = <span class="function">sorted</span>(customers, key=<span class="keyword">lambda</span> c: c[<span class="number">1</span>])
+<span class="function">print</span>(by_age)  
+<span class="comment"># [('יוסי', 20, 300), ('דוד', 25, 500), ('רחל', 28, 600), ('שרה', 30, 750)]</span>
+
+<span class="comment"># מיון לפי כסף - מהגבוה לנמוך</span>
+by_money = <span class="function">sorted</span>(customers, key=<span class="keyword">lambda</span> c: c[<span class="number">2</span>], reverse=<span class="keyword">True</span>)
+
+<span class="comment"># מיון לפי שם</span>
+by_name = <span class="function">sorted</span>(customers, key=<span class="keyword">lambda</span> c: c[<span class="number">0</span>])</pre>
+            </div>
+
+            <h3>⚡ סינון טאפלים</h3>
+            <div class="code-block">
+                <pre><span class="comment"># לקוחות צעירים (מתחת לגיל 25)</span>
+young = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> c: c[<span class="number">1</span>] < <span class="number">25</span>, customers))
+
+<span class="comment"># לקוחות עשירים (מעל 500 זהב)</span>
+rich = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> c: c[<span class="number">2</span>] > <span class="number">500</span>, customers))
+
+<span class="comment"># שמות שמתחילים ב-'ר'</span>
+starts_r = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> c: c[<span class="number">0</span>][<span class="number">0</span>] == <span class="string">'ר'</span>, customers))</pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 4</h4>
+                <p>איזה קוד ימיין טאפלים של (שם, ציון) לפי הציון מהגבוה לנמוך?</p>
+                <div class="options" data-answer="2">
+                    <div class="option" data-value="0">sorted(students, key=lambda s: s[1])</div>
+                    <div class="option" data-value="1">sorted(students, key=lambda s: s[0], reverse=True)</div>
+                    <div class="option" data-value="2">sorted(students, key=lambda s: s[1], reverse=True)</div>
+                    <div class="option" data-value="3">sorted(students, key=lambda s: -s[0])</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💡 תרגיל מעשי 3</h4>
+                <p><strong>משימה:</strong> מיינו לקוחות לפי הפרש בין הכסף לגיל</p>
+                <div class="code-block">
+                    <pre>customers = [
+    (<span class="string">"דוד"</span>, <span class="number">25</span>, <span class="number">500</span>),
+    (<span class="string">"שרה"</span>, <span class="number">30</span>, <span class="number">750</span>),
+    (<span class="string">"יוסי"</span>, <span class="number">20</span>, <span class="number">300</span>)
+]
+
+<span class="comment"># מיינו לפי (כסף - גיל)</span>
+sorted_customers = <span class="function">sorted</span>(customers, key=<span class="keyword">lambda</span> ___: ___)</pre>
+                </div>
+                <button onclick="toggleSolution('sol3')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol3">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>sorted_customers = <span class="function">sorted</span>(customers, key=<span class="keyword">lambda</span> c: c[<span class="number">2</span>] - c[<span class="number">1</span>])
+
+<span class="comment"># הצגת תוצאות:</span>
+<span class="keyword">for</span> customer <span class="keyword">in</span> sorted_customers:
+    name, age, money = customer
+    diff = money - age
+    <span class="function">print</span>(<span class="string">f"{name}: הפרש = {diff}"</span>)
+    
+<span class="comment"># יוסי: הפרש = 280</span>
+<span class="comment"># דוד: הפרש = 475</span>
+<span class="comment"># שרה: הפרש = 720</span></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Dictionaries -->
+        <div class="slide" id="slide5">
+            <span class="level-badge level-medium">🟡 רמה: בינוני</span>
+            <h2>📚 עבודה עם מילונים (Dictionaries)</h2>
+            
+            <p>הסוחר מארגן את המלאי שלו במילונים:</p>
+
+            <div class="code-block">
+                <pre>magical_items = [
+    {<span class="string">"name"</span>: <span class="string">"שרביט אש"</span>, <span class="string">"power"</span>: <span class="number">100</span>, <span class="string">"price"</span>: <span class="number">500</span>},
+    {<span class="string">"name"</span>: <span class="string">"טבעת קרח"</span>, <span class="string">"power"</span>: <span class="number">80</span>, <span class="string">"price"</span>: <span class="number">300</span>},
+    {<span class="string">"name"</span>: <span class="string">"שיקוי ריפוי"</span>, <span class="string">"power"</span>: <span class="number">60</span>, <span class="string">"price"</span>: <span class="number">200</span>}
+]
+
+<span class="comment"># מיון לפי עוצמה</span>
+by_power = <span class="function">sorted</span>(magical_items, key=<span class="keyword">lambda</span> item: item[<span class="string">"power"</span>])
+
+<span class="comment"># מיון לפי מחיר</span>
+by_price = <span class="function">sorted</span>(magical_items, key=<span class="keyword">lambda</span> item: item[<span class="string">"price"</span>])
+
+<span class="comment"># מיון לפי שם</span>
+by_name = <span class="function">sorted</span>(magical_items, key=<span class="keyword">lambda</span> item: item[<span class="string">"name"</span>])</pre>
+            </div>
+
+            <h3>🔍 סינון מילונים</h3>
+            <div class="code-block">
+                <pre><span class="comment"># פריטים חזקים (עוצמה > 70)</span>
+powerful = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> item: item[<span class="string">"power"</span>] > <span class="number">70</span>, magical_items))
+
+<span class="comment"># פריטים זולים (מחיר < 400)</span>
+cheap = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> item: item[<span class="string">"price"</span>] < <span class="number">400</span>, magical_items))
+
+<span class="comment"># פריטים שהשם שלהם מכיל "קרח"</span>
+ice_items = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> item: <span class="string">"קרח"</span> <span class="keyword">in</span> item[<span class="string">"name"</span>], magical_items))</pre>
+            </div>
+
+            <h3>⚡ חישובים עם מילונים</h3>
+            <div class="code-block">
+                <pre><span class="comment"># חישוב יחס עוצמה-מחיר</span>
+value_ratio = <span class="function">list</span>(<span class="function">map</span>(<span class="keyword">lambda</span> item: item[<span class="string">"power"</span>] / item[<span class="string">"price"</span>], magical_items))
+
+<span class="comment"># מיון לפי יחס עוצמה-מחיר (הכי משתלם)</span>
+best_value = <span class="function">sorted</span>(magical_items, 
+                      key=<span class="keyword">lambda</span> item: item[<span class="string">"power"</span>] / item[<span class="string">"price"</span>], 
+                      reverse=<span class="keyword">True</span>)</pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 5</h4>
+                <p>איך נסנן פריטים שהעוצמה שלהם גדולה מהמחיר?</p>
+                <div class="options" data-answer="1">
+                    <div class="option" data-value="0">filter(lambda item: item["power"] < item["price"], items)</div>
+                    <div class="option" data-value="1">filter(lambda item: item["power"] > item["price"], items)</div>
+                    <div class="option" data-value="2">filter(lambda item: item["power"] == item["price"], items)</div>
+                    <div class="option" data-value="3">filter(lambda item: item["price"] - item["power"], items)</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💡 תרגיל מעשי 4</h4>
+                <p><strong>משימה:</strong> מצאו את הפריט עם יחס העוצמה-מחיר הטוב ביותר</p>
+                <div class="code-block">
+                    <pre>items = [
+    {<span class="string">"name"</span>: <span class="string">"חרב"</span>, <span class="string">"power"</span>: <span class="number">50</span>, <span class="string">"price"</span>: <span class="number">100</span>},
+    {<span class="string">"name"</span>: <span class="string">"מגן"</span>, <span class="string">"power"</span>: <span class="number">40</span>, <span class="string">"price"</span>: <span class="number">60</span>},
+    {<span class="string">"name"</span>: <span class="string">"קשת"</span>, <span class="string">"power"</span>: <span class="number">60</span>, <span class="string">"price"</span>: <span class="number">120</span>}
+]
+
+<span class="comment"># מיינו לפי יחס עוצמה/מחיר (הגבוה ביותר ראשון)</span>
+best_items = <span class="function">sorted</span>(items, key=<span class="keyword">lambda</span> ___: ___, reverse=___)</pre>
+                </div>
+                <button onclick="toggleSolution('sol4')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol4">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>best_items = <span class="function">sorted</span>(items, 
+                      key=<span class="keyword">lambda</span> item: item[<span class="string">"power"</span>] / item[<span class="string">"price"</span>], 
+                      reverse=<span class="keyword">True</span>)
+
+<span class="comment"># הצגת תוצאות:</span>
+<span class="keyword">for</span> item <span class="keyword">in</span> best_items:
+    ratio = item[<span class="string">"power"</span>] / item[<span class="string">"price"</span>]
+    <span class="function">print</span>(<span class="string">f"{item['name']}: יחס = {ratio:.2f}"</span>)
+    
+<span class="comment"># מגן: יחס = 0.67</span>
+<span class="comment"># חרב: יחס = 0.50</span>
+<span class="comment"># קשת: יחס = 0.50</span></pre>
+                    </div>
+                    <p><strong>הסבר:</strong> המגן הוא הכי משתלם - 0.67 יחידות עוצמה לכל זהב!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Advanced Sorting -->
+        <div class="slide" id="slide6">
+            <span class="level-badge level-hard">🔴 רמה: מתקדם</span>
+            <h2>🔥 מיון מתקדם - קריטריונים מרובים</h2>
+            
+            <h3>🎯 מיון לפי מספר קריטריונים</h3>
+            <div class="code-block">
+                <pre><span class="comment"># לחשים עם רמת קושי ועוצמה</span>
+spells = [
+    {<span class="string">"name"</span>: <span class="string">"אש"</span>, <span class="string">"difficulty"</span>: <span class="number">3</span>, <span class="string">"power"</span>: <span class="number">100</span>},
+    {<span class="string">"name"</span>: <span class="string">"מים"</span>, <span class="string">"difficulty"</span>: <span class="number">2</span>, <span class="string">"power"</span>: <span class="number">80</span>},
+    {<span class="string">"name"</span>: <span class="string">"רעם"</span>, <span class="string">"difficulty"</span>: <span class="number">3</span>, <span class="string">"power"</span>: <span class="number">120</span>},
+    {<span class="string">"name"</span>: <span class="string">"רוח"</span>, <span class="string">"difficulty"</span>: <span class="number">2</span>, <span class="string">"power"</span>: <span class="number">90</span>}
+]
+
+<span class="comment"># מיון לפי קושי, ואז לפי עוצמה</span>
+sorted_spells = <span class="function">sorted</span>(spells, 
+                         key=<span class="keyword">lambda</span> s: (s[<span class="string">"difficulty"</span>], s[<span class="string">"power"</span>]))
+
+<span class="comment"># תוצאה: קודם כל לחשי רמה 2 ממוינים לפי עוצמה,</span>
+<span class="comment">#         אחר כך לחשי רמה 3 ממוינים לפי עוצמה</span></pre>
+            </div>
+
+            <div class="tip-box">
+                <strong>💡 טיפ חשוב:</strong> כשמחזירים tuple מ-lambda, Python ממיין תחילה לפי האלמנט הראשון, ואז לפי השני, וכן הלאה.
+            </div>
+
+            <h3>⚡ מיון מורכב עם תנאים</h3>
+            <div class="code-block">
+                <pre>items = [
+    {<span class="string">"name"</span>: <span class="string">"חרב נדירה"</span>, <span class="string">"rarity"</span>: <span class="number">5</span>, <span class="string">"price"</span>: <span class="number">1000</span>},
+    {<span class="string">"name"</span>: <span class="string">"מגן רגיל"</span>, <span class="string">"rarity"</span>: <span class="number">2</span>, <span class="string">"price"</span>: <span class="number">100</span>},
+    {<span class="string">"name"</span>: <span class="string">"קשת נדירה"</span>, <span class="string">"rarity"</span>: <span class="number">5</span>, <span class="string">"price"</span>: <span class="number">800</span>}
+]
+
+<span class="comment"># מיון: קודם נדירים (rarity >= 5), אז רגילים</span>
+<span class="comment">#       בתוך כל קבוצה - לפי מחיר</span>
+sorted_items = <span class="function">sorted</span>(items, 
+                       key=<span class="keyword">lambda</span> i: (i[<span class="string">"rarity"</span>] < <span class="number">5</span>, i[<span class="string">"price"</span>]))</pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 6</h4>
+                <p>מה התוצאה של מיון זה?</p>
+                <div class="code-block">
+                    <pre>data = [(<span class="string">"חרב"</span>, <span class="number">50</span>), (<span class="string">"מגן"</span>, <span class="number">50</span>), (<span class="string">"אבן"</span>, <span class="number">30</span>)]
+result = <span class="function">sorted</span>(data, key=<span class="keyword">lambda</span> x: (x[<span class="number">1</span>], x[<span class="number">0</span>]))</pre>
+                </div>
+                <div class="options" data-answer="3">
+                    <div class="option" data-value="0">מיון לפי שם בלבד</div>
+                    <div class="option" data-value="1">מיון לפי ערך בלבד</div>
+                    <div class="option" data-value="2">מיון לפי שם, ואז לפי ערך</div>
+                    <div class="option" data-value="3">מיון לפי ערך, ואז לפי שם (אלפביתית)</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💡 תרגיל מורכב</h4>
+                <p><strong>משימה:</strong> מיינו פריטים לפי נדירות (גבוה לנמוך), ובאותה נדירות - לפי מחיר (נמוך לגבוה)</p>
+                <div class="code-block">
+                    <pre>items = [
+    {<span class="string">"name"</span>: <span class="string">"חרב"</span>, <span class="string">"rarity"</span>: <span class="number">5</span>, <span class="string">"price"</span>: <span class="number">1000</span>},
+    {<span class="string">"name"</span>: <span class="string">"מגן"</span>, <span class="string">"rarity"</span>: <span class="number">3</span>, <span class="string">"price"</span>: <span class="number">500</span>},
+    {<span class="string">"name"</span>: <span class="string">"קשת"</span>, <span class="string">"rarity"</span>: <span class="number">5</span>, <span class="string">"price"</span>: <span class="number">800</span>}
+]
+
+sorted_items = <span class="function">sorted</span>(items, key=<span class="keyword">lambda</span> ___: ___)</pre>
+                </div>
+                <button onclick="toggleSolution('sol5')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol5">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>sorted_items = <span class="function">sorted</span>(items, key=<span class="keyword">lambda</span> i: (-i[<span class="string">"rarity"</span>], i[<span class="string">"price"</span>]))
+
+<span class="comment"># תוצאה:</span>
+<span class="keyword">for</span> item <span class="keyword">in</span> sorted_items:
+    <span class="function">print</span>(<span class="string">f"{item['name']}: נדירות={item['rarity']}, מחיר={item['price']}"</span>)
+    
+<span class="comment"># קשת: נדירות=5, מחיר=800</span>
+<span class="comment"># חרב: נדירות=5, מחיר=1000</span>
+<span class="comment"># מגן: נדירות=3, מחיר=500</span></pre>
+                    </div>
+                    <p><strong>הסבר:</strong> השלילי ב-<code>-i["rarity"]</code> גורם למיון הפוך (מהגבוה לנמוך). המחיר נשאר חיובי למיון רגיל.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Main Challenge -->
+        <div class="slide" id="slide7">
+            <span class="level-badge level-hard">🔴 רמה: אתגר</span>
+            <h2>🎮 אתגר הרפתקה: חנות הפריטים הקסומים!</h2>
+            
+            <div class="story-box">
+                <p>🏰 משימתכם היא לעזור לסוחר לנהל את החנות המלאה!</p>
+            </div>
+
+            <div class="tip-box">
+                <strong>📋 דרישות המשימה:</strong>
+                <ol style="list-style: decimal; padding-right: 20px; margin-top: 10px;">
+                    <li>צרו רשימת פריטים קסומים עם שם, מחיר בסיס ונדירות</li>
+                    <li>כתבו lambda שמחשבת מחיר סופי: <code>מחיר בסיס × (1 + נדירות/10)</code></li>
+                    <li>השתמשו ב-filter כדי למצוא פריטים נדירים (נדירות > 7)</li>
+                    <li>מיינו את הפריטים לפי המחיר הסופי</li>
+                </ol>
+            </div>
+
+            <div class="challenge-box">
+                <h4>💻 תבנית לפתרון</h4>
+                <div class="code-block">
+                    <pre>items = [
+    {<span class="string">"name"</span>: <span class="string">"מטה הברק"</span>, <span class="string">"base_price"</span>: <span class="number">1000</span>, <span class="string">"rarity"</span>: <span class="number">9</span>},
+    {<span class="string">"name"</span>: <span class="string">"גלימת הסתרה"</span>, <span class="string">"base_price"</span>: <span class="number">800</span>, <span class="string">"rarity"</span>: <span class="number">7</span>},
+    {<span class="string">"name"</span>: <span class="string">"נעלי מהירות"</span>, <span class="string">"base_price"</span>: <span class="number">500</span>, <span class="string">"rarity"</span>: <span class="number">5</span>}
+]
+
+<span class="comment"># השלימו את הקוד:</span>
+final_price = <span class="keyword">lambda</span> item: ___
+rare_items = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> item: ___, items))
+sorted_items = <span class="function">sorted</span>(items, key=<span class="keyword">lambda</span> item: ___)</pre>
+                </div>
+                <button onclick="toggleSolution('sol6')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol6">
+                    <strong>✅ פתרון מלא:</strong>
+                    <div class="code-block">
+                        <pre>items = [
+    {<span class="string">"name"</span>: <span class="string">"מטה הברק"</span>, <span class="string">"base_price"</span>: <span class="number">1000</span>, <span class="string">"rarity"</span>: <span class="number">9</span>},
+    {<span class="string">"name"</span>: <span class="string">"גלימת הסתרה"</span>, <span class="string">"base_price"</span>: <span class="number">800</span>, <span class="string">"rarity"</span>: <span class="number">7</span>},
+    {<span class="string">"name"</span>: <span class="string">"נעלי מהירות"</span>, <span class="string">"base_price"</span>: <span class="number">500</span>, <span class="string">"rarity"</span>: <span class="number">5</span>}
+]
+
+<span class="comment"># חישוב מחיר סופי</span>
+final_price = <span class="keyword">lambda</span> item: item[<span class="string">"base_price"</span>] * (<span class="number">1</span> + item[<span class="string">"rarity"</span>]/<span class="number">10</span>)
+
+<span class="comment"># סינון פריטים נדירים</span>
+rare_items = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> item: item[<span class="string">"rarity"</span>] > <span class="number">7</span>, items))
+
+<span class="comment"># מיון לפי מחיר סופי</span>
+sorted_items = <span class="function">sorted</span>(items, key=<span class="keyword">lambda</span> item: final_price(item))
+
+<span class="function">print</span>(<span class="string">"פריטים נדירים:"</span>, [i[<span class="string">"name"</span>] <span class="keyword">for</span> i <span class="keyword">in</span> rare_items])
+<span class="function">print</span>(<span class="string">"ממוינים לפי מחיר:"</span>, [i[<span class="string">"name"</span>] <span class="keyword">for</span> i <span class="keyword">in</span> sorted_items])</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Best Practices -->
+        <div class="slide" id="slide8">
+            <h2>💎 טיפים לשימוש נכון ב-Lambda</h2>
+            <ul>
+                <li>✅ השתמשו ב-lambda כשצריך פונקציה פשוטה וקצרה</li>
+                <li>❌ אם הלוגיקה מורכבת - העדיפו פונקציה רגילה</li>
+                <li>🎯 lambda מצוינת כפרמטר לפונקציות כמו sort, filter, map</li>
+                <li>📖 שמרו על קריאות הקוד - לפעמים פונקציה רגילה ברורה יותר</li>
+            </ul>
+
+            <h3>🎨 דוגמאות לשימוש נכון</h3>
+            <div class="code-block">
+                <pre><span class="comment"># ✅ טוב - פונקציה פשוטה</span>
+squares = <span class="function">map</span>(<span class="keyword">lambda</span> x: x**<span class="number">2</span>, [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>])
+
+<span class="comment"># ❌ פחות טוב - לוגיקה מורכבת</span>
+<span class="comment"># עדיף פונקציה רגילה!</span>
+result = <span class="keyword">lambda</span> x: x**<span class="number">2</span> <span class="keyword">if</span> x > <span class="number">0</span> <span class="keyword">else</span> -x**<span class="number">2</span> <span class="keyword">if</span> x < <span class="number">0</span> <span class="keyword">else</span> <span class="number">0</span>
+
+<span class="comment"># ✅ טוב - כפרמטר ל-sorted</span>
+students = [{<span class="string">"name"</span>: <span class="string">"יוסי"</span>, <span class="string">"grade"</span>: <span class="number">95</span>}, {<span class="string">"name"</span>: <span class="string">"דנה"</span>, <span class="string">"grade"</span>: <span class="number">88</span>}]
+top_students = <span class="function">sorted</span>(students, key=<span class="keyword">lambda</span> s: s[<span class="string">"grade"</span>], reverse=<span class="keyword">True</span>)</pre>
+            </div>
+
+            <div class="question-box">
+                <h4>❓ שאלת הבנה 7</h4>
+                <p>באיזה מקרה עדיף להשתמש בפונקציה רגילה במקום ב-lambda?</p>
+                <div class="options" data-answer="0">
+                    <div class="option" data-value="0">כשהפונקציה מכילה לוגיקה מורכבת עם תנאים מרובים</div>
+                    <div class="option" data-value="1">כשצריך פונקציה פשוטה כפרמטר ל-sorted</div>
+                    <div class="option" data-value="2">כשרוצים לכתוב קוד קצר יותר</div>
+                    <div class="option" data-value="3">כשמשתמשים בפונקציות filter או map</div>
+                </div>
+                <div class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Practice Exercises -->
+        <div class="slide" id="slide9">
+            <h2>🎯 תרגול נוסף</h2>
+
+            <div class="challenge-box">
+                <h4>📝 תרגיל 1: פלינדרום</h4>
+                <p>כתבו lambda שבודקת אם מילה היא פלינדרום:</p>
+                <div class="code-block">
+                    <pre>is_palindrome = <span class="keyword">lambda</span> _____
+<span class="function">print</span>(is_palindrome(<span class="string">"אבא"</span>))    <span class="comment"># True</span>
+<span class="function">print</span>(is_palindrome(<span class="string">"שלום"</span>))  <span class="comment"># False</span></pre>
+                </div>
+                <button onclick="toggleSolution('sol7')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol7">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>is_palindrome = <span class="keyword">lambda</span> word: word == word[::-<span class="number">1</span>]
+<span class="function">print</span>(is_palindrome(<span class="string">"אבא"</span>))    <span class="comment"># True</span>
+<span class="function">print</span>(is_palindrome(<span class="string">"שלום"</span>))  <span class="comment"># False</span></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="challenge-box">
+                <h4>📝 תרגיל 2: מספרים ראשוניים קטנים</h4>
+                <p>השתמשו ב-filter למצוא מספרים שאינם מתחלקים ב-2, 3 או 5:</p>
+                <div class="code-block">
+                    <pre>numbers = <span class="function">list</span>(<span class="function">range</span>(<span class="number">1</span>, <span class="number">31</span>))
+special = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> _____: _____, numbers))</pre>
+                </div>
+                <button onclick="toggleSolution('sol8')">🔓 הצג פתרון</button>
+                <div class="solution" id="sol8">
+                    <strong>✅ פתרון:</strong>
+                    <div class="code-block">
+                        <pre>numbers = <span class="function">list</span>(<span class="function">range</span>(<span class="number">1</span>, <span class="number">31</span>))
+special = <span class="function">list</span>(<span class="function">filter</span>(<span class="keyword">lambda</span> x: x % <span class="number">2</span> != <span class="number">0</span> <span class="keyword">and</span> x % <span class="number">3</span> != <span class="number">0</span> <span class="keyword">and</span> x % <span class="number">5</span> != <span class="number">0</span>, numbers))
+<span class="function">print</span>(special)  <span class="comment"># [1, 7, 11, 13, 17, 19, 23, 29]</span></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Summary -->
+        <div class="slide" id="slide10">
+            <h2>📚 סיכום</h2>
+            <div class="story-box">
+                <h3 style="color: var(--accent-gold); margin-bottom: 15px;">🎓 מה למדנו היום?</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        ✨ <strong>Lambda היא כלי חזק</strong> לפונקציות קצרות וחד-פעמיות
+                    </li>
+                    <li style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        🔢 <strong>התחלנו מהפשוט</strong> - מספרים, מחרוזות
+                    </li>
+                    <li style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        📚 <strong>התקדמנו למבנים מורכבים</strong> - טאפלים ומילונים
+                    </li>
+                    <li style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        🎯 <strong>שימושית במיוחד</strong> עם filter, map, sorted
+                    </li>
+                    <li style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        ⚖️ <strong>חשוב להשתמש במידה</strong> - לא כל פונקציה צריכה להיות lambda
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tip-box" style="margin-top: 30px;">
+                <h3 style="color: var(--accent-gold); margin-bottom: 15px;">🚀 המשך מכאן</h3>
+                <p><strong>למדו עוד:</strong></p>
+                <ul style="list-style: disc; padding-right: 20px; margin-top: 10px;">
+                    <li>פונקציות מסדר גבוה (Higher-order functions)</li>
+                    <li>List comprehensions כחלופה ל-lambda</li>
+                    <li>פונקציות מתקדמות: reduce, all, any</li>
+                    <li>Decorators ו-Closures</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(106, 13, 173, 0.3), rgba(255, 215, 0, 0.2)); border-radius: 15px;">
+                <h3 style="font-size: 2em; color: var(--accent-gold); margin-bottom: 15px;">🎉 כל הכבוד! 🎉</h3>
+                <p style="font-size: 1.2em;">סיימתם את מצגת Lambda Expressions!</p>
+                <p style="margin-top: 15px; color: var(--accent-cyan);">עכשיו אתם מוכנים להשתמש בפונקציות אנונימיות בקוד שלכם! 🚀</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">⏭ קודם</button>
+            <div class="slide-indicator" id="slideIndicator"></div>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ⏮</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 10;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSlideIndicator();
+            updateNavigationButtons();
+            createParticles();
+            initializeQuestions();
+        });
+
+        function changeSlide(direction) {
+            const slides = document.querySelectorAll('.slide');
+            slides[currentSlide - 1].classList.remove('active');
+            
+            currentSlide += direction;
+            if (currentSlide < 1) currentSlide = 1;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            
+            slides[currentSlide - 1].classList.add('active');
+            updateSlideIndicator();
+            updateNavigationButtons();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateSlideIndicator() {
+            const indicator = document.getElementById('slideIndicator');
+            indicator.innerHTML = '';
+            for (let i = 1; i <= totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot' + (i === currentSlide ? ' active' : '');
+                indicator.appendChild(dot);
+            }
+        }
+
+        function updateNavigationButtons() {
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+
+        function initializeQuestions() {
+            const questionBoxes = document.querySelectorAll('.question-box');
+            questionBoxes.forEach(box => {
+                const options = box.querySelector('.options');
+                const correctAnswer = options.getAttribute('data-answer');
+                const optionElements = options.querySelectorAll('.option');
+                
+                const optionsArray = Array.from(optionElements);
+                shuffleArray(optionsArray);
+                optionsArray.forEach(option => options.appendChild(option));
+                
+                optionElements.forEach(option => {
+                    option.addEventListener('click', function() {
+                        if (this.parentElement.querySelector('.option.correct, .option.wrong')) {
+                            return;
+                        }
+                        
+                        const selectedValue = this.getAttribute('data-value');
+                        const feedback = box.querySelector('.feedback');
+                        
+                        optionElements.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        
+                        if (selectedValue === correctAnswer) {
+                            this.classList.add('correct');
+                            feedback.textContent = '✅ נכון! תשובה מצוינת!';
+                            feedback.className = 'feedback correct show';
+                        } else {
+                            this.classList.add('wrong');
+                            optionElements.forEach(opt => {
+                                if (opt.getAttribute('data-value') === correctAnswer) {
+                                    opt.classList.add('correct');
+                                }
+                            });
+                            feedback.textContent = '❌ לא מדויק. התשובה הנכונה מסומנת בירוק.';
+                            feedback.className = 'feedback wrong show';
+                        }
+                    });
+                });
+            });
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function toggleSolution(solutionId) {
+            const solution = document.getElementById(solutionId);
+            solution.classList.toggle('show');
+        }
+
+        function createParticles() {
+            const particleCount = 20;
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 6 + 's';
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 6000);
+                }, i * 300);
+            }
+            
+            setInterval(() => {
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const particle = document.createElement('div');
+                        particle.className = 'particle';
+                        particle.style.left = Math.random() * 100 + '%';
+                        particle.style.animationDelay = '0s';
+                        document.body.appendChild(particle);
+                        
+                        setTimeout(() => particle.remove(), 6000);
+                    }, i * 2000);
+                }
+            }, 6000);
+        }
+    </script>
+</body>
+</html>

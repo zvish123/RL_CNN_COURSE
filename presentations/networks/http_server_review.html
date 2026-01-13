@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סיכום פרויקט שרת HTTP - תרגילים 4.4-4.11</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-darker: #050814;
+            --accent-cyan: #00d9ff;
+            --accent-purple: #b066ff;
+            --accent-green: #00ff88;
+            --accent-red: #ff4757;
+            --accent-yellow: #ffd93d;
+            --text-primary: #e8eaf6;
+            --text-secondary: #9fa8da;
+            --code-bg: #1a1f3a;
+            --card-bg: #131729;
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(176, 102, 255, 0.1) 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 217, 255, 0.1) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        h1 {
+            font-size: 3em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .nav-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+        }
+        
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 5px 30px rgba(0, 217, 255, 0.2);
+            transform: translateY(-5px);
+        }
+        
+        h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        h3 {
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+            color: var(--accent-purple);
+        }
+        
+        .icon {
+            font-size: 1.2em;
+        }
+        
+        .scores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, var(--code-bg) 0%, var(--card-bg) 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border-right: 4px solid var(--accent-green);
+            transition: all 0.3s ease;
+        }
+        
+        .score-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2);
+        }
+        
+        .score-card.excellent {
+            border-right-color: var(--accent-green);
+        }
+        
+        .score-card.good {
+            border-right-color: var(--accent-cyan);
+        }
+        
+        .score-card.average {
+            border-right-color: var(--accent-yellow);
+        }
+        
+        .score-card.needs-work {
+            border-right-color: var(--accent-red);
+        }
+        
+        .score-card h4 {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .score-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .score-details {
+            font-size: 1em;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent-green);
+            font-size: 1em;
+        }
+        
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-right: 3px solid var(--accent-purple);
+            direction: ltr;
+            text-align: left;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+        }
+        
+        .keyword { color: #ff79c6; }
+        .function { color: #50fa7b; }
+        .string { color: #f1fa8c; }
+        .comment { color: #6272a4; font-style: italic; }
+        .number { color: #bd93f9; }
+        
+        .error-box {
+            background: linear-gradient(135deg, rgba(255, 71, 87, 0.1) 0%, rgba(255, 71, 87, 0.05) 100%);
+            border: 2px solid var(--accent-red);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .success-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 255, 136, 0.05) 100%);
+            border: 2px solid var(--accent-green);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .warning-box {
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.1) 0%, rgba(255, 217, 61, 0.05) 100%);
+            border: 2px solid var(--accent-yellow);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .quiz-question {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid rgba(176, 102, 255, 0.3);
+            direction: rtl;
+        }
+        
+        .quiz-question h4 {
+            color: var(--accent-purple);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .reveal-btn {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .reveal-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(176, 102, 255, 0.4);
+        }
+        
+        .answer {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 217, 255, 0.05);
+            border-right: 4px solid var(--accent-cyan);
+            border-radius: 8px;
+            animation: slideDown 0.4s ease;
+        }
+        
+        .answer.revealed {
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from { 
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-box {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid var(--accent-cyan);
+        }
+        
+        .stat-number {
+            font-size: 3em;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+        
+        .stat-label {
+            font-size: 1em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        
+        .highlight {
+            background: linear-gradient(135deg, var(--accent-yellow), var(--accent-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+        }
+        
+        ul, ol {
+            margin: 15px 0;
+            padding-right: 30px;
+            direction: rtl;
+        }
+        
+        li {
+            margin: 10px 0;
+            color: var(--text-secondary);
+            direction: rtl;
+        }
+        
+        li strong {
+            color: var(--text-primary);
+        }
+        
+        .trophy {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--code-bg);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .comparison-table th {
+            background: var(--accent-purple);
+            color: white;
+            padding: 15px;
+            text-align: right;
+            font-weight: 600;
+        }
+        
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .comparison-table tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+        
+        .check {
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+        
+        .cross {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .scores-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+            }
+            
+            .nav-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 סיכום פרויקט שרת HTTP</h1>
+            <p class="subtitle">מגמת סייבר • קורס רשתות תקשורת • תרגילים 4.4-4.11</p>
+        </header>
+
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="showSection('mission')">📋 המשימה</button>
+            <button class="nav-btn" onclick="showSection('scores')">📊 סיכום ציונים</button>
+            <button class="nav-btn" onclick="showSection('errors')">🐛 טעויות נפוצות</button>
+            <button class="nav-btn" onclick="showSection('quiz')">❓ שאלות זיהוי</button>
+            <button class="nav-btn" onclick="showSection('solutions')">⭐ פתרונות מיוחדים</button>
+            <button class="nav-btn" onclick="showSection('test')">✅ מבחן ידע</button>
+        </div>
+
+        <!-- Section 1: The Mission -->
+        <div id="mission" class="section active">
+            <div class="card">
+                <h2><span class="icon">📋</span> המשימה שקיבלתם</h2>
+                
+                <h3>מטרת הפרויקט</h3>
+                <p>בניית <strong>שרת HTTP מלא</strong> ב-Python תוך שימוש ב-<code>socket</code> ישיר, ללא ספריות של צד שלישי כמו <code>flask</code> או <code>requests</code>.</p>
+                
+                <h3>סדרת התרגילים (4.4-4.11)</h3>
+                <ol>
+                    <li><strong>4.4 - שרת בסיסי:</strong> טיפול בבקשות GET, קבצים סטטיים, Status Codes (200, 302, 403, 404, 500)</li>
+                    <li><strong>4.5 - תוכן דינמי:</strong> יצירת endpoint <code>/calculate-next</code> שמחזיר "5"</li>
+                    <li><strong>4.6 - פרמטרים:</strong> הוספת תמיכה ב-<code>/calculate-next?num=X</code> → מחזיר X+1</li>
+                    <li><strong>4.7-4.8 - מספר פרמטרים:</strong> הבנה וכתיבת URLs עם פרמטרים מרובים</li>
+                    <li><strong>4.9 - חישוב מתמטי:</strong> <code>/calculate-area?height=H&width=W</code> → שטח משולש</li>
+                    <li><strong>4.10 - POST:</strong> העלאת קבצים לשרת (binary data!)</li>
+                    <li><strong>4.11 - שרת תמונות:</strong> שילוב POST + GET להעלאה ואחזור תמונות</li>
+                </ol>
+
+                <h3>דרישות נוספות</h3>
+                <ul>
+                    <li>📄 <strong>README</strong> - תיעוד מלא של השרת</li>
+                    <li>🔧 <strong>client_post.py</strong> - client ב-socket לבדיקת POST</li>
+                    <li>✅ <strong>tests_manual</strong> - תיעוד בדיקות ידניות</li>
+                    <li>💻 <strong>קוד נקי</strong> - פונקציות מפוצלות, docstrings, error handling</li>
+                </ul>
+
+                <div class="warning-box">
+                    <h4>⚠️ האתגר המרכזי - POST עם תמונות</h4>
+                    <p>הבעיה הקשה ביותר: <strong>איך לטפל בנתונים בינאריים (תמונות) בבקשות POST?</strong></p>
+                    <p>רוב הטעויות נבעו מכך ש-<code>decode('utf-8')</code> על תמונה הורס את הנתונים! 🎯</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Scores Summary -->
+        <div id="scores" class="section">
+            <div class="card">
+                <h2><span class="icon">📊</span> סיכום ציונים </h2>
+                
+<!--                <div class="stats-grid">-->
+<!--                    <div class="stat-box">-->
+<!--                        <div class="stat-number">87</div>-->
+<!--                        <div class="stat-label">ממוצע כללי</div>-->
+<!--                    </div>-->
+<!--                    <div class="stat-box">-->
+<!--                        <div class="stat-number">99</div>-->
+<!--                        <div class="stat-label">ציון הגבוה ביותר</div>-->
+<!--                    </div>-->
+<!--                    <div class="stat-box">-->
+<!--                        <div class="stat-number">34</div>-->
+<!--                        <div class="stat-label">ציון הנמוך ביותר</div>-->
+<!--                    </div>-->
+<!--                    <div class="stat-box">-->
+<!--                        <div class="stat-number">45%</div>-->
+<!--                        <div class="stat-label">הצליחו ב-POST</div>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+<!--                <h3>פירוט ציונים לפי עבודות</h3>-->
+<!--                <div class="scores-grid">-->
+<!--                    <div class="score-card excellent">-->
+<!--                        <h4>🥇 עבודה 2</h4>-->
+<!--                        <div class="score-number">99</div>-->
+<!--                        <div class="score-details">✅ POST מושלם • ✅ parse_parameters • ⚠️ README חלקי</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card excellent">-->
+<!--                        <h4>🥈 עבודה 1 & 8</h4>-->
+<!--                        <div class="score-number">98</div>-->
+<!--                        <div class="score-details">✅ POST מושלם • ✅ README מלא • ⚠️ חסר parse_parameters</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card good">-->
+<!--                        <h4>עבודה 7</h4>-->
+<!--                        <div class="score-number">91</div>-->
+<!--                        <div class="score-details">✅ Regex מקצועי • ✅ תיעוד ויזואלי • ⚠️ client בrequests</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card good">-->
+<!--                        <h4>עבודה 9</h4>-->
+<!--                        <div class="score-number">90</div>-->
+<!--                        <div class="score-details">✅ כל התרגילים • ❌ POST decode שגוי</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card average">-->
+<!--                        <h4>עבודה 3</h4>-->
+<!--                        <div class="score-number">84.5</div>-->
+<!--                        <div class="score-details">✅ README מצוין • ❌ POST decode שגוי</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card average">-->
+<!--                        <h4>עבודה 6</h4>-->
+<!--                        <div class="score-number">83</div>-->
+<!--                        <div class="score-details">✅ POST עובד • ✅ calculate-trip • ❌ חסר README</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card average">-->
+<!--                        <h4>עבודה 11</h4>-->
+<!--                        <div class="score-number">82</div>-->
+<!--                        <div class="score-details">✅ POST המושלם ביותר! • ❌ חסר תיעוד</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card average">-->
+<!--                        <h4>עבודה 10</h4>-->
+<!--                        <div class="score-number">79</div>-->
+<!--                        <div class="score-details">✅ POST עובד • ❌ client בrequests • ❌ WEBROOT hardcoded</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card needs-work">-->
+<!--                        <h4>עבודה 4</h4>-->
+<!--                        <div class="score-number">75</div>-->
+<!--                        <div class="score-details">✅ README מצוין • ❌ POST decode שגוי • ❌ חסר client</div>-->
+<!--                    </div>-->
+
+<!--                    <div class="score-card needs-work">-->
+<!--                        <h4>עבודה 5</h4>-->
+<!--                        <div class="score-number">34</div>-->
+<!--                        <div class="score-details">✅ תרגיל 4.4 מושלם • ❌ רק תרגיל אחד (מתוך 8)</div>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+                <h3>📈 ניתוח התפלגות</h3>
+                <table class="comparison-table">
+                    <tr>
+                        <th>קריטריון</th>
+                        <th>% הצלחה</th>
+                        <th>הערות</th>
+                    </tr>
+                    <tr>
+                        <td>תרגיל 4.4 (שרת בסיסי)</td>
+                        <td><span class="check">✓</span> 100%</td>
+                        <td>כולם הצליחו!</td>
+                    </tr>
+                    <tr>
+                        <td>POST עובד נכון</td>
+                        <td><span class="check">✓</span> 45%</td>
+                        <td>5 מתוך 11 - האתגר הגדול</td>
+                    </tr>
+                    <tr>
+                        <td>README מלא</td>
+                        <td><span class="check">✓</span> 64%</td>
+                        <td>7 מתוך 11</td>
+                    </tr>
+                    <tr>
+                        <td>client_post.py קיים</td>
+                        <td><span class="check">✓</span> 73%</td>
+                        <td>8 מתוך 11</td>
+                    </tr>
+                    <tr>
+                        <td>parse_parameters פונקציה</td>
+                        <td><span class="cross">✗</span> 18%</td>
+                        <td>רק 2 מתוך 11 יצרו!</td>
+                    </tr>
+                    <tr>
+                        <td>תרגיל 4.5 (ללא פרמטר)</td>
+                        <td><span class="check">✓</span> 55%</td>
+                        <td>6 מתוך 11</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 3: Common Errors -->
+        <div id="errors" class="section">
+            <div class="card">
+                <h2><span class="icon">🐛</span> הטעויות החוזרות - למה חשוב?</h2>
+                
+                <div class="error-box">
+                    <h3>🔴 טעות #1: decode מוקדם ב-POST (55% מהעבודות!)</h3>
+                    <p><strong>הבעיה הקריטית ביותר - 6 מתוך 11 עבודות!</strong></p>
+                    
+                    <h4>❌ הקוד השגוי:</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">handle_client</span>(client_socket):
+    <span class="comment"># שלב 1: decode של הכל!</span>
+    client_request = client_socket.<span class="function">recv</span>(<span class="number">4096</span>).<span class="function">decode</span>(<span class="string">'utf-8'</span>, errors=<span class="string">'ignore'</span>)
+    
+    <span class="comment"># שלב 2: חילוץ body (כבר decoded)</span>
+    body = client_request.<span class="function">split</span>(<span class="string">'\r\n\r\n'</span>)[<span class="number">1</span>]
+    
+    <span class="comment"># שלב 3: ניסיון לשמור (נתונים אבדו!)</span>
+    <span class="keyword">with</span> <span class="function">open</span>(filepath, <span class="string">'wb'</span>) <span class="keyword">as</span> f:
+        f.<span class="function">write</span>(body.<span class="function">encode</span>(<span class="string">'latin-1'</span>))  <span class="comment"># נתונים כבר נפגמו!</span></code></pre>
+
+                    <h4>🎯 למה זה לא עובד?</h4>
+                    <ul>
+                        <li><strong>תמונות הן bytes, לא טקסט!</strong> - decode('utf-8') מנסה להמיר bytes למחרוזת</li>
+                        <li><code>errors='ignore'</code> <strong>משמיד נתונים!</strong> - bytes לא-תקינים נעלמים</li>
+                        <li>encode('latin-1') לא מחזיר את הנתונים המקוריים</li>
+                    </ul>
+
+                    <h4>✅ הפתרון הנכון:</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">handle_client</span>(client_socket):
+    <span class="comment"># שלב 1: קרא bytes (לא decode!)</span>
+    data = client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+    
+    <span class="comment"># שלב 2: מצא איפה נגמרים ה-headers</span>
+    header_end = data.<span class="function">find</span>(<span class="keyword">b</span><span class="string">'\r\n\r\n'</span>)
+    
+    <span class="comment"># שלב 3: decode רק את ה-headers</span>
+    headers_text = data[:header_end].<span class="function">decode</span>(<span class="string">'utf-8'</span>, errors=<span class="string">'ignore'</span>)
+    
+    <span class="comment"># שלב 4: ה-body נשאר bytes!</span>
+    body = data[header_end + <span class="number">4</span>:]
+    
+    <span class="comment"># שלב 5: קרא Content-Length ולולאה</span>
+    content_length = <span class="function">get_content_length</span>(headers_text)
+    <span class="keyword">while</span> <span class="function">len</span>(body) < content_length:
+        body += client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+    
+    <span class="comment"># שלב 6: שמור ישירות (ללא encode!)</span>
+    <span class="keyword">with</span> <span class="function">open</span>(filepath, <span class="string">'wb'</span>) <span class="keyword">as</span> f:
+        f.<span class="function">write</span>(body)  <span class="comment"># body כבר bytes!</span></code></pre>
+                </div>
+
+                <div class="error-box">
+                    <h3>🔴 טעות #2: חסר לולאת קריאה ב-POST (36%)</h3>
+                    
+                    <h4>❌ הקוד השגוי:</h4>
+                    <pre><code><span class="comment"># קריאה אחת בלבד!</span>
+data = client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+<span class="comment"># אם התמונה > 4KB, רק חלק נקרא!</span></code></pre>
+
+                    <h4>✅ הפתרון הנכון:</h4>
+                    <pre><code>content_length = <span class="function">int</span>(headers.<span class="function">get</span>(<span class="string">'content-length'</span>, <span class="number">0</span>))
+body = body_start  <span class="comment"># מה שכבר קראנו</span>
+
+<span class="keyword">while</span> <span class="function">len</span>(body) < content_length:
+    chunk = client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+    <span class="keyword">if</span> <span class="keyword">not</span> chunk:
+        <span class="keyword">break</span>
+    body += chunk</code></pre>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ טעות #3: חסר parse_parameters (82%!)</h3>
+                    <p><strong>רק 2 עבודות יצרו פונקציה כללית לפרסור פרמטרים!</strong></p>
+                    
+                    <h4>הבעיה: קוד חוזר בכל endpoint</h4>
+                    <pre><code><span class="comment"># ב-calculate-next:</span>
+query_string = url.<span class="function">split</span>(<span class="string">'?'</span>)[<span class="number">1</span>]
+params = {}
+<span class="keyword">for</span> param <span class="keyword">in</span> query_string.<span class="function">split</span>(<span class="string">'&'</span>):
+    <span class="keyword">if</span> <span class="string">'='</span> <span class="keyword">in</span> param:
+        key, value = param.<span class="function">split</span>(<span class="string">'='</span>, <span class="number">1</span>)
+        params[key] = value
+
+<span class="comment"># ב-calculate-area: אותו קוד בדיוק!</span>
+<span class="comment"># ב-image: שוב אותו קוד!</span>
+<span class="comment"># ב-upload: עוד פעם!</span></code></pre>
+
+                    <h4>✅ הפתרון - DRY (Don't Repeat Yourself):</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">parse_parameters</span>(url):
+    <span class="string">"""מחלץ פרמטרים מ-URL ומחזיר dictionary"""</span>
+    <span class="keyword">if</span> <span class="string">'?'</span> <span class="keyword">not</span> <span class="keyword">in</span> url:
+        <span class="keyword">return</span> {}
+    
+    query_string = url.<span class="function">split</span>(<span class="string">'?'</span>)[<span class="number">1</span>]
+    params = {}
+    <span class="keyword">for</span> param <span class="keyword">in</span> query_string.<span class="function">split</span>(<span class="string">'&'</span>):
+        <span class="keyword">if</span> <span class="string">'='</span> <span class="keyword">in</span> param:
+            key, value = param.<span class="function">split</span>(<span class="string">'='</span>, <span class="number">1</span>)
+            params[key] = value
+    <span class="keyword">return</span> params
+
+<span class="comment"># שימוש פשוט בכל endpoint:</span>
+params = <span class="function">parse_parameters</span>(resource)
+num = params.<span class="function">get</span>(<span class="string">'num'</span>, <span class="string">'4'</span>)</code></pre>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ טעות #4: שימוש ב-requests במקום socket (27%)</h3>
+                    <p>3 עבודות השתמשו ב-<code>requests</code> בקובץ ה-client</p>
+                    
+                    <h4>למה זה בעיה?</h4>
+                    <ul>
+                        <li>המטרה: ללמוד HTTP ברמה נמוכה</li>
+                        <li><code>requests</code> מסתיר את כל הפרטים</li>
+                        <li>לא לומדים לבנות בקשות HTTP ידנית</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ טעות #5: חסר תיעוד (36%)</h3>
+                    <ul>
+                        <li><strong>חסר README</strong> - 4 עבודות</li>
+                        <li><strong>חסר תרגילים 4.7-4.8</strong> - 5 עבודות</li>
+                        <li><strong>חסר docstrings</strong> - 8 עבודות</li>
+                        <li><strong>חסר tests_manual</strong> - 6 עבודות</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Quiz Questions -->
+        <div id="quiz" class="section">
+            <div class="card">
+                <h2><span class="icon">❓</span> שאלות זיהוי טעויות - האם אתם יודעים למצוא?</h2>
+
+                <div class="quiz-question">
+                    <h4>שאלה 1: מה הבעיה בקוד הזה?</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">handle_post</span>(client_socket):
+    request = client_socket.<span class="function">recv</span>(<span class="number">4096</span>).<span class="function">decode</span>(<span class="string">'utf-8'</span>)
+    body = request.<span class="function">split</span>(<span class="string">'\r\n\r\n'</span>)[<span class="number">1</span>]
+    
+    <span class="keyword">with</span> <span class="function">open</span>(<span class="string">'image.jpg'</span>, <span class="string">'wb'</span>) <span class="keyword">as</span> f:
+        f.<span class="function">write</span>(body.<span class="function">encode</span>())</code></pre>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>🔴 שלוש בעיות קריטיות!</strong>
+                        <ol>
+                            <li><strong>decode('utf-8') על תמונה</strong> - תמונות הן binary data, לא טקסט! decode הורס את הנתונים</li>
+                            <li><strong>errors='ignore' חסר</strong> - אבל גם עם זה הנתונים נהרסים</li>
+                            <li><strong>encode() לא מחזיר את המקור</strong> - אי אפשר "לבטל" decode שגוי</li>
+                        </ol>
+                        <p><strong>הפתרון:</strong> לעולם לא לעשות decode על ה-body! להפריד headers ל-decode, ו-body להשאיר bytes.</p>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 2: למה התמונות הגדולות לא עובדות?</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">handle_client</span>(client_socket):
+    data = client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+    header_end = data.<span class="function">find</span>(<span class="keyword">b</span><span class="string">'\r\n\r\n'</span>)
+    body = data[header_end + <span class="number">4</span>:]
+    
+    <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">'wb'</span>) <span class="keyword">as</span> f:
+        f.<span class="function">write</span>(body)</code></pre>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>🔴 חסרה לולאת קריאה!</strong>
+                        <p><code>recv(4096)</code> קורא רק <strong>4KB</strong>. אם התמונה 100KB - רק 4% מהתמונה נשמר!</p>
+                        <p><strong>הפתרון:</strong></p>
+                        <pre><code>content_length = <span class="function">get_content_length</span>(headers)
+<span class="keyword">while</span> <span class="function">len</span>(body) < content_length:
+    chunk = client_socket.<span class="function">recv</span>(<span class="number">4096</span>)
+    <span class="keyword">if</span> <span class="keyword">not</span> chunk:
+        <span class="keyword">break</span>
+    body += chunk</code></pre>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 3: האם הקוד הזה יעבוד?</h4>
+                    <pre><code><span class="keyword">if</span> url.<span class="function">startswith</span>(<span class="string">'/calculate-next?'</span>):
+    num = <span class="function">int</span>(url.<span class="function">split</span>(<span class="string">'='</span>)[<span class="number">1</span>])
+    result = <span class="function">str</span>(num + <span class="number">1</span>)
+    <span class="comment"># send response...</span></code></pre>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>⚠️ חלקית!</strong>
+                        <p><strong>הבעיה:</strong></p>
+                        <ul>
+                            <li>✅ יעבוד ל-<code>/calculate-next?num=5</code></li>
+                            <li>❌ לא יעבוד ל-<code>/calculate-next</code> (ללא פרמטר)</li>
+                            <li>❌ לא יעבוד אם יש & נוסף</li>
+                        </ul>
+                        <p><strong>הפתרון:</strong> שתי אפשרויות:</p>
+                        <pre><code><span class="comment"># אפשרות 1: טיפול נפרד</span>
+<span class="keyword">if</span> url == <span class="string">'/calculate-next'</span>:
+    result = <span class="string">"5"</span>
+<span class="keyword">elif</span> url.<span class="function">startswith</span>(<span class="string">'/calculate-next?'</span>):
+    params = <span class="function">parse_parameters</span>(url)
+    num = <span class="function">int</span>(params.<span class="function">get</span>(<span class="string">'num'</span>, <span class="string">'4'</span>))
+    result = <span class="function">str</span>(num + <span class="number">1</span>)</code></pre>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 4: מה חסר בפונקציה הזו?</h4>
+                    <pre><code><span class="keyword">def</span> <span class="function">get_file_data</span>(filename):
+    <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">'rb'</span>) <span class="keyword">as</span> f:
+        <span class="keyword">return</span> f.<span class="function">read</span>()</code></pre>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>⚠️ חסר error handling!</strong>
+                        <p><strong>מה יקרה אם:</strong></p>
+                        <ul>
+                            <li>הקובץ לא קיים? → <code>FileNotFoundError</code> ייזרק</li>
+                            <li>אין הרשאות קריאה? → <code>PermissionError</code></li>
+                            <li>הדיסק מלא? → <code>IOError</code></li>
+                        </ul>
+                        <p><strong>הפתרון:</strong></p>
+                        <pre><code><span class="keyword">def</span> <span class="function">get_file_data</span>(filename):
+    <span class="string">"""קורא קובץ בצורה בינארית"""</span>
+    <span class="keyword">try</span>:
+        <span class="keyword">with</span> <span class="function">open</span>(filename, <span class="string">'rb'</span>) <span class="keyword">as</span> f:
+            <span class="keyword">return</span> f.<span class="function">read</span>()
+    <span class="keyword">except</span> <span class="function">FileNotFoundError</span>:
+        <span class="keyword">return</span> <span class="keyword">None</span>
+    <span class="keyword">except</span> <span class="function">Exception</span> <span class="keyword">as</span> e:
+        <span class="function">print</span>(<span class="function">f</span><span class="string">"Error reading file: {e}"</span>)
+        <span class="keyword">return</span> <span class="keyword">None</span></code></pre>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 5: איזו גישה נכונה יותר?</h4>
+                    
+                    <p><strong>גישה A:</strong></p>
+                    <pre><code><span class="keyword">if</span> filetype == <span class="string">'html'</span>:
+    content_type = <span class="string">'text/html'</span>
+<span class="keyword">elif</span> filetype == <span class="string">'jpg'</span>:
+    content_type = <span class="string">'image/jpeg'</span>
+<span class="keyword">elif</span> filetype == <span class="string">'css'</span>:
+    content_type = <span class="string">'text/css'</span>
+<span class="comment"># ... 10 תנאים נוספים</span></code></pre>
+
+                    <p><strong>גישה B:</strong></p>
+                    <pre><code>CONTENT_TYPES = {
+    <span class="string">'html'</span>: <span class="string">'text/html'</span>,
+    <span class="string">'jpg'</span>: <span class="string">'image/jpeg'</span>,
+    <span class="string">'css'</span>: <span class="string">'text/css'</span>,
+    <span class="comment"># ...</span>
+}
+content_type = CONTENT_TYPES.<span class="function">get</span>(filetype, <span class="string">'text/plain'</span>)</code></pre>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>✅ גישה B בהחלט!</strong>
+                        <p><strong>למה?</strong></p>
+                        <ul>
+                            <li>📖 <strong>קריאות:</strong> 1 שורה במקום 20</li>
+                            <li>🔧 <strong>תחזוקה:</strong> קל להוסיף סוגי קבצים</li>
+                            <li>⚡ <strong>ביצועים:</strong> O(1) במקום O(n)</li>
+                            <li>🎯 <strong>ברירת מחדל:</strong> <code>.get()</code> מטפל בערכים לא קיימים</li>
+                        </ul>
+                        <p><strong>עיקרון:</strong> DRY (Don't Repeat Yourself) - נתונים ב-dictionary, לוגיקה בקוד</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Special Solutions -->
+        <div id="solutions" class="section">
+            <div class="card">
+                <h2><span class="icon">⭐</span> פתרונות מיוחדים - מה ללמוד?</h2>
+
+                <div class="success-box">
+                    <h3>🏆 פתרון מיוחד #1: POST המושלם (עבודה 11)</h3>
+                    <p><strong>מה עשו נכון:</strong> קריאה עד <code>\r\n\r\n</code> בלולאה!</p>
+                    
+                    <pre><code><span class="comment"># קריאה חכמה עד סוף Headers</span>
+request_data = <span class="keyword">b</span><span class="string">""</span>
+<span class="keyword">while</span> <span class="keyword">b</span><span class="string">'\r\n\r\n'</span> <span class="keyword">not</span> <span class="keyword">in</span> request_data:
+    chunk = client_socket.<span class="function">recv</span>(<span class="number">1024</span>)
+    <span class="keyword">if</span> <span class="keyword">not</span> chunk:
+        <span class="keyword">break</span>
+    request_data += chunk
+
+<span class="comment"># הפרדה מדויקת</span>
+header_part, body_part = request_data.<span class="function">split</span>(<span class="keyword">b</span><span class="string">'\r\n\r\n'</span>, <span class="number">1</span>)
+header_text = header_part.<span class="function">decode</span>()  <span class="comment"># רק headers!</span>
+
+<span class="comment"># לולאה לקריאת שאר ה-body</span>
+<span class="keyword">while</span> <span class="function">len</span>(body_part) < content_length:
+    chunk = client_socket.<span class="function">recv</span>(<span class="number">1024</span>)
+    <span class="keyword">if</span> <span class="keyword">not</span> chunk:
+        <span class="keyword">break</span>
+    body_part += chunk</code></pre>
+
+                    <h4>💡 מה ללמוד:</h4>
+                    <ul>
+                        <li><strong>חשיבה מקדימה:</strong> לא סומכים שהכל יגיע ב-recv אחד</li>
+                        <li><strong>הפרדה נכונה:</strong> מצא את <code>\r\n\r\n</code> קודם, אח"כ decode</li>
+                        <li><strong>שמירה על bytes:</strong> body נשאר binary עד הסוף</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h3>🏆 פתרון מיוחד #2: Named Groups ב-Regex (עבודה 7)</h3>
+                    <p><strong>גישה מקצועית מאוד:</strong></p>
+                    
+                    <pre><code><span class="comment"># במקום:</span>
+match = re.<span class="function">search</span>(<span class="keyword">r</span><span class="string">'height=(\d+)&width=(\d+)'</span>, url)
+height = <span class="function">int</span>(match.<span class="function">group</span>(<span class="number">1</span>))  <span class="comment"># מה זה 1?</span>
+width = <span class="function">int</span>(match.<span class="function">group</span>(<span class="number">2</span>))   <span class="comment"># מה זה 2?</span>
+
+<span class="comment"># גישה מקצועית:</span>
+pattern = re.<span class="function">compile</span>(
+    <span class="keyword">r</span><span class="string">'/calculate-area\?'</span>
+    <span class="keyword">r</span><span class="string">'height=(?P&lt;height&gt;-?\d*\.?\d+)&'</span>
+    <span class="keyword">r</span><span class="string">'width=(?P&lt;width&gt;-?\d*\.?\d+)'</span>
+)
+match = pattern.<span class="function">match</span>(url)
+height = <span class="function">float</span>(match.<span class="function">group</span>(<span class="string">'height'</span>))  <span class="comment"># ברור מה זה!</span>
+width = <span class="function">float</span>(match.<span class="function">group</span>(<span class="string">'width'</span>))    <span class="comment"># קריא!</span></code></pre>
+
+                    <h4>💡 מה ללמוד:</h4>
+                    <ul>
+                        <li><strong>קריאות:</strong> <code>group('height')</code> ברור הרבה יותר מ-<code>group(1)</code></li>
+                        <li><strong>תחזוקה:</strong> אם משנים את ה-regex, שמות נשארים</li>
+                        <li><strong>תמיכה במספרים עשרוניים:</strong> <code>-?\d*\.?\d+</code> מטפל ב-3.5, -10.2</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h3>🏆 פתרון מיוחד #3: parse_parameters מושלם (עבודה 2)</h3>
+                    
+                    <pre><code><span class="keyword">def</span> <span class="function">parse_parameters</span>(url):
+    <span class="string">"""
+    מחלץ פרמטרים מ-URL ומחזיר dictionary
+    
+    Args:
+        url (str): URL עם פרמטרים
+    
+    Returns:
+        dict: {key: value} של הפרמטרים
+    
+    Example:
+        >>> parse_parameters('/calc?height=3&width=4')
+        {'height': '3', 'width': '4'}
+    """</span>
+    <span class="keyword">if</span> <span class="string">'?'</span> <span class="keyword">not</span> <span class="keyword">in</span> url:
+        <span class="keyword">return</span> {}
+    
+    query_string = url.<span class="function">split</span>(<span class="string">'?'</span>)[<span class="number">1</span>]
+    params = {}
+    
+    <span class="keyword">for</span> param <span class="keyword">in</span> query_string.<span class="function">split</span>(<span class="string">'&'</span>):
+        <span class="keyword">if</span> <span class="string">'='</span> <span class="keyword">in</span> param:
+            key, value = param.<span class="function">split</span>(<span class="string">'='</span>, <span class="number">1</span>)
+            params[key] = value
+    
+    <span class="keyword">return</span> params</code></pre>
+
+                    <h4>💡 מה ללמוד:</h4>
+                    <ul>
+                        <li><strong>DRY:</strong> קוד שחוזר = פונקציה!</li>
+                        <li><strong>docstring מצוין:</strong> תיעוד מלא עם דוגמה</li>
+                        <li><strong>טיפול ב-edge cases:</strong> בדיקת '?' וגם '='</li>
+                        <li><strong>split(maxsplit=1):</strong> מה אם יש = בתוך הערך?</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h3>🏆 פתרון מיוחד #4: candidate_paths לתמונות (עבודות 1, 8)</h3>
+                    <p><strong>חשיבה גמישה:</strong></p>
+                    
+                    <pre><code><span class="comment"># משתמש מבקש: /image?image-name=cat</span>
+<span class="comment"># אבל הקובץ נקרא cat.jpg</span>
+
+candidate_paths = [
+    os.path.<span class="function">join</span>(UPLOADS_DIR, image_name),        <span class="comment"># cat</span>
+    os.path.<span class="function">join</span>(UPLOADS_DIR, image_name + <span class="string">'.jpg'</span>),  <span class="comment"># cat.jpg</span>
+    os.path.<span class="function">join</span>(UPLOADS_DIR, image_name + <span class="string">'.jpeg'</span>), <span class="comment"># cat.jpeg</span>
+    os.path.<span class="function">join</span>(UPLOADS_DIR, image_name + <span class="string">'.png'</span>),  <span class="comment"># cat.png</span>
+]
+
+image_path = <span class="keyword">None</span>
+<span class="keyword">for</span> p <span class="keyword">in</span> candidate_paths:
+    <span class="keyword">if</span> os.path.<span class="function">isfile</span>(p):
+        image_path = p
+        <span class="keyword">break</span></code></pre>
+
+                    <h4>💡 מה ללמוד:</h4>
+                    <ul>
+                        <li><strong>UX:</strong> חשיבה על החוויה של המשתמש</li>
+                        <li><strong>גמישות:</strong> לא מחייבים סיומת מדויקת</li>
+                        <li><strong>fallback:</strong> מנסים אפשרויות עד שמוצאים</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h3>🏆 פתרון מיוחד #5: build_response (עבודה 2, 5)</h3>
+                    
+                    <pre><code><span class="keyword">def</span> <span class="function">build_response</span>(status_code, status_text, content=<span class="keyword">b</span><span class="string">''</span>, 
+                     content_type=<span class="keyword">None</span>, extra_headers=<span class="keyword">None</span>):
+    <span class="string">"""בונה HTTP response מלא"""</span>
+    response = <span class="function">f</span><span class="string">'HTTP/1.1 {status_code} {status_text}\r\n'</span>
+    
+    <span class="keyword">if</span> content_type:
+        response += <span class="function">f</span><span class="string">'Content-Type: {content_type}\r\n'</span>
+    
+    response += <span class="function">f</span><span class="string">'Content-Length: {len(content)}\r\n'</span>
+    response += <span class="string">'Connection: close\r\n'</span>
+    
+    <span class="keyword">if</span> extra_headers:
+        <span class="keyword">for</span> header, value <span class="keyword">in</span> extra_headers.<span class="function">items</span>():
+            response += <span class="function">f</span><span class="string">'{header}: {value}\r\n'</span>
+    
+    response += <span class="string">'\r\n'</span>
+    
+    <span class="keyword">return</span> response.<span class="function">encode</span>() + content</code></pre>
+
+                    <h4>💡 מה ללמוד:</h4>
+                    <ul>
+                        <li><strong>הפשטה:</strong> פונקציה אחת לכל ה-responses</li>
+                        <li><strong>גמישות:</strong> פרמטרים אופציונליים</li>
+                        <li><strong>עקביות:</strong> כל response נבנה באותו מבנה</li>
+                        <li><strong>DRY:</strong> ללא כפילויות בקוד</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Knowledge Test -->
+        <div id="test" class="section">
+            <div class="card">
+                <h2><span class="icon">✅</span> מבחן ידע והבנה</h2>
+
+                <div class="quiz-question">
+                    <h4>שאלה 1: מה ההבדל בין binary ו-text mode?</h4>
+                    <p>בחר את התשובה הנכונה:</p>
+                    <ul>
+                        <li>א. אין הבדל, זה אותו הדבר</li>
+                        <li>ב. binary רק לתמונות, text לכל השאר</li>
+                        <li>ג. binary עובד עם bytes, text עם strings</li>
+                        <li>ד. binary מהיר יותר</li>
+                    </ul>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>✅ תשובה נכונה: C</strong>
+                        <p><strong>הסבר:</strong></p>
+                        <ul>
+                            <li><strong>Binary mode ('rb', 'wb'):</strong> עובד עם bytes - נתונים גולמיים</li>
+                            <li><strong>Text mode ('r', 'w'):</strong> עובד עם strings - מנסה לעשות decode/encode אוטומטי</li>
+                            <li>✅ תמונות, וידאו, קבצים דחוסים = binary</li>
+                            <li>✅ טקסט, HTML, JSON = יכול להיות text</li>
+                            <li>⚠️ ב-HTTP POST של תמונה - חייבים binary!</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 2: למה Content-Length חשוב?</h4>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>📏 Content-Length הוא קריטי!</strong>
+                        <p><strong>סיבות:</strong></p>
+                        <ol>
+                            <li><strong>יודע מתי לעצור לקרוא:</strong> ללא זה, איך יודעים שהגענו לסוף?</li>
+                            <li><strong>מונע קריאה מיותרת:</strong> לא ממשיכים לקרוא אחרי שהגענו לכמות</li>
+                            <li><strong>תמיכה ב-keep-alive:</strong> מספר requests באותו connection</li>
+                            <li><strong>בדיקת תקינות:</strong> וידוא שקיבלנו הכל</li>
+                        </ol>
+                        <p><strong>בלי Content-Length:</strong> השרת לא יודע איפה נגמר ה-body!</p>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 3: מה יקרה אם נעשה decode('utf-8') על תמונה?</h4>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>💥 הרס נתונים!</strong>
+                        <p><strong>מה קורה:</strong></p>
+                        <ol>
+                            <li><strong>שלב 1:</strong> Python מנסה לפרש bytes כ-UTF-8</li>
+                            <li><strong>שלב 2:</strong> bytes לא-תקינים (רוב התמונה) נכשלים</li>
+                            <li><strong>שלב 3:</strong> עם <code>errors='ignore'</code> - bytes אלו נמחקים!</li>
+                            <li><strong>שלב 4:</strong> התמונה הופכת לשטויות</li>
+                        </ol>
+                        <p><strong>דוגמה:</strong></p>
+                        <pre><code>original = <span class="keyword">b</span><span class="string">'\xff\xd8\xff\xe0...'</span>  <span class="comment"># JPEG header</span>
+decoded = original.<span class="function">decode</span>(<span class="string">'utf-8'</span>, errors=<span class="string">'ignore'</span>)
+encoded = decoded.<span class="function">encode</span>(<span class="string">'latin-1'</span>)
+<span class="comment"># encoded != original - הנתונים אבדו!</span></code></pre>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 4: מה ההבדל בין GET ל-POST?</h4>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>🔄 הבדלים מרכזיים:</strong>
+                        <table class="comparison-table">
+                            <tr>
+                                <th>קריטריון</th>
+                                <th>GET</th>
+                                <th>POST</th>
+                            </tr>
+                            <tr>
+                                <td>נתונים</td>
+                                <td>ב-URL (query string)</td>
+                                <td>ב-Body</td>
+                            </tr>
+                            <tr>
+                                <td>גודל</td>
+                                <td>מוגבל (URL length)</td>
+                                <td>לא מוגבל</td>
+                            </tr>
+                            <tr>
+                                <td>שימוש</td>
+                                <td>קבלת מידע</td>
+                                <td>שליחת מידע</td>
+                            </tr>
+                            <tr>
+                                <td>Cache</td>
+                                <td>כן</td>
+                                <td>לא</td>
+                            </tr>
+                            <tr>
+                                <td>Bookmarkable</td>
+                                <td>כן</td>
+                                <td>לא</td>
+                            </tr>
+                            <tr>
+                                <td>קבצים</td>
+                                <td>לא</td>
+                                <td>כן!</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 5: איך בודקים אם קריאת POST הצליחה?</h4>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>✅ כמה דרכים לבדיקה:</strong>
+                        <ol>
+                            <li><strong>בדיקת גודל:</strong>
+                                <pre><code><span class="keyword">if</span> <span class="function">len</span>(body) != content_length:
+    <span class="function">print</span>(<span class="string">"Error: incomplete upload"</span>)</code></pre>
+                            </li>
+                            <li><strong>בדיקת הקובץ:</strong>
+                                <pre><code><span class="keyword">if</span> os.path.<span class="function">getsize</span>(filepath) == content_length:
+    <span class="function">print</span>(<span class="string">"Success!"</span>)</code></pre>
+                            </li>
+                            <li><strong>בדיקה ויזואלית:</strong> פתח את התמונה ב-browser!</li>
+                            <li><strong>hash comparison:</strong>
+                                <pre><code><span class="keyword">import</span> hashlib
+original_hash = hashlib.<span class="function">md5</span>(original_data).<span class="function">hexdigest</span>()
+uploaded_hash = hashlib.<span class="function">md5</span>(uploaded_data).<span class="function">hexdigest</span>()
+<span class="keyword">if</span> original_hash == uploaded_hash:
+    <span class="function">print</span>(<span class="string">"Perfect match!"</span>)</code></pre>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <h4>שאלה 6 (מתקדמים): מה קורה אם 2 requests מגיעים בו-זמנית?</h4>
+                    
+                    <button class="reveal-btn" onclick="toggleAnswer(this)">הצג תשובה</button>
+                    <div class="answer">
+                        <strong>🔄 תלוי ביישום!</strong>
+                        <p><strong>בשרתים שלכם (רוב העבודות):</strong></p>
+                        <ul>
+                            <li>❌ <strong>Sequential processing:</strong> אחד אחרי השני</li>
+                            <li>הלקוח השני ממתין עד שהראשון מסיים</li>
+                            <li><code>server_socket.accept()</code> בלולאה → עובד רק עם אחד בכל פעם</li>
+                        </ul>
+                        
+                        <p><strong>בשרת אמיתי (production):</strong></p>
+                        <ul>
+                            <li>✅ <strong>Threading:</strong> thread נפרד לכל client</li>
+                            <li>✅ <strong>Async IO:</strong> event loop (asyncio)</li>
+                            <li>✅ <strong>Process pool:</strong> תהליכים מרובים</li>
+                        </ul>
+                        
+                        <p><strong>דוגמה ל-threading:</strong></p>
+                        <pre><code><span class="keyword">import</span> threading
+
+<span class="keyword">while</span> <span class="keyword">True</span>:
+    client_socket, addr = server_socket.<span class="function">accept</span>()
+    thread = threading.<span class="function">Thread</span>(
+        target=handle_client,
+        args=(client_socket,)
+    )
+    thread.<span class="function">start</span>()</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>🎓 מצגת זו נוצרה לצורכי למידה | מגמת סייבר - קורס רשתות תקשורת</p>
+            <p>💡 זכרו: טעויות הן חלק מהלמידה - החשוב זה להבין ולתקן!</p>
+        </footer>
+    </div>
+
+    <script>
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleAnswer(button) {
+            const answerDiv = button.nextElementSibling;
+            
+            if (answerDiv.classList.contains('revealed')) {
+                answerDiv.classList.remove('revealed');
+                button.textContent = 'הצג תשובה';
+            } else {
+                answerDiv.classList.add('revealed');
+                button.textContent = 'הסתר תשובה';
+            }
+        }
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight') {
+                // Navigate to previous section
+                navigateSection(-1);
+            } else if (e.key === 'ArrowLeft') {
+                // Navigate to next section
+                navigateSection(1);
+            }
+        });
+
+        function navigateSection(direction) {
+            const sections = ['mission', 'scores', 'errors', 'quiz', 'solutions', 'test'];
+            const currentSection = document.querySelector('.section.active');
+            const currentId = currentSection.id;
+            const currentIndex = sections.indexOf(currentId);
+            const nextIndex = (currentIndex + direction + sections.length) % sections.length;
+            
+            showSection(sections[nextIndex]);
+        }
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>

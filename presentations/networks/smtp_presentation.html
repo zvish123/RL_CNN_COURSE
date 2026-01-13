@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פרוטוקול SMTP - מצגת אינטראקטיבית</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00ff88;
+            --secondary: #00d4ff;
+            --accent: #ff006e;
+            --dark: #0a0e27;
+            --darker: #050814;
+            --light: #e0fff0;
+            --code-bg: #1a1f3a;
+            --shadow: rgba(0, 255, 136, 0.3);
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background Animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 0, 110, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem;
+            opacity: 0;
+            transform: translateX(100px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Title Slide */
+        .title-slide {
+            text-align: center;
+        }
+
+        .title-slide h1 {
+            font-size: 5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            animation: glowPulse 3s ease-in-out infinite;
+            letter-spacing: -2px;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { filter: drop-shadow(0 0 20px var(--shadow)); }
+            50% { filter: drop-shadow(0 0 40px var(--shadow)); }
+        }
+
+        .title-slide .subtitle {
+            font-size: 1.8rem;
+            color: var(--secondary);
+            font-weight: 300;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.3s;
+        }
+
+        .title-slide .badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            font-size: 1rem;
+            color: var(--primary);
+            margin-top: 2rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards 0.6s;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+
+        /* Content Slides */
+        h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), transparent);
+            animation: expandLine 0.8s ease forwards;
+        }
+
+        @keyframes expandLine {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        h3 {
+            font-size: 2rem;
+            color: var(--secondary);
+            margin: 2rem 0 1rem 0;
+        }
+
+        p, li {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            color: var(--light);
+            opacity: 0.9;
+        }
+
+        ul {
+            list-style: none;
+            margin-right: 2rem;
+        }
+
+        li {
+            position: relative;
+            padding-right: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        li::before {
+            content: '▸';
+            position: absolute;
+            right: 0;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            font-family: 'Fira Code', monospace;
+            direction: ltr;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2);
+        }
+
+        .code-block::before {
+            content: '< CODE />';
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: var(--primary);
+            opacity: 0.5;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: var(--light);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            direction: ltr;
+        }
+
+        .code-comment {
+            color: #888;
+        }
+
+        .code-keyword {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .code-string {
+            color: var(--secondary);
+        }
+
+        .code-function {
+            color: var(--primary);
+        }
+
+        /* Quiz Section */
+        .quiz-container {
+            background: rgba(10, 14, 39, 0.6);
+            border: 3px solid var(--secondary);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin: 2rem 0;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 50px rgba(0, 212, 255, 0.3);
+        }
+
+        .quiz-question {
+            font-size: 1.5rem;
+            color: var(--secondary);
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .quiz-options {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .quiz-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            text-align: right;
+        }
+
+        .quiz-option:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 20px var(--shadow);
+        }
+
+        .quiz-option.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--primary);
+            animation: correctPulse 0.5s ease;
+        }
+
+        .quiz-option.wrong {
+            background: rgba(255, 0, 110, 0.2);
+            border-color: var(--accent);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .quiz-feedback {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        .quiz-feedback.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .quiz-feedback.correct {
+            background: rgba(0, 255, 136, 0.15);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .quiz-feedback.wrong {
+            background: rgba(255, 0, 110, 0.15);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border-right: 5px solid var(--primary);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        /* Info Cards */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .info-card {
+            background: rgba(26, 31, 58, 0.6);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px var(--shadow);
+            border-color: var(--secondary);
+        }
+
+        .info-card h4 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-card p {
+            font-size: 1.1rem;
+        }
+
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-family: 'Rubik', sans-serif;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+            color: var(--darker);
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid var(--primary);
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            margin: 2rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(26, 31, 58, 0.6);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1.2rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        th {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        td {
+            font-size: 1.1rem;
+        }
+
+        tr:hover {
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 2rem 1.5rem;
+            }
+
+            .title-slide h1 {
+                font-size: 3rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            h3 {
+                font-size: 1.5rem;
+            }
+
+            p, li {
+                font-size: 1.1rem;
+            }
+
+            .code-block {
+                padding: 1rem;
+            }
+
+            .info-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* TCP Three-way Handshake Diagram */
+        .diagram {
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(26, 31, 58, 0.6);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            max-width: 600px;
+        }
+
+        .connection-line {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            gap: 1rem;
+        }
+
+        .node {
+            flex: 1;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .arrow {
+            font-size: 2rem;
+            color: var(--secondary);
+        }
+
+        .packet-label {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">24</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <div class="slide-content title-slide">
+                <h1>פרוטוקול SMTP</h1>
+                <p class="subtitle">Simple Mail Transfer Protocol</p>
+                <div class="badge">רשתות תקשורת | מגמת סייבר</div>
+            </div>
+        </div>
+
+        <!-- Slide 2: מהו SMTP -->
+        <div class="slide" data-slide="2">
+            <div class="slide-content">
+                <h2>מהו פרוטוקול SMTP?</h2>
+                <div class="highlight-box">
+                    <p><strong>SMTP (Simple Mail Transfer Protocol)</strong> הוא הפרוטוקול הסטנדרטי לשליחת דואר אלקטרוני באינטרנט.</p>
+                </div>
+                <ul>
+                    <li>פותח בשנת 1982 בימי ה-ARPANET הראשונים</li>
+                    <li>משמש להעברת הודעות דואר בין שרתים שונים</li>
+                    <li>פרוטוקול <strong>טקסטואלי</strong> (לא בינארי) - משתמש בפקודות פשוטות</li>
+                    <li>עובד מעל פרוטוקול <strong>TCP</strong> על פורט <strong>25</strong></li>
+                    <li>לא מאפשר משיכת דואר - רק שליחה (לכך משמשים POP3 ו-IMAP)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: מיקום במודל OSI -->
+        <div class="slide" data-slide="3">
+            <div class="slide-content">
+                <h2>מיקום במודל OSI/TCP-IP</h2>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>שכבת יישום (Application Layer)</h4>
+                        <p>SMTP, HTTP, FTP, DNS, DHCP</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>שכבת תעבורה (Transport Layer)</h4>
+                        <p>TCP, UDP</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>שכבת רשת (Network Layer)</h4>
+                        <p>IP, ICMP, ARP</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>שכבה פיזית (Physical Layer)</h4>
+                        <p>Ethernet, WiFi</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <p>💡 <strong>SMTP פועל בשכבת היישום</strong> ומסתמך על TCP לחיבור אמין</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Quiz 1 -->
+        <div class="slide" data-slide="4">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #1</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">על איזה פרוטוקול בשכבת התעבורה מסתמך SMTP?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">ICMP - כי הוא מיועד לשליחת הודעות ברשת</div>
+                        <div class="quiz-option" data-correct="false">HTTP - כי גם הוא פרוטוקול טקסטואלי</div>
+                        <div class="quiz-option" data-correct="false">UDP - כי הוא מהיר יותר ומתאים להעברת מיילים</div>
+                        <div class="quiz-option" data-correct="true">TCP - כי הוא מבטיח העברה אמינה של ההודעות</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: תהליך חיבור TCP -->
+        <div class="slide" data-slide="5">
+            <div class="slide-content">
+                <h2>תהליך יצירת חיבור TCP</h2>
+                <p>לפני שליחת מייל, יש ליצור חיבור TCP באמצעות <strong>Three-way Handshake</strong>:</p>
+                <div class="diagram">
+                    <div class="connection-line">
+                        <div class="node">Client</div>
+                        <div class="arrow">←</div>
+                        <div class="node">Server</div>
+                    </div>
+                    <div class="packet-label">1. SYN (Synchronize)</div>
+                    
+                    <div class="connection-line" style="flex-direction: row-reverse;">
+                        <div class="node">Server</div>
+                        <div class="arrow">→</div>
+                        <div class="node">Client</div>
+                    </div>
+                    <div class="packet-label">2. SYN-ACK (Synchronize-Acknowledge)</div>
+                    
+                    <div class="connection-line">
+                        <div class="node">Client</div>
+                        <div class="arrow">←</div>
+                        <div class="node">Server</div>
+                    </div>
+                    <div class="packet-label">3. ACK (Acknowledge)</div>
+                </div>
+                <div class="highlight-box">
+                    <p>✓ לאחר השלמת התהליך, החיבור מוכן ולקוח ה-SMTP יכול להתחיל לשלוח פקודות</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: פקודות SMTP -->
+        <div class="slide" data-slide="6">
+            <div class="slide-content">
+                <h2>פקודות SMTP עיקריות</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>תיאור</th>
+                                <th>דוגמה</th>
+                                <th>פקודה</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>הזדהות מול השרת</td>
+                                <td>EHLO example.com</td>
+                                <td><strong>EHLO/HELO</strong></td>
+                            </tr>
+                            <tr>
+                                <td>ציון כתובת השולח</td>
+                                <td>MAIL FROM:&lt;user@domain.com&gt;</td>
+                                <td><strong>MAIL FROM</strong></td>
+                            </tr>
+                            <tr>
+                                <td>ציון כתובת הנמען</td>
+                                <td>RCPT TO:&lt;recipient@domain.com&gt;</td>
+                                <td><strong>RCPT TO</strong></td>
+                            </tr>
+                            <tr>
+                                <td>התחלת תוכן ההודעה</td>
+                                <td>DATA</td>
+                                <td><strong>DATA</strong></td>
+                            </tr>
+                            <tr>
+                                <td>סיום החיבור</td>
+                                <td>QUIT</td>
+                                <td><strong>QUIT</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="highlight-box">
+                    <p>⚠️ <strong>חשוב:</strong> כל פקודה חייבת להסתיים ב-<code>\r\n</code> (Carriage Return + Line Feed)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Quiz 2 -->
+        <div class="slide" data-slide="7">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #2</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">באיזה שלב בתקשורת SMTP מועבר תוכן ההודעה בפועל?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">מיד לאחר הפקודה EHLO - כאשר מזהים את השרת</div>
+                        <div class="quiz-option" data-correct="false">בפקודת MAIL FROM - יחד עם כתובת השולח</div>
+                        <div class="quiz-option" data-correct="true">לאחר הפקודה DATA - עד לקבלת שורה עם נקודה בלבד</div>
+                        <div class="quiz-option" data-correct="false">בפקודת QUIT - כחלק מסיום החיבור</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: דוגמת תקשורת SMTP -->
+        <div class="slide" data-slide="8">
+            <div class="slide-content">
+                <h2>דוגמה: תקשורת SMTP מלאה</h2>
+                <div class="code-block">
+                    <pre><span class="code-comment">// הזדהות מול השרת</span>
+<span class="code-keyword">Client:</span> <span class="code-function">EHLO</span> <span class="code-string">mydomain.com</span>
+<span class="code-keyword">Server:</span> <span class="code-string">250 Hello mydomain.com</span>
+
+<span class="code-comment">// ציון השולח</span>
+<span class="code-keyword">Client:</span> <span class="code-function">MAIL FROM:</span><span class="code-string">&lt;romeo@example.net&gt;</span>
+<span class="code-keyword">Server:</span> <span class="code-string">250 OK</span>
+
+<span class="code-comment">// ציון הנמען</span>
+<span class="code-keyword">Client:</span> <span class="code-function">RCPT TO:</span><span class="code-string">&lt;juliet@example.com&gt;</span>
+<span class="code-keyword">Server:</span> <span class="code-string">250 OK</span>
+
+<span class="code-comment">// שליחת תוכן ההודעה</span>
+<span class="code-keyword">Client:</span> <span class="code-function">DATA</span>
+<span class="code-keyword">Server:</span> <span class="code-string">354 Start mail input</span>
+<span class="code-keyword">Client:</span> <span class="code-string">Subject: Meeting Tomorrow
+Hello Juliet, see you tomorrow!
+.</span>
+<span class="code-keyword">Server:</span> <span class="code-string">250 OK Message accepted</span>
+
+<span class="code-comment">// סיום</span>
+<span class="code-keyword">Client:</span> <span class="code-function">QUIT</span>
+<span class="code-keyword">Server:</span> <span class="code-string">221 Bye</span></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: קודי תגובה -->
+        <div class="slide" data-slide="9">
+            <div class="slide-content">
+                <h2>קודי תגובת השרת (Response Codes)</h2>
+                <p>השרת מגיב לכל פקודה עם קוד מספרי המורכב מ-3 ספרות:</p>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>2xx - הצלחה</h4>
+                        <p>220 - השרת מוכן<br>
+                        250 - פקודה בוצעה בהצלחה<br>
+                        354 - התחל להזין את תוכן ההודעה</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>4xx - שגיאה זמנית</h4>
+                        <p>421 - שירות לא זמין<br>
+                        450 - פעולה נכשלה זמנית<br>
+                        451 - שגיאה מקומית</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>5xx - שגיאה קבועה</h4>
+                        <p>500 - שגיאת תחביר<br>
+                        550 - תיבת הדואר לא נמצאה<br>
+                        554 - השליחה נכשלה</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Quiz 3 -->
+        <div class="slide" data-slide="10">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #3</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">מה משמעות קוד התגובה 550 מהשרת?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">השרת מוכן לקבל את ההודעה - הכל בסדר</div>
+                        <div class="quiz-option" data-correct="false">שגיאה זמנית - יש לנסות שוב מאוחר יותר</div>
+                        <div class="quiz-option" data-correct="false">ההודעה ארוכה מדי ויש לקצר אותה</div>
+                        <div class="quiz-option" data-correct="true">שגיאה קבועה - כתובת הנמען לא קיימת</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: דוגמת קוד Python -->
+        <div class="slide" data-slide="11">
+            <div class="slide-content">
+                <h2>יישום SMTP ב-Python</h2>
+                <div class="code-block">
+                    <pre><span class="code-keyword">import</span> socket
+
+<span class="code-comment"># יצירת חיבור TCP</span>
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((<span class="code-string">'smtp.example.com'</span>, <span class="code-string">25</span>))
+
+<span class="code-comment"># קריאת תגובת השרת</span>
+response = sock.recv(<span class="code-string">1024</span>).decode()
+<span class="code-keyword">print</span>(response)  <span class="code-comment"># 220 smtp.example.com ESMTP</span>
+
+<span class="code-comment"># שליחת פקודות</span>
+sock.send(<span class="code-string">b'EHLO client.com\r\n'</span>)
+<span class="code-keyword">print</span>(sock.recv(<span class="code-string">1024</span>).decode())
+
+sock.send(<span class="code-string">b'MAIL FROM:&lt;sender@example.com&gt;\r\n'</span>)
+<span class="code-keyword">print</span>(sock.recv(<span class="code-string">1024</span>).decode())
+
+sock.send(<span class="code-string">b'RCPT TO:&lt;recipient@example.com&gt;\r\n'</span>)
+<span class="code-keyword">print</span>(sock.recv(<span class="code-string">1024</span>).decode())
+
+sock.send(<span class="code-string">b'DATA\r\n'</span>)
+<span class="code-keyword">print</span>(sock.recv(<span class="code-string">1024</span>).decode())
+
+sock.send(<span class="code-string">b'Subject: Test\r\n\r\nHello World!\r\n.\r\n'</span>)
+<span class="code-keyword">print</span>(sock.recv(<span class="code-string">1024</span>).decode())
+
+sock.send(<span class="code-string">b'QUIT\r\n'</span>)
+sock.close()</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: DNS ו-SMTP -->
+        <div class="slide" data-slide="12">
+            <div class="slide-content">
+                <h2>מציאת שרת SMTP עם DNS</h2>
+                <p>כדי לשלוח מייל ל-<strong>user@example.com</strong>, צריך למצוא את שרת ה-SMTP של התחום:</p>
+                <div class="highlight-box">
+                    <h3>שלב 1: בקשת רשומת MX</h3>
+                    <p>שאילתת DNS מסוג <strong>MX (Mail eXchange)</strong> מחזירה את שרת הדואר:</p>
+                </div>
+                <div class="code-block">
+                    <pre><span class="code-comment"># דוגמת שאילתת DNS</span>
+$ nslookup -type=MX example.com
+
+<span class="code-string">example.com    mail exchanger = 10 mail.example.com
+example.com    mail exchanger = 20 backup.example.com</span>
+
+<span class="code-comment"># המספר (10, 20) מציין עדיפות - ככל שנמוך יותר, עדיפות גבוהה יותר</span></pre>
+                </div>
+                <div class="highlight-box">
+                    <h3>שלב 2: התחברות לשרת</h3>
+                    <p>אם לא נמצאה רשומת MX, יש להשתמש ברשומת A (כתובת IP ישירה)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Quiz 4 -->
+        <div class="slide" data-slide="13">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #4</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">מה חשיבות המספרים (10, 20) ברשומת MX של DNS?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">הם מציינים את מספר הפורט שבו השרת מאזין</div>
+                        <div class="quiz-option" data-correct="true">הם מציינים עדיפות - מספר נמוך = עדיפות גבוהה</div>
+                        <div class="quiz-option" data-correct="false">הם מציינים את מספר המיילים המקסימלי שניתן לשלוח</div>
+                        <div class="quiz-option" data-correct="false">הם מציינים את גרסת הפרוטוקול SMTP בשימוש</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: אבטחה וחולשות -->
+        <div class="slide" data-slide="14">
+            <div class="slide-content">
+                <h2>בעיות אבטחה ב-SMTP</h2>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>🔓 העדר הצפנה</h4>
+                        <p>SMTP מקורי לא מצפין תקשורת - כל הנתונים עוברים בטקסט פתוח. פתרון: SMTP over TLS (פורט 587)</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>🎭 זיוף שולח (Spoofing)</h4>
+                        <p>אין אימות חזק של שדה השולח - קל להתחזות לכתובת אחרת. פתרון: SPF, DKIM, DMARC</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>📧 דואר זבל (SPAM)</h4>
+                        <p>הפשטות מאפשרת שליחת מיילים המוניים. פתרון: פילטרים, רשימות שחורות, greylisting</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <p>💡 <strong>למידה:</strong> שרתים מודרניים משתמשים במנגנוני הגנה מתקדמים ובדיקות DNS כדי להפחית את הסיכונים</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Quiz 5 -->
+        <div class="slide" data-slide="15">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #5</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">איזו מהבעיות הבאות היא תוצאה ישירה של עיצוב SMTP המקורי?</div>
+                    <div class="quiz-options">
+                         <div class="quiz-option" data-correct="true">קושי לאמת את זהות השולח האמיתי של מייל</div>
+                        <div class="quiz-option" data-correct="false">אי-יכולת לשלוח קבצים מצורפים במיילים</div>
+                        <div class="quiz-option" data-correct="false">חיבור איטי ולא יציב בין השרתים</div>
+                        <div class="quiz-option" data-correct="false">מגבלה על אורך ההודעות שניתן לשלוח</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: SPF - מבוא -->
+        <div class="slide" data-slide="16">
+            <div class="slide-content">
+                <h2>SPF - Sender Policy Framework</h2>
+                <div class="highlight-box">
+                    <p><strong>הבעיה:</strong> כל אחד יכול לשלוח מייל ולטעון שהוא מכתובת כלשהי - אין אימות אמיתי של השולח!</p>
+                </div>
+                <h3>💡 הפתרון: רשימה לבנה של שרתים</h3>
+                <ul>
+                    <li>בעל התחום מפרסם <strong>רשומת TXT ב-DNS</strong> עם רשימת השרתים המורשים</li>
+                    <li>שרת היעד בודק: "האם השרת ששלח את המייל נמצא ברשימה?"</li>
+                    <li>אם לא - המייל חשוד ויכול להידחות</li>
+                </ul>
+                <div class="code-block">
+                    <pre><span class="code-comment"># שאילתת DNS לבדיקת SPF</span>
+$ nslookup -type=TXT example.com
+
+<span class="code-string">example.com    text = "v=spf1 ip4:192.168.1.1 include:_spf.google.com -all"</span>
+
+<span class="code-comment"># פירוש:</span>
+<span class="code-keyword">v=spf1</span>          <span class="code-comment">- גרסת SPF</span>
+<span class="code-keyword">ip4:192.168.1.1</span> <span class="code-comment">- השרת הזה מורשה</span>
+<span class="code-keyword">include:...</span>    <span class="code-comment">- כלול שרתים נוספים מרשומה אחרת</span>
+<span class="code-keyword">-all</span>            <span class="code-comment">- דחה הכל מלבד המורשים</span></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: SPF - דוגמה מעשית -->
+        <div class="slide" data-slide="17">
+            <div class="slide-content">
+                <h2>SPF - תרחיש מעשי</h2>
+                <div class="diagram" style="max-width: 800px;">
+                    <div style="background: rgba(0, 212, 255, 0.1); padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+                        <strong style="color: var(--secondary);">📧 מתקף מנסה לזייף מייל:</strong>
+                        <p style="margin-top: 0.5rem;">שרת במונגוליה (IP: 45.67.89.10) שולח מייל עם כתובת שולח: boss@company.com</p>
+                    </div>
+                    
+                    <div class="connection-line" style="margin: 2rem 0;">
+                        <div class="node" style="background: rgba(255, 0, 110, 0.2); border-color: var(--accent);">
+                            Attacker<br>45.67.89.10
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="node" style="background: rgba(0, 255, 136, 0.2);">
+                            Recipient Server
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(0, 255, 136, 0.1); padding: 1.5rem; border-radius: 10px;">
+                        <strong style="color: var(--primary);">🔍 שרת היעד בודק SPF:</strong>
+                        <div class="code-block" style="margin-top: 1rem;">
+                            <pre><span class="code-comment"># שאילתת DNS</span>
+company.com TXT = <span class="code-string">"v=spf1 ip4:192.168.1.1 -all"</span>
+
+<span class="code-comment"># בדיקה: האם 45.67.89.10 ברשימה?</span>
+<span class="code-keyword">Result:</span> <span style="color: var(--accent);">FAIL ❌</span>
+
+<span class="code-comment"># פעולה: דחה או סמן כספאם</span></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: DKIM - מבוא -->
+        <div class="slide" data-slide="18">
+            <div class="slide-content">
+                <h2>DKIM - DomainKeys Identified Mail</h2>
+                <div class="highlight-box">
+                    <p><strong>הבעיה:</strong> SPF לא מגן על תוכן המייל! מישהו יכול לשנות את ההודעה בדרך.</p>
+                </div>
+                <h3>🔐 הפתרון: חתימה דיגיטלית</h3>
+                <ul>
+                    <li>שרת השליחה <strong>חותם</strong> את המייל עם מפתח פרטי (קריפטוגרפיה אסימטרית)</li>
+                    <li>המפתח הציבורי מפורסם ב-DNS</li>
+                    <li>שרת היעד יכול לאמת שהמייל לא שונה ושהוא באמת מהדומיין</li>
+                    <li>החתימה כוללת גם hash של תוכן המייל</li>
+                </ul>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>🔑 מפתח פרטי</h4>
+                        <p>נשמר בשרת השליחה - משמש לחתימה</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>🔓 מפתח ציבורי</h4>
+                        <p>מפורסם ב-DNS - משמש לאימות</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: DKIM - דוגמה טכנית -->
+        <div class="slide" data-slide="19">
+            <div class="slide-content">
+                <h2>DKIM - מבנה החתימה</h2>
+                <div class="code-block">
+                    <pre><span class="code-comment">// כותרת DKIM במייל</span>
+<span class="code-keyword">DKIM-Signature:</span> <span class="code-string">v=1; a=rsa-sha256; d=example.com; s=selector2024;
+    c=relaxed/relaxed;
+    h=from:to:subject:date;
+    bh=base64EncodedBodyHash...;
+    b=base64EncodedSignature...</span>
+
+<span class="code-comment">// רשומת DNS המכילה את המפתח הציבורי</span>
+$ nslookup -type=TXT selector2024._domainkey.example.com
+
+<span class="code-string">selector2024._domainkey.example.com TXT = 
+"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..."</span></pre>
+                </div>
+                <div class="highlight-box">
+                    <h3>שדות חשובים:</h3>
+                    <ul style="margin-right: 2rem;">
+                        <li><strong>d=</strong> התחום החותם</li>
+                        <li><strong>s=</strong> בורר (selector) - מזהה איזה מפתח ב-DNS</li>
+                        <li><strong>h=</strong> רשימת כותרות שנחתמו</li>
+                        <li><strong>bh=</strong> hash של גוף ההודעה</li>
+                        <li><strong>b=</strong> החתימה הדיגיטלית עצמה</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Quiz 6 -->
+        <div class="slide" data-slide="20">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #6</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">מה המפתח הציבורי ב-DKIM מאפשר לשרת היעד לעשות?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">לפענח את תוכן המייל המוצפן שנשלח אליו</div>
+                        <div class="quiz-option" data-correct="true">לאמת שהמייל לא שונה ושהוא באמת מהשולח הנטען</div>
+                        <div class="quiz-option" data-correct="false">לבדוק אם כתובת ה-IP של השרת מופיעה ברשימה לבנה</div>
+                        <div class="quiz-option" data-correct="false">ליצור חתימה דיגיטלית חדשה עבור המייל</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 21: DMARC - מבוא -->
+        <div class="slide" data-slide="21">
+            <div class="slide-content">
+                <h2>DMARC - Policy & Reporting</h2>
+                <div class="highlight-box">
+                    <p><strong>הבעיה:</strong> SPF ו-DKIM קיימים, אבל מה קורה כשהם נכשלים? אין מדיניות אחידה!</p>
+                </div>
+                <h3>📋 הפתרון: הגדרת מדיניות ודיווח</h3>
+                <ul>
+                    <li>DMARC מגדיר <strong>מדיניות</strong> - מה לעשות אם SPF או DKIM נכשלו</li>
+                    <li>מספק <strong>דיווחים</strong> לבעל התחום על ניסיונות זיוף</li>
+                    <li>מאלץ <strong>התאמה</strong> בין כתובת השולח הנראית לזו שנבדקה</li>
+                </ul>
+                <div class="code-block">
+                    <pre><span class="code-comment"># רשומת DMARC ב-DNS</span>
+$ nslookup -type=TXT _dmarc.example.com
+
+<span class="code-string">_dmarc.example.com TXT = 
+"v=DMARC1; p=reject; rua=mailto:reports@example.com; pct=100"</span>
+
+<span class="code-comment"># פירוש:</span>
+<span class="code-keyword">p=reject</span>  <span class="code-comment">- דחה מיילים שנכשלו</span>
+<span class="code-keyword">rua=...</span>   <span class="code-comment">- שלח דיווחים לכתובת זו</span>
+<span class="code-keyword">pct=100</span>   <span class="code-comment">- החל על 100% מהמיילים</span></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 22: DMARC - מדיניות -->
+        <div class="slide" data-slide="22">
+            <div class="slide-content">
+                <h2>DMARC - סוגי המדיניות</h2>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>p=none (ניטור)</h4>
+                        <p><strong>פעולה:</strong> אל תחסום כלום<br>
+                        <strong>שימוש:</strong> שלב ראשון - למידה ואיסוף נתונים<br>
+                        <strong>יתרון:</strong> לא משפיע על מיילים לגיטימיים</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>p=quarantine (הסגר)</h4>
+                        <p><strong>פעולה:</strong> שלח לספאם/הסגר<br>
+                        <strong>שימוש:</strong> שלב ביניים - הגנה חלקית<br>
+                        <strong>יתרון:</strong> המייל לא אובד לגמרי</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>p=reject (דחייה)</h4>
+                        <p><strong>פעולה:</strong> דחה לחלוטין<br>
+                        <strong>שימוש:</strong> הגנה מקסימלית<br>
+                        <strong>יתרון:</strong> חסימה מוחלטת של זיופים</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <p>💡 <strong>מומלץ:</strong> להתחיל עם p=none, לנתח דיווחים, ואז להעלות ל-quarantine ובסופו של דבר ל-reject</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 23: Quiz 7 -->
+        <div class="slide" data-slide="23">
+            <div class="slide-content">
+                <h2>בדיקת הבנה #7</h2>
+                <div class="quiz-container">
+                    <div class="quiz-question">ארגון רוצה להתחיל להשתמש ב-DMARC אך חושש לחסום מיילים לגיטימיים. מה עליו לעשות?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">להגדיר p=reject מיד כדי להגן על הארגון בצורה מקסימלית</div>
+                        <div class="quiz-option" data-correct="false">להשתמש רק ב-SPF בלי DMARC כי זה פחות מסוכן</div>
+                        <div class="quiz-option" data-correct="false">להגדיר p=quarantine רק עבור 10% מהמיילים</div>
+                        <div class="quiz-option" data-correct="true">להתחיל עם p=none, לנתח דיווחים ואז לעבור ל-quarantine ו-reject</div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 24: תרשים משולב -->
+        <div class="slide" data-slide="24">
+            <div class="slide-content">
+                <h2>SPF + DKIM + DMARC ביחד</h2>
+                <div class="diagram" style="max-width: 900px;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <div class="node" style="background: rgba(0, 212, 255, 0.2); border-color: var(--secondary); display: inline-block;">
+                            📧 מייל נכנס מ-sender@example.com
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 2rem 0;">
+                        <div style="background: rgba(0, 255, 136, 0.1); padding: 1rem; border: 2px solid var(--primary); border-radius: 10px;">
+                            <h4 style="color: var(--primary); text-align: center;">בדיקה 1: SPF</h4>
+                            <p style="font-size: 0.9rem;">האם השרת השולח מורשה?</p>
+                            <div style="text-align: center; font-size: 2rem; margin: 1rem 0;">✓</div>
+                        </div>
+                        <div style="background: rgba(0, 255, 136, 0.1); padding: 1rem; border: 2px solid var(--primary); border-radius: 10px;">
+                            <h4 style="color: var(--primary); text-align: center;">בדיקה 2: DKIM</h4>
+                            <p style="font-size: 0.9rem;">האם החתימה הדיגיטלית תקפה?</p>
+                            <div style="text-align: center; font-size: 2rem; margin: 1rem 0;">✓</div>
+                        </div>
+                        <div style="background: rgba(0, 255, 136, 0.1); padding: 1rem; border: 2px solid var(--primary); border-radius: 10px;">
+                            <h4 style="color: var(--primary); text-align: center;">בדיקה 3: DMARC</h4>
+                            <p style="font-size: 0.9rem;">האם יש התאמה ועמידה במדיניות?</p>
+                            <div style="text-align: center; font-size: 2rem; margin: 1rem 0;">✓</div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <div class="arrow" style="font-size: 3rem; margin: 1rem 0;">↓</div>
+                        <div class="node" style="background: rgba(0, 255, 136, 0.2); border-color: var(--primary); display: inline-block; padding: 1.5rem 3rem;">
+                            <strong style="font-size: 1.3rem;">✅ מייל מאומת ומאושר!</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box" style="margin-top: 2rem;">
+                    <p><strong>🛡️ שכבות הגנה:</strong> כל מנגנון מגן על היבט אחר - ביחד הם יוצרים הגנה מקיפה מפני זיוף, שינוי תוכן וספאם!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 25: סיכום -->
+        <div class="slide" data-slide="25">
+            <div class="slide-content">
+                <h2>סיכום: פרוטוקול SMTP ומנגנוני אבטחה</h2>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h4>✉️ SMTP</h4>
+                        <p>פרוטוקול טקסטואלי לשליחת דואר על TCP:25</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>📝 פקודות</h4>
+                        <p>EHLO, MAIL FROM, RCPT TO, DATA, QUIT</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>🔍 DNS</h4>
+                        <p>רשומות MX למציאת שרתי דואר</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>🛡️ SPF</h4>
+                        <p>אימות שרתים מורשים לשליחה</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>🔐 DKIM</h4>
+                        <p>חתימה דיגיטלית לאימות מקור ותוכן</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>📋 DMARC</h4>
+                        <p>מדיניות ודיווח על מיילים חשודים</p>
+                    </div>
+                </div>
+                <div class="highlight-box" style="margin-top: 2rem; text-align: center;">
+                    <h3>🎓 כל הכבוד! סיימת ללמוד על SMTP ומנגנוני האבטחה שלו</h3>
+                    <p>כעת אתם מכירים הן את הפרוטוקול הבסיסי והן את הטכנולוגיות המתקדמות שמגנות עליו</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn">→ הקודם</button>
+            <button class="nav-btn" id="nextBtn">הבא ←</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+            
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            slides[currentSlide - 1].classList.add('active');
+            document.getElementById('currentSlide').textContent = currentSlide;
+            
+            // Reset quiz state when changing slides
+            resetQuiz();
+        }
+
+        function resetQuiz() {
+            const options = document.querySelectorAll('.quiz-option');
+            const feedback = document.querySelectorAll('.quiz-feedback');
+            
+            options.forEach(option => {
+                option.classList.remove('correct', 'wrong');
+                option.style.pointerEvents = 'auto';
+            });
+            
+            feedback.forEach(fb => {
+                fb.classList.remove('show', 'correct', 'wrong');
+            });
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            currentSlide++;
+            showSlide(currentSlide);
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            currentSlide--;
+            showSlide(currentSlide);
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                if (e.key === 'ArrowRight') {
+                    currentSlide--;
+                    showSlide(currentSlide);
+                } else {
+                    currentSlide++;
+                    showSlide(currentSlide);
+                }
+            }
+        });
+
+        // Quiz functionality
+        document.querySelectorAll('.quiz-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const isCorrect = this.getAttribute('data-correct') === 'true';
+                const feedback = this.closest('.quiz-container').querySelector('.quiz-feedback');
+                const allOptions = this.closest('.quiz-options').querySelectorAll('.quiz-option');
+                
+                // Disable all options after selection
+                allOptions.forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                });
+                
+                if (isCorrect) {
+                    this.classList.add('correct');
+                    feedback.classList.add('show', 'correct');
+                    feedback.textContent = '✓ נכון! תשובה מצוינת!';
+                } else {
+                    this.classList.add('wrong');
+                    feedback.classList.add('show', 'wrong');
+                    // Show the correct answer
+                    allOptions.forEach(opt => {
+                        if (opt.getAttribute('data-correct') === 'true') {
+                            opt.classList.add('correct');
+                        }
+                    });
+                    feedback.textContent = '✗ לא נכון. התשובה הנכונה מסומנת בירוק.';
+                }
+            });
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשימות דו-מימדיות ולולאות מקוננות - Python</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            animation: slideIn 0.6s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .slide-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+        }
+
+        p {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #764ba2;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #e83e8c;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', monospace;
+            font-size: 1em;
+            line-height: 1.5;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .keyword { color: #ff79c6; }
+        .string { color: #50fa7b; }
+        .comment { color: #6272a4; font-style: italic; }
+        .function { color: #8be9fd; }
+        .number { color: #bd93f9; }
+
+        .grid-demo {
+            display: grid;
+            gap: 10px;
+            margin: 30px auto;
+            justify-content: center;
+        }
+
+        .grid-cell {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .grid-cell:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .grid-cell.empty {
+            background: #e0e0e0;
+            color: #999;
+        }
+
+        .grid-cell.highlight {
+            background: #ffd700;
+            color: #333;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-buttons {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            color: #667eea;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-right: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .interactive-demo {
+            background: #fff3cd;
+            border: 3px dashed #ffc107;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 15px;
+        }
+
+        .btn-demo {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn-demo:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .output-box {
+            background: #2d2d2d;
+            color: #50fa7b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Consolas', monospace;
+            min-height: 50px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .exercise-box {
+            background: #e7f3ff;
+            border: 3px solid #2196F3;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 15px;
+        }
+
+        .coordinate-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        ul {
+            font-size: 1.2em;
+            line-height: 2;
+            margin: 20px 0 20px 40px;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            border: 2px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .visual-explanation {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 10px;
+        }
+
+        .index-label {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 1em;
+            direction: ltr;
+            text-align: left;
+            resize: vertical;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">12</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="slide-content">
+                <h1>🐍 רשימות דו-מימדיות<br>ולולאות מקוננות</h1>
+                <p class="subtitle">מדריך אינטראקטיבי ללמידת Python - כיתה י"א</p>
+                <div style="text-align: center; margin-top: 50px;">
+                    <div style="font-size: 5em;">📊</div>
+                    <p style="font-size: 1.4em; color: #764ba2; margin-top: 20px;">
+                        בואו נלמד איך לעבוד עם מבני נתונים מתקדמים!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What are 2D Lists -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📋 מה זו רשימה דו-מימדית?</h2>
+                
+                <div class="highlight-box">
+                    <h3>הגדרה:</h3>
+                    <p>רשימה דו-מימדית היא <strong>רשימה של רשימות</strong> - כמו טבלה או לוח שחמט!</p>
+                </div>
+
+                <div class="two-column">
+                    <div>
+                        <h3>רשימה רגילה (1D):</h3>
+                        <pre><span class="comment"># רשימה אחת</span>
+students = [<span class="string">'דני'</span>, <span class="string">'רועי'</span>, <span class="string">'שירה'</span>]
+<span class="comment"># אינדקס אחד: students[0]</span></pre>
+                        <div class="visual-explanation">
+                            <div style="display: flex; gap: 10px; justify-content: center;">
+                                <div class="grid-cell">דני</div>
+                                <div class="grid-cell">רועי</div>
+                                <div class="grid-cell">שירה</div>
+                            </div>
+                            <div class="coordinate-label">אינדקסים: 0, 1, 2</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3>רשימה דו-מימדית (2D):</h3>
+                        <pre><span class="comment"># רשימה של רשימות</span>
+classroom = [
+    [<span class="string">'דני'</span>, <span class="string">'רועי'</span>],
+    [<span class="string">'שירה'</span>, <span class="string">'יוסי'</span>]
+]
+<span class="comment"># שני אינדקסים: classroom[0][1]</span></pre>
+                        <div class="visual-explanation">
+                            <div style="display: inline-grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <div class="grid-cell">דני</div>
+                                <div class="grid-cell">רועי</div>
+                                <div class="grid-cell">שירה</div>
+                                <div class="grid-cell">יוסי</div>
+                            </div>
+                            <div class="coordinate-label">שורות: 0-1, עמודות: 0-1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h3>💡 אנלוגיות לחיים:</h3>
+                    <ul>
+                        <li>🏫 כיתה עם מקומות ישיבה (שורות ועמודות)</li>
+                        <li>🅿️ חניון עם מקומות חניה</li>
+                        <li>🎮 לוח משחק (שחמט, איקס עיגול)</li>
+                        <li>📊 טבלת ציונים (תלמידים × מבחנים)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Accessing Elements -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎯 גישה לאלמנטים</h2>
+                
+                <h3>כך ניגשים לתא מסוים:</h3>
+                <pre><span class="comment"># יצירת כיתה</span>
+classroom = [
+    [<span class="string">'ריק'</span>, <span class="string">'דני'</span>, <span class="string">'ריק'</span>, <span class="string">'שרה'</span>],
+    [<span class="string">'יוסי'</span>, <span class="string">'ריק'</span>, <span class="string">'מיכל'</span>, <span class="string">'ריק'</span>],
+    [<span class="string">'ריק'</span>, <span class="string">'נועה'</span>, <span class="string">'ריק'</span>, <span class="string">'אבי'</span>]
+]
+
+<span class="comment"># גישה לאלמנט</span>
+<span class="keyword">print</span>(classroom[<span class="number">0</span>][<span class="number">1</span>])  <span class="comment"># 'דני' - שורה 0, עמודה 1</span>
+<span class="keyword">print</span>(classroom[<span class="number">2</span>][<span class="number">3</span>])  <span class="comment"># 'אבי' - שורה 2, עמודה 3</span>
+
+<span class="comment"># שינוי ערך</span>
+classroom[<span class="number">0</span>][<span class="number">0</span>] = <span class="string">'עמית'</span>  <span class="comment"># עמית מתיישב במקום הריק הראשון</span></pre>
+
+                <div class="interactive-demo">
+                    <h3>🎮 הדגמה אינטראקטיבית - לחץ על תא כדי לראות את הקואורדינטות:</h3>
+                    <div id="classroom-grid" class="grid-demo" style="grid-template-columns: repeat(4, 80px);">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="output-box" id="click-output">לחץ על תא כדי לראות את הקואורדינטות שלו...</div>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>📝 חשוב לזכור:</h3>
+                    <ul>
+                        <li>האינדקס הראשון = <strong>שורה</strong> (row)</li>
+                        <li>האינדקס השני = <strong>עמודה</strong> (column)</li>
+                        <li>נתחיל תמיד מ-0, לא מ-1!</li>
+                        <li><code>matrix[row][col]</code> - זה הסדר!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Creating 2D Lists -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🔨 יצירת רשימות דו-מימדיות</h2>
+                
+                <h3>שיטה 1: יצירה ידנית</h3>
+                <pre><span class="comment"># יצירה ישירה של הרשימה</span>
+grid = [
+    [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
+    [<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>],
+    [<span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]
+]</pre>
+
+                <h3>שיטה 2: יצירה באמצעות לולאות (מומלץ!)</h3>
+                <pre><span class="comment"># יצירת חניון ריק 3x4</span>
+<span class="keyword">def</span> <span class="function">create_parking</span>(rows, cols):
+    parking = []
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(rows):
+        row = []
+        <span class="keyword">for</span> j <span class="keyword">in</span> <span class="function">range</span>(cols):
+            row.<span class="function">append</span>(<span class="string">'פנוי'</span>)
+        parking.<span class="function">append</span>(row)
+    <span class="keyword">return</span> parking
+
+<span class="comment"># שימוש</span>
+parking = <span class="function">create_parking</span>(<span class="number">3</span>, <span class="number">4</span>)
+<span class="keyword">print</span>(parking)</pre>
+
+                <h3>⚠️ טעות נפוצה - אל תעשו ככה!</h3>
+                <pre><span class="comment"># זה לא יעבוד כמו שאתם חושבים!</span>
+wrong_way = [[<span class="string">'פנוי'</span>] * <span class="number">4</span>] * <span class="number">3</span>  <span class="comment"># ❌ כל השורות יצביעו לאותה רשימה!</span>
+
+<span class="comment"># הדרך הנכונה עם list comprehension:</span>
+correct_way = [[<span class="string">'פנוי'</span> <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="function">range</span>(<span class="number">4</span>)] <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="function">range</span>(<span class="number">3</span>)]  <span class="comment"># ✅</span></pre>
+
+                <div class="interactive-demo">
+                    <h3>🎮 נסה בעצמך - צור חניון:</h3>
+                    <button class="btn-demo" onclick="demo1()">צור חניון 3×4</button>
+                    <button class="btn-demo" onclick="demo2()">חנה רכב במקום [1][2]</button>
+                    <button class="btn-demo" onclick="demo3()">מצא מקומות פנויים</button>
+                    <div class="output-box" id="parking-output">לחץ על כפתור כדי לראות דמו...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Nested Loops Theory -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🔄 לולאות מקוננות - התיאוריה</h2>
+                
+                <div class="highlight-box">
+                    <h3>מה זה לולאות מקוננות?</h3>
+                    <p>לולאה בתוך לולאה - הלולאה החיצונית עוברת על השורות, והפנימית על העמודות בכל שורה.</p>
+                </div>
+
+                <h3>המבנה הכללי:</h3>
+                <pre><span class="comment"># מבנה בסיסי</span>
+<span class="keyword">for</span> row <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(matrix)):          <span class="comment"># לולאה חיצונית - שורות</span>
+    <span class="keyword">for</span> col <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(matrix[row])):   <span class="comment"># לולאה פנימית - עמודות</span>
+        <span class="keyword">print</span>(matrix[row][col])           <span class="comment"># גישה לכל תא</span></pre>
+
+                <div class="two-column">
+                    <div>
+                        <h3>דרך 1: לפי אינדקסים</h3>
+                        <pre><span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(grid)):
+    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(grid[i])):
+        <span class="keyword">print</span>(grid[i][j])</pre>
+                        <p style="font-size: 0.95em;">✅ מתי להשתמש: כשצריך את מיקום התא</p>
+                    </div>
+
+                    <div>
+                        <h3>דרך 2: לפי ערכים</h3>
+                        <pre><span class="keyword">for</span> row <span class="keyword">in</span> grid:
+    <span class="keyword">for</span> item <span class="keyword">in</span> row:
+        <span class="keyword">print</span>(item)</pre>
+        <p style="font-size: 0.95em;">✅ מתי להשתמש: כשמעניין רק הערך</p>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h3>🎯 דוגמה מלאה:</h3>
+                    <pre><span class="comment"># ספירת מקומות פנויים בכיתה</span>
+classroom = [
+    [<span class="string">'ריק'</span>, <span class="string">'דני'</span>, <span class="string">'ריק'</span>],
+    [<span class="string">'יוסי'</span>, <span class="string">'ריק'</span>, <span class="string">'מיכל'</span>]
+]
+
+free_count = <span class="number">0</span>
+<span class="keyword">for</span> row <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(classroom)):
+    <span class="keyword">for</span> col <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(classroom[row])):
+        <span class="keyword">if</span> classroom[row][col] == <span class="string">'ריק'</span>:
+            free_count += <span class="number">1</span>
+            <span class="keyword">print</span>(<span class="string">f"מקום פנוי ב-[{row}][{col}]"</span>)
+
+<span class="keyword">print</span>(<span class="string">f"סה\"כ מקומות פנויים: {free_count}"</span>)</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Nested Loops Practice -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>💪 תרגול לולאות מקוננות</h2>
+                
+                <h3>תרגיל 1: הדפסת כל האלמנטים</h3>
+                <pre><span class="comment"># הדפסה מסודרת של מטריצה</span>
+matrix = [
+    [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],
+    [<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>],
+    [<span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]
+]
+
+<span class="comment"># הדפסה שורה אחר שורה</span>
+<span class="keyword">for</span> row <span class="keyword">in</span> matrix:
+    <span class="keyword">for</span> item <span class="keyword">in</span> row:
+        <span class="keyword">print</span>(item, end=<span class="string">" "</span>)
+    <span class="keyword">print</span>()  <span class="comment"># שורה חדשה</span>
+
+<span class="comment"># פלט: 
+# 1 2 3
+# 4 5 6
+# 7 8 9</span></pre>
+
+                <h3>תרגיל 2: חיפוש ערך מסוים</h3>
+                <pre><span class="comment"># מציאת מיקום של מספר במטריצה</span>
+<span class="keyword">def</span> <span class="function">find_number</span>(matrix, target):
+    <span class="keyword">for</span> row <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(matrix)):
+        <span class="keyword">for</span> col <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(matrix[row])):
+            <span class="keyword">if</span> matrix[row][col] == target:
+                <span class="keyword">return</span> (row, col)  <span class="comment"># מצאנו!</span>
+    <span class="keyword">return</span> <span class="keyword">None</span>  <span class="comment"># לא נמצא</span>
+
+<span class="comment"># שימוש</span>
+position = <span class="function">find_number</span>(matrix, <span class="number">5</span>)
+<span class="keyword">print</span>(<span class="string">f"המספר 5 נמצא ב: {position}"</span>)  <span class="comment"># (1, 1)</span></pre>
+
+                <div class="interactive-demo">
+                    <h3>🎮 הדגמה חיה - לולאות מקוננות:</h3>
+                    <button class="btn-demo" onclick="demoNestedLoop()">הפעל לולאה מקוננת</button>
+                    <button class="btn-demo" onclick="demoSearch()">חפש ערך במטריצה</button>
+                    <div id="nested-grid" class="grid-demo" style="grid-template-columns: repeat(3, 80px); margin-top: 20px;">
+                        <!-- Will be populated -->
+                    </div>
+                    <div class="output-box" id="nested-output">לחץ על כפתור להדגמה...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Complex Conditions -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🧠 תנאים מורכבים</h2>
+                
+                <div class="highlight-box">
+                    <h3>אופרטורים לוגיים:</h3>
+                    <ul>
+                        <li><code>and</code> - שני התנאים חייבים להתקיים</li>
+                        <li><code>or</code> - לפחות אחד מהתנאים חייב להתקיים</li>
+                        <li><code>not</code> - היפוך תנאי</li>
+                    </ul>
+                </div>
+
+                <h3>דוגמאות לשימוש:</h3>
+                <pre><span class="comment"># בדיקת ציון</span>
+<span class="keyword">if</span> grade >= <span class="number">90</span> <span class="keyword">and</span> grade <= <span class="number">100</span>:
+    <span class="keyword">print</span>(<span class="string">"מצוין!"</span>)
+
+<span class="comment"># בדיקת מספר זוגי וחיובי</span>
+<span class="keyword">if</span> num % <span class="number">2</span> == <span class="number">0</span> <span class="keyword">and</span> num > <span class="number">0</span>:
+    <span class="keyword">print</span>(<span class="string">"מספר זוגי חיובי"</span>)
+
+<span class="comment"># בדיקת טווח</span>
+<span class="keyword">if</span> age < <span class="number">18</span> <span class="keyword">or</span> age > <span class="number">65</span>:
+    <span class="keyword">print</span>(<span class="string">"זכאי להנחה"</span>)
+
+<span class="comment"># היפוך תנאי</span>
+<span class="keyword">if</span> <span class="keyword">not</span> is_weekend:
+    <span class="keyword">print</span>(<span class="string">"יום עבודה"</span>)</pre>
+
+                <div class="example-box">
+                    <h3>🎯 דוגמה מורכבת - ניתוח ציונים:</h3>
+                    <pre><span class="comment"># מציאת תלמידים בסיכון</span>
+grades = [
+    [<span class="number">85</span>, <span class="number">92</span>, <span class="number">78</span>],  <span class="comment"># דני</span>
+    [<span class="number">45</span>, <span class="number">52</span>, <span class="number">48</span>],  <span class="comment"># רועי - בסיכון!</span>
+    [<span class="number">95</span>, <span class="number">98</span>, <span class="number">96</span>]   <span class="comment"># שירה</span>
+]
+
+<span class="keyword">for</span> student <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(grades)):
+    avg = <span class="function">sum</span>(grades[student]) / <span class="function">len</span>(grades[student])
+    low_grades = <span class="function">sum</span>(<span class="number">1</span> <span class="keyword">for</span> g <span class="keyword">in</span> grades[student] <span class="keyword">if</span> g < <span class="number">60</span>)
+    
+    <span class="comment"># תנאי מורכב: ממוצע נמוך ויש לפחות 2 ציונים נמוכים</span>
+    <span class="keyword">if</span> avg < <span class="number">60</span> <span class="keyword">and</span> low_grades >= <span class="number">2</span>:
+        <span class="keyword">print</span>(<span class="string">f"תלמיד {student} בסיכון! ממוצע: {avg:.1f}"</span>)</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Practical Example - Parking System -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🅿️ דוגמה מעשית: מערכת חניה</h2>
+                
+                <h3>הבעיה:</h3>
+                <p>נרצה ליצור מערכת שמנהלת חניון עם יכולות:</p>
+                <ul>
+                    <li>חניית רכב במקום מסוים</li>
+                    <li>מציאת רכב לפי מספר רישוי</li>
+                    <li>ספירת מקומות פנויים</li>
+                </ul>
+
+                <pre><span class="keyword">def</span> <span class="function">create_parking</span>(rows, cols):
+    <span class="string">"""יצירת חניון ריק"""</span>
+    <span class="keyword">return</span> [[<span class="string">'פנוי'</span> <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="function">range</span>(cols)] <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="function">range</span>(rows)]
+
+<span class="keyword">def</span> <span class="function">park_car</span>(parking, row, col, license):
+    <span class="string">"""חניית רכב"""</span>
+    <span class="keyword">if</span> parking[row][col] == <span class="string">'פנוי'</span>:
+        parking[row][col] = license
+        <span class="keyword">return</span> <span class="keyword">True</span>
+    <span class="keyword">return</span> <span class="keyword">False</span>
+
+<span class="keyword">def</span> <span class="function">find_car</span>(parking, license):
+    <span class="string">"""מציאת רכב לפי מספר רישוי"""</span>
+    <span class="keyword">for</span> row <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(parking)):
+        <span class="keyword">for</span> col <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(parking[row])):
+            <span class="keyword">if</span> parking[row][col] == license:
+                <span class="keyword">return</span> (row, col)
+    <span class="keyword">return</span> <span class="keyword">None</span>
+
+<span class="keyword">def</span> <span class="function">count_free_spots</span>(parking):
+    <span class="string">"""ספירת מקומות פנויים"""</span>
+    count = <span class="number">0</span>
+    <span class="keyword">for</span> row <span class="keyword">in</span> parking:
+        <span class="keyword">for</span> spot <span class="keyword">in</span> row:
+            <span class="keyword">if</span> spot == <span class="string">'פנוי'</span>:
+                count += <span class="number">1</span>
+    <span class="keyword">return</span> count</pre>
+
+                <div class="interactive-demo">
+                    <h3>🎮 סימולציית חניון:</h3>
+                    <button class="btn-demo" onclick="initParking()">אתחל חניון</button>
+                    <button class="btn-demo" onclick="parkRandomCar()">חנה רכב אקראי</button>
+                    <button class="btn-demo" onclick="showFreeSpots()">הצג מקומות פנויים</button>
+                    <div id="parking-sim-grid" class="grid-demo" style="grid-template-columns: repeat(4, 80px); margin: 20px auto;"></div>
+                    <div class="output-box" id="parking-sim-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Practical Example - Grades Analysis -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📊 דוגמה מעשית: ניתוח ציונים</h2>
+                
+                <h3>הבעיה:</h3>
+                <p>ניתוח טבלת ציונים של כיתה - כל שורה מייצגת תלמיד, כל עמודה מייצגת מבחן.</p>
+
+                <pre><span class="comment"># טבלת ציונים</span>
+grades = [
+    [<span class="number">85</span>, <span class="number">92</span>, <span class="number">78</span>, <span class="number">88</span>],  <span class="comment"># דני</span>
+    [<span class="number">65</span>, <span class="number">70</span>, <span class="number">72</span>, <span class="number">68</span>],  <span class="comment"># רועי</span>
+    [<span class="number">95</span>, <span class="number">98</span>, <span class="number">96</span>, <span class="number">97</span>],  <span class="comment"># שירה - מצטיינת!</span>
+    [<span class="number">45</span>, <span class="number">52</span>, <span class="number">48</span>, <span class="number">50</span>]   <span class="comment"># יוסי - בסיכון!</span>
+]
+
+names = [<span class="string">'דני'</span>, <span class="string">'רועי'</span>, <span class="string">'שירה'</span>, <span class="string">'יוסי'</span>]
+
+<span class="comment"># מציאת מצטיינים - כל הציונים מעל 85</span>
+<span class="keyword">print</span>(<span class="string">"🌟 מצטיינים:"</span>)
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(grades)):
+    is_excellent = <span class="keyword">True</span>
+    <span class="keyword">for</span> grade <span class="keyword">in</span> grades[i]:
+        <span class="keyword">if</span> grade < <span class="number">85</span>:
+            is_excellent = <span class="keyword">False</span>
+            <span class="keyword">break</span>
+    
+    <span class="keyword">if</span> is_excellent:
+        <span class="keyword">print</span>(<span class="string">f"  {names[i]} - כל הציונים מעל 85!"</span>)
+
+<span class="comment"># תלמידים בסיכון - ממוצע נמוך ויש מספר ציונים כושלים</span>
+<span class="keyword">print</span>(<span class="string">"\n⚠️ תלמידים בסיכון:"</span>)
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="function">len</span>(grades)):
+    avg = <span class="function">sum</span>(grades[i]) / <span class="function">len</span>(grades[i])
+    failing = <span class="function">sum</span>(<span class="number">1</span> <span class="keyword">for</span> g <span class="keyword">in</span> grades[i] <span class="keyword">if</span> g < <span class="number">60</span>)
+    
+    <span class="keyword">if</span> avg < <span class="number">60</span> <span class="keyword">and</span> failing >= <span class="number">2</span>:
+        <span class="keyword">print</span>(<span class="string">f"  {names[i]}: ממוצע {avg:.1f}, {failing} ציונים כושלים"</span>)</pre>
+
+                <div class="interactive-demo">
+                    <h3>🎮 ניתוח הציונים:</h3>
+                    <button class="btn-demo" onclick="analyzeGrades()">נתח ציונים</button>
+                    <button class="btn-demo" onclick="showClassAverage()">ממוצע כיתה</button>
+                    <button class="btn-demo" onclick="showBestTest()">המבחן הקל ביותר</button>
+                    <div class="output-box" id="grades-output">לחץ לניתוח...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Exercise 1 -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📝 תרגיל 1: מערכת ניהול מלאי</h2>
+                
+                <div class="exercise-box">
+                    <h3>המשימה:</h3>
+                    <p>מחסן מאוחסן כמטריצה 5×6, כל תא מכיל כמות פריטים. כתבו פונקציות:</p>
+                    <ol>
+                        <li><code>find_empty_cells()</code> - מוצאת תאים ריקים (ערך 0)</li>
+                        <li><code>find_overstocked()</code> - מוצאת תאים עם יותר מ-30 פריטים</li>
+                        <li><code>needs_restock()</code> - מוצאת תאים עם פחות מ-10 פריטים (אבל לא 0)</li>
+                        <li><code>total_items()</code> - מחשבת סך כל הפריטים</li>
+                    </ol>
+                </div>
+
+                <pre><span class="comment"># המחסן</span>
+warehouse = [
+    [<span class="number">10</span>, <span class="number">0</span>, <span class="number">5</span>, <span class="number">20</span>, <span class="number">0</span>, <span class="number">15</span>],
+    [<span class="number">0</span>, <span class="number">30</span>, <span class="number">25</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">5</span>],
+    [<span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">40</span>, <span class="number">35</span>, <span class="number">0</span>],
+    [<span class="number">0</span>, <span class="number">20</span>, <span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">25</span>],
+    [<span class="number">5</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">15</span>, <span class="number">20</span>, <span class="number">0</span>]
+]
+
+<span class="keyword">def</span> <span class="function">find_empty_cells</span>(warehouse):
+    <span class="comment"># כתבו את הקוד שלכם כאן</span>
+    empty = []
+    <span class="comment"># הרמז: עברו על כל התאים וחפשו ערך 0</span>
+    <span class="keyword">return</span> empty
+
+<span class="keyword">def</span> <span class="function">total_items</span>(warehouse):
+    <span class="comment"># כתבו את הקוד שלכם כאן</span>
+    total = <span class="number">0</span>
+    <span class="comment"># הרמז: עברו על כל התאים וצברו את הסכום</span>
+    <span class="keyword">return</span> total</pre>
+
+                <div class="interactive-demo">
+                    <h3>💻 כתבו את הפתרון שלכם:</h3>
+                    <textarea id="exercise1-code" placeholder="כתבו את הפונקציות כאן...">def find_empty_cells(warehouse):
+    empty = []
+    # הקוד שלכם כאן
+    return empty
+
+def total_items(warehouse):
+    total = 0
+    # הקוד שלכם כאן
+    return total</textarea>
+                    <button class="btn-demo" onclick="checkExercise1()">בדוק פתרון</button>
+                    <div class="output-box" id="exercise1-output"></div>
+                    <div class="success-message" id="exercise1-success">✅ כל הכבוד! הפתרון נכון!</div>
+                    <div class="error-message" id="exercise1-error"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Key Takeaways -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎓 סיכום ונקודות חשובות</h2>
+                
+                <div class="highlight-box">
+                    <h3>📋 רשימות דו-מימדיות:</h3>
+                    <ul>
+                        <li>רשימה של רשימות - מבנה טבלאי</li>
+                        <li>גישה: <code>matrix[row][col]</code></li>
+                        <li>אינדקס ראשון = שורה, שני = עמודה</li>
+                        <li>שימושי למפות, טבלאות, משחקים ועוד</li>
+                    </ul>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>🔄 לולאות מקוננות:</h3>
+                    <ul>
+                        <li>לולאה בתוך לולאה</li>
+                        <li>חיצונית = שורות, פנימית = עמודות</li>
+                        <li>שתי גישות: לפי אינדקס או לפי ערך</li>
+                        <li>חיוניות לעבודה עם מבנים דו-מימדיים</li>
+                    </ul>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>🧠 תנאים מורכבים:</h3>
+                    <ul>
+                        <li><code>and</code> - שני התנאים חייבים להתקיים</li>
+                        <li><code>or</code> - לפחות אחד מהתנאים</li>
+                        <li><code>not</code> - היפוך תנאי</li>
+                        <li>שימושיים לבדיקות מורכבות</li>
+                    </ul>
+                </div>
+
+                <div class="example-box">
+                    <h3>💡 טיפים לזיכרון:</h3>
+                    <ol>
+                        <li>תמיד חשבו על רשימה דו-מימדית כטבלה</li>
+                        <li>צייריו על נייר לפני שכותבים קוד</li>
+                        <li>היזהרו מאינדקסים שגויים (out of range)</li>
+                        <li>בדקו קצוות: שורה ראשונה, אחרונה, עמודה ראשונה, אחרונה</li>
+                        <li>השתמשו בשמות משתנים ברורים: row, col במקום i, j</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Practice Resources -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🚀 המשך לתרגל!</h2>
+                
+                <h3>💪 רעיונות לתרגילים נוספים:</h3>
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>🎮 משחקים:</h4>
+                        <ul>
+                            <li>איקס-עיגול (Tic-Tac-Toe)</li>
+                            <li>ספינות קרב (Battleship)</li>
+                            <li>סודוקו מפושט</li>
+                            <li>לוח שחמט</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>📊 ניתוח נתונים:</h4>
+                        <ul>
+                            <li>טבלת מזג אוויר יומית</li>
+                            <li>רשימת משימות שבועית</li>
+                            <li>טבלת נוכחות</li>
+                            <li>מערכת שעות</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="interactive-demo">
+                    <h3>🎯 אתגר בונוס:</h3>
+                    <p style="font-size: 1.1em;">צרו לוח משחק איקס-עיגול שמסמן את המיקום שבו שיחק כל שחקן, בדקו ניצחון בשורות, עמודות ואלכסונים!</p>
+                </div>
+
+                <div class="highlight-box" style="text-align: center;">
+                    <h3>🌟 זכרו:</h3>
+                    <p style="font-size: 1.3em;">התרגול הוא המפתח להצלחה!<br>
+                    כל תרגיל שאתם פותרים מחזק את ההבנה שלכם.</p>
+                    <p style="font-size: 2em; margin-top: 20px;">💻 המשיכו לקודד! 🚀</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">▶ הקודם</button>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ◀</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+        
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') changeSlide(-1);
+            if (e.key === 'ArrowLeft') changeSlide(1);
+        });
+
+        // Initialize classroom grid
+        const classroom = [
+            ['ריק', 'דני', 'ריק', 'שרה'],
+            ['יוסי', 'ריק', 'מיכל', 'ריק'],
+            ['ריק', 'נועה', 'ריק', 'אבי']
+        ];
+        
+        const classroomGrid = document.getElementById('classroom-grid');
+        classroom.forEach((row, i) => {
+            row.forEach((seat, j) => {
+                const cell = document.createElement('div');
+                cell.className = seat === 'ריק' ? 'grid-cell empty' : 'grid-cell';
+                cell.textContent = seat;
+                cell.onclick = () => {
+                    document.getElementById('click-output').innerHTML = 
+                        `נלחץ על: <strong>${seat}</strong><br>קואורדינטות: <strong>[${i}][${j}]</strong><br>קוד: <code>classroom[${i}][${j}]</code>`;
+                };
+                classroomGrid.appendChild(cell);
+            });
+        });
+
+        // Parking demos
+        let parking = [];
+        
+        function demo1() {
+            parking = [];
+            for (let i = 0; i < 3; i++) {
+                const row = [];
+                for (let j = 0; j < 4; j++) {
+                    row.push('פנוי');
+                }
+                parking.push(row);
+            }
+            document.getElementById('parking-output').textContent = 
+                'נוצר חניון 3×4:\n' + JSON.stringify(parking, null, 2);
+        }
+        
+        function demo2() {
+            if (parking.length === 0) demo1();
+            parking[1][2] = '12-345-67';
+            document.getElementById('parking-output').textContent = 
+                'רכב 12-345-67 חונה במקום [1][2]:\n' + JSON.stringify(parking, null, 2);
+        }
+        
+        function demo3() {
+            if (parking.length === 0) demo1();
+            const free = [];
+            for (let i = 0; i < parking.length; i++) {
+                for (let j = 0; j < parking[i].length; j++) {
+                    if (parking[i][j] === 'פנוי') {
+                        free.push(`[${i}][${j}]`);
+                    }
+                }
+            }
+            document.getElementById('parking-output').textContent = 
+                `נמצאו ${free.length} מקומות פנויים:\n${free.join(', ')}`;
+        }
+
+        // Nested loop demo
+        const matrix = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+        ];
+        
+        const nestedGrid = document.getElementById('nested-grid');
+        matrix.forEach(row => {
+            row.forEach(num => {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.textContent = num;
+                cell.id = `cell-${num}`;
+                nestedGrid.appendChild(cell);
+            });
+        });
+        
+        async function demoNestedLoop() {
+            const output = document.getElementById('nested-output');
+            output.textContent = 'מתחיל לעבור על המטריצה...\n';
+            
+            for (let i = 0; i < matrix.length; i++) {
+                for (let j = 0; j < matrix[i].length; j++) {
+                    const value = matrix[i][j];
+                    const cell = document.getElementById(`cell-${value}`);
+                    cell.classList.add('highlight');
+                    
+                    output.textContent += `[${i}][${j}] = ${value}\n`;
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    cell.classList.remove('highlight');
+                }
+            }
+            output.textContent += '\nסיימנו לעבור על כל האלמנטים!';
+        }
+        
+        async function demoSearch() {
+            const target = 5;
+            const output = document.getElementById('nested-output');
+            output.textContent = `מחפש את המספר ${target}...\n`;
+            
+            for (let i = 0; i < matrix.length; i++) {
+                for (let j = 0; j < matrix[i].length; j++) {
+                    const value = matrix[i][j];
+                    const cell = document.getElementById(`cell-${value}`);
+                    cell.classList.add('highlight');
+                    
+                    output.textContent += `בודק [${i}][${j}] = ${value}\n`;
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    
+                    if (value === target) {
+                        output.textContent += `\n✅ מצאנו! המספר ${target} נמצא ב-[${i}][${j}]`;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        cell.classList.remove('highlight');
+                        return;
+                    }
+                    
+                    cell.classList.remove('highlight');
+                }
+            }
+        }
+
+        // Parking simulation
+        let parkingSim = [];
+        const carNumbers = ['12-345-67', '89-012-34', '56-789-01', '23-456-78', '90-123-45'];
+        let carIndex = 0;
+        
+        function initParking() {
+            parkingSim = [];
+            for (let i = 0; i < 3; i++) {
+                const row = [];
+                for (let j = 0; j < 4; j++) {
+                    row.push('פנוי');
+                }
+                parkingSim.push(row);
+            }
+            carIndex = 0;
+            
+            const grid = document.getElementById('parking-sim-grid');
+            grid.innerHTML = '';
+            parkingSim.forEach((row, i) => {
+                row.forEach((spot, j) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell empty';
+                    cell.textContent = 'פנוי';
+                    cell.id = `parking-${i}-${j}`;
+                    grid.appendChild(cell);
+                });
+            });
+            
+            document.getElementById('parking-sim-output').textContent = 'חניון אותחל! 12 מקומות פנויים.';
+        }
+        
+        function parkRandomCar() {
+            if (parkingSim.length === 0) initParking();
+            
+            // Find empty spot
+            for (let i = 0; i < parkingSim.length; i++) {
+                for (let j = 0; j < parkingSim[i].length; j++) {
+                    if (parkingSim[i][j] === 'פנוי') {
+                        const carNum = carNumbers[carIndex % carNumbers.length];
+                        parkingSim[i][j] = carNum;
+                        carIndex++;
+                        
+                        const cell = document.getElementById(`parking-${i}-${j}`);
+                        cell.className = 'grid-cell';
+                        cell.textContent = carNum;
+                        
+                        const free = countFreeSpots(parkingSim);
+                        document.getElementById('parking-sim-output').textContent = 
+                            `רכב ${carNum} חנה ב-[${i}][${j}]\nנשארו ${free} מקומות פנויים`;
+                        return;
+                    }
+                }
+            }
+            document.getElementById('parking-sim-output').textContent = 'אין מקומות פנויים!';
+        }
+        
+        function countFreeSpots(parking) {
+            let count = 0;
+            for (let row of parking) {
+                for (let spot of row) {
+                    if (spot === 'פנוי') count++;
+                }
+            }
+            return count;
+        }
+        
+        function showFreeSpots() {
+            if (parkingSim.length === 0) initParking();
+            
+            const free = [];
+            for (let i = 0; i < parkingSim.length; i++) {
+                for (let j = 0; j < parkingSim[i].length; j++) {
+                    if (parkingSim[i][j] === 'פנוי') {
+                        free.push(`[${i}][${j}]`);
+                    }
+                }
+            }
+            
+            document.getElementById('parking-sim-output').textContent = 
+                `מקומות פנויים (${free.length}):\n${free.join(', ')}`;
+        }
+
+        // Grades analysis
+        const grades = [
+            [85, 92, 78, 88],
+            [65, 70, 72, 68],
+            [95, 98, 96, 97],
+            [45, 52, 48, 50]
+        ];
+        const names = ['דני', 'רועי', 'שירה', 'יוסי'];
+        
+        function analyzeGrades() {
+            let output = '📊 ניתוח ציונים:\n\n';
+            
+            // Excellent students
+            output += '🌟 מצטיינים:\n';
+            for (let i = 0; i < grades.length; i++) {
+                const isExcellent = grades[i].every(g => g >= 85);
+                if (isExcellent) {
+                    output += `  ${names[i]} - כל הציונים מעל 85!\n`;
+                }
+            }
+            
+            // At risk
+            output += '\n⚠️ תלמידים בסיכון:\n';
+            for (let i = 0; i < grades.length; i++) {
+                const avg = grades[i].reduce((a, b) => a + b) / grades[i].length;
+                const failing = grades[i].filter(g => g < 60).length;
+                
+                if (avg < 60 && failing >= 2) {
+                    output += `  ${names[i]}: ממוצע ${avg.toFixed(1)}, ${failing} ציונים כושלים\n`;
+                }
+            }
+            
+            document.getElementById('grades-output').textContent = output;
+        }
+        
+        function showClassAverage() {
+            let total = 0;
+            let count = 0;
+            for (let row of grades) {
+                for (let grade of row) {
+                    total += grade;
+                    count++;
+                }
+            }
+            const avg = total / count;
+            document.getElementById('grades-output').textContent = 
+                `ממוצע כיתה: ${avg.toFixed(1)}`;
+        }
+        
+        function showBestTest() {
+            const testAverages = [];
+            for (let j = 0; j < grades[0].length; j++) {
+                let sum = 0;
+                for (let i = 0; i < grades.length; i++) {
+                    sum += grades[i][j];
+                }
+                testAverages.push(sum / grades.length);
+            }
+            
+            const maxAvg = Math.max(...testAverages);
+            const bestTest = testAverages.indexOf(maxAvg);
+            
+            document.getElementById('grades-output').textContent = 
+                `המבחן הקל ביותר: מבחן ${bestTest + 1}\nממוצע: ${maxAvg.toFixed(1)}`;
+        }
+
+        // Exercise 1 check
+        function checkExercise1() {
+            const code = document.getElementById('exercise1-code').value;
+            const output = document.getElementById('exercise1-output');
+            const success = document.getElementById('exercise1-success');
+            const error = document.getElementById('exercise1-error');
+            
+            success.style.display = 'none';
+            error.style.display = 'none';
+            
+            try {
+                // Check if functions are defined (basic check)
+                if (code.includes('def find_empty_cells') && code.includes('def total_items')) {
+                    output.textContent = '✅ הפונקציות מוגדרות נכון!\n\nהמשיכו לממש אותן...';
+                    success.style.display = 'block';
+                } else {
+                    output.textContent = '❌ חסרות פונקציות. ודאו שהגדרתם את שתי הפונקציות.';
+                }
+            } catch (e) {
+                error.textContent = 'שגיאה: ' + e.message;
+                error.style.display = 'block';
+            }
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

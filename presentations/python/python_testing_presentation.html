@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הנדסת תוכנה - טיפול בשגיאות ובדיקות</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            animation: slideIn 0.6s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .slide-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #f5576c;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #f5576c;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #f5576c;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #f093fb;
+            font-size: 1.6em;
+            margin: 25px 0 15px 0;
+        }
+
+        h4 {
+            color: #666;
+            font-size: 1.3em;
+            margin: 15px 0 10px 0;
+        }
+
+        p {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #f093fb;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #e91e63;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', monospace;
+            font-size: 0.95em;
+            line-height: 1.5;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .keyword { color: #ff79c6; }
+        .string { color: #50fa7b; }
+        .comment { color: #6272a4; font-style: italic; }
+        .function { color: #8be9fd; }
+        .number { color: #bd93f9; }
+        .class-name { color: #f1fa8c; }
+
+        .nav-buttons {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            color: #f5576c;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            background: #f5576c;
+            color: white;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            color: #f5576c;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-right: 5px solid #f5576c;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .interactive-demo {
+            background: #fff3cd;
+            border: 3px dashed #ffc107;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 15px;
+        }
+
+        .btn-demo {
+            background: #f5576c;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn-demo:hover {
+            background: #f093fb;
+            transform: scale(1.05);
+        }
+
+        .output-box {
+            background: #2d2d2d;
+            color: #50fa7b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Consolas', monospace;
+            min-height: 50px;
+            direction: ltr;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+
+        .exercise-box {
+            background: #e7f3ff;
+            border: 3px solid #2196F3;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 15px;
+        }
+
+        ul {
+            font-size: 1.2em;
+            line-height: 2;
+            margin: 20px 0 20px 40px;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #f093fb22 0%, #f5576c22 100%);
+            border: 2px solid #f5576c;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .error-card {
+            background: #ffebee;
+            border-right: 5px solid #c62828;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            color: #c62828;
+        }
+
+        .success-card {
+            background: #e8f5e9;
+            border-right: 5px solid #2e7d32;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            color: #2e7d32;
+        }
+
+        .calculator-demo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .calculator-display {
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 15px 0;
+        }
+
+        .calc-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #f5576c;
+            border-radius: 8px;
+            font-size: 1.2em;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .validation-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .validation-error {
+            background: #ffebee;
+            color: #c62828;
+            border-right: 4px solid #c62828;
+        }
+
+        .validation-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-right: 4px solid #2e7d32;
+        }
+
+        .test-runner {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .test-result {
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .test-passed {
+            border-right: 5px solid #2e7d32;
+        }
+
+        .test-failed {
+            border-right: 5px solid #c62828;
+        }
+
+        .test-icon {
+            font-size: 1.5em;
+            min-width: 30px;
+        }
+
+        .test-summary {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.3em;
+        }
+
+        .icon-large {
+            font-size: 4em;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #f5576c;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 1em;
+            direction: ltr;
+            text-align: left;
+            resize: vertical;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table th, table td {
+            border: 2px solid #f5576c;
+            padding: 12px;
+            text-align: center;
+        }
+
+        table th {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .flow-diagram {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .flow-step {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            margin: 10px auto;
+            border-radius: 8px;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: '⬇️';
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5em;
+        }
+
+        .flow-step:last-child::after {
+            content: '';
+        }
+
+        .student-demo {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .student-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 10px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .badge-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .badge-info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">14</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="slide-content">
+                <h1>🛠️ הנדסת תוכנה<br>טיפול בשגיאות ובדיקות</h1>
+                <p class="subtitle">כתיבת קוד איכותי ואמין - כיתה י"א</p>
+                <div style="text-align: center; margin-top: 50px;">
+                    <div class="icon-large floating">🔧</div>
+                    <p style="font-size: 1.4em; color: #f5576c; margin-top: 20px;">
+                        בואו נלמד איך לכתוב קוד שעובד גם כשהמשתמשים טועים!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is Error Handling -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>❓ למה צריך טיפול בשגיאות?</h2>
+                
+                <div class="highlight-box">
+                    <h3>הבעיה:</h3>
+                    <p>משתמשים עושים דברים לא צפויים! הם מזינים נתונים שגויים, שוכחים שדות, מנסים לחלק באפס...</p>
+                </div>
+
+                <div class="two-column">
+                    <div class="error-card">
+                        <h4>❌ ללא טיפול בשגיאות:</h4>
+                        <pre style="background: #c62828; color: white; padding: 10px; border-radius: 5px;">Traceback (most recent call last):
+  File "app.py", line 5
+    result = 10 / 0
+ZeroDivisionError: division by zero
+
+<span style="color: #ffeb3b;">⚠️ התוכנית קרסה!</span></pre>
+                        <p style="color: #c62828; margin-top: 10px;">המשתמש רואה הודעת שגיאה מפחידה והתוכנית נעצרת!</p>
+                    </div>
+
+                    <div class="success-card">
+                        <h4>✅ עם טיפול בשגיאות:</h4>
+                        <pre style="background: #2e7d32; color: white; padding: 10px; border-radius: 5px;"><span style="color: #ffeb3b;">⚠️ שגיאה:</span> אי אפשר לחלק באפס!
+אנא הזן מספר אחר.
+
+<span style="color: #4caf50;">✓ התוכנית ממשיכה לרוץ</span></pre>
+                        <p style="color: #2e7d32; margin-top: 10px;">המשתמש מקבל הודעה ברורה והתוכנית ממשיכה!</p>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h3>🎯 מטרות טיפול בשגיאות:</h3>
+                    <ul>
+                        <li>🛡️ <strong>מניעת קריסות</strong> - התוכנית לא תיעצר באמצע</li>
+                        <li>💬 <strong>הודעות ברורות</strong> - המשתמש יבין מה הבעיה</li>
+                        <li>🔄 <strong>התאוששות</strong> - אפשרות לנסות שוב</li>
+                        <li>📝 <strong>רישום שגיאות</strong> - תיעוד לבאגים</li>
+                        <li>🎨 <strong>חוויית משתמש</strong> - אפליקציה מקצועית</li>
+                    </ul>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>💡 שלושת העקרונות:</h3>
+                    <ol style="font-size: 1.2em;">
+                        <li><strong>ולידציה (Validation)</strong> - בדיקת קלט לפני עיבוד</li>
+                        <li><strong>מקרי קצה (Edge Cases)</strong> - מצבים קיצוניים או נדירים</li>
+                        <li><strong>טיפול בחריגות (Exception Handling)</strong> - תפיסת שגיאות בזמן ריצה</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Try-Except Basics -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎯 Try-Except - הבסיס</h2>
+                
+                <h3>המבנה הבסיסי:</h3>
+                <pre><span class="keyword">try</span>:
+    <span class="comment"># קוד שעלול לזרוק שגיאה</span>
+    risky_code()
+<span class="keyword">except</span> <span class="class-name">ErrorType</span>:
+    <span class="comment"># מה לעשות אם השגיאה קרתה</span>
+    handle_error()
+<span class="keyword">else</span>:
+    <span class="comment"># רק אם לא הייתה שגיאה</span>
+    success_code()
+<span class="keyword">finally</span>:
+    <span class="comment"># תמיד מתבצע (ניקוי משאבים)</span>
+    cleanup()</pre>
+
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>דוגמה 1: המרת מחרוזת למספר</h4>
+                        <pre><span class="keyword">try</span>:
+    age = <span class="function">int</span>(<span class="function">input</span>(<span class="string">"גיל: "</span>))
+    <span class="keyword">print</span>(<span class="string">f"אתה בן {age}"</span>)
+<span class="keyword">except</span> <span class="class-name">ValueError</span>:
+    <span class="keyword">print</span>(<span class="string">"❌ זה לא מספר!"</span>)</pre>
+                        <p><strong>מה קורה?</strong><br>אם המשתמש יכניס "abc" במקום מספר, נקבל ValueError והתוכנית תדפיס הודעה ידידותית.</p>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>דוגמה 2: חלוקה</h4>
+                        <pre><span class="keyword">try</span>:
+    result = <span class="number">10</span> / <span class="number">0</span>
+<span class="keyword">except</span> <span class="class-name">ZeroDivisionError</span>:
+    <span class="keyword">print</span>(<span class="string">"❌ חלוקה באפס!"</span>)
+<span class="keyword">else</span>:
+    <span class="keyword">print</span>(<span class="string">f"✅ תוצאה: {result}"</span>)
+<span class="keyword">finally</span>:
+    <span class="keyword">print</span>(<span class="string">"סיימנו"</span>)</pre>
+                        <p><strong>מה קורה?</strong><br>except מתפוס את השגיאה, else לא מתבצע (כי הייתה שגיאה), finally תמיד רץ.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>🔍 שגיאות נפוצות:</h3>
+                    <table>
+                        <tr>
+                            <th>שגיאה</th>
+                            <th>מתי קורה?</th>
+                            <th>דוגמה</th>
+                        </tr>
+                        <tr>
+                            <td><code>ValueError</code></td>
+                            <td>ערך לא תקין</td>
+                            <td><code>int("abc")</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>ZeroDivisionError</code></td>
+                            <td>חלוקה באפס</td>
+                            <td><code>5 / 0</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>IndexError</code></td>
+                            <td>אינדקס מחוץ לטווח</td>
+                            <td><code>[1,2,3][10]</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>KeyError</code></td>
+                            <td>מפתח לא קיים במילון</td>
+                            <td><code>dict['missing']</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>TypeError</code></td>
+                            <td>פעולה על טיפוס לא מתאים</td>
+                            <td><code>"abc" + 5</code></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Validation -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>✅ ולידציה - בדיקת קלט</h2>
+                
+                <div class="highlight-box">
+                    <h3>מה זו ולידציה?</h3>
+                    <p><strong>ולידציה</strong> = בדיקת נתונים לפני שמשתמשים בהם. עדיף למנוע בעיות מאשר לטפל בהן אחרי!</p>
+                </div>
+
+                <h3>דוגמה: מחלקת Student עם ולידציה</h3>
+                <pre><span class="keyword">class</span> <span class="class-name">Student</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="keyword">self</span>, name, age, grade):
+        <span class="comment"># ולידציית שם</span>
+        <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(name, <span class="function">str</span>) <span class="keyword">or</span> <span class="function">len</span>(name) < <span class="number">2</span>:
+            <span class="keyword">raise</span> <span class="class-name">ValueError</span>(<span class="string">"שם חייב להיות מחרוזת באורך 2+ תווים"</span>)
+        
+        <span class="comment"># ולידציית גיל</span>
+        <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(age, <span class="function">int</span>) <span class="keyword">or</span> age < <span class="number">5</span> <span class="keyword">or</span> age > <span class="number">120</span>:
+            <span class="keyword">raise</span> <span class="class-name">ValueError</span>(<span class="string">"גיל חייב להיות מספר בין 5 ל-120"</span>)
+        
+        <span class="comment"># ולידציית ציון</span>
+        <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(grade, (<span class="function">int</span>, <span class="function">float</span>)) <span class="keyword">or</span> grade < <span class="number">0</span> <span class="keyword">or</span> grade > <span class="number">100</span>:
+            <span class="keyword">raise</span> <span class="class-name">ValueError</span>(<span class="string">"ציון חייב להיות מספר בין 0 ל-100"</span>)
+        
+        <span class="keyword">self</span>.name = name
+        <span class="keyword">self</span>.age = age
+        <span class="keyword">self</span>.grade = grade</pre>
+
+                <div class="two-column">
+                    <div class="success-card">
+                        <h4>✅ ולידציה עוברת:</h4>
+                        <pre><span class="keyword">try</span>:
+    s1 = <span class="class-name">Student</span>(<span class="string">"יוסי"</span>, <span class="number">16</span>, <span class="number">85</span>)
+    <span class="keyword">print</span>(<span class="string">"✅ תלמיד נוצר!"</span>)
+<span class="keyword">except</span> <span class="class-name">ValueError</span> <span class="keyword">as</span> e:
+    <span class="keyword">print</span>(<span class="string">f"❌ {e}"</span>)</pre>
+                        <p><strong>פלט:</strong> ✅ תלמיד נוצר!</p>
+                    </div>
+
+                    <div class="error-card">
+                        <h4>❌ ולידציה נכשלת:</h4>
+                        <pre><span class="keyword">try</span>:
+    s2 = <span class="class-name">Student</span>(<span class="string">"א"</span>, <span class="number">16</span>, <span class="number">85</span>)
+    <span class="keyword">print</span>(<span class="string">"תלמיד נוצר"</span>)
+<span class="keyword">except</span> <span class="class-name">ValueError</span> <span class="keyword">as</span> e:
+    <span class="keyword">print</span>(<span class="string">f"❌ שגיאה: {e}"</span>)</pre>
+                        <p><strong>פלט:</strong> ❌ שגיאה: שם חייב להיות מחרוזת באורך 2+ תווים</p>
+                    </div>
+                </div>
+
+                <div class="interactive-demo">
+                    <h3>🎮 נסה בעצמך:</h3>
+                    <button class="btn-demo" onclick="testStudent('יוסי', 16, 85)">צור תלמיד תקין</button>
+                    <button class="btn-demo" onclick="testStudent('א', 16, 85)">שם קצר מדי</button>
+                    <button class="btn-demo" onclick="testStudent('דני', 200, 85)">גיל לא תקין</button>
+                    <button class="btn-demo" onclick="testStudent('שרה', 15, 150)">ציון מעל 100</button>
+                    <div class="output-box" id="student-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Safe Calculator Demo -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🧮 דוגמה מעשית: מחשבון בטוח</h2>
+                
+                <div class="calculator-demo">
+                    <h3 style="text-align: center; margin-bottom: 20px;">💻 מחשבון עם טיפול בשגיאות</h3>
+                    
+                    <div class="calculator-display">
+                        <div style="margin: 15px 0;">
+                            <label style="font-weight: bold;">מספר ראשון:</label>
+                            <input type="text" class="calc-input" id="calc-num1" placeholder="הכנס מספר">
+                            <div id="valid-num1" class="validation-message" style="display: none;"></div>
+                        </div>
+
+                        <div style="margin: 15px 0;">
+                            <label style="font-weight: bold;">פעולה:</label>
+                            <select class="calc-input" id="calc-op">
+                                <option value="+">+ חיבור</option>
+                                <option value="-">- חיסור</option>
+                                <option value="*">× כפל</option>
+                                <option value="/">÷ חילוק</option>
+                            </select>
+                        </div>
+
+                        <div style="margin: 15px 0;">
+                            <label style="font-weight: bold;">מספר שני:</label>
+                            <input type="text" class="calc-input" id="calc-num2" placeholder="הכנס מספר">
+                            <div id="valid-num2" class="validation-message" style="display: none;"></div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn-demo" onclick="calculateSafe()" style="font-size: 1.2em; padding: 15px 40px;">
+                                🎯 חשב
+                            </button>
+                        </div>
+
+                        <div id="calc-result" style="margin-top: 20px; font-size: 1.3em; text-align: center; font-weight: bold;"></div>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h3>📝 הבדיקות שהמחשבון מבצע:</h3>
+                    <ul>
+                        <li>✅ המרת מחרוזת למספר (ValueError)</li>
+                        <li>✅ בדיקת חלוקה באפס (ZeroDivisionError)</li>
+                        <li>✅ הודעות שגיאה ברורות למשתמש</li>
+                        <li>✅ אפשרות לנסות שוב</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Introduction to Testing -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🧪 בדיקות (Testing) - למה זה חשוב?</h2>
+                
+                <div class="highlight-box">
+                    <h3>מה זה Testing?</h3>
+                    <p><strong>בדיקות</strong> = כתיבת קוד שבודק שהקוד שלנו עובד נכון. זה כמו מורה שבודק את העבודה שלכם!</p>
+                </div>
+
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>❌ ללא בדיקות:</h4>
+                        <ul>
+                            <li>🤔 "אני חושב שזה עובד..."</li>
+                            <li>🐛 באגים מתגלים רק אצל המשתמשים</li>
+                            <li>😰 פחד לשנות קוד (מה אם נשבור משהו?)</li>
+                            <li>⏰ זמן רב לבדיקות ידניות</li>
+                            <li>💥 קריסות בפרודקשן</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>✅ עם בדיקות:</h4>
+                        <ul>
+                            <li>✅ "אני יודע שזה עובד!"</li>
+                            <li>🔍 באגים נתפסים מוקדם</li>
+                            <li>💪 ביטחון לשנות ולשפר קוד</li>
+                            <li>⚡ בדיקות אוטומטיות מהירות</li>
+                            <li>🛡️ הגנה מפני רגרסיות</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>סוגי בדיקות:</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <strong>Unit Tests</strong><br>
+                        בדיקת פונקציה או מתודה בודדת
+                    </div>
+                    <div class="flow-step">
+                        <strong>Integration Tests</strong><br>
+                        בדיקת אינטראקציה בין מספר חלקים
+                    </div>
+                    <div class="flow-step">
+                        <strong>End-to-End Tests</strong><br>
+                        בדיקת המערכת כולה מנקודת מבט של המשתמש
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>💡 עקרון הזהב של בדיקות:</h3>
+                    <p style="font-size: 1.3em; text-align: center;">
+                        <strong>"אם זה לא נבדק, זה לא עובד!"</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Writing Tests -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>✍️ כתיבת בדיקות - המבנה</h2>
+                
+                <h3>המבנה הבסיסי של בדיקה:</h3>
+                <pre><span class="keyword">def</span> <span class="function">test_something</span>():
+    <span class="string">"""תיאור הבדיקה"""</span>
+    <span class="comment"># 1. Arrange - הכנה</span>
+    calculator = <span class="class-name">Calculator</span>()
+    
+    <span class="comment"># 2. Act - פעולה</span>
+    result = calculator.<span class="function">add</span>(<span class="number">2</span>, <span class="number">3</span>)
+    
+    <span class="comment"># 3. Assert - בדיקה</span>
+    <span class="keyword">assert</span> result == <span class="number">5</span>, <span class="string">"2 + 3 צריך להיות 5"</span>
+    <span class="keyword">print</span>(<span class="string">"✅ הבדיקה עברה"</span>)</pre>
+
+                <div class="highlight-box">
+                    <h3>🎯 שלושת השלבים (AAA Pattern):</h3>
+                    <ol style="font-size: 1.2em;">
+                        <li><strong>Arrange</strong> (הכנה) - הכנת הנתונים והאובייקטים</li>
+                        <li><strong>Act</strong> (פעולה) - ביצוע הפונקציה שאנחנו בודקים</li>
+                        <li><strong>Assert</strong> (בדיקה) - בדיקה שהתוצאה נכונה</li>
+                    </ol>
+                </div>
+
+                <h3>דוגמה מלאה - בדיקת פונקציית חיבור:</h3>
+                <pre><span class="comment"># הקוד שאנחנו בודקים</span>
+<span class="keyword">def</span> <span class="function">add</span>(a, b):
+    <span class="keyword">return</span> a + b
+
+<span class="comment"># הבדיקות</span>
+<span class="keyword">def</span> <span class="function">test_add_positive_numbers</span>():
+    <span class="string">"""בדיקה: חיבור מספרים חיוביים"""</span>
+    result = <span class="function">add</span>(<span class="number">2</span>, <span class="number">3</span>)
+    <span class="keyword">assert</span> result == <span class="number">5</span>
+    <span class="keyword">print</span>(<span class="string">"✅ test_add_positive_numbers"</span>)
+
+<span class="keyword">def</span> <span class="function">test_add_negative_numbers</span>():
+    <span class="string">"""בדיקה: חיבור מספרים שליליים"""</span>
+    result = <span class="function">add</span>(-<span class="number">2</span>, -<span class="number">3</span>)
+    <span class="keyword">assert</span> result == -<span class="number">5</span>
+    <span class="keyword">print</span>(<span class="string">"✅ test_add_negative_numbers"</span>)
+
+<span class="keyword">def</span> <span class="function">test_add_zero</span>():
+    <span class="string">"""בדיקה: חיבור עם אפס (מקרה קצה)"""</span>
+    result = <span class="function">add</span>(<span class="number">5</span>, <span class="number">0</span>)
+    <span class="keyword">assert</span> result == <span class="number">5</span>
+    <span class="keyword">print</span>(<span class="string">"✅ test_add_zero"</span>)</pre>
+
+                <div class="example-box">
+                    <h3>💡 טיפים לבדיקות טובות:</h3>
+                    <ul>
+                        <li>📝 <strong>שם תיאורי</strong> - הבדיקה צריכה להגיד מה היא בודקת</li>
+                        <li>🎯 <strong>בדיקה אחת</strong> - כל בדיקה בודקת דבר אחד בלבד</li>
+                        <li>🔍 <strong>מקרי קצה</strong> - בדקו גם מצבים קיצוניים</li>
+                        <li>⚡ <strong>מהירות</strong> - בדיקות צריכות לרוץ מהר</li>
+                        <li>🔄 <strong>עצמאיות</strong> - כל בדיקה עצמאית (לא תלויה באחרות)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Discount System Example -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>💰 דוגמה מלאה: מערכת הנחות</h2>
+                
+                <h3>הקוד שאנחנו בודקים:</h3>
+                <pre><span class="keyword">class</span> <span class="class-name">DiscountCalculator</span>:
+    <span class="keyword">def</span> <span class="function">calculate_discount</span>(<span class="keyword">self</span>, price, customer_type, quantity):
+        <span class="string">"""חישוב מחיר סופי עם הנחות"""</span>
+        <span class="keyword">if</span> price <= <span class="number">0</span>:
+            <span class="keyword">raise</span> <span class="class-name">ValueError</span>(<span class="string">"מחיר חייב להיות חיובי"</span>)
+        
+        <span class="comment"># הנחה לפי סוג לקוח</span>
+        discount_rate = <span class="number">0</span>
+        <span class="keyword">if</span> customer_type == <span class="string">'premium'</span>:
+            discount_rate = <span class="number">0.10</span>  <span class="comment"># 10%</span>
+        <span class="keyword">elif</span> customer_type == <span class="string">'vip'</span>:
+            discount_rate = <span class="number">0.20</span>  <span class="comment"># 20%</span>
+        
+        <span class="comment"># הנחה נוספת לכמות</span>
+        <span class="keyword">if</span> quantity >= <span class="number">10</span>:
+            discount_rate += <span class="number">0.05</span>  <span class="comment"># 5% נוספים</span>
+        
+        total = price * quantity
+        final_price = total * (<span class="number">1</span> - discount_rate)
+        
+        <span class="keyword">return</span> {
+            <span class="string">'original_price'</span>: total,
+            <span class="string">'discount_rate'</span>: discount_rate * <span class="number">100</span>,
+            <span class="string">'final_price'</span>: final_price
+        }</pre>
+
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>בדיקה 1: לקוח רגיל</h4>
+                        <pre><span class="keyword">def</span> <span class="function">test_regular_customer</span>():
+    calc = <span class="class-name">DiscountCalculator</span>()
+    result = calc.<span class="function">calculate_discount</span>(
+        <span class="number">100</span>, <span class="string">'regular'</span>, <span class="number">1</span>
+    )
+    <span class="keyword">assert</span> result[<span class="string">'final_price'</span>] == <span class="number">100</span>
+    <span class="keyword">print</span>(<span class="string">"✅ עבר"</span>)</pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>בדיקה 2: לקוח VIP</h4>
+                        <pre><span class="keyword">def</span> <span class="function">test_vip_customer</span>():
+    calc = <span class="class-name">DiscountCalculator</span>()
+    result = calc.<span class="function">calculate_discount</span>(
+        <span class="number">100</span>, <span class="string">'vip'</span>, <span class="number">1</span>
+    )
+    <span class="keyword">assert</span> result[<span class="string">'discount_rate'</span>] == <span class="number">20</span>
+    <span class="keyword">assert</span> result[<span class="string">'final_price'</span>] == <span class="number">80</span>
+    <span class="keyword">print</span>(<span class="string">"✅ עבר"</span>)</pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>בדיקה 3: כמות גדולה</h4>
+                        <pre><span class="keyword">def</span> <span class="function">test_bulk_order</span>():
+    calc = <span class="class-name">DiscountCalculator</span>()
+    result = calc.<span class="function">calculate_discount</span>(
+        <span class="number">100</span>, <span class="string">'regular'</span>, <span class="number">10</span>
+    )
+    <span class="keyword">assert</span> result[<span class="string">'discount_rate'</span>] == <span class="number">5</span>
+    <span class="keyword">assert</span> result[<span class="string">'final_price'</span>] == <span class="number">950</span>
+    <span class="keyword">print</span>(<span class="string">"✅ עבר"</span>)</pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>בדיקה 4: מחיר שלילי</h4>
+                        <pre><span class="keyword">def</span> <span class="function">test_invalid_price</span>():
+    calc = <span class="class-name">DiscountCalculator</span>()
+    <span class="keyword">try</span>:
+        calc.<span class="function">calculate_discount</span>(
+            -<span class="number">100</span>, <span class="string">'regular'</span>, <span class="number">1</span>
+        )
+        <span class="keyword">assert</span> <span class="keyword">False</span>, <span class="string">"צריך לזרוק שגיאה"</span>
+    <span class="keyword">except</span> <span class="class-name">ValueError</span>:
+        <span class="keyword">print</span>(<span class="string">"✅ עבר"</span>)</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Interactive Test Runner -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🧪 הרצת בדיקות אינטראקטיבית</h2>
+                
+                <div class="test-runner">
+                    <h3 style="text-align: center; margin-bottom: 20px;">🎯 מערכת בדיקות לחישוב הנחות</h3>
+                    
+                    <div style="text-align: center; margin: 20px 0;">
+                        <button class="btn-demo" onclick="runAllTests()" style="font-size: 1.2em; padding: 15px 40px;">
+                            ▶️ הרץ את כל הבדיקות
+                        </button>
+                        <button class="btn-demo" onclick="runSingleTest('regular')" style="background: #667eea;">
+                            🧪 לקוח רגיל
+                        </button>
+                        <button class="btn-demo" onclick="runSingleTest('vip')" style="background: #11998e;">
+                            🧪 לקוח VIP
+                        </button>
+                        <button class="btn-demo" onclick="runSingleTest('bulk')" style="background: #f093fb;">
+                            🧪 כמות גדולה
+                        </button>
+                    </div>
+
+                    <div id="test-results"></div>
+                    <div id="test-summary" class="test-summary" style="display: none;"></div>
+                </div>
+
+                <div class="example-box">
+                    <h3>📊 מה הבדיקות בודקות?</h3>
+                    <ul>
+                        <li><strong>test_regular_customer:</strong> לקוח רגיל לא מקבל הנחה</li>
+                        <li><strong>test_premium_customer:</strong> לקוח פרימיום מקבל 10% הנחה</li>
+                        <li><strong>test_vip_customer:</strong> לקוח VIP מקבל 20% הנחה</li>
+                        <li><strong>test_bulk_order:</strong> 10+ יחידות מקבלות 5% הנחה נוספת</li>
+                        <li><strong>test_vip_bulk:</strong> VIP + כמות = 25% הנחה</li>
+                        <li><strong>test_invalid_price:</strong> מחיר שלילי זורק שגיאה</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Edge Cases -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎯 מקרי קצה (Edge Cases)</h2>
+                
+                <div class="highlight-box">
+                    <h3>מה זה מקרה קצה?</h3>
+                    <p><strong>מקרה קצה</strong> = מצב קיצוני או נדיר שקל לשכוח לבדוק. הם לרוב הגורמים לבאגים!</p>
+                </div>
+
+                <h3>דוגמאות למקרי קצה נפוצים:</h3>
+                
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>🔢 מספרים:</h4>
+                        <ul>
+                            <li><strong>אפס</strong> - גבול בין חיובי לשלילי</li>
+                            <li><strong>מספרים שליליים</strong></li>
+                            <li><strong>מספרים גדולים מאוד</strong></li>
+                            <li><strong>מספרים עשרוניים</strong> (0.1 + 0.2 ≠ 0.3!)</li>
+                        </ul>
+                        <pre><span class="comment"># דוגמה</span>
+<span class="keyword">def</span> <span class="function">test_edge_cases</span>():
+    <span class="keyword">assert</span> <span class="function">divide</span>(<span class="number">5</span>, <span class="number">0</span>)  <span class="comment"># חלוקה באפס</span>
+    <span class="keyword">assert</span> <span class="function">sqrt</span>(-<span class="number">1</span>)  <span class="comment"># שורש של שלילי</span>
+    <span class="keyword">assert</span> <span class="function">factorial</span>(<span class="number">0</span>)  <span class="comment"># 0! = 1</span></pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>📝 מחרוזות:</h4>
+                        <ul>
+                            <li><strong>מחרוזת ריקה</strong> ("")</li>
+                            <li><strong>רווחים בלבד</strong> ("   ")</li>
+                            <li><strong>תווים מיוחדים</strong> (emoji, עברית)</li>
+                            <li><strong>מחרוזת ארוכה מאוד</strong></li>
+                        </ul>
+                        <pre><span class="comment"># דוגמה</span>
+<span class="keyword">def</span> <span class="function">test_string_edges</span>():
+    <span class="keyword">assert</span> <span class="function">validate_name</span>(<span class="string">""</span>)  <span class="comment"># ריק</span>
+    <span class="keyword">assert</span> <span class="function">validate_name</span>(<span class="string">"   "</span>)  <span class="comment"># רווחים</span>
+    <span class="keyword">assert</span> <span class="function">validate_name</span>(<span class="string">"א"</span>)  <span class="comment"># אות אחת</span></pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>📋 רשימות:</h4>
+                        <ul>
+                            <li><strong>רשימה ריקה</strong> ([])</li>
+                            <li><strong>רשימה עם אלמנט אחד</strong></li>
+                            <li><strong>אינדקס מחוץ לטווח</strong></li>
+                            <li><strong>None במקום רשימה</strong></li>
+                        </ul>
+                        <pre><span class="comment"># דוגמה</span>
+<span class="keyword">def</span> <span class="function">test_list_edges</span>():
+    <span class="keyword">assert</span> <span class="function">get_first</span>([])  <span class="comment"># ריקה</span>
+    <span class="keyword">assert</span> <span class="function">get_max</span>([<span class="number">5</span>])  <span class="comment"># אחד</span>
+    <span class="keyword">assert</span> <span class="function">get_item</span>(lst, <span class="number">100</span>)  <span class="comment"># אינדקס</span></pre>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>📅 תאריכים:</h4>
+                        <ul>
+                            <li><strong>שנה מעוברת</strong> (29 בפברואר)</li>
+                            <li><strong>תאריך לא תקין</strong> (32 בינואר)</li>
+                            <li><strong>שעון קיץ</strong></li>
+                            <li><strong>איזורי זמן</strong></li>
+                        </ul>
+                        <pre><span class="comment"># דוגמה</span>
+<span class="keyword">def</span> <span class="function">test_date_edges</span>():
+    <span class="keyword">assert</span> <span class="function">is_valid</span>(<span class="number">29</span>, <span class="number">2</span>, <span class="number">2024</span>)  <span class="comment"># מעוברת</span>
+    <span class="keyword">assert</span> <span class="function">is_valid</span>(<span class="number">31</span>, <span class="number">4</span>, <span class="number">2024</span>)  <span class="comment"># לא קיים</span></pre>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>💡 כלל אצבע:</h3>
+                    <p style="font-size: 1.2em;">תמיד בדקו: <strong>ריק, אפס, אחד, מקסימום, מינימום, שלילי, לא תקין</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Best Practices -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>⭐ Best Practices - שיטות עבודה מומלצות</h2>
+                
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>✅ כן - עשו:</h4>
+                        <ul>
+                            <li>✅ <strong>תמיד בדקו קלט</strong> מהמשתמש</li>
+                            <li>✅ <strong>הודעות שגיאה ברורות</strong> - מה הבעיה ואיך לתקן</li>
+                            <li>✅ <strong>כתבו בדיקות</strong> לכל פונקציה חשובה</li>
+                            <li>✅ <strong>בדקו מקרי קצה</strong> - ריק, אפס, מקסימום</li>
+                            <li>✅ <strong>החזירו ערכים ברורים</strong> - (success, message)</li>
+                            <li>✅ <strong>תיעדו</strong> - מה הפונקציה עושה ומה היא מחזירה</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>❌ לא - אל תעשו:</h4>
+                        <ul>
+                            <li>❌ <strong>לא לסמוך</strong> על קלט מהמשתמש</li>
+                            <li>❌ <strong>לא להדפיס שגיאות טכניות</strong> למשתמש</li>
+                            <li>❌ <strong>לא להשתמש ב-except כללי</strong> (except:)</li>
+                            <li>❌ <strong>לא להחזיר None</strong> בשגיאה (החזירו tuple)</li>
+                            <li>❌ <strong>לא לבדוק רק מקרים טובים</strong></li>
+                            <li>❌ <strong>לא להשאיר TODO</strong> בקוד פרודקשן</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>דוגמה לפונקציה עם כל ה-Best Practices:</h3>
+                <pre><span class="keyword">def</span> <span class="function">create_user</span>(username, email, age):
+    <span class="string">"""
+    יוצר משתמש חדש במערכת
+    
+    Args:
+        username (str): שם משתמש (2-20 תווים)
+        email (str): כתובת מייל תקינה
+        age (int): גיל (13-120)
+    
+    Returns:
+        tuple: (success: bool, message: str, user_id: int or None)
+    
+    Raises:
+        ValueError: אם הנתונים לא תקינים
+    """</span>
+    <span class="comment"># ולידציית username</span>
+    <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(username, <span class="function">str</span>) <span class="keyword">or</span> <span class="keyword">not</span> (<span class="number">2</span> <= <span class="function">len</span>(username) <= <span class="number">20</span>):
+        <span class="keyword">return</span> (<span class="keyword">False</span>, <span class="string">"שם משתמש חייב להיות 2-20 תווים"</span>, <span class="keyword">None</span>)
+    
+    <span class="comment"># ולידציית email</span>
+    <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(email, <span class="function">str</span>) <span class="keyword">or</span> <span class="string">'@'</span> <span class="keyword">not in</span> email:
+        <span class="keyword">return</span> (<span class="keyword">False</span>, <span class="string">"כתובת מייל לא תקינה"</span>, <span class="keyword">None</span>)
+    
+    <span class="comment"># ולידציית age</span>
+    <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">isinstance</span>(age, <span class="function">int</span>) <span class="keyword">or</span> <span class="keyword">not</span> (<span class="number">13</span> <= age <= <span class="number">120</span>):
+        <span class="keyword">return</span> (<span class="keyword">False</span>, <span class="string">"גיל חייב להיות בין 13 ל-120"</span>, <span class="keyword">None</span>)
+    
+    <span class="comment"># כל הולידציות עברו - יוצרים משתמש</span>
+    <span class="keyword">try</span>:
+        user_id = database.<span class="function">insert_user</span>(username, email, age)
+        <span class="keyword">return</span> (<span class="keyword">True</span>, <span class="string">"משתמש נוצר בהצלחה"</span>, user_id)
+    <span class="keyword">except</span> <span class="class-name">DatabaseError</span> <span class="keyword">as</span> e:
+        <span class="keyword">return</span> (<span class="keyword">False</span>, <span class="string">"שגיאה ביצירת משתמש"</span>, <span class="keyword">None</span>)</pre>
+            </div>
+        </div>
+
+        <!-- Slide 12: Exercise - Event Registration -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>📝 תרגיל: מערכת הרשמה לאירועים</h2>
+                
+                <div class="exercise-box">
+                    <h3>המשימה:</h3>
+                    <p>צרו מחלקה <code>EventRegistration</code> שמנהלת הרשמות לאירוע עם מגבלות.</p>
+                    
+                    <h4>תכונות:</h4>
+                    <ul>
+                        <li><code>capacity</code> - קיבולת מקסימלית</li>
+                        <li><code>min_age</code> - גיל מינימלי להרשמה</li>
+                        <li><code>registered_people</code> - רשימת נרשמים</li>
+                    </ul>
+
+                    <h4>מתודות לממש:</h4>
+                    <ul>
+                        <li><code>register(name, age, email)</code> - הרשמה עם ולידציות</li>
+                        <li><code>cancel_registration(email)</code> - ביטול הרשמה</li>
+                        <li><code>is_full()</code> - בדיקה אם האירוע מלא</li>
+                        <li><code>get_participants_count()</code> - מספר נרשמים</li>
+                    </ul>
+
+                    <h4>ולידציות שצריך לבדוק:</h4>
+                    <ol>
+                        <li>אירוע מלא (הגענו ל-capacity)</li>
+                        <li>גיל מתחת למינימום</li>
+                        <li>כבר נרשם (מייל זהה קיים)</li>
+                        <li>שם ריק או קצר מדי</li>
+                        <li>מייל לא תקין (אין @)</li>
+                    </ol>
+                </div>
+
+                <h3>תבנית להתחלה:</h3>
+                <pre><span class="keyword">class</span> <span class="class-name">EventRegistration</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="keyword">self</span>, capacity, min_age):
+        <span class="keyword">self</span>.capacity = capacity
+        <span class="keyword">self</span>.min_age = min_age
+        <span class="keyword">self</span>.registered_people = []
+    
+    <span class="keyword">def</span> <span class="function">register</span>(<span class="keyword">self</span>, name, age, email):
+        <span class="string">"""הרשמה לאירוע - החזרת (success, message)"""</span>
+        <span class="comment"># הקוד שלכם כאן</span>
+        <span class="keyword">pass</span>
+    
+    <span class="keyword">def</span> <span class="function">cancel_registration</span>(<span class="keyword">self</span>, email):
+        <span class="comment"># הקוד שלכם כאן</span>
+        <span class="keyword">pass</span>
+
+<span class="comment"># בדיקות לכתוב:</span>
+<span class="keyword">def</span> <span class="function">test_successful_registration</span>():
+    <span class="keyword">pass</span>
+
+<span class="keyword">def</span> <span class="function">test_event_full</span>():
+    <span class="keyword">pass</span>
+
+<span class="keyword">def</span> <span class="function">test_underage</span>():
+    <span class="keyword">pass</span></pre>
+
+                <div class="interactive-demo">
+                    <h3>💻 כתבו את הפתרון:</h3>
+                    <textarea id="event-code" placeholder="כתבו את המחלקה EventRegistration כאן...">class EventRegistration:
+    def __init__(self, capacity, min_age):
+        self.capacity = capacity
+        self.min_age = min_age
+        self.registered_people = []
+    
+    def register(self, name, age, email):
+        # הקוד שלכם
+        pass</textarea>
+                    <button class="btn-demo" onclick="testEventRegistration()">בדוק קוד</button>
+                    <div class="output-box" id="event-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Testing Pyramid -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🔺 פירמידת הבדיקות</h2>
+                
+                <div style="text-align: center; margin: 40px 0;">
+                    <svg width="600" height="400" viewBox="0 0 600 400" style="margin: 0 auto;">
+                        <!-- E2E Tests -->
+                        <polygon points="300,50 150,150 450,150" fill="#f5576c" />
+                        <text x="300" y="110" text-anchor="middle" fill="white" font-size="16" font-weight="bold">E2E Tests</text>
+                        <text x="300" y="130" text-anchor="middle" fill="white" font-size="12">איטי, מעט</text>
+                        
+                        <!-- Integration Tests -->
+                        <polygon points="300,150 100,250 500,250" fill="#f093fb" />
+                        <text x="300" y="210" text-anchor="middle" fill="white" font-size="16" font-weight="bold">Integration Tests</text>
+                        <text x="300" y="230" text-anchor="middle" fill="white" font-size="12">בינוני, בינוני</text>
+                        
+                        <!-- Unit Tests -->
+                        <polygon points="300,250 50,350 550,350" fill="#667eea" />
+                        <text x="300" y="310" text-anchor="middle" fill="white" font-size="16" font-weight="bold">Unit Tests</text>
+                        <text x="300" y="330" text-anchor="middle" fill="white" font-size="12">מהיר, הרבה</text>
+                    </svg>
+                </div>
+
+                <div class="two-column">
+                    <div class="example-box">
+                        <h4>🔷 Unit Tests (70%)</h4>
+                        <ul>
+                            <li><strong>מה?</strong> בדיקת פונקציה/מתודה בודדת</li>
+                            <li><strong>מתי?</strong> מהיר מאוד (ms)</li>
+                            <li><strong>כמה?</strong> הרבה מאוד</li>
+                            <li><strong>דוגמה:</strong> בדיקת פונקציית חיבור</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-box">
+                        <h4>🔶 Integration Tests (20%)</h4>
+                        <ul>
+                            <li><strong>מה?</strong> בדיקת אינטראקציה בין חלקים</li>
+                            <li><strong>מתי?</strong> איטי יותר (שניות)</li>
+                            <li><strong>כמה?</strong> בינוני</li>
+                            <li><strong>דוגמה:</strong> בדיקת שמירה ב-DB</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h4>🔴 End-to-End Tests (10%)</h4>
+                    <ul>
+                        <li><strong>מה?</strong> בדיקת המערכת כולה מנקודת מבט של משתמש</li>
+                        <li><strong>מתי?</strong> איטי מאוד (דקות)</li>
+                        <li><strong>כמה?</strong> מעט</li>
+                        <li><strong>דוגמה:</strong> סימולציה של רכישה מלאה באתר</li>
+                    </ul>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>💡 למה הפירמידה?</h3>
+                    <ul>
+                        <li>🏃 <strong>מהירות</strong> - Unit tests מהירים, רצים אלפים בשניות</li>
+                        <li>🎯 <strong>דיוק</strong> - Unit tests מצביעים בדיוק על הבעיה</li>
+                        <li>💰 <strong>עלות</strong> - E2E tests יקרים לכתוב ולתחזק</li>
+                        <li>🔄 <strong>יציבות</strong> - Unit tests יציבים יותר</li>
+                    </ul>
+                    <p style="font-size: 1.2em; text-align: center; margin-top: 20px;">
+                        <strong>הרבה בדיקות קטנות ומהירות > מעט בדיקות גדולות ואיטיות</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Summary -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>🎓 סיכום ונקודות מפתח</h2>
+                
+                <div class="highlight-box">
+                    <h3>📚 מה למדנו?</h3>
+                    <div class="two-column">
+                        <div>
+                            <h4>טיפול בשגיאות:</h4>
+                            <ul>
+                                <li>Try-Except לתפיסת שגיאות</li>
+                                <li>ולידציה של קלט</li>
+                                <li>הודעות שגיאה ברורות</li>
+                                <li>מניעת קריסות</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>בדיקות (Testing):</h4>
+                            <ul>
+                                <li>Unit Tests לפונקציות</li>
+                                <li>מבנה AAA (Arrange-Act-Assert)</li>
+                                <li>בדיקת מקרי קצה</li>
+                                <li>פירמידת בדיקות</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>נושא</th>
+                            <th>מה עושים?</th>
+                            <th>למה?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Validation</strong></td>
+                            <td>בודקים קלט לפני שימוש</td>
+                            <td>מניעת בעיות מראש</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Try-Except</strong></td>
+                            <td>תופסים שגיאות בזמן ריצה</td>
+                            <td>מניעת קריסות</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Unit Tests</strong></td>
+                            <td>בודקים כל פונקציה</td>
+                            <td>ביטחון שהקוד עובד</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Edge Cases</strong></td>
+                            <td>בודקים מצבים קיצוניים</td>
+                            <td>תפיסת באגים נדירים</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="example-box">
+                    <h3>💡 חוקי ברזל:</h3>
+                    <ol style="font-size: 1.2em;">
+                        <li><strong>אל תסמכו על המשתמש</strong> - תמיד בדקו קלט!</li>
+                        <li><strong>אם זה לא נבדק, זה לא עובד</strong> - כתבו בדיקות!</li>
+                        <li><strong>מקרי קצה זוכרים אתכם</strong> - בדקו גם אותם!</li>
+                        <li><strong>הודעות ברורות</strong> - המשתמש צריך להבין מה הבעיה!</li>
+                        <li><strong>תיעוד זה חיוני</strong> - תסבירו מה הפונקציה עושה!</li>
+                    </ol>
+                </div>
+
+                <div class="student-demo" style="text-align: center;">
+                    <h3>🌟 המפתח להצלחה:</h3>
+                    <p style="font-size: 1.4em; margin: 20px 0;">
+                        <strong>קוד טוב = קוד שמטפל בשגיאות + בדיקות מקיפות</strong>
+                    </p>
+                    <div class="icon-large floating" style="margin-top: 30px;">🛡️✅🚀</div>
+                    <p style="font-size: 1.5em; margin-top: 20px;">
+                        בהצלחה בכתיבת קוד איכותי ואמין!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">▶ הקודם</button>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ◀</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+        
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') changeSlide(-1);
+            if (e.key === 'ArrowLeft') changeSlide(1);
+        });
+
+        // Student validation demo
+        class Student {
+            constructor(name, age, grade) {
+                if (typeof name !== 'string' || name.length < 2) {
+                    throw new Error("שם חייב להיות מחרוזת באורך 2+ תווים");
+                }
+                if (typeof age !== 'number' || age < 5 || age > 120) {
+                    throw new Error("גיל חייב להיות מספר בין 5 ל-120");
+                }
+                if (typeof grade !== 'number' || grade < 0 || grade > 100) {
+                    throw new Error("ציון חייב להיות מספר בין 0 ל-100");
+                }
+                this.name = name;
+                this.age = age;
+                this.grade = grade;
+            }
+        }
+
+        function testStudent(name, age, grade) {
+            const output = document.getElementById('student-output');
+            try {
+                const student = new Student(name, age, grade);
+                output.textContent = `✅ תלמיד נוצר בהצלחה!\n\nשם: ${student.name}\nגיל: ${student.age}\nציון: ${student.grade}`;
+                output.style.color = '#50fa7b';
+            } catch (error) {
+                output.textContent = `❌ שגיאה ביצירת תלמיד:\n\n${error.message}`;
+                output.style.color = '#ff6b6b';
+            }
+        }
+
+        // Safe calculator
+        function calculateSafe() {
+            const num1Input = document.getElementById('calc-num1').value;
+            const num2Input = document.getElementById('calc-num2').value;
+            const operation = document.getElementById('calc-op').value;
+            const resultDiv = document.getElementById('calc-result');
+            const valid1 = document.getElementById('valid-num1');
+            const valid2 = document.getElementById('valid-num2');
+
+            // Clear previous validations
+            valid1.style.display = 'none';
+            valid2.style.display = 'none';
+            resultDiv.textContent = '';
+
+            try {
+                // Validate num1
+                const num1 = parseFloat(num1Input);
+                if (isNaN(num1)) {
+                    valid1.textContent = '❌ זה לא מספר תקין';
+                    valid1.className = 'validation-message validation-error';
+                    valid1.style.display = 'block';
+                    return;
+                }
+
+                // Validate num2
+                const num2 = parseFloat(num2Input);
+                if (isNaN(num2)) {
+                    valid2.textContent = '❌ זה לא מספר תקין';
+                    valid2.className = 'validation-message validation-error';
+                    valid2.style.display = 'block';
+                    return;
+                }
+
+                // Check division by zero
+                if (operation === '/' && num2 === 0) {
+                    valid2.textContent = '❌ אי אפשר לחלק באפס!';
+                    valid2.className = 'validation-message validation-error';
+                    valid2.style.display = 'block';
+                    return;
+                }
+
+                // Calculate
+                let result;
+                switch(operation) {
+                    case '+': result = num1 + num2; break;
+                    case '-': result = num1 - num2; break;
+                    case '*': result = num1 * num2; break;
+                    case '/': result = num1 / num2; break;
+                }
+
+                // Display result
+                resultDiv.innerHTML = `✅ <span style="color: #2e7d32;">התוצאה: ${num1} ${operation} ${num2} = ${result.toFixed(2)}</span>`;
+
+            } catch (error) {
+                resultDiv.innerHTML = `❌ <span style="color: #c62828;">שגיאה: ${error.message}</span>`;
+            }
+        }
+
+        // Discount calculator for tests
+        class DiscountCalculator {
+            calculateDiscount(price, customerType, quantity) {
+                if (price <= 0) {
+                    throw new Error("מחיר חייב להיות חיובי");
+                }
+                if (quantity <= 0) {
+                    throw new Error("כמות חייבת להיות חיובית");
+                }
+
+                let discountRate = 0;
+                if (customerType === 'premium') {
+                    discountRate = 0.10;
+                } else if (customerType === 'vip') {
+                    discountRate = 0.20;
+                } else if (customerType !== 'regular') {
+                    throw new Error("סוג לקוח לא תקין");
+                }
+
+                if (quantity >= 10) {
+                    discountRate += 0.05;
+                }
+
+                const total = price * quantity;
+                const discountAmount = total * discountRate;
+                const finalPrice = total - discountAmount;
+
+                return {
+                    originalPrice: total,
+                    discountRate: discountRate * 100,
+                    discount: discountAmount,
+                    finalPrice: finalPrice
+                };
+            }
+        }
+
+        // Test functions
+        function testRegularCustomer() {
+            const calc = new DiscountCalculator();
+            const result = calc.calculateDiscount(100, 'regular', 1);
+            if (result.finalPrice === 100) {
+                return { passed: true, message: "לקוח רגיל לא מקבל הנחה" };
+            }
+            return { passed: false, message: `Expected 100, got ${result.finalPrice}` };
+        }
+
+        function testVipCustomer() {
+            const calc = new DiscountCalculator();
+            const result = calc.calculateDiscount(100, 'vip', 1);
+            if (result.discountRate === 20 && result.finalPrice === 80) {
+                return { passed: true, message: "VIP מקבל 20% הנחה" };
+            }
+            return { passed: false, message: "VIP discount calculation failed" };
+        }
+
+        function testBulkOrder() {
+            const calc = new DiscountCalculator();
+            const result = calc.calculateDiscount(100, 'regular', 10);
+            if (result.discountRate === 5 && result.finalPrice === 950) {
+                return { passed: true, message: "10+ יחידות מקבלות 5% הנחה" };
+            }
+            return { passed: false, message: "Bulk order discount failed" };
+        }
+
+        function testVipBulk() {
+            const calc = new DiscountCalculator();
+            const result = calc.calculateDiscount(100, 'vip', 10);
+            if (result.discountRate === 25 && result.finalPrice === 750) {
+                return { passed: true, message: "VIP + כמות = 25% הנחה" };
+            }
+            return { passed: false, message: "VIP bulk discount failed" };
+        }
+
+        function testInvalidPrice() {
+            const calc = new DiscountCalculator();
+            try {
+                calc.calculateDiscount(-100, 'regular', 1);
+                return { passed: false, message: "Should have thrown error" };
+            } catch (error) {
+                return { passed: true, message: "תפס מחיר שלילי נכון" };
+            }
+        }
+
+        function runSingleTest(testName) {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '';
+
+            let test, name;
+            if (testName === 'regular') {
+                test = testRegularCustomer;
+                name = 'test_regular_customer';
+            } else if (testName === 'vip') {
+                test = testVipCustomer;
+                name = 'test_vip_customer';
+            } else if (testName === 'bulk') {
+                test = testBulkOrder;
+                name = 'test_bulk_order';
+            }
+
+            const result = test();
+            const resultHTML = `
+                <div class="test-result ${result.passed ? 'test-passed' : 'test-failed'}">
+                    <div class="test-icon">${result.passed ? '✅' : '❌'}</div>
+                    <div>
+                        <strong>${name}</strong><br>
+                        ${result.message}
+                    </div>
+                </div>
+            `;
+            resultsDiv.innerHTML = resultHTML;
+        }
+
+        function runAllTests() {
+            const tests = [
+                { func: testRegularCustomer, name: 'test_regular_customer' },
+                { func: testVipCustomer, name: 'test_vip_customer' },
+                { func: testBulkOrder, name: 'test_bulk_order' },
+                { func: testVipBulk, name: 'test_vip_bulk' },
+                { func: testInvalidPrice, name: 'test_invalid_price' }
+            ];
+
+            const resultsDiv = document.getElementById('test-results');
+            const summaryDiv = document.getElementById('test-summary');
+            resultsDiv.innerHTML = '';
+
+            let passed = 0;
+            let failed = 0;
+
+            tests.forEach(test => {
+                try {
+                    const result = test.func();
+                    if (result.passed) {
+                        passed++;
+                    } else {
+                        failed++;
+                    }
+
+                    const resultHTML = `
+                        <div class="test-result ${result.passed ? 'test-passed' : 'test-failed'}">
+                            <div class="test-icon">${result.passed ? '✅' : '❌'}</div>
+                            <div>
+                                <strong>${test.name}</strong><br>
+                                ${result.message}
+                            </div>
+                        </div>
+                    `;
+                    resultsDiv.innerHTML += resultHTML;
+                } catch (error) {
+                    failed++;
+                    resultsDiv.innerHTML += `
+                        <div class="test-result test-failed">
+                            <div class="test-icon">❌</div>
+                            <div>
+                                <strong>${test.name}</strong><br>
+                                Error: ${error.message}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            summaryDiv.style.display = 'block';
+            summaryDiv.innerHTML = `
+                <strong>סיכום בדיקות:</strong><br>
+                ✅ ${passed} עברו | ❌ ${failed} נכשלו
+            `;
+        }
+
+        function testEventRegistration() {
+            const code = document.getElementById('event-code').value;
+            const output = document.getElementById('event-output');
+
+            if (!code.includes('class EventRegistration')) {
+                output.textContent = '❌ הקוד חייב להכיל את המחלקה EventRegistration';
+                output.style.color = '#ff6b6b';
+                return;
+            }
+
+            if (!code.includes('def register')) {
+                output.textContent = '❌ חסרה מתודה register';
+                output.style.color = '#ff6b6b';
+                return;
+            }
+
+            output.textContent = '✅ המבנה הבסיסי נכון!\n\nוודאו שיישמתם:\n1. ולידציה של גיל\n2. בדיקת קיבולת\n3. בדיקת מייל כפול\n4. ולידציה של שם ומייל\n\nכתבו גם בדיקות!';
+            output.style.color = '#50fa7b';
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

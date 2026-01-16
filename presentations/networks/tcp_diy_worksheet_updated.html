@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>משימת TCP DIY - בניית פרוטוקול משלך</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyber-primary: #00ff9f;
+            --cyber-secondary: #00d4ff;
+            --cyber-danger: #ff3366;
+            --cyber-warning: #ffaa00;
+            --bg-dark: #0a0e27;
+            --bg-card: #141930;
+            --bg-code: #1a1f3a;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --border-color: rgba(0, 255, 159, 0.2);
+            --glow: 0 0 20px rgba(0, 255, 159, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0f1529 100%);
+            color: var(--text-primary);
+            font-family: 'Heebo', sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(0, 255, 159, 0.03) 50px, rgba(0, 255, 159, 0.03) 51px),
+                repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0, 255, 159, 0.03) 50px, rgba(0, 255, 159, 0.03) 51px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 40px 20px;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--glow);
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyber-primary), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            to {
+                left: 100%;
+            }
+        }
+
+        .header h1 {
+            font-size: 3em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--cyber-primary), var(--cyber-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .mission-tag {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(0, 255, 159, 0.1);
+            border: 1px solid var(--cyber-primary);
+            border-radius: 20px;
+            color: var(--cyber-primary);
+            font-weight: 600;
+            font-size: 1em;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            margin-top: 15px;
+            font-weight: 300;
+        }
+
+        /* Architecture Diagram */
+        .architecture-box {
+            background: var(--bg-card);
+            border: 2px solid var(--cyber-secondary);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+
+        .architecture-box h2 {
+            color: var(--cyber-secondary);
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+
+        .diagram {
+            font-family: 'JetBrains Mono', monospace;
+            background: #000;
+            color: #00ffcc;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.8;
+            direction: ltr;
+            text-align: left;
+            font-size: 1em;
+        }
+
+        .principle-box {
+            background: linear-gradient(135deg, rgba(0, 255, 159, 0.1), rgba(0, 212, 255, 0.1));
+            border-right: 4px solid var(--cyber-primary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .principle-box h3 {
+            color: var(--cyber-primary);
+            margin-bottom: 10px;
+        }
+
+        /* Mission Brief */
+        .mission-brief {
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.1), rgba(255, 170, 0, 0.1));
+            border: 2px solid var(--cyber-danger);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            position: relative;
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mission-brief::before {
+            content: '⚠ MISSION BRIEFING';
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: var(--bg-dark);
+            padding: 0 15px;
+            color: var(--cyber-danger);
+            font-weight: 700;
+            font-size: 1em;
+            letter-spacing: 2px;
+        }
+
+        .mission-brief h2 {
+            color: var(--cyber-danger);
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        /* Files Structure */
+        .files-structure {
+            background: var(--bg-code);
+            border: 2px solid var(--cyber-warning);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .files-structure h3 {
+            color: var(--cyber-warning);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .files-structure h3::before {
+            content: '📂';
+            font-size: 1.3em;
+        }
+
+        .file-item {
+            background: rgba(0, 255, 159, 0.05);
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-right: 3px solid var(--cyber-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .file-item strong {
+            color: var(--cyber-primary);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Stage Card */
+        .stage-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            animation: fadeIn 1s ease-out both;
+        }
+
+        .stage-card:nth-child(2) { animation-delay: 0.1s; }
+        .stage-card:nth-child(3) { animation-delay: 0.2s; }
+        .stage-card:nth-child(4) { animation-delay: 0.3s; }
+        .stage-card:nth-child(5) { animation-delay: 0.4s; }
+
+        .stage-card:hover {
+            border-color: var(--cyber-primary);
+            box-shadow: var(--glow);
+            transform: translateY(-2px);
+        }
+
+        .stage-header {
+            background: linear-gradient(135deg, rgba(0, 255, 159, 0.1), rgba(0, 212, 255, 0.1));
+            padding: 20px 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.3s ease;
+        }
+
+        .stage-header:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 159, 0.15), rgba(0, 212, 255, 0.15));
+        }
+
+        .stage-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: var(--cyber-primary);
+            color: var(--bg-dark);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: 900;
+            font-size: 1.2em;
+            margin-left: 15px;
+            box-shadow: 0 0 15px rgba(0, 255, 159, 0.5);
+        }
+
+        .stage-title {
+            flex: 1;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stage-toggle {
+            font-size: 1.5em;
+            color: var(--cyber-primary);
+            transition: transform 0.3s ease;
+        }
+
+        .stage-card.collapsed .stage-toggle {
+            transform: rotate(180deg);
+        }
+
+        .stage-content {
+            padding: 30px;
+            display: block;
+            max-height: 5000px;
+            overflow: hidden;
+            transition: max-height 0.5s ease, padding 0.5s ease;
+        }
+
+        .stage-card.collapsed .stage-content {
+            max-height: 0;
+            padding: 0 30px;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid rgba(0, 255, 159, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            text-align: left;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-block::before {
+            content: 'Python';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: var(--cyber-primary);
+            color: var(--bg-dark);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        .code-block pre {
+            margin-top: 25px;
+            color: #e4e4e7;
+            line-height: 1.6;
+            font-size: 1.2em;
+        }
+
+        .code-comment {
+            color: #6b7280;
+        }
+
+        .code-keyword {
+            color: var(--cyber-secondary);
+            font-weight: 600;
+        }
+
+        .code-string {
+            color: #fbbf24;
+        }
+
+        .code-function {
+            color: var(--cyber-primary);
+        }
+
+        /* Task Box */
+        .task-box {
+            background: rgba(0, 212, 255, 0.05);
+            border-right: 4px solid var(--cyber-secondary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .task-box h4 {
+            color: var(--cyber-secondary);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .task-list {
+            list-style: none;
+            padding-right: 0;
+        }
+
+        .task-list li {
+            padding: 8px 0 8px 30px;
+            position: relative;
+        }
+
+        .task-list li::before {
+            content: '▸';
+            position: absolute;
+            right: 0;
+            color: var(--cyber-secondary);
+            font-weight: 700;
+        }
+
+        /* AI Guidance Box */
+        .ai-guide {
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.1), rgba(255, 51, 102, 0.1));
+            border: 2px dashed var(--cyber-warning);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .ai-guide h4 {
+            color: var(--cyber-warning);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-guide h4::before {
+            content: '🤖';
+            font-size: 1.3em;
+        }
+
+        .allowed, .forbidden {
+            margin: 15px 0;
+        }
+
+        .allowed h5 {
+            color: var(--cyber-primary);
+            margin-bottom: 8px;
+        }
+
+        .forbidden h5 {
+            color: var(--cyber-danger);
+            margin-bottom: 8px;
+        }
+
+        .allowed ul, .forbidden ul {
+            list-style: none;
+            padding-right: 0;
+        }
+
+        .allowed li::before {
+            content: '✅ ';
+            margin-left: 5px;
+        }
+
+        .forbidden li::before {
+            content: '❌ ';
+            margin-left: 5px;
+        }
+
+        /* Output Box */
+        .output-box {
+            background: var(--bg-code);
+            border: 2px solid var(--cyber-primary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .output-box h4 {
+            color: var(--cyber-primary);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .output-box h4::before {
+            content: '📦';
+            font-size: 1.3em;
+        }
+
+        /* Questions Box */
+        .questions-box {
+            background: rgba(0, 255, 159, 0.05);
+            border-right: 4px solid var(--cyber-primary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .questions-box h4 {
+            color: var(--cyber-primary);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .question-item {
+            background: var(--bg-card);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-right: 2px solid rgba(0, 255, 159, 0.3);
+        }
+
+        /* Text Area for Documentation */
+        .doc-area {
+            width: 100%;
+            min-height: 150px;
+            background: var(--bg-code);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: 'Heebo', sans-serif;
+            font-size: 1em;
+            margin: 15px 0;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .doc-area:focus {
+            outline: none;
+            border-color: var(--cyber-primary);
+            box-shadow: var(--glow);
+        }
+
+        /* Timer Display */
+        .timer {
+            display: inline-block;
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid var(--cyber-warning);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: var(--cyber-warning);
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        /* Success Box */
+        .success-box {
+            background: linear-gradient(135deg, rgba(0, 255, 159, 0.1), rgba(0, 212, 255, 0.1));
+            border: 2px solid var(--cyber-primary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .success-box h3 {
+            color: var(--cyber-primary);
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        /* Button */
+        .btn {
+            background: linear-gradient(135deg, var(--cyber-primary), var(--cyber-secondary));
+            color: var(--bg-dark);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 255, 159, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 159, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .stage-title {
+                font-size: 1.2em;
+            }
+
+            .stage-content {
+                padding: 20px;
+            }
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            height: 4px;
+            background: rgba(0, 255, 159, 0.2);
+            border-radius: 2px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyber-primary), var(--cyber-secondary));
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 159, 0.8);
+        }
+
+        .emoji {
+            font-size: 1.2em;
+            margin: 0 5px;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: rgba(255, 51, 102, 0.1);
+            border: 2px solid var(--cyber-danger);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .warning-box h4 {
+            color: var(--cyber-danger);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛡️ משימת Mini-TCP</h1>
+            <div class="mission-tag">CLASSIFIED PROJECT</div>
+            <p class="subtitle">בניית פרוטוקול תקשורת אמין מעל רשת לא אמינה</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+
+        <!-- Architecture Explanation -->
+        <div class="architecture-box">
+            <h2>🏗️ ארכיטקטורת המערכת</h2>
+            
+            <div class="principle-box">
+                <h3>עקרון יסוד: הפרדת אחריות</h3>
+                <p><strong>הרשת (UnreliableNetwork)</strong> - רק מעבירה מידע ומדמה בעיות 🌐</p>
+                <p><strong>הפרוטוקול (SimpleTCProtocol)</strong> - חושב, מתקן, ומבטיח אמינות 🧠</p>
+            </div>
+
+            <pre class="diagram">
+┌──────────────────────────────┐
+│        Application         │
+│    client.py / server.py   │
+│     שליחת/קבלת קבצים          │
+└────────────▲─────────────────┘
+             │
+┌────────────┴─────────────────┐
+│   SimpleTCProtocol.py     │
+│  • פיצול לחבילות               │
+│   • מספור (SEQ)             │
+│  • ACK / Timeout           │
+│  • Retransmission          │
+│  • סידור נתונים                │
+└────────────▲─────────────────┘
+             │
+┌────────────┴─────────────────┐
+│  UnreliableNetwork.py      │
+│  • אובדן חבילות ❌            │
+│  • עיכוב/שינוי סדר ⏱️          │
+│  • שכפול חבילות 📦📦          │
+│  ❗ רק send() - ללא recv()  │
+└────────────▲─────────────────┘
+             │
+┌────────────┴─────────────────┐
+│       Python Socket        │
+│         (TCP/UDP)          │
+└──────────────────────────────┘
+            </pre>
+
+            <div class="warning-box">
+                <h4>⚠️ כללים קריטיים</h4>
+                <ul class="task-list">
+                    <li>UnreliableNetwork רק <strong>שולחת</strong> - אין בה recv() או לוגיקה</li>
+                    <li>SimpleTCProtocol אחראית על <strong>כל</strong> הלוגיקה - ACK, timeout, סידור</li>
+                    <li>אסור לערבב אחריות בין השכבות!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Files Structure -->
+        <div class="files-structure">
+            <h3>מבנה הקבצים שתעבדו איתם</h3>
+            
+            <div class="file-item">
+                <strong>📄 unreliable_network.py</strong>
+                מחלקה מוכנה שמדמה רשת לא אמינה. <strong>אל תשנו אותה!</strong>
+            </div>
+
+            <div class="file-item">
+                <strong>📄 simple_tcp_protocol.py</strong>
+                <strong>זה הקובץ שאתם תבנו!</strong> מחלקה עם TODO שאתם צריכים למלא.
+            </div>
+
+            <div class="file-item">
+                <strong>📄 client_mini_tcp.py</strong>
+                Client שמשתמש בפרוטוקול שלכם לשלוח קובץ.
+            </div>
+
+            <div class="file-item">
+                <strong>📄 server_mini_tcp.py</strong>
+                Server שמקבל קובץ דרך הפרוטוקול שלכם.
+            </div>
+
+            <div class="file-item">
+                <strong>📄 test_simple_tcp.py</strong>
+                בדיקות שתכתבו כדי לוודא שהפרוטוקול עובד.
+            </div>
+        </div>
+
+        <!-- Mission Brief -->
+        <div class="mission-brief">
+            <h2>📋 תדריך המשימה</h2>
+            <p><strong>תרחיש:</strong> אתם מפתחי פרוטוקולים בחברת סטארט-אפ. עליכם לממש את המחלקה <code>SimpleTCProtocol</code> שמבטיחה העברה אמינה של קבצים מעל רשת לא אמינה.</p>
+            
+            <p style="margin-top: 15px;"><strong>🎯 היעד:</strong> Client ישלח קובץ דרך רשת "שבורה" ו-Server יקבל אותו <strong>שלם ומסודר</strong>.</p>
+            
+            <p style="margin-top: 15px;"><strong>⏱️ זמן משוער:</strong> 90 דקות</p>
+        </div>
+
+        <!-- Stage 0: Understanding the Problem -->
+        <div class="stage-card">
+            <div class="stage-header" onclick="toggleStage(this)">
+                <span class="stage-number">0</span>
+                <h3 class="stage-title">הבנת הבעיה - הרצת הקוד הקיים</h3>
+                <span class="timer">⏱️ 15 דקות</span>
+                <span class="stage-toggle">▼</span>
+            </div>
+            <div class="stage-content">
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    לפני שמתחילים לבנות, צריך להבין את הבעיה! הריצו את הקוד הקיים וראו מה קורה.
+                </p>
+
+                <div class="task-box">
+                    <h4>🎯 משימות שלב זה</h4>
+                    <ul class="task-list">
+                        <li>הורידו את כל הקבצים לתיקייה אחת</li>
+                        <li>בדקו את unreliable_network.py - הבינו מה הוא עושה</li>
+                        <li>הסתכלו על client_mini_tcp.py ו-server_mini_tcp.py</li>
+                        <li>נסו להריץ (יכשל כי SimpleTCProtocol עדיין ריק!)</li>
+                    </ul>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># הקוד של UnreliableNetwork (מוכן - אל תשנו!)</span>
+<span class="code-keyword">class</span> <span class="code-function">UnreliableNetwork</span>:
+    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, drop_rate=<span class="code-string">0.2</span>, reorder_rate=<span class="code-string">0.3</span>):
+        self.drop_rate = drop_rate
+        self.reorder_rate = reorder_rate
+        self.packet_counter = <span class="code-string">0</span>
+    
+    <span class="code-keyword">def</span> <span class="code-function">send</span>(self, sock, data):
+        <span class="code-comment"># מדמה רשת לא אמינה</span>
+        <span class="code-comment"># - 20% סיכוי שהחבילה תאבד</span>
+        <span class="code-comment"># - 30% סיכוי לעיכוב (= שינוי סדר)</span>
+        self.packet_counter += 1
+        packet_id = self.packet_counter
+
+        # אובדן חבילה
+        <span class="code-keyword">if</span>  random.random() < self.drop_rate:
+            print(f"📦❌ Packet #{packet_id} LOST!")
+            return False
+
+        # עיכוב = שינוי סדר
+        <span class="code-keyword">if</span>  random.random() < self.reorder_rate:
+            delay = random.uniform(0.1, 0.5)
+            print(f"📦⏱️ Packet #{packet_id} DELAYED")
+            threading.Timer(delay, sock.send, args=(data,)).start()
+        <span class="code-keyword">else</span> :
+            print(f"📦✅ Packet #{packet_id} sent")
+            sock.send(data)
+       </pre>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># Client (מוכן)</span>
+<span class="code-keyword">def</span> <span class="code-function">client</span>():
+    sock = socket.socket()
+    sock.connect((<span class="code-string">"localhost"</span>, <span class="code-string">9000</span>))
+    
+    network = UnreliableNetwork()
+    tcp = SimpleTCProtocol(sock, network)
+    
+    tcp.send_reliable(<span class="code-string">b"HELLO THIS IS A FILE"</span>)</pre>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># Server (מוכן)</span>
+<span class="code-keyword">def</span> <span class="code-function">server</span>():
+    sock = socket.socket()
+    sock.bind((<span class="code-string">"localhost"</span>, <span class="code-string">9000</span>))
+    sock.listen(<span class="code-string">1</span>)
+    
+    client, _ = sock.accept()
+    tcp = SimpleTCProtocol(client, <span class="code-string">None</span>)  <span class="code-comment"># Server אין לו network</span>
+    
+    file_data = tcp.receive_reliable()
+    <span class="code-function">print</span>(<span class="code-string">"📁 File received:"</span>, file_data)</pre>
+                </div>
+
+                <div class="questions-box">
+                    <h4>💭 שאלות הבנה</h4>
+                    <div class="question-item">
+                        <strong>1.</strong> למה ל-Client יש UnreliableNetwork אבל ל-Server אין?
+                    </div>
+                    <div class="question-item">
+                        <strong>2.</strong> מה יקרה אם Client ישלח 10 bytes אבל 3 מהם יאבדו?
+                    </div>
+                    <div class="question-item">
+                        <strong>3.</strong> איך Server יכול לדעת שהוא קיבל הכל?
+                    </div>
+                </div>
+
+                <div class="output-box">
+                    <h4>תוצר שלב 0</h4>
+                    <textarea class="doc-area" placeholder="תעדו:
+1. מה הבנתם על מבנה המערכת?
+2. למה צריך הפרדה בין UnreliableNetwork ל-SimpleTCP?
+3. אילו אתגרים אתם צופים?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 1: Protocol Design -->
+        <div class="stage-card">
+            <div class="stage-header" onclick="toggleStage(this)">
+                <span class="stage-number">1</span>
+                <h3 class="stage-title">תכנון הפרוטוקול - מה צריך?</h3>
+                <span class="timer">⏱️ 20 דקות</span>
+                <span class="stage-toggle">▼</span>
+            </div>
+            <div class="stage-content">
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    לפני כתיבת קוד, נתכנן! מה הפרוטוקול צריך לדעת ולעשות?
+                </p>
+
+                <div class="task-box">
+                    <h4>🎯 שאלות תכנון קריטיות</h4>
+                    <ul class="task-list">
+                        <li><strong>מבנה נתונים:</strong> מה SimpleTCProtocol צריך לשמור ב-__init__?</li>
+                        <li><strong>פורמט חבילה:</strong> מה מידע כל חבילה חייבת להכיל?</li>
+                        <li><strong>ACK מנגנון:</strong> איך Receiver מודיע ל-Sender שקיבל?</li>
+                        <li><strong>Timeout:</strong> כמה זמן לחכות לפני שליחה מחדש?</li>
+                    </ul>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># SimpleTCProtocol - מה צריך במחלקה?</span>
+<span class="code-keyword">class</span> <span class="code-function">SimpleTCProtocol</span>:
+    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, sock, network):
+        self.sock = sock              <span class="code-comment"># Socket לשליחה/קבלה</span>
+        self.network = network        <span class="code-comment"># UnreliableNetwork (או None ב-Server)</span>
+        
+        <span class="code-comment"># TODO: מה עוד צריך?</span>
+        <span class="code-comment"># רמזים:</span>
+        <span class="code-comment"># - מספר הסדרה הנוכחי?</span>
+        <span class="code-comment"># - גודל חבילה (CHUNK_SIZE)?</span>
+        <span class="code-comment"># - זמן timeout?</span>
+        <span class="code-comment"># - buffer לחבילות שהתקבלו לא בסדר?</span></pre>
+                </div>
+
+                <div class="questions-box">
+                    <h4>💭 שאלות לתכנון מבנה חבילה</h4>
+                    <div class="question-item">
+                        <strong>1. מספר סדרה (SEQ):</strong> האם מספר מ-0 עד אינסוף? או עם wrap-around?
+                    </div>
+                    <div class="question-item">
+                        <strong>2. גודל חבילה:</strong> 512 bytes? 1024? מה ה-tradeoff?
+                    </div>
+                    <div class="question-item">
+                        <strong>3. פורמט:</strong> האם `SEQ|DATA` מספיק? או צריך גם LENGTH?
+                    </div>
+                    <div class="question-item">
+                        <strong>4. ACK:</strong> האם לאשר כל חבילה בנפרד או לאשר טווח (cumulative)?
+                    </div>
+                </div>
+
+                <div class="ai-guide">
+                    <h4>איך להשתמש ב-AI בשלב זה</h4>
+                    
+                    <div class="allowed">
+                        <h5>✅ שאלות מומלצות:</h5>
+                        <ul>
+                            <li>"מה היתרונות והחסרונות של cumulative ACK vs selective ACK?"</li>
+                            <li>"איך TCP בוחר את גודל ה-window? מה ה-tradeoffs?"</li>
+                            <li>"למה חשוב sequence number? תן דוגמה למצב שבלעדיו נכשל"</li>
+                            <li>"איך לחשב timeout אופטימלי? RTT זה מה?"</li>
+                        </ul>
+                    </div>
+
+                    <div class="forbidden">
+                        <h5>❌ אסור לבקש:</h5>
+                        <ul>
+                            <li>"תכתוב לי את SimpleTCProtocol המלא"</li>
+                            <li>"תן לי קוד מוכן לכל הפונקציות"</li>
+                            <li>"מה הפתרון הכי טוב?" (בלי שאתם מסבירים למה)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="output-box">
+                    <h4>תוצר שלב 1 - מסמך תכנון</h4>
+                    
+                    <h5 style="color: var(--cyber-secondary); margin: 20px 0 10px 0;">החלטות תכנון:</h5>
+                    <textarea class="doc-area" placeholder="תכתבו:
+1. מבנה מחלקה - אילו משתנים תשמרו ב-__init__?
+2. פורמט חבילה - איך תקודדו SEQ + DATA?
+3. אסטרטגיית ACK - cumulative או selective? למה?
+4. Timeout - איך תקבעו? קבוע או דינמי?
+5. Buffer - איך תטפלו בחבילות שמגיעות לא בסדר?"></textarea>
+
+                    <h5 style="color: var(--cyber-warning); margin: 20px 0 10px 0;">שאלות ששאלתם מ-AI:</h5>
+                    <textarea class="doc-area" placeholder="תעדו את השיחה:
+1. מה שאלתם?
+2. מה AI ענה?
+3. האם הבנתם? האם זה הגיוני?
+4. אילו החלטות עזרה לכם לקבל?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 2: Implementation -->
+        <div class="stage-card">
+            <div class="stage-header" onclick="toggleStage(this)">
+                <span class="stage-number">2</span>
+                <h3 class="stage-title">מימוש הפרוטוקול - קוד!</h3>
+                <span class="timer">⏱️ 45 דקות</span>
+                <span class="stage-toggle">▼</span>
+            </div>
+            <div class="stage-content">
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    עכשיו - לבנות את הפרוטוקול! מלאו את הפונקציות ב-simple_tcp_protocol.py
+                </p>
+
+                <div class="task-box">
+                    <h4>🎯 פונקציות למימוש</h4>
+                    <ul class="task-list">
+                        <li><strong>send_reliable(data)</strong> - פיצול לחבילות, שליחה עם retransmit</li>
+                        <li><strong>receive_reliable()</strong> - קבלה, סידור, שליחת ACKs</li>
+                        <li><strong>_send_packet(seq, data)</strong> - עזר: קידוד ושליחה</li>
+                        <li><strong>_wait_for_ack(seq, timeout)</strong> - עזר: המתנה ל-ACK</li>
+                    </ul>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># תבנית למימוש - send_reliable</span>
+<span class="code-keyword">def</span> <span class="code-function">send_reliable</span>(self, data):
+    <span class="code-string">"""שולח data בצורה אמינה"""</span>
+    
+    <span class="code-comment"># שלב 1: פצל את data לחבילות בגודל CHUNK_SIZE</span>
+    chunks = [data[i:i+CHUNK_SIZE] 
+              <span class="code-keyword">for</span> i <span class="code-keyword">in</span> range(<span class="code-string">0</span>, len(data), CHUNK_SIZE)]
+    
+    <span class="code-comment"># שלב 2: לכל חבילה</span>
+    <span class="code-keyword">for</span> seq, chunk <span class="code-keyword">in</span> enumerate(chunks):
+        <span class="code-comment"># 2.1 קודד חבילה: SEQ + DATA</span>
+        packet = self._encode_packet(seq, chunk)
+        
+        <span class="code-comment"># 2.2 שלח דרך UnreliableNetwork</span>
+        self.network.send(self.sock, packet)
+        
+        <span class="code-comment"># 2.3 חכה ל-ACK</span>
+        <span class="code-keyword">while</span> <span class="code-keyword">not</span> self._wait_for_ack(seq, timeout=<span class="code-string">2.0</span>):
+            <span class="code-comment"># Timeout! שלח שוב</span>
+            <span class="code-function">print</span>(<span class="code-string">f"⚠️ Timeout on packet {seq}, retransmitting..."</span>)
+            self.network.send(self.sock, packet)
+    
+    <span class="code-comment"># שלח FIN - סימן לסיום</span>
+    self._send_fin()</pre>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># תבנית למימוש - receive_reliable</span>
+<span class="code-keyword">def</span> <span class="code-function">receive_reliable</span>(self):
+    <span class="code-string">"""מקבל data בצורה אמינה"""</span>
+    
+    received_packets = {}  <span class="code-comment"># {seq: data}</span>
+    expected_seq = <span class="code-string">0</span>
+    
+    <span class="code-keyword">while</span> <span class="code-keyword">True</span>:
+        <span class="code-comment"># קבל חבילה</span>
+        packet = self.sock.recv(<span class="code-string">2048</span>)
+        
+        <span class="code-comment"># פענח: SEQ, DATA או FIN</span>
+        msg_type, seq, data = self._decode_packet(packet)
+        
+        <span class="code-keyword">if</span> msg_type == <span class="code-string">"FIN"</span>:
+            <span class="code-comment"># סיימנו! שלח ACK ל-FIN</span>
+            self._send_ack(seq)
+            <span class="code-keyword">break</span>
+        
+        <span class="code-comment"># שלח ACK (תמיד! גם לחבילות כפולות)</span>
+        self._send_ack(seq)
+        
+        <span class="code-comment"># בדוק אם זו חבילה חדשה</span>
+        <span class="code-keyword">if</span> seq <span class="code-keyword">not in</span> received_packets:
+            received_packets[seq] = data
+            <span class="code-function">print</span>(<span class="code-string">f"✅ Received new packet {seq}"</span>)
+        <span class="code-keyword">else</span>:
+            <span class="code-function">print</span>(<span class="code-string">f"📦 Duplicate packet {seq}, ignored"</span>)
+    
+    <span class="code-comment"># סדר לפי sequence</span>
+    sorted_data = [received_packets[i] 
+                   <span class="code-keyword">for</span> i <span class="code-keyword">in</span> sorted(received_packets.keys())]
+    
+    <span class="code-keyword">return</span> <span class="code-string">b""</span>.join(sorted_data)</pre>
+                </div>
+
+                <div class="questions-box">
+                    <h4>💭 שאלות מימוש</h4>
+                    <div class="question-item">
+                        <strong>1. Encoding:</strong> איך לקודד SEQ+DATA? struct.pack? JSON? משהו אחר?
+                    </div>
+                    <div class="question-item">
+                        <strong>2. Threading:</strong> האם צריך thread נפרד להאזין ל-ACKs?
+                    </div>
+                    <div class="question-item">
+                        <strong>3. Timeout:</strong> האם timeout קבוע או לחשב לפי RTT?
+                    </div>
+                    <div class="question-item">
+                        <strong>4. FIN:</strong> איך לסמן שהקובץ נגמר? חבילה מיוחדת?
+                    </div>
+                </div>
+
+                <div class="ai-guide">
+                    <h4>שאלות טובות ל-AI במימוש</h4>
+                    
+                    <div class="allowed">
+                        <h5>✅ דוגמאות לשאלות:</h5>
+                        <ul>
+                            <li>"איך להשתמש ב-struct.pack לקידוד int + bytes?"</li>
+                            <li>"מה ההבדל בין select() ל-recv() עם timeout?"</li>
+                            <li>"הקוד שלי מתנהג כך... למה זה קורה?"</li>
+                            <li>"איך לטפל במצב שבו ACK אובד?"</li>
+                        </ul>
+                    </div>
+
+                    <p style="margin-top: 15px;"><strong>כלל זהב:</strong> שאלו על <em>איך</em> לממש החלטה שכבר קיבלתם, לא מה להחליט.</p>
+                </div>
+
+                <div class="output-box">
+                    <h4>תוצר שלב 2</h4>
+                    
+                    <h5 style="color: var(--cyber-primary); margin: 15px 0 10px 0;">קוד עובד:</h5>
+                    <p>הקובץ simple_tcp_protocol.py עם מימוש מלא</p>
+
+                    <h5 style="color: var(--cyber-danger); margin: 15px 0 10px 0;">בעיות שנתקלתם:</h5>
+                    <textarea class="doc-area" placeholder="תעדו לפחות 3 בעיות:
+1. הבעיה: [מה קרה?]
+2. איך AI עזר: [תיאור השיחה]
+3. הפתרון: [מה עשיתם ולמה זה עובד]
+4. מה למדתם: [insight]"></textarea>
+
+                    <h5 style="color: var(--cyber-warning); margin: 15px 0 10px 0;">Trade-offs:</h5>
+                    <textarea class="doc-area" placeholder="אילו compromises עשיתם?
+- timeout קבוע vs דינמי?
+- buffer size - כמה?
+- cumulative ACK vs selective?
+- מה ויתרתם ומה רווחתם?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 3: Testing -->
+        <div class="stage-card">
+            <div class="stage-header" onclick="toggleStage(this)">
+                <span class="stage-number">3</span>
+                <h3 class="stage-title">בדיקות - האם זה עובד?</h3>
+                <span class="timer">⏱️ 25 דקות</span>
+                <span class="stage-toggle">▼</span>
+            </div>
+            <div class="stage-content">
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    זמן לבדוק! הריצו את client ו-server ובדקו תרחישים שונים.
+                </p>
+
+                <div class="task-box">
+                    <h4>🧪 תרחישי בדיקה</h4>
+                    <ul class="task-list">
+                        <li><strong>תרחיש 1:</strong> drop_rate=0.2, reorder_rate=0.2 - בסיסי</li>
+                        <li><strong>תרחיש 2:</strong> drop_rate=0.5 - אובדן גבוה!</li>
+                        <li><strong>תרחיש 3:</strong> reorder_rate=0.8 - הכל לא בסדר!</li>
+                        <li><strong>תרחיש 4:</strong> קובץ גדול (10KB+) - ביצועים</li>
+                        <li><strong>תרחיש 5:</strong> timeout קצר מדי - מה קורה?</li>
+                    </ul>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># הרצת הבדיקה</span>
+<span class="code-comment"># Terminal 1 (Server):</span>
+$ python server_mini_tcp.py
+
+<span class="code-comment"># Terminal 2 (Client):</span>
+$ python client_mini_tcp.py
+
+<span class="code-comment"># שנה פרמטרים ב-client:</span>
+network = UnreliableNetwork(
+    drop_rate=<span class="code-string">0.5</span>,      <span class="code-comment"># 50% אובדן!</span>
+    reorder_rate=<span class="code-string">0.8</span>   <span class="code-comment"># 80% לא בסדר!</span>
+)</pre>
+                </div>
+
+                <div class="code-block">
+<pre><span class="code-comment"># כתבו בדיקות ב-test_simple_tcp.py</span>
+<span class="code-keyword">def</span> <span class="code-function">test_basic_transfer</span>():
+    <span class="code-string">"""בדיקה בסיסית - שליחת 100 bytes"""</span>
+    data = <span class="code-string">b"A" * 100</span>
+    <span class="code-comment"># TODO: שלח, קבל, בדוק שווה</span>
+    <span class="code-keyword">assert</span> sent_data == received_data
+
+<span class="code-keyword">def</span> <span class="code-function">test_high_loss</span>():
+    <span class="code-string">"""בדיקת עמידות - 60% אובדן"""</span>
+    network = UnreliableNetwork(drop_rate=<span class="code-string">0.6</span>)
+    <span class="code-comment"># TODO: האם עדיין עובד?</span>
+
+<span class="code-keyword">def</span> <span class="code-function">test_performance</span>():
+    <span class="code-string">"""מדידת ביצועים - 10KB"""</span>
+    start = time.time()
+    <span class="code-comment"># TODO: שלח 10KB</span>
+    duration = time.time() - start
+    <span class="code-function">print</span>(<span class="code-string">f"Transfer time: {duration:.2f}s"</span>)</pre>
+                </div>
+
+                <div class="questions-box">
+                    <h4>💭 שאלות ניתוח</h4>
+                    <div class="question-item">
+                        <strong>1.</strong> מה קורה כש-timeout קצר מדי? איך זה משפיע על ביצועים?
+                    </div>
+                    <div class="question-item">
+                        <strong>2.</strong> איזה תרחיש הכי קשה לפרוטוקול שלכם? למה?
+                    </div>
+                    <div class="question-item">
+                        <strong>3.</strong> כמה retransmissions בממוצע? האם אפשר להפחית?
+                    </div>
+                </div>
+
+                <div class="output-box">
+                    <h4>תוצר שלב 3</h4>
+                    
+                    <h5 style="color: var(--cyber-primary); margin: 15px 0 10px 0;">תוצאות בדיקות:</h5>
+                    <textarea class="doc-area" placeholder="לכל תרחיש:
+1. פרמטרים (drop_rate, reorder_rate)
+2. האם עבר? ✅ / נכשל? ❌
+3. מדדים: זמן, retransmissions, throughput
+4. הפתעות: מה לא ציפיתם?"></textarea>
+
+                    <h5 style="color: var(--cyber-secondary); margin: 15px 0 10px 0;">אופטימיזציות:</h5>
+                    <textarea class="doc-area" placeholder="מה שיפרתם אחרי הבדיקות?
+- שינוי ב-timeout?
+- שינוי ב-chunk size?
+- שינוי באסטרטגיית ACK?
+- מה השיפור בביצועים?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 4: Comparison with TCP -->
+        <div class="stage-card">
+            <div class="stage-header" onclick="toggleStage(this)">
+                <span class="stage-number">✓</span>
+                <h3 class="stage-title">השוואה ל-TCP האמיתי</h3>
+                <span class="stage-toggle">▼</span>
+            </div>
+            <div class="stage-content">
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    עכשיו שבניתם Mini-TCP, הגיע הזמן להשוות ל-TCP האמיתי ולהבין מה למדתם.
+                </p>
+
+                <div class="questions-box">
+                    <h4>🔍 שאלות השוואה</h4>
+                    <div class="question-item">
+                        <strong>1. Three-Way Handshake:</strong> למה TCP צריך את זה? האם פספסתם משהו בלי זה?
+                    </div>
+                    <div class="question-item">
+                        <strong>2. Sliding Window:</strong> אתם שלחתם חבילה אחת בכל פעם. TCP שולח הרבה במקביל. מה זה נותן?
+                    </div>
+                    <div class="question-item">
+                        <strong>3. Congestion Control:</strong> TCP מאט כשהרשת עמוסה. איך זה קשור לבעיה שפתרתם?
+                    </div>
+                    <div class="question-item">
+                        <strong>4. Fast Retransmit:</strong> TCP לא מחכה ל-timeout. איך זה עובד?
+                    </div>
+                    <div class="question-item">
+                        <strong>5. Flow Control:</strong> מה קורה אם Receiver איטי? איך TCP מטפל בזה?
+                    </div>
+                </div>
+
+                <div class="ai-guide">
+                    <h4>שאלות מעמיקות ל-AI</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin: 10px 0;">💡 "הסבר את ההבדל בין Stop-and-Wait (מה שעשינו) ל-Sliding Window"</li>
+                        <li style="margin: 10px 0;">💡 "למה TCP Tahoe שונה מ-TCP Reno? איזה בעיה כל אחד פותר?"</li>
+                        <li style="margin: 10px 0;">💡 "מה זה Silly Window Syndrome ואיך TCP נמנע ממנו?"</li>
+                        <li style="margin: 10px 0;">💡 "למה TCP לא מתאים לסטרימינג וידאו? מה הבעיה?"</li>
+                    </ul>
+                </div>
+
+                <div class="output-box">
+                    <h4>תוצר סופי - רפלקציה מלאה</h4>
+                    
+                    <h5 style="color: var(--cyber-primary); margin: 15px 0 10px 0;">על TCP:</h5>
+                    <textarea class="doc-area" placeholder="1. מה למדתם על TCP שלא ידעתם?
+2. למה TCP מורכב כל כך? אילו בעיות הוא פותר שלא פתרתם?
+3. באילו מקרים TCP לא מתאים? למה?"></textarea>
+
+                    <h5 style="color: var(--cyber-secondary); margin: 15px 0 10px 0;">על עיצוב מערכות:</h5>
+                    <textarea class="doc-area" placeholder="1. למה חשוב להפריד UnreliableNetwork מ-SimpleTCP?
+2. אילו tradeoffs עשיתם? (פשטות vs ביצועים, זיכרון vs מהירות)
+3. איך ידעתם שהפתרון 'טוב מספיק'?
+4. מה היתם משנים אם היה לכם עוד זמן?"></textarea>
+
+                    <h5 style="color: var(--cyber-warning); margin: 15px 0 10px 0;">על AI ככלי למידה:</h5>
+                    <textarea class="doc-area" placeholder="1. אילו שאלות היו הכי מועילות?
+2. מתי AI עזר באמת ומתי לא?
+3. כשAI טעה - איך גיליתם?
+4. מה למדתם על איך לשאול שאלות טובות?
+5. מה היתם עושים אחרת בפעם הבאה?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Box -->
+        <div class="success-box">
+            <h3>🎉 כל הכבוד! סיימתם את המשימה</h3>
+            <p style="margin-top: 10px;">עכשיו אתם מבינים לא רק <strong>איך</strong> TCP עובד, אלא <strong>למה</strong> הוא מעוצב כמו שהוא מעוצב!</p>
+            <p style="margin-top: 15px; color: var(--text-secondary); font-size: 0.95em;">
+                בניתם פרוטוקול תקשורת אמין מעל רשת לא אמינה - זה בדיוק מה שמהנדסי רשתות עושים! 🚀
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Stage Expansion
+        function toggleStage(header) {
+            const card = header.parentElement;
+            card.classList.toggle('collapsed');
+            updateProgress();
+        }
+
+        // Update Progress Bar
+        function updateProgress() {
+            const stages = document.querySelectorAll('.stage-card');
+            const expandedStages = document.querySelectorAll('.stage-card:not(.collapsed)');
+            const progress = (expandedStages.length / stages.length) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחקר פרוטוקולי TCP/UDP - מצגת אינטראקטיבית</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00ff88;
+            --secondary: #00d4ff;
+            --dark: #0a0e27;
+            --darker: #050817;
+            --accent: #ff0080;
+            --warning: #ffaa00;
+            --text: #e0e6ed;
+            --text-dim: #8892a6;
+            --card-bg: rgba(15, 23, 42, 0.8);
+            --border: rgba(0, 255, 136, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--darker);
+            color: var(--text);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            z-index: 0;
+            background-image: 
+                repeating-linear-gradient(0deg, var(--primary) 0px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(90deg, var(--primary) 0px, transparent 1px, transparent 40px);
+            animation: grid-move 20s linear infinite;
+        }
+
+        @keyframes grid-move {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, 40px); }
+        }
+
+        .matrix-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.05;
+            z-index: 0;
+        }
+
+        /* Main container */
+        .presentation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            padding: 2rem 3rem;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border-bottom: 2px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        /* Slides container */
+        .slides-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            padding: 2rem;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+
+        /* Content cards */
+        .content-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .content-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+
+        .content-card h2 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .content-card h3 {
+            color: var(--secondary);
+            font-size: 1.5rem;
+            margin: 1.5rem 0 1rem 0;
+            font-weight: 600;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--darker);
+            border: 1px solid var(--border);
+            border-right: 3px solid var(--primary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+            direction: ltr;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: var(--primary);
+            color: var(--darker);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .code-block code {
+            display: block;
+            margin-top: 2rem;
+        }
+
+        .keyword { color: var(--accent); font-weight: 500; }
+        .function { color: var(--secondary); }
+        .string { color: var(--primary); }
+        .comment { color: var(--text-dim); font-style: italic; }
+
+        /* Diagram */
+        .diagram-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+        }
+
+        .diagram-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .diagram-side h4 {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .diagram-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem 2rem;
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+            min-width: 150px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .diagram-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        .diagram-arrow {
+            color: var(--secondary);
+            font-size: 2rem;
+            margin: 0.5rem 0;
+        }
+
+        /* Questions */
+        .question-card {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 212, 255, 0.05));
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+        }
+
+        .question-card h3 {
+            color: var(--warning);
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .answer-option {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 0.8rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .answer-option:hover {
+            border-color: var(--primary);
+            transform: translateX(-5px);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .answer-option.correct {
+            border-color: var(--primary);
+            background: rgba(0, 255, 136, 0.2);
+            animation: pulse-correct 0.5s ease;
+        }
+
+        .answer-option.wrong {
+            border-color: var(--accent);
+            background: rgba(255, 0, 128, 0.2);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes pulse-correct {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .feedback.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .feedback.wrong {
+            background: rgba(255, 0, 128, 0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Enrichment boxes */
+        .enrichment-box {
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.1), rgba(255, 0, 128, 0.1));
+            border: 2px solid var(--warning);
+            border-right: 4px solid var(--warning);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .enrichment-box h4 {
+            color: var(--warning);
+            font-size: 1.2rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .enrichment-box h4::before {
+            content: "💡";
+            font-size: 1.5rem;
+        }
+
+        /* Key points */
+        .key-points {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .key-points li {
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-right: 3px solid var(--secondary);
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .key-points li:hover {
+            transform: translateX(-5px);
+        }
+
+        .key-points li::before {
+            content: "▸";
+            color: var(--secondary);
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            background: var(--card-bg);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--darker);
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Heebo', sans-serif;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .indicator-dot.active {
+            background: var(--primary);
+            transform: scale(1.5);
+        }
+
+        /* Scrollable content */
+        .scrollable-content {
+            overflow-y: auto;
+            max-height: calc(100vh - 250px);
+            padding-left: 1rem;
+        }
+
+        .scrollable-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-track {
+            background: var(--darker);
+            border-radius: 10px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        /* Comparison table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 212, 255, 0.2));
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        /* Animations */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-in {
+            animation: slideInRight 0.6s ease forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .content-card {
+                padding: 1.5rem;
+            }
+
+            .code-block {
+                font-size: 0.8rem;
+                padding: 1rem;
+            }
+
+            .navigation {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <canvas class="matrix-rain" id="matrixCanvas"></canvas>
+
+    <div class="presentation-container">
+        <header>
+            <h1>מחקר פרוטוקולי TCP/UDP</h1>
+            <p class="subtitle">🔒 מגמת סייבר - כיתה י"א | תקשורת רשת עם Socket-ים</p>
+        </header>
+
+        <div class="slides-wrapper">
+            <!-- Slide 1: Introduction -->
+            <div class="slide active" data-slide="1">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🎯 מבוא - פרוטוקולי שכבת התעבורה</h2>
+                        <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                            בתרגיל זה נחקור את פרוטוקולי שכבת התעבורה (Layer 4) - <strong>UDP</strong> ו-<strong>TCP</strong>.
+                            נשתמש ב-Socket-ים בשפת Python כדי לראות כיצד הפרוטוקולים הללו עובדים בפועל.
+                        </p>
+
+                        <div class="enrichment-box">
+                            <h4>מהי שכבת התעבורה?</h4>
+                            <p>שכבת התעבורה (Transport Layer) היא שכבה 4 במודל OSI. היא אחראית על:</p>
+                            <ul class="key-points">
+                                <li>העברת נתונים בין יישומים (End-to-End Communication)</li>
+                                <li>בקרת זרימה (Flow Control)</li>
+                                <li>בקרת שגיאות ואמינות (Reliability)</li>
+                                <li>פילוח והרכבה של נתונים (Segmentation)</li>
+                            </ul>
+                        </div>
+
+                        <h3>🛠️ הכלים שנשתמש בהם:</h3>
+                        <ul class="key-points">
+                            <li><strong>Python Socket</strong> - ספרייה לתקשורת רשת</li>
+                            <li><strong>Wireshark</strong> - כלי להסנפת תעבורת רשת</li>
+                            <li><strong>שני מחשבים</strong> - אחד יהיה Server והשני Client</li>
+                        </ul>
+
+                        <div class="enrichment-box">
+                            <h4>למה Socket?</h4>
+                            <p>
+                                Socket הוא נקודת קצה (endpoint) לתקשורת רשת. כמו שקע חשמלי - אנחנו "מחברים" אליו 
+                                כדי לשלוח ולקבל נתונים. Socket מורכב מ-IP Address + Port Number.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 2: UDP Overview -->
+            <div class="slide" data-slide="2">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>📡 פרוטוקול UDP - User Datagram Protocol</h2>
+                        <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                            UDP הוא פרוטוקול <strong>לא מהימן</strong> (Unreliable) ו-<strong>ללא חיבור</strong> (Connectionless).
+                        </p>
+
+                        <h3>⚡ מאפייני UDP:</h3>
+                        <ul class="key-points">
+                            <li><strong>אין Handshake</strong> - לא צריך ליצור חיבור לפני שליחת נתונים</li>
+                            <li><strong>אין ACK</strong> - אין אישורי קבלה (Acknowledgments)</li>
+                            <li><strong>מהיר</strong> - פחות overhead, מתאים לזמן אמת</li>
+                            <li><strong>Header קטן</strong> - רק 8 bytes</li>
+                            <li><strong>Datagram מבוסס</strong> - כל פקטה עצמאית</li>
+                        </ul>
+
+                        <div class="enrichment-box">
+                            <h4>מתי משתמשים ב-UDP?</h4>
+                            <p>UDP מתאים למצבים שבהם מהירות חשובה יותר מאמינות:</p>
+                            <ul class="key-points">
+                                <li><strong>Streaming</strong> - וידאו ואודיו (YouTube, Zoom)</li>
+                                <li><strong>Gaming</strong> - משחקים מקוונים</li>
+                                <li><strong>DNS</strong> - שאילתות DNS</li>
+                                <li><strong>IoT</strong> - התקנים שמשדרים סנסורים</li>
+                            </ul>
+                        </div>
+
+                        <h3>📊 מבנה Header של UDP:</h3>
+                        <pre class="code-block" data-lang="UDP Header">
+<code>┌─────────────────┬─────────────────┐
+│  Source Port    │  Dest Port      │  (16 bit כל אחד)
+├─────────────────┼─────────────────┤
+│     Length      │    Checksum     │  (16 bit כל אחד)
+└─────────────────┴─────────────────┘
+        <span class="comment">סה"כ: 8 bytes בלבד!</span></code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3: UDP Code & Diagram -->
+            <div class="slide" data-slide="3">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>💻 דוגמת קוד UDP</h2>
+                        
+                        <h3>Server (שרת UDP):</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="keyword">import</span> <span class="function">socket</span>
+
+<span class="comment"># יצירת UDP Socket</span>
+server_socket = socket.<span class="function">socket</span>(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.<span class="function">bind</span>((<span class="string">'0.0.0.0'</span>, <span class="string">12345</span>))
+
+<span class="keyword">print</span>(<span class="string">'UDP Server listening...'</span>)
+
+<span class="keyword">while</span> True:
+    <span class="comment"># קבלת מידע (חוסם עד שמגיע נתון)</span>
+    data, addr = server_socket.<span class="function">recvfrom</span>(<span class="string">1024</span>)
+    <span class="keyword">print</span>(<span class="string">f'Received: {data.decode()} from {addr}'</span>)
+    
+    <span class="comment"># שליחת תשובה</span>
+    server_socket.<span class="function">sendto</span>(<span class="string">b"Message received!"</span>, addr)</code>
+                        </pre>
+
+                        <h3>Client (לקוח UDP):</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="keyword">import</span> <span class="function">socket</span>
+
+<span class="comment"># יצירת UDP Socket</span>
+client_socket = socket.<span class="function">socket</span>(socket.AF_INET, socket.SOCK_DGRAM)
+
+<span class="comment"># שליחת מידע (ישירות, בלי חיבור!)</span>
+server_address = (<span class="string">'localhost'</span>, <span class="string">12345</span>)
+message = <span class="string">"Hello from client!"</span>
+client_socket.<span class="function">sendto</span>(message.encode(), server_address)
+
+<span class="comment"># קבלת תשובה</span>
+data, addr = client_socket.<span class="function">recvfrom</span>(<span class="string">1024</span>)
+<span class="keyword">print</span>(<span class="string">f'Received: {data.decode()}'</span>)</code>
+                        </pre>
+
+                        <div class="enrichment-box">
+                            <h4>שימו לב!</h4>
+                            <p>ב-UDP אין <code>connect()</code> או <code>listen()</code>. הלקוח פשוט שולח ישירות עם <code>sendto()</code>!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: UDP Diagram -->
+            <div class="slide" data-slide="4">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🔄 דיאגרמה - תהליך תקשורת UDP</h2>
+                        
+                        <div class="diagram-container">
+                            <div class="diagram-side">
+                                <h4>Server</h4>
+                                <div class="diagram-box">socket()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">bind()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(0, 212, 255, 0.2); border-color: var(--secondary);">
+                                    recvfrom()
+                                    <div style="font-size: 0.8rem; color: var(--text-dim);">חוסם עד קבלת נתונים</div>
+                                </div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 170, 0, 0.2); border-color: var(--warning);">sendto()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">close()</div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; justify-content: center; gap: 3rem; padding: 0 2rem;">
+                                <div style="text-align: center;">
+                                    <div style="color: var(--primary); font-size: 2rem;">→</div>
+                                    <div style="font-size: 0.9rem; color: var(--text-dim);">Data (request)</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--warning); font-size: 2rem;">←</div>
+                                    <div style="font-size: 0.9rem; color: var(--text-dim);">Data (reply)</div>
+                                </div>
+                            </div>
+
+                            <div class="diagram-side">
+                                <h4>Client</h4>
+                                <div class="diagram-box">socket()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="opacity: 0.3;">- optional -</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 170, 0, 0.2); border-color: var(--warning);">sendto()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(0, 212, 255, 0.2); border-color: var(--secondary);">recvfrom()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">close()</div>
+                            </div>
+                        </div>
+
+                        <div class="enrichment-box">
+                            <h4>נקודות חשובות לזכור:</h4>
+                            <ul class="key-points">
+                                <li>אין <code>connect()</code> - הלקוח לא מתחבר לשרת</li>
+                                <li>אין <code>listen()</code> ו-<code>accept()</code> - השרת לא מקבל חיבורים</li>
+                                <li>משתמשים ב-<code>sendto()</code> ו-<code>recvfrom()</code> במקום <code>send()</code> ו-<code>recv()</code></li>
+                                <li>כל sendto() שולח datagram עצמאי</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Question 1 -->
+            <div class="slide" data-slide="5">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 1: מאפייני UDP</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            איזו מהאמירות הבאות <strong>נכונה</strong> לגבי פרוטוקול UDP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="1">
+                            UDP מבצע three-way handshake לפני העברת נתונים כדי להבטיח חיבור יציב
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="1">
+                            UDP אינו מבצע handshake ושולח נתונים ישירות ללא יצירת חיבור מוקדם
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="1">
+                            UDP שולח אישורי קבלה (ACK) עבור כל datagram שמתקבל בהצלחה במערכת
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="1">
+                            UDP מבצע בקרת זרימה ושולח מחדש packets שאבדו בדרך לשמירה על אמינות
+                        </div>
+
+                        <div class="feedback" data-question="1"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 הסבר מפורט:</h3>
+                        <p style="line-height: 1.8;">
+                            UDP הוא פרוטוקול <strong>"fire and forget"</strong> - הוא שולח את הנתונים ולא מחכה לאישור.
+                            אין handshake, אין ACK, ואין retransmission. זה מה שהופך אותו למהיר אבל לא אמין.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Question 2 -->
+            <div class="slide" data-slide="6">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 2: Socket Functions</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            איזו מפונקציות ה-Socket הבאות <strong>לא משמשת</strong> בתקשורת UDP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="2">
+                            הפונקציה <code>bind()</code> שקושרת את ה-socket לכתובת ופורט מסוימים במחשב
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="2">
+                            הפונקציה <code>listen()</code> שמכינה את ה-socket לקבל חיבורים נכנסים חדשים
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="2">
+                            הפונקציה <code>sendto()</code> ששולחת datagram עם כתובת היעד בפרמטרים שלה
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="2">
+                            הפונקציה <code>recvfrom()</code> שמקבלת datagram ומחזירה גם את כתובת השולח
+                        </div>
+
+                        <div class="feedback" data-question="2"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 הסבר מפורט:</h3>
+                        <p style="line-height: 1.8;">
+                            <code>listen()</code> היא פונקציה ייחודית ל-TCP! היא מכינה queue לחיבורים נכנסים.
+                            ב-UDP אין חיבורים, אז אין צורך ב-<code>listen()</code> או ב-<code>accept()</code>.
+                        </p>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>זכרו: UDP = No Connection!</h4>
+                            <p>
+                                הפונקציות שקשורות לניהול חיבורים (<code>connect, listen, accept</code>) 
+                                לא משמשות ב-UDP כי אין חיבור!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 7: TCP Overview -->
+            <div class="slide" data-slide="7">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🔐 פרוטוקול TCP - Transmission Control Protocol</h2>
+                        <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                            TCP הוא פרוטוקול <strong>מהימן</strong> (Reliable) ו-<strong>מבוסס חיבור</strong> (Connection-Oriented).
+                        </p>
+
+                        <h3>🛡️ מאפייני TCP:</h3>
+                        <ul class="key-points">
+                            <li><strong>Three-Way Handshake</strong> - יוצר חיבור לפני העברת נתונים</li>
+                            <li><strong>ACK לכל Packet</strong> - מאשר קבלה של כל segment</li>
+                            <li><strong>Sequence Numbers</strong> - מספור רציף מבטיח סדר</li>
+                            <li><strong>Retransmission</strong> - שולח מחדש packets שאבדו</li>
+                            <li><strong>Flow Control</strong> - מתאים מהירות לפי יכולת המקבל</li>
+                            <li><strong>Header גדול יותר</strong> - 20-60 bytes (לעומת 8 ב-UDP)</li>
+                        </ul>
+
+                        <div class="enrichment-box">
+                            <h4>מתי משתמשים ב-TCP?</h4>
+                            <p>TCP מתאים כשאמינות חשובה יותר ממהירות:</p>
+                            <ul class="key-points">
+                                <li><strong>HTTP/HTTPS</strong> - גלישה באינטרנט</li>
+                                <li><strong>Email</strong> - SMTP, POP3, IMAP</li>
+                                <li><strong>File Transfer</strong> - FTP, SFTP</li>
+                                <li><strong>SSH</strong> - גישה מרוחקת מאובטחת</li>
+                                <li><strong>Databases</strong> - MySQL, PostgreSQL</li>
+                            </ul>
+                        </div>
+
+                        <h3>📊 Three-Way Handshake:</h3>
+                        <pre class="code-block" data-lang="TCP Handshake">
+<code>Client                          Server
+  │                                │
+  │───── SYN (Seq=100) ──────────→│  <span class="comment">1. Client מבקש חיבור</span>
+  │                                │
+  │←──── SYN-ACK (Seq=300) ───────│  <span class="comment">2. Server מאשר ומבקש גם</span>
+  │      (Ack=101)                 │
+  │                                │
+  │───── ACK (Ack=301) ──────────→│  <span class="comment">3. Client מאשר - חיבור הוקם!</span>
+  │                                │
+  │═════ Connection Established ══│
+</code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 8: TCP Code -->
+            <div class="slide" data-slide="8">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>💻 דוגמת קוד TCP</h2>
+                        
+                        <h3>Server (שרת TCP):</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="keyword">import</span> <span class="function">socket</span>
+
+<span class="comment"># יצירת TCP Socket</span>
+server_socket = socket.<span class="function">socket</span>(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.<span class="function">bind</span>((<span class="string">'0.0.0.0'</span>, <span class="string">12345</span>))
+server_socket.<span class="function">listen</span>(<span class="string">1</span>)  <span class="comment"># הכנת queue לחיבור אחד</span>
+
+<span class="keyword">print</span>(<span class="string">'TCP Server listening...'</span>)
+
+<span class="comment"># קבלת חיבור (כאן קורה ה-handshake!)</span>
+client_socket, addr = server_socket.<span class="function">accept</span>()
+<span class="keyword">print</span>(<span class="string">f'Connection from {addr}'</span>)
+
+<span class="comment"># קבלת מידע</span>
+data = client_socket.<span class="function">recv</span>(<span class="string">1024</span>)
+<span class="keyword">print</span>(<span class="string">f'Received: {data.decode()}'</span>)
+
+<span class="comment"># שליחת תשובה</span>
+client_socket.<span class="function">send</span>(<span class="string">b"Message received!"</span>)
+
+<span class="comment"># סגירת חיבורים</span>
+client_socket.<span class="function">close</span>()
+server_socket.<span class="function">close</span>()</code>
+                        </pre>
+
+                        <h3>Client (לקוח TCP):</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="keyword">import</span> <span class="function">socket</span>
+
+<span class="comment"># יצירת TCP Socket</span>
+client_socket = socket.<span class="function">socket</span>(socket.AF_INET, socket.SOCK_STREAM)
+
+<span class="comment"># התחברות לשרת (כאן קורה ה-handshake!)</span>
+server_address = (<span class="string">'localhost'</span>, <span class="string">12345</span>)
+client_socket.<span class="function">connect</span>(server_address)
+
+<span class="comment"># שליחת מידע</span>
+message = <span class="string">"Hello from client!"</span>
+client_socket.<span class="function">send</span>(message.encode())
+
+<span class="comment"># קבלת תשובה</span>
+data = client_socket.<span class="function">recv</span>(<span class="string">1024</span>)
+<span class="keyword">print</span>(<span class="string">f'Received: {data.decode()}'</span>)
+
+<span class="comment"># סגירת חיבור</span>
+client_socket.<span class="function">close</span>()</code>
+                        </pre>
+
+                        <div class="enrichment-box">
+                            <h4>ההבדל המרכזי מ-UDP:</h4>
+                            <p>
+                                שימו לב ל-<code>connect()</code> ב-Client ול-<code>listen()</code> + <code>accept()</code> ב-Server.
+                                אלו הפונקציות שיוצרות ומנהלות את החיבור!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 9: TCP Diagram -->
+            <div class="slide" data-slide="9">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🔄 דיאגרמה - תהליך תקשורת TCP</h2>
+                        
+                        <div class="diagram-container">
+                            <div class="diagram-side">
+                                <h4>Server</h4>
+                                <div class="diagram-box">socket()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">bind()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 0, 128, 0.2); border-color: var(--accent);">listen()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 0, 128, 0.2); border-color: var(--accent);">
+                                    accept()
+                                    <div style="font-size: 0.8rem; color: var(--text-dim);">חוסם עד חיבור</div>
+                                </div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(0, 212, 255, 0.2); border-color: var(--secondary);">recv()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 170, 0, 0.2); border-color: var(--warning);">send()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">close()</div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; justify-content: center; gap: 2rem; padding: 0 2rem;">
+                                <div style="text-align: center;">
+                                    <div style="color: var(--accent); font-size: 1.5rem;">⟷</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-dim);">3-Way Handshake</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-dim);">SYN → SYN-ACK → ACK</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--primary); font-size: 2rem;">→</div>
+                                    <div style="font-size: 0.9rem; color: var(--text-dim);">Data (request)</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--warning); font-size: 2rem;">←</div>
+                                    <div style="font-size: 0.9rem; color: var(--text-dim);">Data (reply)</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="color: var(--accent); font-size: 1.5rem;">⟷</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-dim);">4-Way Termination</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-dim);">FIN → ACK → FIN → ACK</div>
+                                </div>
+                            </div>
+
+                            <div class="diagram-side">
+                                <h4>Client</h4>
+                                <div class="diagram-box">socket()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 0, 128, 0.2); border-color: var(--accent);">
+                                    connect()
+                                    <div style="font-size: 0.8rem; color: var(--text-dim);">יוצר חיבור</div>
+                                </div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(255, 170, 0, 0.2); border-color: var(--warning);">send()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box" style="background: rgba(0, 212, 255, 0.2); border-color: var(--secondary);">recv()</div>
+                                <div class="diagram-arrow">↓</div>
+                                <div class="diagram-box">close()</div>
+                            </div>
+                        </div>
+
+                        <div class="enrichment-box">
+                            <h4>שלבי החיבור ב-TCP:</h4>
+                            <ul class="key-points">
+                                <li><strong style="color: var(--accent);">יצירת חיבור:</strong> Three-Way Handshake (SYN, SYN-ACK, ACK)</li>
+                                <li><strong style="color: var(--primary);">העברת נתונים:</strong> כל segment מקבל ACK</li>
+                                <li><strong style="color: var(--accent);">סגירת חיבור:</strong> Four-Way Termination (FIN, ACK, FIN, ACK)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 10: Question 3 -->
+            <div class="slide" data-slide="10">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 3: TCP Handshake</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            מה קורה במהלך ה-Three-Way Handshake של TCP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="3">
+                            הלקוח שולח FIN, השרת מחזיר FIN-ACK, והלקוח משלים עם ACK סופי לסגירה
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="3">
+                            השרת שולח SYN ראשון כדי לאתחל, הלקוח מאשר עם ACK, והשרת מסיים בחזרה
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="3">
+                            הלקוח שולח SYN, השרת מחזיר SYN-ACK, והלקוח משלים עם ACK ליצירת חיבור
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="3">
+                            הלקוח שולח DATA מיד, השרת מחזיר RST, והלקוח מנסה שוב עם SYN חדש
+                        </div>
+
+                        <div class="feedback" data-question="3"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 הסבר על Handshake:</h3>
+                        <pre class="code-block" data-lang="TCP States">
+<code><span class="comment">סדר הפעולות:</span>
+<span class="string">1.</span> Client → Server:  <span class="keyword">SYN</span> (Synchronize) 
+   "אני רוצה להתחבר, ה-Sequence שלי מתחיל ב-X"
+
+<span class="string">2.</span> Server → Client:  <span class="keyword">SYN-ACK</span> (Synchronize-Acknowledge)
+   "הבנתי! ה-Sequence שלי מתחיל ב-Y, וקיבלתי את X שלך"
+
+<span class="string">3.</span> Client → Server:  <span class="keyword">ACK</span> (Acknowledge)
+   "מעולה! קיבלתי את Y שלך, בואו נתחיל!"</code>
+                        </pre>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>למה צריך 3 צעדים?</h4>
+                            <p>
+                                כדי שגם הלקוח וגם השרת יסנכרנו את ה-Sequence Numbers שלהם ויוודאו ששניהם מוכנים.
+                                זה מונע מצבים של packets מבולבלים מחיבורים קודמים.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 11: Question 4 -->
+            <div class="slide" data-slide="11">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 4: Reliability</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            מה קורה אם packet אובד בדרך ב-TCP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="4">
+                            החיבור נסגר אוטומטית והלקוח צריך לפתוח חיבור חדש ולהתחיל מחדש מההתחלה
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="4">
+                            השרת שולח הודעת שגיאה לאפליקציה והנתונים האבודים מדלגים ללא תיקון כלל
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="4">
+                            השולח מזהה שלא הגיע ACK עבור ה-packet ושולח אותו שוב אוטומטית עד לקבלה
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="4">
+                            המקבל שולח בקשה ידנית לשליחה חוזרת וממתין לתגובה מפורשת מהשולח בחזרה
+                        </div>
+
+                        <div class="feedback" data-question="4"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 מנגנון Retransmission ב-TCP:</h3>
+                        <p style="line-height: 1.8; margin-bottom: 1rem;">
+                            TCP משתמש במנגנון שנקרא <strong>ARQ (Automatic Repeat Request)</strong>:
+                        </p>
+                        <ul class="key-points">
+                            <li>כל segment שנשלח מקבל <strong>Sequence Number</strong></li>
+                            <li>המקבל שולח <strong>ACK</strong> עם המספר הסידורי של הבא שהוא מצפה לו</li>
+                            <li>השולח מגדיר <strong>Timer</strong> לכל segment</li>
+                            <li>אם ה-Timer נגמר בלי ACK - <strong>שליחה מחדש</strong></li>
+                        </ul>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>Timeout Value</h4>
+                            <p>
+                                TCP מחשב את ה-timeout באופן דינמי בהתבסס על ה-RTT (Round-Trip Time).
+                                ככל שהרשת איטית יותר, כך ה-timeout ארוך יותר.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 12: Comparison -->
+            <div class="slide" data-slide="12">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>⚖️ השוואה: UDP vs TCP</h2>
+                        
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>מאפיין</th>
+                                    <th style="color: var(--secondary);">UDP</th>
+                                    <th style="color: var(--primary);">TCP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>סוג חיבור</strong></td>
+                                    <td>Connectionless<br>(ללא חיבור)</td>
+                                    <td>Connection-Oriented<br>(מבוסס חיבור)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>אמינות</strong></td>
+                                    <td>❌ Unreliable<br>(לא מהימן)</td>
+                                    <td>✅ Reliable<br>(מהימן)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Handshake</strong></td>
+                                    <td>❌ אין</td>
+                                    <td>✅ 3-Way Handshake</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ACK</strong></td>
+                                    <td>❌ אין אישורי קבלה</td>
+                                    <td>✅ ACK לכל segment</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Retransmission</strong></td>
+                                    <td>❌ לא שולח מחדש</td>
+                                    <td>✅ שולח מחדש אם אבד</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>סדר Packets</strong></td>
+                                    <td>❌ לא מובטח</td>
+                                    <td>✅ Sequence Numbers</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Flow Control</strong></td>
+                                    <td>❌ אין</td>
+                                    <td>✅ Window-based</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>גודל Header</strong></td>
+                                    <td>8 bytes (קטן)</td>
+                                    <td>20-60 bytes (גדול)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>מהירות</strong></td>
+                                    <td>⚡ מהיר</td>
+                                    <td>🐢 יחסית איטי</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Overhead</strong></td>
+                                    <td>נמוך</td>
+                                    <td>גבוה</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>שימושים</strong></td>
+                                    <td>Streaming, Gaming, DNS, VoIP</td>
+                                    <td>HTTP, Email, FTP, SSH</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="enrichment-box" style="margin-top: 2rem;">
+                            <h4>איך לבחור?</h4>
+                            <ul class="key-points">
+                                <li><strong>UDP:</strong> כשמהירות ו-Real-Time חשובים יותר מאמינות</li>
+                                <li><strong>TCP:</strong> כשצריך להבטיח שכל הנתונים יגיעו בסדר הנכון</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 13: Question 5 -->
+            <div class="slide" data-slide="13">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 5: Use Cases</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            באיזה מהמצבים הבאים <strong>נעדיף להשתמש ב-UDP</strong> ולא ב-TCP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="5">
+                            העברת קובץ גדול בין מחשבים שבו כל בייט חייב להגיע בשלמות וללא שגיאות
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="5">
+                            שידור וידאו חי בזמן אמת שבו חשוב שהתמונה תמשיך לזרום גם אם pixels אובדים
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="5">
+                            שליחת מייל עם מסמכים חשובים שחייבים להגיע במלואם למקבל בצורה מדויקת תמיד
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="5">
+                            התחברות מאובטחת לשרת מרוחק דרך SSH שדורשת אמינות ושמירה על סדר הפקודות
+                        </div>
+
+                        <div class="feedback" data-question="5"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 למה UDP לסטרימינג?</h3>
+                        <p style="line-height: 1.8; margin-bottom: 1rem;">
+                            בשידור וידאו חי, אם frame אבד - <strong>אין טעם לחכות לו</strong>!
+                        </p>
+                        <ul class="key-points">
+                            <li>עדיף frame עם פיקסלים חסרים מאשר עיכוב</li>
+                            <li>המוח שלנו "ממלא" את החלקים החסרים</li>
+                            <li>Retransmission יגרום ל-lag שמרגיש גרוע יותר</li>
+                            <li>Real-time > Perfect quality</li>
+                        </ul>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>דוגמאות נוספות ל-UDP:</h4>
+                            <p>
+                                <strong>DNS:</strong> שאילתה קצרה, אם נכשל - פשוט ננסה שוב<br>
+                                <strong>Gaming:</strong> מיקום שחקן ישן לא רלוונטי, רק המיקום העדכני<br>
+                                <strong>VoIP:</strong> עדיף רעש קל מאשר עיכובים בשיחה
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 14: Wireshark Analysis -->
+            <div class="slide" data-slide="14">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🔍 ניתוח ב-Wireshark</h2>
+                        <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                            כשאנחנו מסנפים את התעבורה ב-Wireshark, אנחנו יכולים לראות בדיוק מה קורה!
+                        </p>
+
+                        <h3>🔵 תצפיות UDP ב-Wireshark:</h3>
+                        <ul class="key-points">
+                            <li>❌ <strong>אין Handshake</strong> - ה-packet הראשון כבר מכיל data</li>
+                            <li>📦 <strong>כל Datagram עצמאי</strong> - אין קשר בין packets</li>
+                            <li>❌ <strong>אין ACK packets</strong> - רק packets עם data</li>
+                            <li>📏 <strong>Header קבוע</strong> - תמיד 8 bytes</li>
+                            <li>⚡ <strong>מהיר</strong> - פחות overhead</li>
+                        </ul>
+
+                        <h3 style="margin-top: 2rem;">🟢 תצפיות TCP ב-Wireshark:</h3>
+                        <ul class="key-points">
+                            <li>✅ <strong>3-Way Handshake</strong> - רואים SYN, SYN-ACK, ACK</li>
+                            <li>✅ <strong>ACK לכל Packet</strong> - תמיד רואים זוגות: data + ACK</li>
+                            <li>🔢 <strong>Sequence Numbers</strong> - כל segment ממוספר</li>
+                            <li>📏 <strong>Header משתנה</strong> - בין 20-60 bytes (Options)</li>
+                            <li>✅ <strong>4-Way Termination</strong> - FIN, ACK, FIN, ACK בסגירה</li>
+                        </ul>
+
+                        <div class="enrichment-box" style="margin-top: 2rem;">
+                            <h4>טיפ לפילטור ב-Wireshark:</h4>
+                            <pre class="code-block" data-lang="Wireshark Filters">
+<code><span class="comment"># לראות רק UDP על פורט 12345:</span>
+udp.port == <span class="string">12345</span>
+
+<span class="comment"># לראות רק TCP על פורט 12345:</span>
+tcp.port == <span class="string">12345</span>
+
+<span class="comment"># לראות רק handshake:</span>
+tcp.flags.syn == <span class="string">1</span>
+
+<span class="comment"># לראות רק packets עם data:</span>
+tcp.<span class="function">len</span> > <span class="string">0</span></code>
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 15: Question 6 -->
+            <div class="slide" data-slide="15">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 6: Wireshark Analysis</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            מה נראה ב-Wireshark כשמנסים להתחבר עם TCP לפורט שאינו פתוח?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="6">
+                            השרת שולח חזרה SYN-ACK רגיל והחיבור מתבצע כרגיל ללא כל התראת שגיאה
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="6">
+                            השרת מחזיר RST (Reset) מיד אחרי קבלת ה-SYN והחיבור נדחה על ידי המערכת
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="6">
+                            הלקוח שולח FIN מיד לאחר ה-SYN ויוצר termination תקין של החיבור הכושל
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="6">
+                            השרת לא עונה בכלל וה-SYN נשלח שוב פעמים רבות עד timeout ארוך מאוד
+                        </div>
+
+                        <div class="feedback" data-question="6"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 TCP Flags:</h3>
+                        <p style="line-height: 1.8; margin-bottom: 1rem;">
+                            ב-TCP header יש flags שקובעים את סוג ה-segment:
+                        </p>
+                        <pre class="code-block" data-lang="TCP Flags">
+<code><span class="keyword">SYN</span>  - Synchronize (בקשת חיבור)
+<span class="keyword">ACK</span>  - Acknowledge (אישור קבלה)
+<span class="keyword">FIN</span>  - Finish (סגירת חיבור)
+<span class="keyword">RST</span>  - Reset (איפוס חיבור - שגיאה!)
+<span class="keyword">PSH</span>  - Push (העבר מיד לאפליקציה)
+<span class="keyword">URG</span>  - Urgent (נתונים דחופים)</code>
+                        </pre>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>למה RST?</h4>
+                            <p>
+                                כש-port סגור, השרת מגיב מיד ב-<strong>RST</strong> כדי להודיע "אין כאן שירות".
+                                זה חוסך זמן לעומת להמתין ל-timeout. ב-UDP? פשוט לא מגיבים!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 16: Experiments -->
+            <div class="slide" data-slide="16">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🧪 ניסויים והרחבות</h2>
+                        <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                            אחרי שהבנתם את היסודות, הנה כמה ניסויים מעניינים שאפשר לבצע:
+                        </p>
+
+                        <h3>1️⃣ בדיקת Buffer Size:</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="comment"># נסו לשלוח הודעה גדולה מאוד</span>
+large_data = <span class="string">"A"</span> * <span class="string">10000</span>  <span class="comment"># 10KB</span>
+socket.<span class="function">send</span>(large_data.encode())
+
+<span class="comment"># מה יקרה? נראה ב-Wireshark שהמידע מתפצל!</span></code>
+                        </pre>
+
+                        <h3>2️⃣ מה קורה ללא accept():</h3>
+                        <div class="enrichment-box">
+                            <h4>ניסוי מעניין:</h4>
+                            <p>
+                                בשרת TCP, קראו ל-<code>listen()</code> אבל <strong>לא</strong> ל-<code>accept()</code>.
+                                נסו להתחבר מלקוח - מה יקרה? תראו ב-Wireshark שה-SYN נשלח אבל אין תגובה!
+                                השרת שם את הבקשה ב-queue אבל לא מעבד אותה.
+                            </p>
+                        </div>
+
+                        <h3>3️⃣ Timeout Testing:</h3>
+                        <pre class="code-block" data-lang="Python">
+<code><span class="comment"># הגדרת timeout על socket</span>
+socket.<span class="function">settimeout</span>(<span class="string">5.0</span>)  <span class="comment"># 5 שניות</span>
+
+<span class="keyword">try</span>:
+    data = socket.<span class="function">recv</span>(<span class="string">1024</span>)
+<span class="keyword">except</span> socket.timeout:
+    <span class="keyword">print</span>(<span class="string">"Timeout! No data received"</span>)</code>
+                        </pre>
+
+                        <h3>4️⃣ Multiple Clients:</h3>
+                        <div class="enrichment-box">
+                            <h4>אתגר:</h4>
+                            <p>
+                                שנו את שרת ה-TCP להשתמש ב-<code>threading</code> וטיפול בכמה clients במקביל!
+                                זה דורש לעטוף את קבלת המידע ב-thread נפרד לכל client.
+                            </p>
+                        </div>
+
+                        <ul class="key-points" style="margin-top: 2rem;">
+                            <li>נסו לשנות את גודל ה-buffer ב-<code>recv()</code></li>
+                            <li>בדקו מה קורה כשסוגרים את ה-socket באמצע תקשורת</li>
+                            <li>השוו ביצועים: כמה זמן לוקח לשלוח 1MB ב-TCP vs UDP</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 17: Advanced Topics -->
+            <div class="slide" data-slide="17">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🚀 נושאים מתקדמים</h2>
+                        
+                        <h3>💾 TCP Window Size:</h3>
+                        <p style="line-height: 1.8;">
+                            TCP משתמש ב-<strong>Sliding Window</strong> כדי לשלוח כמה segments בבת אחת
+                            בלי לחכות ל-ACK לכל אחד. גודל החלון נקבע לפי יכולת המקבל.
+                        </p>
+
+                        <div class="enrichment-box">
+                            <h4>Flow Control:</h4>
+                            <p>
+                                המקבל מודיע בכל ACK מה גודל החלון הפנוי שלו (Window Size).
+                                השולח מתאים את קצב השליחה כך שלא "יציף" את המקבל.
+                            </p>
+                        </div>
+
+                        <h3 style="margin-top: 2rem;">⚡ TCP Congestion Control:</h3>
+                        <p style="line-height: 1.8;">
+                            TCP "מרגיש" את עומס הרשת ומתאים את קצב השליחה:
+                        </p>
+                        <ul class="key-points">
+                            <li><strong>Slow Start:</strong> מתחיל איטי ומגדיל מהר</li>
+                            <li><strong>Congestion Avoidance:</strong> מגדיל בזהירות</li>
+                            <li><strong>Fast Recovery:</strong> מזהה איבוד ומתאושש מהר</li>
+                        </ul>
+
+                        <h3 style="margin-top: 2rem;">🔄 TCP States:</h3>
+                        <pre class="code-block" data-lang="TCP State Machine">
+<code><span class="comment">Client:</span>
+CLOSED → SYN_SENT → ESTABLISHED → FIN_WAIT → TIME_WAIT → CLOSED
+
+<span class="comment">Server:</span>
+CLOSED → LISTEN → SYN_RECEIVED → ESTABLISHED → CLOSE_WAIT → CLOSED</code>
+                        </pre>
+
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>TIME_WAIT למה?</h4>
+                            <p>
+                                אחרי סגירת חיבור, ה-socket נשאר ב-TIME_WAIT כ-60 שניות.
+                                זה מונע בלבול עם packets מאוחרים מהחיבור הישן!
+                            </p>
+                        </div>
+
+                        <h3 style="margin-top: 2rem;">📡 UDP Multicast & Broadcast:</h3>
+                        <p style="line-height: 1.8;">
+                            UDP תומך ב-<strong>Broadcast</strong> (שידור לכולם) ו-<strong>Multicast</strong> (לקבוצה).
+                            TCP? רק one-to-one!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 18: Question 7 -->
+            <div class="slide" data-slide="18">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 7: Application Challenge</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            אתם בונים אפליקציית <strong>chat</strong> בזמן אמת. באיזה מהמצבים הבאים תעדיפו TCP?
+                        </p>
+
+                        <div class="answer-option" data-correct="false" data-question="7">
+                            שליחת נוכחות משתמשים כל שנייה (User A is typing...) - מידע שמשתנה כל הזמן
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="7">
+                            שליחת ההודעות עצמן - חובה שכל מילה תגיע במדויק ובסדר הנכון לכולם תמיד
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="7">
+                            שידור שיחת וידאו בין משתמשים - איכות תמונה חשובה פחות מהמשכיות הזרימה
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="7">
+                            שידור מיקום המשתמש בזמן אמת על מפה - רק המיקום האחרון באמת רלוונטי
+                        </div>
+
+                        <div class="feedback" data-question="7"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 תכנון אפליקציות היברידיות:</h3>
+                        <p style="line-height: 1.8; margin-bottom: 1rem;">
+                            אפליקציות רבות משתמשות ב-<strong>שני הפרוטוקולים</strong> במקביל!
+                        </p>
+                        <ul class="key-points">
+                            <li><strong>Discord:</strong> הודעות ב-TCP, voice chat ב-UDP</li>
+                            <li><strong>Zoom:</strong> וידאו/אודיו ב-UDP, chat ב-TCP</li>
+                            <li><strong>WhatsApp:</strong> הודעות ב-TCP, שיחות ב-UDP</li>
+                            <li><strong>Games:</strong> game state ב-UDP, chat ב-TCP</li>
+                        </ul>
+                        <div class="enrichment-box" style="margin-top: 1rem;">
+                            <h4>Best of Both Worlds!</h4>
+                            <p>
+                                השתמשו ב-TCP למה שחייב להיות מדויק (הודעות, קבצים)
+                                ו-UDP למה שחייב להיות מהיר (סטרימינג, מיקום).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 19: Question 8 -->
+            <div class="slide" data-slide="19">
+                <div class="scrollable-content">
+                    <div class="question-card">
+                        <h3>❓ שאלה 8: Code Understanding</h3>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                            מה יקרה אם נריץ את הקוד הבא ב-UDP client כאשר השרת לא פועל?
+                        </p>
+
+                        <pre class="code-block" data-lang="Python" style="margin-bottom: 1.5rem;">
+<code>client_socket.<span class="function">sendto</span>(message, server_address)
+data = client_socket.<span class="function">recvfrom</span>(<span class="string">1024</span>)</code>
+                        </pre>
+
+                        <div class="answer-option" data-correct="false" data-question="8">
+                            ה-sendto יזרוק חריגה של ConnectionRefused מיד ולא ימשיך להריץ את הקוד הבא
+                        </div>
+                        <div class="answer-option" data-correct="true" data-question="8">
+                            ה-sendto יצליח אבל recvfrom יחכה לנצח עד timeout כי אין מי שישיב לנתונים
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="8">
+                            המערכת תשלח RST packet אוטומטית ותדווח על שגיאה מיד בזמן ה-sendto עצמו
+                        </div>
+                        <div class="answer-option" data-correct="false" data-question="8">
+                            ה-sendto ייכשל אבל recvfrom יחזיר None מיד בלי לחכות ובלי לזרוק exception
+                        </div>
+
+                        <div class="feedback" data-question="8"></div>
+                    </div>
+
+                    <div class="content-card" style="margin-top: 2rem;">
+                        <h3>📚 UDP = "Fire and Forget":</h3>
+                        <p style="line-height: 1.8; margin-bottom: 1rem;">
+                            ב-UDP, <code>sendto()</code> <strong>תמיד מצליח</strong> (כמעט) כי הוא לא באמת בודק אם יש מישהו שמקשיב!
+                        </p>
+                        <div class="enrichment-box">
+                            <h4>פתרון: Timeout!</h4>
+                            <pre class="code-block" data-lang="Python">
+<code>client_socket.<span class="function">settimeout</span>(<span class="string">3.0</span>)  <span class="comment"># חכה 3 שניות מקס</span>
+<span class="keyword">try</span>:
+    data = client_socket.<span class="function">recvfrom</span>(<span class="string">1024</span>)
+<span class="keyword">except</span> socket.timeout:
+    <span class="keyword">print</span>(<span class="string">"No response from server!"</span>)</code>
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 20: Summary -->
+            <div class="slide" data-slide="20">
+                <div class="scrollable-content">
+                    <div class="content-card">
+                        <h2>🎓 סיכום</h2>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+                            <div style="background: rgba(0, 212, 255, 0.1); border: 2px solid var(--secondary); border-radius: 12px; padding: 1.5rem;">
+                                <h3 style="color: var(--secondary); text-align: center; margin-bottom: 1rem;">
+                                    UDP
+                                </h3>
+                                <ul class="key-points">
+                                    <li>מהיר ⚡</li>
+                                    <li>פשוט 🎯</li>
+                                    <li>לא אמין ❌</li>
+                                    <li>Connectionless 📡</li>
+                                    <li>Header קטן (8B)</li>
+                                    <li>Streaming 🎥</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: rgba(0, 255, 136, 0.1); border: 2px solid var(--primary); border-radius: 12px; padding: 1.5rem;">
+                                <h3 style="color: var(--primary); text-align: center; margin-bottom: 1rem;">
+                                    TCP
+                                </h3>
+                                <ul class="key-points">
+                                    <li>אמין ✅</li>
+                                    <li>מורכב 🔧</li>
+                                    <li>איטי יותר 🐢</li>
+                                    <li>Connection-based 🔗</li>
+                                    <li>Header גדול (20-60B)</li>
+                                    <li>Web/Email 🌐</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 2rem;">🎯 נקודות מפתח לזכור:</h3>
+                        <ul class="key-points">
+                            <li>שני הפרוטוקולים פועלים בשכבת התעבורה (Layer 4)</li>
+                            <li>UDP מתאים ל-Real-Time, TCP מתאים לאמינות</li>
+                            <li>TCP עושה Handshake ומבטיח אמינות, UDP לא</li>
+                            <li>ב-Python: <code>SOCK_DGRAM</code> = UDP, <code>SOCK_STREAM</code> = TCP</li>
+                            <li>Wireshark עוזר לנו לראות בדיוק מה קורה ברשת</li>
+                        </ul>
+
+                        <div class="enrichment-box" style="margin-top: 2rem;">
+                            <h4>המשך למידה:</h4>
+                            <ul class="key-points">
+                                <li>בצעו את הניסויים עם Wireshark ופייתון</li>
+                                <li>נסו לבנות Chat Application משלכם</li>
+                                <li>חקרו פרוטוקולים מתקדמים: QUIC, SCTP</li>
+                                <li>למדו על Security: TLS over TCP</li>
+                            </ul>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1)); border-radius: 12px; border: 2px solid var(--border);">
+                            <h2 style="color: var(--primary); font-size: 2rem; margin-bottom: 1rem;">
+                                🎉 כל הכבוד!
+                            </h2>
+                            <p style="font-size: 1.2rem; color: var(--text-dim);">
+                                סיימתם את המצגת על פרוטוקולי TCP/UDP
+                            </p>
+                            <p style="font-size: 1rem; margin-top: 1rem; color: var(--text);">
+                                זמן ליישם את מה שלמדתם בתרגול! 💪
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn">▶ הקודם</button>
+            <div class="slide-indicator">
+                <span id="currentSlide">1</span>
+                <span>/</span>
+                <span id="totalSlides">20</span>
+                <div style="display: flex; gap: 0.3rem; margin-right: 1rem;">
+                    <!-- Dots will be generated by JS -->
+                </div>
+            </div>
+            <button class="nav-btn" id="nextBtn">הבא ◀</button>
+        </div>
+    </div>
+
+    <script>
+        // Matrix rain effect
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const chars = '01';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        
+        for (let i = 0; i < columns; i++) {
+            drops[i] = Math.random() * canvas.height;
+        }
+        
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(5, 8, 23, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#00ff88';
+            ctx.font = fontSize + 'px monospace';
+            
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        
+        setInterval(drawMatrix, 50);
+        
+        // Presentation logic
+        let currentSlide = 1;
+        const totalSlides = 20;
+        
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const currentSlideSpan = document.getElementById('currentSlide');
+        
+        // Generate indicator dots
+        const slideIndicator = document.querySelector('.slide-indicator > div:last-child');
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'indicator-dot';
+            if (i === 0) dot.classList.add('active');
+            slideIndicator.appendChild(dot);
+        }
+        const indicatorDots = document.querySelectorAll('.indicator-dot');
+        
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'prev');
+                if (index + 1 === currentSlide) {
+                    slide.classList.add('active');
+                } else if (index + 1 < currentSlide) {
+                    slide.classList.add('prev');
+                }
+            });
+            
+            indicatorDots.forEach((dot, index) => {
+                dot.classList.toggle('active', index + 1 === currentSlide);
+            });
+            
+            currentSlideSpan.textContent = currentSlide;
+            prevBtn.disabled = currentSlide === 1;
+            nextBtn.disabled = currentSlide === totalSlides;
+        }
+        
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlide();
+            }
+        });
+        
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlide();
+            }
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlide();
+            } else if (e.key === 'ArrowRight' && currentSlide > 1) {
+                currentSlide--;
+                updateSlide();
+            }
+        });
+        
+        // Questions logic
+        const questions = {
+            1: {
+                correct: "UDP אינו מבצע handshake ושולח נתונים ישירות ללא יצירת חיבור מוקדם",
+                explanation: "✅ נכון! UDP הוא 'fire and forget' - הוא שולח את הנתונים מיד בלי handshake, ACK, או כל מנגנון חיבור."
+            },
+            2: {
+                correct: "הפונקציה <code>listen()</code> שמכינה את ה-socket לקבל חיבורים נכנסים חדשים",
+                explanation: "✅ נכון! listen() היא ייחודית ל-TCP בלבד. ב-UDP אין חיבורים, לכן אין צורך בפונקציה זו."
+            },
+            3: {
+                correct: "הלקוח שולח SYN, השרת מחזיר SYN-ACK, והלקוח משלים עם ACK ליצירת חיבור",
+                explanation: "✅ נכון! זהו תהליך ה-Three-Way Handshake הסטנדרטי: SYN → SYN-ACK → ACK."
+            },
+            4: {
+                correct: "השולח מזהה שלא הגיע ACK עבור ה-packet ושולח אותו שוב אוטומטית עד לקבלה",
+                explanation: "✅ נכון! TCP משתמש ב-ARQ (Automatic Repeat Request) - אם לא הגיע ACK בזמן, יש retransmission אוטומטי."
+            },
+            5: {
+                correct: "שידור וידאו חי בזמן אמת שבו חשוב שהתמונה תמשיך לזרום גם אם pixels אובדים",
+                explanation: "✅ נכון! בסטרימינג חי, עדיף להמשיך עם איכות מעט פחותה מאשר לעכב את השידור בגלל retransmission."
+            },
+            6: {
+                correct: "השרת מחזיר RST (Reset) מיד אחרי קבלת ה-SYN והחיבור נדחה על ידי המערכת",
+                explanation: "✅ נכון! כשפורט סגור, המערכת מחזירה RST כדי להודיע מיד שאין שירות. זה חוסך זמן המתנה."
+            },
+            7: {
+                correct: "שליחת ההודעות עצמן - חובה שכל מילה תגיע במדויק ובסדר הנכון לכולם תמיד",
+                explanation: "✅ נכון! הודעות chat צריכות להגיע בשלמות ובסדר. רק שידורים (וידאו/נוכחות) יכולים להיות UDP."
+            },
+            8: {
+                correct: "ה-sendto יצליח אבל recvfrom יחכה לנצח עד timeout כי אין מי שישיב לנתונים",
+                explanation: "✅ נכון! UDP לא בודק אם השרת קיים - sendto 'זורק' את הנתונים לרשת. recvfrom יחכה עד timeout."
+            }
+        };
+        
+        document.querySelectorAll('.answer-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const questionNum = this.dataset.question;
+                const isCorrect = this.dataset.correct === 'true';
+                const feedback = document.querySelector(`.feedback[data-question="${questionNum}"]`);
+                const allOptions = document.querySelectorAll(`.answer-option[data-question="${questionNum}"]`);
+                
+                // Disable all options
+                allOptions.forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                    if (opt.dataset.correct === 'true') {
+                        opt.classList.add('correct');
+                    }
+                });
+                
+                // Mark selected
+                if (isCorrect) {
+                    this.classList.add('correct');
+                    feedback.textContent = questions[questionNum].explanation;
+                    feedback.classList.add('correct', 'show');
+                } else {
+                    this.classList.add('wrong');
+                    feedback.innerHTML = `❌ לא נכון. התשובה הנכונה היא: "${questions[questionNum].correct}"<br><br>${questions[questionNum].explanation}`;
+                    feedback.classList.add('wrong', 'show');
+                }
+            });
+        });
+        
+        // Shuffle answers when page loads
+        document.querySelectorAll('.question-card').forEach(card => {
+            const options = Array.from(card.querySelectorAll('.answer-option'));
+            const feedback = card.querySelector('.feedback');
+            
+            // Shuffle
+            for (let i = options.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                options[i].parentNode.insertBefore(options[j], options[i]);
+            }
+        });
+        
+        updateSlide();
+    </script>
+</body>
+</html>

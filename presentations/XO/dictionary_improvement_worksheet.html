@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דף עבודה - שיפור מילון בלמידה מחיזוקית</title>
+    <title>דף עבודה - שיפור מילון בלמידה מחיזוקים</title>
     <style>
         * {
             margin: 0;
@@ -314,7 +314,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 דף עבודה: שיפור מילון בלמידה מחיזוקית</h1>
+            <h1>🎯 דף עבודה: שיפור מילון בלמידה מחיזוקים</h1>
             <p>יישום מעשי של 6 שיטות לשיפור ביצועי הסוכן</p>
             <p><strong>יעד: הגעה ל-95% ניצחונות</strong></p>
         </div>
@@ -1196,15 +1196,83 @@
                 block: 'center' 
             });
             
-            // In a real implementation, this would send the data to a server
-            console.log('Assignment submitted!');
+            // Collect all data and save as JSON
+            saveAsJSON();
             
-            // Optional: Save as HTML file
-            setTimeout(() => {
-                if (confirm('האם תרצה לשמור את הדו"ח כקובץ HTML?')) {
-                    saveAsHTML();
+            console.log('Assignment submitted!');
+        }
+        
+        function saveAsJSON() {
+            const studentName = document.getElementById('studentName').value;
+            const studentClass = document.getElementById('studentClass').value;
+            const partnerName = document.getElementById('partnerName').value;
+            const submissionDate = document.getElementById('submissionDate').value;
+            const gameName = document.getElementById('gameName').value;
+            
+            // Collect all input and textarea values
+            const allInputs = document.querySelectorAll('input:not([type="date"]):not([type="checkbox"]), textarea');
+            const allData = {};
+            
+            allInputs.forEach((input, index) => {
+                // Find the closest label or table header
+                const label = input.closest('.info-field')?.querySelector('label')?.textContent.trim() || 
+                             input.closest('td')?.previousElementSibling?.textContent.trim() ||
+                             input.placeholder || 
+                             `field_${index}`;
+                
+                if (input.value) {
+                    allData[label] = input.value;
                 }
-            }, 1000);
+            });
+            
+            // Collect checkboxes
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const checkboxData = [];
+            checkboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        checkboxData.push({
+                            requirement: cells[0].textContent.trim(),
+                            completed: checkbox.checked
+                        });
+                    }
+                }
+            });
+            
+            // Build organized data structure
+            const assignmentData = {
+                studentInfo: {
+                    name: studentName,
+                    class: studentClass,
+                    partner: partnerName,
+                    submissionDate: submissionDate,
+                    gameName: gameName
+                },
+                allFormData: allData,
+                fileRequirements: checkboxData,
+                submissionTimestamp: new Date().toISOString()
+            };
+            
+            // Convert to JSON string with pretty formatting
+            const jsonString = JSON.stringify(assignmentData, null, 2);
+            
+            // Create blob and download
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Create filename with student name (remove special characters)
+            const safeStudentName = studentName.replace(/[^a-zA-Z0-9א-ת]/g, '_');
+            const safeGameName = gameName.replace(/[^a-zA-Z0-9א-ת]/g, '_');
+            a.download = `RL_${safeStudentName}_${safeGameName}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
         
         function saveAsHTML() {
@@ -1213,7 +1281,8 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'RL_dictionary_improvement_report.html';
+            const studentName = document.getElementById('studentName').value.replace(/[^a-zA-Z0-9א-ת]/g, '_');
+            a.download = `RL_${studentName}_report.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

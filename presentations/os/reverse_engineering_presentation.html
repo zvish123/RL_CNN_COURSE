@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הנדסה לאחור - Reverse Engineering</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&family=Assistant:wght@400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #00ff41;
+            --secondary: #0f0;
+            --dark: #0a0e27;
+            --darker: #050814;
+            --accent: #ff006e;
+            --blue: #00d9ff;
+            --purple: #b026ff;
+        }
+        
+        body {
+            font-family: 'Assistant', 'Rubik', sans-serif;
+            background: var(--darker);
+            color: var(--primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* Matrix Background Effect */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+        
+        .slide-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+        }
+        
+        .slide {
+            display: none;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: rgba(10, 14, 39, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            padding: 60px;
+            position: relative;
+            overflow-y: auto;
+            box-shadow: 0 0 50px rgba(0, 255, 65, 0.3),
+                        inset 0 0 50px rgba(0, 255, 65, 0.05);
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        .slide.active {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary), var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from {
+                filter: drop-shadow(0 0 5px var(--primary));
+            }
+            to {
+                filter: drop-shadow(0 0 20px var(--blue));
+            }
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            color: var(--blue);
+            margin: 30px 0 20px;
+            text-shadow: 0 0 10px var(--blue);
+        }
+        
+        h3 {
+            font-size: 1.8rem;
+            color: var(--secondary);
+            margin: 20px 0 15px;
+        }
+        
+        p, li {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            color: rgba(0, 255, 65, 0.9);
+            margin: 15px 0;
+        }
+        
+        .terminal {
+            background: #000;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', monospace;
+            position: relative;
+            overflow: hidden;
+            direction: ltr;
+        }
+        
+        .terminal::before {
+            content: '> ';
+            color: var(--primary);
+        }
+        
+        .terminal-header {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 255, 65, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--blue);
+            font-size: 1.1rem;
+        }
+        
+        .code-block {
+            background: #000;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: var(--blue);
+            opacity: 0.6;
+        }
+        
+        .keyword { color: #ff006e; }
+        .function { color: #00d9ff; }
+        .string { color: #ffd700; }
+        .comment { color: #666; font-style: italic; }
+        .register { color: #b026ff; }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(0, 255, 65, 0.1), rgba(0, 217, 255, 0.1));
+            border-right: 4px solid var(--blue);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .warning-box {
+            background: linear-gradient(135deg, rgba(255, 0, 110, 0.1), rgba(176, 38, 255, 0.1));
+            border-right: 4px solid var(--accent);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .tool-card {
+            background: rgba(0, 255, 65, 0.05);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .tool-card:hover {
+            transform: translateX(-10px);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+            border-color: var(--blue);
+        }
+        
+        .tool-card h4 {
+            color: var(--blue);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .interactive-btn {
+            background: linear-gradient(135deg, var(--primary), var(--blue));
+            color: var(--dark);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Assistant', sans-serif;
+            margin: 10px 5px;
+        }
+        
+        .interactive-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+        
+        .interactive-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .quiz-option {
+            background: rgba(0, 255, 65, 0.05);
+            border: 2px solid var(--primary);
+            padding: 15px 25px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.2rem;
+        }
+        
+        .quiz-option:hover {
+            background: rgba(0, 255, 65, 0.1);
+            transform: translateX(-5px);
+        }
+        
+        .quiz-option.correct {
+            background: rgba(0, 255, 65, 0.3);
+            border-color: var(--secondary);
+        }
+        
+        .quiz-option.wrong {
+            background: rgba(255, 0, 110, 0.3);
+            border-color: var(--accent);
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            left: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Assistant', sans-serif;
+            font-weight: 600;
+        }
+        
+        .nav-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: var(--dark);
+            transform: scale(1.05);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .slide-counter {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid var(--primary);
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .assembly-line {
+            display: flex;
+            gap: 15px;
+            padding: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+        }
+        
+        .assembly-line:hover {
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .addr { color: #666; width: 80px; }
+        .opcode { color: var(--primary); width: 100px; }
+        .instruction { color: var(--blue); }
+        .operand { color: var(--purple); }
+        
+        .memory-viewer {
+            background: #000;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 20px 0;
+        }
+        
+        .memory-row {
+            display: flex;
+            gap: 10px;
+            padding: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .memory-addr {
+            color: var(--blue);
+            width: 100px;
+        }
+        
+        .memory-data {
+            color: var(--primary);
+        }
+        
+        ul {
+            padding-right: 30px;
+        }
+        
+        li {
+            margin: 12px 0;
+        }
+        
+        .typing-effect {
+            overflow: hidden;
+            border-left: 3px solid var(--primary);
+            white-space: nowrap;
+            animation: typing 3s steps(40) infinite;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        @keyframes typing {
+            0%, 100% { width: 0; }
+            50% { width: 100%; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 1s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .slide-number {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1rem;
+            opacity: 0.5;
+        }
+        
+        .debugger-sim {
+            background: #000;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            direction: ltr;
+        }
+        
+        .register-display {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .register {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--primary);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .register-name {
+            color: var(--blue);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .register-value {
+            color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+        
+        .crack-demo {
+            background: rgba(0, 217, 255, 0.05);
+            border: 2px solid var(--blue);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .success-message {
+            background: rgba(0, 255, 65, 0.2);
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 600;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        input[type="text"] {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 255, 65, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--blue));
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+                height: 85vh;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            h2 {
+                font-size: 1.8rem;
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .navigation {
+                bottom: 15px;
+                right: 15px;
+                left: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+    
+    <div class="slide-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <div class="slide-number">שקף 1/13</div>
+            <div style="text-align: center; margin-top: 15vh;">
+                <h1 style="font-size: 5rem; margin-bottom: 30px;">🔓 הנדסה לאחור</h1>
+                <h1 style="font-size: 3rem;">Reverse Engineering</h1>
+                <p style="font-size: 1.8rem; margin-top: 40px; color: var(--blue);">
+                    לגלות את הסודות החבויים בתוכנה
+                </p>
+                <div class="terminal" style="max-width: 600px; margin: 50px auto; font-size: 1.2rem;">
+                    <div class="terminal-header">
+                        <span class="terminal-dot dot-red"></span>
+                        <span class="terminal-dot dot-yellow"></span>
+                        <span class="terminal-dot dot-green"></span>
+                    </div>
+                    <div class="typing-effect">כשאתה יודע Assembly, הכל Open Source...</div>
+                </div>
+                <p style="font-size: 1.2rem; margin-top: 50px; opacity: 0.7;">
+                    מצגת אינטראקטיבית ללימוד ניתוח תוכנה
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: Motivation -->
+        <div class="slide" data-slide="2">
+            <div class="slide-number">שקף 2/13</div>
+            <h2>💡 למה ללמוד הנדסה לאחור?</h2>
+            
+            <div class="grid-2">
+                <div class="highlight-box">
+                    <h3>🛡️ אבטחת מידע</h3>
+                    <p>מציאת פרצות אבטחה ונקודות תורפה בתוכנות לפני שהאקרים מנצלים אותן</p>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>🔍 ניתוח malware</h3>
+                    <p>הבנת איך וירוסים ותוכנות זדוניות עובדות כדי להגן מפניהן</p>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>🐛 מציאת באגים</h3>
+                    <p>איתור ותיקון בעיות בתוכנות שאין לנו את קוד המקור שלהן</p>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>🎮 פיתוח cheats ו-mods</h3>
+                    <p>שינוי משחקים ותוכנות כדי להוסיף תכונות חדשות</p>
+                </div>
+            </div>
+            
+            <div class="warning-box" style="margin-top: 30px;">
+                <h3>⚠️ אבל שימו לב!</h3>
+                <p>הנדסה לאחור היא כלי חזק - חשוב להשתמש בה באחריות ובמסגרת החוק!</p>
+                <p>כמו בכל תחום, יש גבולות דקים בין מה מותר למה אסור לעשות.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: What is RE? -->
+        <div class="slide" data-slide="3">
+            <div class="slide-number">שקף 3/13</div>
+            <h2>🤔 מהי הנדסה לאחור?</h2>
+            
+            <p style="font-size: 1.4rem; margin: 30px 0;">
+                <strong>הנדסה לאחור</strong> היא תהליך של חקירה וניתוח של מוצר (תוכנה, חומרה) 
+                על מנת להבין איך הוא עובד - בלי גישה לקוד המקור או לתיעוד!
+            </p>
+            
+            <pre class="code-block" data-lang="Python" style="direction: ltr; text-align: left;">
+<span class="comment"># מה אנחנו רואים כשיש לנו קוד מקור:</span>
+<span class="keyword">def</span> <span class="function">check_password</span>(password):
+    <span class="keyword">if</span> password == <span class="string">"secret123"</span>:
+        <span class="keyword">return</span> <span class="string">"Access Granted!"</span>
+    <span class="keyword">return</span> <span class="string">"Access Denied"</span>
+            </pre>
+            
+            <p style="text-align: center; font-size: 2rem; margin: 20px 0;">⬇️</p>
+            
+            <pre class="code-block" data-lang="Assembly x86" style="direction: ltr; text-align: left;">
+<span class="comment">; מה אנחנו רואים ב-Assembly (בלי קוד מקור):</span>
+
+<span class="keyword">PUSH</span> <span class="register">EBP</span>
+
+<span class="keyword">MOV</span> <span class="register">EBP</span>, <span class="register">ESP</span>
+
+<span class="keyword">CALL</span> <span class="function">vbaStrCmp</span>
+
+<span class="keyword">TEST</span> <span class="register">EAX</span>, <span class="register">EAX</span>
+
+<span class="keyword">JE</span> <span class="function">AccessGranted</span></pre>
+            
+            <p style="font-size: 1.3rem; margin-top: 30px;">
+                המטרה שלנו: <strong style="color: var(--blue);">לשחזר את ההיגיון של התוכנה ממבט מלמטה למעלה!</strong>
+            </p>
+        </div>
+
+        <!-- Slide 4: Approaches -->
+        <div class="slide" data-slide="4">
+            <div class="slide-number">שקף 4/13</div>
+            <h2>🔬 שתי גישות עיקריות</h2>
+            
+            <div class="grid-2">
+                <div class="tool-card">
+                    <h3 style="color: var(--blue);">📊 ניתוח סטטי (Static Analysis)</h3>
+                    <p><strong>מה זה?</strong> להסתכל על הקוד בלי להריץ אותו</p>
+                    <br>
+                    <p><strong>כלים:</strong></p>
+                    <ul>
+                        <li>IDA Pro - Disassembler מקצועי</li>
+                        <li>Ghidra - כלי חינמי של NSA</li>
+                        <li>Binary Ninja</li>
+                    </ul>
+                    <br>
+                    <p><strong>יתרונות:</strong></p>
+                    <ul>
+                        <li>✅ בטוח - אין סיכון שהקוד יריץ malware</li>
+                        <li>✅ רואים את כל הקוד בבת אחת</li>
+                        <li>✅ יכול לעבוד על קוד של מערכות אחרות</li>
+                    </ul>
+                </div>
+                
+                <div class="tool-card">
+                    <h3 style="color: var(--purple);">▶️ ניתוח דינמי (Dynamic Analysis)</h3>
+                    <p><strong>מה זה?</strong> להריץ את התוכנה ולראות מה קורה בזמן אמת</p>
+                    <br>
+                    <p><strong>כלים:</strong></p>
+                    <ul>
+                        <li>x64dbg / OllyDbg - Debuggers</li>
+                        <li>WinDbg</li>
+                        <li>GDB (Linux)</li>
+                    </ul>
+                    <br>
+                    <p><strong>יתרונות:</strong></p>
+                    <ul>
+                        <li>✅ רואים את המידע האמיתי בזיכרון</li>
+                        <li>✅ יכולים "לעצור" את התוכנה באמצע</li>
+                        <li>✅ יותר קל להבין את תהליך הריצה</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>💡 טיפ מקצועי</h3>
+                <p>במציאות - משתמשים <strong>בשתי הגישות ביחד!</strong> מתחילים עם ניתוח סטטי כדי להבין את המבנה הכללי, ואז עוברים לניתוח דינמי כדי לראות מה באמת קורה.</p>
+            </div>
+        </div>
+
+        <!-- Slide 5: Tools Arsenal -->
+        <div class="slide" data-slide="5">
+            <div class="slide-number">שקף 5/13</div>
+            <h2>🧰 ארסנל הכלים שלנו</h2>
+            
+            <div class="tool-card" onclick="this.classList.toggle('expanded')">
+                <h4>🔍 Process Explorer (ProcExp)</h4>
+                <p>מציג מידע מפורט על כל התהליכים במערכת - משתמשים בו כדי לראות מה תוכנה עושה "מאחורי הקלעים"</p>
+                <ul>
+                    <li>Handles פתוחים (קבצים, registry, network)</li>
+                    <li>DLL-ים טעונים</li>
+                    <li>משתני Environment</li>
+                    <li>Strings בזיכרון</li>
+                </ul>
+            </div>
+            
+            <div class="tool-card">
+                <h4>🌐 Wireshark</h4>
+                <p>לכידת ותצפית על תעבורת רשת - מה התוכנה שולחת ומקבלת מהאינטרנט?</p>
+            </div>
+            
+            <div class="tool-card">
+                <h4>📊 Process Monitor (ProcMon)</h4>
+                <p>מציג בזמן אמת כל פעולה שתוכנה עושה:</p>
+                <ul>
+                    <li>גישה לקבצים</li>
+                    <li>שינויים ב-Registry</li>
+                    <li>פעולות רשת</li>
+                    <li>יצירת processes/threads</li>
+                </ul>
+            </div>
+            
+            <div class="tool-card">
+                <h4>🔬 API Monitor</h4>
+                <p>רואים בדיוק איזה פונקציות API התוכנה קוראת - כמו ProcMon אבל ברזולוציה גבוהה יותר!</p>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 1.3rem; text-align: center; color: var(--blue);">
+                <strong>העיקרון:</strong> לשלב כלים - כל כלי נותן לנו חלק מהתמונה!
+            </p>
+        </div>
+
+        <!-- Slide 6: Assembly Basics -->
+        <div class="slide" data-slide="6">
+            <div class="slide-number">שקף 6/13</div>
+            <h2>⚙️ יסודות Assembly</h2>
+            
+            <p style="font-size: 1.3rem; margin-bottom: 25px;">
+                Assembly זו שפת התכנות הכי קרובה לחומרה - כל פקודה C או Python הופכת לעשרות פקודות Assembly!
+            </p>
+            
+            <h3>📝 Registers - האוגרים</h3>
+            <div class="register-display">
+                <div class="register">
+                    <div class="register-name">EAX</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Accumulator</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">EBX</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Base</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">ECX</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Counter</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">EDX</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Data</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">ESI</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Source Index</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">EDI</div>
+                    <div class="register-value">0x00000000</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Dest Index</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">EBP</div>
+                    <div class="register-value">0x0012FF88</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Base Pointer</small>
+                </div>
+                <div class="register">
+                    <div class="register-name">ESP</div>
+                    <div class="register-value">0x0012FF80</div>
+                    <small style="color: var(--blue); opacity: 0.7;">Stack Pointer</small>
+                </div>
+            </div>
+            
+            <h3>🔧 פקודות נפוצות</h3>
+            <pre class="code-block" data-lang="x86 Assembly" style="direction: ltr; text-align: left;">
+
+<span class="keyword">MOV</span> <span class="register">EAX</span>, <span class="operand">5</span>          <span class="comment">; הכנס 5 ל-EAX</span>
+
+<span class="keyword">ADD</span> <span class="register">EAX</span>, <span class="operand">10</span>         <span class="comment">; חבר 10 ל-EAX (עכשיו EAX=15)</span>
+
+<span class="keyword">PUSH</span> <span class="register">EAX</span>             <span class="comment">; דחוף EAX למחסנית</span>
+
+<span class="keyword">POP</span> <span class="register">EBX</span>              <span class="comment">; שלוף מהמחסנית אל EBX</span>
+
+<span class="keyword">CALL</span> <span class="function">myFunction</span>     <span class="comment">; קרא לפונקציה</span>
+
+<span class="keyword">JMP</span> <span class="function">someLabel</span>       <span class="comment">; קפוץ לתווית</span>
+
+<span class="keyword">CMP</span> <span class="register">EAX</span>, <span class="operand">0</span>          <span class="comment">; השווה EAX ל-0</span>
+
+<span class="keyword">JE</span> <span class="function">equal</span>            <span class="comment">; אם שווים - קפוץ</span></pre>
+        </div>
+
+        <!-- Slide 7: PyDbg Example -->
+        <div class="slide" data-slide="7">
+            <div class="slide-number">שקף 7/13</div>
+            <h2>🐍 דוגמה: PyDbg - Debugger ב-Python</h2>
+            
+            <p style="font-size: 1.3rem;">
+                PyDbg מאפשר לנו לכתוב סקריפטים ב-Python שמנתחים תוכנות בזמן ריצה!
+            </p>
+            
+            <pre class="code-block" data-lang="Python" style="direction: ltr; text-align: left; font-size: 1rem;">
+<span class="keyword">from</span> pydbg <span class="keyword">import</span> *
+<span class="keyword">import</span> utils
+
+<span class="comment"># Callback שיקרא כש-printf נקרא</span>
+<span class="keyword">def</span> <span class="function">printf_handler</span>(dbg):
+    <span class="comment"># הפרמטר הראשון של printf נמצא במחסנית</span>
+    format_string = dbg.read_process_memory(
+        dbg.context.Esp + <span class="operand">4</span>, <span class="operand">256</span>
+    )
+    
+    <span class="keyword">print</span>(<span class="string">f"[*] printf called with: </span>{format_string}<span class="string">"</span>)
+    <span class="keyword">return</span> DBG_CONTINUE
+
+<span class="comment"># יצירת debugger</span>
+dbg = pydbg()
+printf_addr = dbg.func_resolve(<span class="string">"msvcrt"</span>, <span class="string">"printf"</span>)
+
+<span class="comment"># הצבת breakpoint על printf</span>
+dbg.bp_set(printf_addr, handler=printf_handler)
+
+<span class="comment"># הרצת התוכנה</span>
+dbg.load(<span class="string">"target_program.exe"</span>)
+dbg.run()
+            </pre>
+            
+            <div class="highlight-box">
+                <h3>💡 מה קורה כאן?</h3>
+                <ol>
+                    <li>מוצאים את הכתובת של הפונקציה <code>printf</code></li>
+                    <li>שמים breakpoint - התוכנה תעצור כשהיא מגיעה ל-printf</li>
+                    <li>ה-callback שלנו נקרא ויכול לקרוא את הפרמטרים!</li>
+                    <li>אפשר לראות מה התוכנה מדפיסה, לשנות ערכים, ועוד...</li>
+                </ol>
+            </div>
+            
+            <div class="terminal">
+                <div class="terminal-header">
+                    <span class="terminal-dot dot-red"></span>
+                    <span class="terminal-dot dot-yellow"></span>
+                    <span class="terminal-dot dot-green"></span>
+                </div>
+                [*] printf called with: "Hello, World!"<br>
+                [*] printf called with: "User entered: 12345"<br>
+                [*] printf called with: "Processing complete"
+            </div>
+        </div>
+
+        <!-- Slide 8: Cracking Example Part 1 -->
+        <div class="slide" data-slide="8">
+            <div class="slide-number">שקף 8/13</div>
+            <h2>🔓 דוגמה מעשית: פריצת תוכנה (חלק 1)</h2>
+            
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">
+                בואו נראה איך מוצאים את קוד הרישוי של תוכנה מסחרית!
+            </p>
+            
+            <div class="crack-demo">
+                <h3>השלב הראשון: לזהות נקודת בדיקה</h3>
+                
+                <p>התוכנה מבקשת קוד רישוי:</p>
+                <div style="background: #000; padding: 20px; border-radius: 8px; margin: 15px 0; text-align: center;">
+                    <p style="color: var(--blue);">Please enter your license code:</p>
+                    <input type="text" value="test123" readonly style="max-width: 300px; margin: 10px auto;">
+                    <button class="interactive-btn" style="margin-top: 10px;">OK</button>
+                </div>
+                
+                <p>נכניס קוד שגוי ונקבל:</p>
+                <div style="background: rgba(255, 0, 110, 0.2); padding: 15px; border: 2px solid var(--accent); border-radius: 8px; margin: 15px 0; text-align: center;">
+                    <p style="font-size: 1.3rem;">❌ Sorry, the registration code is not correct!</p>
+                </div>
+            </div>
+            
+            <div class="highlight-box">
+                <h3>🤔 מה נעשה עכשיו?</h3>
+                <p>איפשהו בקוד יש בדיקה שמשווה את הקוד שהכנסנו עם הקוד האמיתי...</p>
+                <p><strong style="color: var(--blue);">המשימה שלנו: למצוא את הבדיקה הזו!</strong></p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Cracking Example Part 2 -->
+        <div class="slide" data-slide="9">
+            <div class="slide-number">שקף 9/13</div>
+            <h2>🔓 דוגמה מעשית: פריצת תוכנה (חלק 2)</h2>
+            
+            <p>נפתח את התוכנה ב-OllyDbg ונחפש את הפונקציה שבודקת את הקוד:</p>
+            
+            <div class="debugger-sim">
+                <div class="assembly-line">
+                    <span class="addr">004195C0</span>
+                    <span class="opcode">E8 82</span>
+                    <span class="instruction">CALL</span>
+                    <span class="operand">mstatop3.00416550</span>
+                </div>
+                <div class="assembly-line" style="background: rgba(255, 0, 110, 0.2);">
+                    <span class="addr">004195C5</span>
+                    <span class="opcode">F700</span>
+                    <span class="instruction">NOT</span>
+                    <span class="operand">EAX</span>
+                </div>
+                <div class="assembly-line">
+                    <span class="addr">004195C7</span>
+                    <span class="opcode">66:3B</span>
+                    <span class="instruction">CMP</span>
+                    <span class="operand">AX, 0</span>
+                </div>
+                <div class="assembly-line" style="background: rgba(0, 255, 65, 0.1);">
+                    <span class="addr">004195CA</span>
+                    <span class="opcode">75 67</span>
+                    <span class="instruction">JNZ</span>
+                    <span class="operand">00419633</span>
+                    <span style="color: var(--accent); margin-right: 20px;">← זה!</span>
+                </div>
+                <div class="assembly-line">
+                    <span class="addr">004195CC</span>
+                    <span class="opcode">C785</span>
+                    <span class="instruction">MOV</span>
+                    <span class="operand">DWORD PTR SS:[EBP-04], UNICODE "Sorry, the registration code is not correct!"</span>
+                </div>
+            </div>
+            
+            <div class="highlight-box">
+                <h3>🎯 מצאנו את הנקודה המעניינת!</h3>
+                <p>הפקודה <code>JNZ 00419633</code> (Jump if Not Zero) קובעת האם הקוד תקין או לא!</p>
+                <ul>
+                    <li>אם <code>AX = 0</code> → הקוד <strong>לא</strong> תקין → נקבל הודעת שגיאה</li>
+                    <li>אם <code>AX ≠ 0</code> → הקוד תקין → הקפיצה תתבצע למקום שמאשר את הרישוי!</li>
+                </ul>
+            </div>
+            
+            <p style="font-size: 1.3rem; margin-top: 20px; color: var(--blue);">
+                עכשיו צריך לעקוב אחורה ולראות איפה <code>AX</code> מקבל את הערך שלו...
+            </p>
+        </div>
+
+        <!-- Slide 10: Cracking Example Part 3 -->
+        <div class="slide" data-slide="10">
+            <div class="slide-number">שקף 10/13</div>
+            <h2>🔓 דוגמה מעשית: פריצת תוכנה (חלק 3)</h2>
+            
+            <p>נחפש למעלה בקוד ונמצא:</p>
+            
+            <div class="debugger-sim">
+                <div class="assembly-line">
+                    <span class="addr">00416440</span>
+                    <span class="opcode">E8 00</span>
+                    <span class="instruction">CALL</span>
+                    <span class="operand">MSVBVM60.735DE24E</span>
+                </div>
+                <div class="assembly-line" style="background: rgba(0, 255, 65, 0.15);">
+                    <span class="addr">00416445</span>
+                    <span class="opcode">8B D0</span>
+                    <span class="instruction">MOV</span>
+                    <span class="operand">EDX, EAX</span>
+                </div>
+                <div class="assembly-line" style="background: rgba(0, 217, 255, 0.15);">
+                    <span class="addr">00416447</span>
+                    <span class="opcode">8B 40</span>
+                    <span class="instruction">MOV</span>
+                    <span class="operand">EAX, DWORD PTR DS:[EAX]</span>
+                </div>
+            </div>
+            
+            <p style="margin: 20px 0;">נכנס לפונקציה ונמצא את זה:</p>
+            
+            <pre class="code-block" data-lang="x86 Assembly" style="direction: ltr; text-align: left; background: rgba(0, 217, 255, 0.05);">
+<span class="comment">; הקוד שהמשתמש הכניס נטען ל-ECX</span>
+
+<span class="keyword">MOV</span> <span class="register">ECX</span>, <span class="operand">DWORD PTR [user_input]</span>
+
+<span class="comment">; הקוד האמיתי!</span>
+
+<span class="keyword">MOV</span> <span class="register">EAX</span>, <span class="operand">UNICODE "L8H0MW23ERA3URSYGMKMSNA"</span>
+
+<span class="comment">; פונקציה שמשווה strings</span>
+
+<span class="keyword">CALL</span> <span class="function">MSVBVM60.vbaStrCmp</span>
+
+<span class="comment">; התוצאה נשמרת ב-EAX</span>
+<span class="comment">; 0 = שווים, -1 או 1 = לא שווים</span></pre>
+            
+            <div class="success-message">
+                🎉 מצאנו את הקוד!<br>
+                <code style="font-size: 1.8rem; color: var(--blue); background: rgba(0, 0, 0, 0.3); padding: 10px 20px; border-radius: 5px; display: inline-block; margin-top: 10px;">L8H0MW23ERA3URSYGMKMSNA</code>
+            </div>
+            
+            <div class="highlight-box">
+                <h3>🔍 מה למדנו?</h3>
+                <p>התוכנה פשוט משווה את הקוד שהכנסנו עם string קבוע בקוד!</p>
+                <p>זו דרך לא בטוחה לאחסן קוד רישוי - כל מי שמסתכל על הקוד יכול למצוא אותו...</p>
+            </div>
+        </div>
+
+        <!-- Slide 11: Interactive Exercise 1 -->
+        <div class="slide" data-slide="11">
+            <div class="slide-number">שקף 11/13</div>
+            <h2>🎮 תרגיל אינטראקטיבי #1: זיהוי קוד Assembly</h2>
+            
+            <p style="font-size: 1.3rem; margin-bottom: 30px;">
+                בואו נתרגל! מה הקוד הבא עושה?
+            </p>
+            
+            <pre class="code-block" data-lang="x86 Assembly" style="direction: ltr; text-align: left;">
+
+<span class="keyword">MOV</span> <span class="register">EAX</span>, <span class="operand">10</span>
+
+<span class="keyword">MOV</span> <span class="register">EBX</span>, <span class="operand">5</span>
+
+<span class="keyword">ADD</span> <span class="register">EAX</span>, <span class="register">EBX</span>
+
+<span class="keyword">MOV</span> <span class="operand">[result]</span>, <span class="register">EAX</span></pre>
+            
+            <div id="quiz1">
+                <div class="quiz-option" onclick="checkQuiz1(this, false)">
+                    מכפיל 10 ב-5 ושומר את התוצאה (50)
+                </div>
+                <div class="quiz-option" onclick="checkQuiz1(this, true)">
+                    מחבר 10 + 5 ושומר את התוצאה (15)
+                </div>
+                <div class="quiz-option" onclick="checkQuiz1(this, false)">
+                    מעתיק את הערך 5 למשתנה result
+                </div>
+                <div class="quiz-option" onclick="checkQuiz1(this, false)">
+                    משווה בין 10 ל-5
+                </div>
+            </div>
+            
+            <div id="quiz1-result" style="display: none; margin-top: 30px;">
+                <div class="success-message">
+                    ✅ נכון מאוד!<br>
+                    הקוד מבצע חיבור פשוט: EAX = 10 + 5 = 15
+                </div>
+                
+                <button class="interactive-btn" onclick="nextExercise(2)" style="margin-top: 20px;">
+                    תרגיל הבא ←
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 12: Interactive Exercise 2 -->
+        <div class="slide" data-slide="12">
+            <div class="slide-number">שקף 12/13</div>
+            <h2>🎮 תרגיל אינטראקטיבי #2: סימולציית Debugger</h2>
+            
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">
+                הקוד הבא בודק סיסמה. מה הסיסמה הנכונה?
+            </p>
+            
+            <pre class="code-block" data-lang="x86 Assembly" style="direction: ltr; text-align: left;">
+<span class="keyword">PUSH</span> <span class="operand">"1337"</span>           <span class="comment">; הסיסמה הנכונה</span>
+<span class="keyword">PUSH</span> <span class="operand">[user_input]</span>    <span class="comment">; מה שהמשתמש הכניס</span>
+<span class="keyword">CALL</span> <span class="function">strcmp</span>           <span class="comment">; השוואה</span>
+
+<span class="keyword">TEST</span> <span class="register">EAX</span>, <span class="register">EAX</span>
+
+<span class="keyword">JE</span> <span class="function">success</span>            <span class="comment">; אם שווים - הצלחה!</span></pre>
+            
+            <div style="margin: 30px 0;">
+                <label style="display: block; margin-bottom: 10px; font-size: 1.2rem;">
+                    הכנס את הסיסמה שמצאת:
+                </label>
+                <input type="text" id="password-input" placeholder="הכנס סיסמה..." style="max-width: 400px;">
+                <br>
+                <button class="interactive-btn" onclick="checkPassword()" style="margin-top: 15px;">
+                    בדוק סיסמה
+                </button>
+            </div>
+            
+            <div id="password-result"></div>
+            
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3>💡 רמז</h3>
+                <p>תסתכלו על הפקודה הראשונה - <code>PUSH "1337"</code></p>
+                <p>מה הערך שנדחף למחסנית?</p>
+            </div>
+        </div>
+
+        <!-- Slide 13: Summary -->
+        <div class="slide" data-slide="13">
+            <div class="slide-number">שקף 13/13</div>
+            <h2>📚 סיכום ומשאבים</h2>
+            
+            <div class="highlight-box">
+                <h3>🎯 מה למדנו?</h3>
+                <ul style="font-size: 1.2rem;">
+                    <li>מהי הנדסה לאחור ולמה היא חשובה</li>
+                    <li>ההבדל בין ניתוח סטטי לדינמי</li>
+                    <li>כלים עיקריים לניתוח תוכנה</li>
+                    <li>יסודות Assembly ו-Debugging</li>
+                    <li>דוגמאות מעשיות של פריצת תוכנות</li>
+                </ul>
+            </div>
+            
+            <h3 style="margin-top: 40px;">🔗 משאבים להמשך לימוד</h3>
+            
+            <div class="tool-card">
+                <h4>📖 מדריכים והדרכות</h4>
+                <ul>
+                    <li><a href="https://beginners.re/" style="color: var(--blue);">Reverse Engineering for Beginners</a></li>
+                    <li><a href="https://crackmes.one/" style="color: var(--blue);">Crackmes.one - תרגילי RE</a></li>
+                </ul>
+            </div>
+            
+            <div class="tool-card">
+                <h4>🛠️ כלים להורדה</h4>
+                <ul>
+                    <li><a href="https://x64dbg.com/" style="color: var(--blue);">x64dbg - Debugger חינמי</a></li>
+                    <li><a href="https://www.wireshark.org/" style="color: var(--blue);">Wireshark - ניתוח רשת</a></li>
+                </ul>
+            </div>
+            
+            <div class="warning-box" style="margin-top: 30px;">
+                <h3>⚖️ תזכורת אתית חשובה</h3>
+                <p>הכישורים שלמדנו הם חזקים ושימושיים, אבל חשוב להשתמש בהם באחריות:</p>
+                <ul>
+                    <li>✅ ניתוח תוכנות שקניתם או שיש לכם רשות מפורשת לנתח</li>
+                    <li>✅ חיפוש באגים בתוכנות שלכם</li>
+                    <li>✅ מחקר אקדמי ולימודי</li>
+                    <li>❌ פריצת תוכנות מסחריות ללא רשות</li>
+                    <li>❌ יצירת malware או כלי פריצה</li>
+                    <li>❌ גניבת קניין רוחני</li>
+                </ul>
+            </div>
+            
+            <div class="success-message" style="margin-top: 40px; font-size: 1.6rem;">
+                🎓 כל הכבוד! סיימתם את המצגת<br>
+                <span style="font-size: 1.2rem; margin-top: 10px; display: block;">
+                    עכשיו תתחילו את המסע שלכם לעולם ה-Reverse Engineering!
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">→ הקודם</button>
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / 13
+        </div>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ←</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 13;
+        
+        // Matrix background effect
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const matrix = "01";
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        
+        for(let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+        
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(5, 8, 20, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#00ff41';
+            ctx.font = fontSize + 'px monospace';
+            
+            for(let i = 0; i < drops.length; i++) {
+                const text = matrix[Math.floor(Math.random() * matrix.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        
+        setInterval(drawMatrix, 50);
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        // Slide navigation
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if(n > totalSlides) currentSlide = totalSlides;
+            if(n < 1) currentSlide = 1;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlide;
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+            
+            // Scroll to top of slide
+            slides[currentSlide - 1].scrollTop = 0;
+        }
+        
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowRight') changeSlide(-1); // RTL
+            if(e.key === 'ArrowLeft') changeSlide(1);   // RTL
+        });
+        
+        // Quiz 1
+        function checkQuiz1(element, isCorrect) {
+            const options = document.querySelectorAll('#quiz1 .quiz-option');
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+                if(opt === element) {
+                    opt.classList.add(isCorrect ? 'correct' : 'wrong');
+                }
+            });
+            
+            if(isCorrect) {
+                setTimeout(() => {
+                    document.getElementById('quiz1-result').style.display = 'block';
+                }, 500);
+            } else {
+                element.innerHTML += ' ❌ לא נכון, נסו שוב...';
+                setTimeout(() => {
+                    options.forEach(opt => {
+                        opt.style.pointerEvents = 'auto';
+                        opt.classList.remove('wrong');
+                        opt.innerHTML = opt.innerHTML.replace(' ❌ לא נכון, נסו שוב...', '');
+                    });
+                }, 2000);
+            }
+        }
+        
+        function nextExercise(num) {
+            changeSlide(1);
+        }
+        
+        // Password check
+        function checkPassword() {
+            const input = document.getElementById('password-input');
+            const result = document.getElementById('password-result');
+            const password = input.value.trim();
+            
+            if(password === '1337') {
+                result.innerHTML = `
+                    <div class="success-message" style="margin-top: 20px;">
+                        🎉 מצוין! מצאתם את הסיסמה!<br>
+                        <span style="font-size: 1.1rem; margin-top: 10px; display: block;">
+                            הסתכלתם על הקוד וראיתם שהסיסמה "1337" נדחפת למחסנית ומושווית לקלט של המשתמש.
+                        </span>
+                    </div>
+                `;
+                input.disabled = true;
+            } else {
+                result.innerHTML = `
+                    <div class="warning-box" style="margin-top: 20px;">
+                        ❌ לא נכון... נסו שוב!<br>
+                        <span style="font-size: 1rem;">רמז: תסתכלו על הפקודה הראשונה בקוד</span>
+                    </div>
+                `;
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
+            }
+        }
+        
+        // Initialize
+        showSlide(currentSlide);
+        
+        // Register updates for interactive elements
+        function updateRegisters(values) {
+            Object.keys(values).forEach(reg => {
+                const element = document.querySelector(`.register:has(.register-name:contains('${reg}')) .register-value`);
+                if(element) {
+                    element.textContent = values[reg];
+                    element.style.color = 'var(--blue)';
+                    setTimeout(() => {
+                        element.style.color = 'var(--primary)';
+                    }, 1000);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

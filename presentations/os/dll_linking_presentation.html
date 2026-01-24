@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תהליך ה-Linking ויצירת DLL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            animation: slideDown 0.8s ease;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .slide {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: #f0f0f0;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 2px solid #dee2e6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .page-number {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .page-number::before {
+            content: '📄 ';
+        }
+
+        .progress-text {
+            font-size: 1.1em;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .progress-percentage {
+            font-size: 1.4em;
+            color: white;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 8px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .progress-percentage::after {
+            content: ' ✓';
+            opacity: 0.8;
+        }
+
+        .section-indicator {
+            text-align: center;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 0.9em;
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .section-indicator span {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            margin: 0 5px;
+        }
+
+        .section-indicator .active-section {
+            background: rgba(255,255,255,0.4);
+            font-weight: bold;
+        }
+
+        .quiz-score {
+            display: inline-block;
+            background: #ffc107;
+            color: #000;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 15px;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+        }
+
+        .quiz-score::before {
+            content: '⭐ ';
+        }
+
+        .section-title {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 20px;
+            border-right: 5px solid #667eea;
+            padding-right: 15px;
+        }
+
+        .diagram-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .process-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .process-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 100px;
+            flex: 1;
+            animation: pulse 2s infinite;
+        }
+
+        .process-box.highlight {
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-right: 5px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-right: 5px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-right: 5px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .code-block .keyword {
+            color: #ff79c6;
+        }
+
+        .code-block .function {
+            color: #50fa7b;
+        }
+
+        .code-block .string {
+            color: #f1fa8c;
+        }
+
+        .quiz-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .question {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option {
+            background: white;
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .option.correct {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .option.wrong {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: #4caf50;
+            color: white;
+        }
+
+        .feedback.wrong {
+            background: #f44336;
+            color: white;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: right;
+        }
+
+        .comparison-table td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            background: white;
+        }
+
+        .comparison-table tr:nth-child(even) td {
+            background: #f8f9fa;
+        }
+
+        .final-task {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .final-task h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .task-steps {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .task-steps li {
+            margin: 10px 0;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 2em;
+            margin: 20px 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .symbol-explanation {
+            display: inline-block;
+            background: #fff3cd;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 0 5px;
+            font-family: monospace;
+            border: 1px solid #ffc107;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .process-flow {
+                flex-direction: column;
+            }
+            
+            .arrow {
+                transform: rotate(90deg);
+            }
+            
+            .navigation {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .progress-info {
+                padding: 10px 20px;
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+            }
+
+            .page-number {
+                font-size: 1em;
+                padding: 6px 12px;
+            }
+
+            .progress-text {
+                font-size: 0.9em;
+            }
+
+            .progress-percentage {
+                font-size: 1.2em;
+                padding: 6px 16px;
+                min-width: 70px;
+            }
+
+            .quiz-score {
+                font-size: 0.9em;
+                padding: 5px 10px;
+                margin-right: 0;
+            }
+
+            .section-indicator {
+                font-size: 0.8em;
+                padding: 8px 10px;
+            }
+
+            .section-indicator span {
+                padding: 3px 8px;
+                margin: 0 3px;
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 תהליך ה-Linking ויצירת DLL</h1>
+            <p>מסע אינטראקטיבי להבנת תהליכי הקימפול והטעינה</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="progress-info">
+            <div class="page-number">
+                <span id="currentPageNumber">1</span> / <span id="totalPageNumber">22</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="quiz-score" id="quizScore">
+                    <span id="currentScore">0</span>/5
+                </div>
+                <div class="progress-text">
+                    התקדמות:
+                </div>
+                <div class="progress-percentage" id="progressPercentage">
+                    5%
+                </div>
+            </div>
+        </div>
+
+        <div class="section-indicator" id="sectionIndicator">
+            <span id="section1">מבוא</span>
+            <span id="section2">תיאוריה</span>
+            <span id="section3">תרגול</span>
+            <span id="section4">סיכום</span>
+        </div>
+
+        <div class="content">
+            <!-- Slide 1: Introduction -->
+<!--            <div class="slide active" id="slide1">-->
+<!--                <h2 class="section-title">🎯 מטרת השיעור</h2>-->
+<!--                -->
+<!--                <div class="info-box">-->
+<!--                    <h3>❓ שלוש שאלות מרכזיות:</h3>-->
+<!--                    <ol style="font-size: 1.2em; line-height: 2; margin-top: 15px;">-->
+<!--                        <li>כיצד המעבד יודע לאיזו כתובת וירטואלית עליו לפנות כדי לגשת לפקודה או למשתנה?</li>-->
+<!--                        <li>מהי שרשרת התהליכים שגורמת למשתנה או פקודה להופיע בכתובת מסוימת ב-RAM?</li>-->
+<!--                        <li>איך המעבד יודע לאן לגשת?</li>-->
+<!--                    </ol>-->
+<!--                </div>-->
+
+<!--                <div class="diagram-container">-->
+<!--                    <h3 style="text-align: center; margin-bottom: 20px;">תהליך המרת קוד מ-C ל-EXE</h3>-->
+<!--                    <div class="process-flow">-->
+<!--                        <div class="process-box">📝<br>קוד C</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box">⚙️<br>Compiling</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box">📋<br>ASM</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box">🔧<br>Assembling</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box">📦<br>OBJ</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box highlight">🔗<br>Linking</div>-->
+<!--                        <div class="arrow">←</div>-->
+<!--                        <div class="process-box">🚀<br>EXE</div>-->
+<!--                    </div>-->
+<!--                </div>-->
+
+<!--                <div class="warning-box">-->
+<!--                    <strong>⚠️ שימו לב:</strong> בשלב זה נניח שיש בידינו כבר קובץ הרצה או DLL, ונבין כיצד הם נטענים לזיכרון.-->
+<!--                </div>-->
+<!--            </div>-->
+
+            <!-- Slide 1: What is DLL? -->
+            <div class="slide" id="slide1">
+                <h2 class="section-title">🤔 מה זה בכלל DLL?</h2>
+                
+                <div class="info-box" style="text-align: center; padding: 40px;">
+                    <h3 style="font-size: 2.5em; margin-bottom: 20px;">DLL</h3>
+                    <p style="font-size: 1.8em; color: #667eea; font-weight: bold;">Dynamic Link Library</p>
+                    <p style="font-size: 1.3em; margin-top: 15px;">ספריית קישור דינמית</p>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>בשפה פשוטה:</h3>
+                    <p style="font-size: 1.3em; line-height: 2; text-align: center; padding: 20px;">
+                        DLL הוא <strong>קובץ שמכיל קוד וחדש לשימוש</strong> 📦<br>
+                        שתוכנות שונות יכולות להשתמש בו <strong>בו זמנית</strong> 🤝<br>
+                        בלי שכל תוכנה צריכה להכיל עותק משלה של הקוד 💾
+                    </p>
+                </div>
+
+                <div class="success-box">
+                    <h3>💡 אנלוגיה מהחיים:</h3>
+                    <p style="font-size: 1.2em; line-height: 1.8; margin-top: 15px;">
+                        חשבו על <strong>ספרייה ציבורית</strong> 📚:<br><br>
+                        
+                        <strong>❌ בלי DLL:</strong> כל אדם צריך לקנות ולהחזיק בבית עותק משלו של כל ספר.<br>
+                        → בזבוז כסף, תופס מקום, קשה לעדכן.<br><br>
+                        
+                        <strong>✅ עם DLL:</strong> כולם משתמשים באותה ספרייה ציבורית.<br>
+                        → חוסכים משאבים, עדכון במקום אחד, נגיש לכולם.
+                    </p>
+                </div>
+
+                <div class="warning-box">
+                    <h3>🔑 רעיון מרכזי:</h3>
+                    <p style="font-size: 1.2em;">
+                        במקום שכל תוכנה תכיל את כל הקוד שהיא צריכה,<br>
+                        היא יכולה <strong>"לשאול"</strong> קוד מקבצי DLL משותפים!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Slide 2: Why do we need DLL? -->
+            <div class="slide" id="slide2">
+                <h2 class="section-title">❓ למה אנחנו צריכים DLL?</h2>
+                
+                <div class="diagram-container">
+                    <h3>🔴 הבעיה: חיים בלי DLL</h3>
+                    <div style="background: #ffebee; padding: 30px; border-radius: 10px; margin: 20px 0;">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="font-size: 3em;">😫</div>
+                            <p style="font-size: 1.3em; margin-top: 10px;">10 תוכנות שצריכות להציג חלונות</p>
+                        </div>
+                        
+                        <div class="process-flow" style="flex-direction: column; gap: 15px;">
+                            <div class="process-box" style="background: #f44336;">תוכנה 1 📦 (20MB קוד חלונות)</div>
+                            <div class="process-box" style="background: #f44336;">תוכנה 2 📦 (20MB קוד חלונות)</div>
+                            <div class="process-box" style="background: #f44336;">תוכנה 3 📦 (20MB קוד חלונות)</div>
+                            <div style="font-size: 2em; text-align: center;">...</div>
+                            <div class="process-box" style="background: #f44336;">תוכנה 10 📦 (20MB קוד חלונות)</div>
+                        </div>
+                        
+                        <p style="text-align: center; font-size: 1.5em; margin-top: 20px; color: #d32f2f;">
+                            <strong>סך הכל: 200MB</strong> של אותו קוד מועתק 10 פעמים! 😱
+                        </p>
+                    </div>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>🟢 הפתרון: חיים עם DLL</h3>
+                    <div style="background: #e8f5e9; padding: 30px; border-radius: 10px; margin: 20px 0;">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="font-size: 3em;">😊</div>
+                            <p style="font-size: 1.3em; margin-top: 10px;">10 תוכנות משתמשות ב-DLL אחד</p>
+                        </div>
+                        
+                        <div class="process-flow" style="align-items: stretch;">
+                            <div style="flex: 3; display: flex; flex-direction: column; gap: 10px;">
+                                <div class="process-box" style="background: #4caf50; font-size: 0.9em;">תוכנה 1 📄 (2MB)</div>
+                                <div class="process-box" style="background: #4caf50; font-size: 0.9em;">תוכנה 2 📄 (2MB)</div>
+                                <div class="process-box" style="background: #4caf50; font-size: 0.9em;">תוכנה 3 📄 (2MB)</div>
+                                <div style="font-size: 1.5em; text-align: center;">...</div>
+                                <div class="process-box" style="background: #4caf50; font-size: 0.9em;">תוכנה 10 📄 (2MB)</div>
+                            </div>
+                            
+                            <div class="arrow" style="flex: 1; display: flex; align-items: center; justify-content: center; font-size: 3em;">
+                                ←
+                            </div>
+                            
+                            <div style="flex: 2; display: flex; align-items: center;">
+                                <div class="process-box highlight" style="width: 100%; padding: 40px; font-size: 1.2em;">
+                                    🔗 user32.dll<br>
+                                    <span style="font-size: 0.8em;">(20MB - נטען פעם אחת!)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p style="text-align: center; font-size: 1.5em; margin-top: 20px; color: #2e7d32;">
+                            <strong>סך הכל: 40MB</strong> במקום 200MB - חיסכון של 80%! 🎉
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3: DLL Benefits -->
+            <div class="slide" id="slide3">
+                <h2 class="section-title">✨ למה DLL זה מעולה?</h2>
+                
+                <div class="info-box">
+                    <h3 style="font-size: 1.8em; margin-bottom: 20px;">3 סיבות עיקריות:</h3>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>1️⃣ חיסכון בזיכרון 💾</h3>
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                        <p style="font-size: 1.2em; line-height: 1.8;">
+                            <strong>הבעיה:</strong> כל תוכנה טוענת עותק משלה של אותו קוד ל-RAM<br>
+                            <strong>הפתרון:</strong> ה-DLL נטען <span style="color: #4caf50; font-weight: bold;">פעם אחת</span> וכולם משתמשים בו<br><br>
+                            <strong>דוגמה:</strong> user32.dll (קוד לניהול חלונות)<br>
+                            → 182 תוכנות ב-Windows משתמשות בו בו זמנית<br>
+                            → נטען <strong>פעם אחת</strong> במקום 182 פעמים! 🚀
+                        </p>
+                    </div>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>2️⃣ עדכונים קלים 🔄</h3>
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                        <p style="font-size: 1.2em; line-height: 1.8;">
+                            <strong>הבעיה:</strong> מצאנו באג בפונקציה שכולם משתמשים בה<br>
+                            <strong>❌ בלי DLL:</strong> צריך לתקן ולהדר מחדש את <strong>כל התוכנות</strong><br>
+                            <strong>✅ עם DLL:</strong> מעדכנים <strong>קובץ אחד</strong> וכולם מקבלים את התיקון!<br><br>
+                            <strong>דוגמה:</strong> Microsoft מעדכנת DLL של אבטחה<br>
+                            → כל התוכנות במחשב מקבלות את העדכון אוטומטית! 🛡️
+                        </p>
+                    </div>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>3️⃣ שיתוף קוד בין מפתחים 🤝</h3>
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                        <p style="font-size: 1.2em; line-height: 1.8;">
+                            <strong>הבעיה:</strong> רוצים לשתף פונקציות בלי לחשוף קוד מקור<br>
+                            <strong>הפתרון:</strong> נותנים DLL מוכן לשימוש<br><br>
+                            <strong>דוגמה:</strong> חברה שפיתחה אלגוריתם מתקדם<br>
+                            → מחלקת DLL ללקוחות<br>
+                            → הלקוחות משתמשים בפונקציות<br>
+                            → הקוד המקור נשאר סודי! 🔒
+                        </p>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <h3>🎯 בקיצור:</h3>
+                    <p style="font-size: 1.3em; text-align: center; line-height: 2;">
+                        DLL = <strong>חכם</strong> 🧠 + <strong>יעיל</strong> ⚡ + <strong>חוסך</strong> 💰
+                    </p>
+                </div>
+            </div>
+
+            <!-- Slide 4: Real World Example -->
+            <div class="slide" id="slide4">
+                <h2 class="section-title">🌍 דוגמה מהעולם האמיתי</h2>
+                
+                <div class="info-box">
+                    <h3>תרחיש: אתה כותב 3 תוכנות שונות</h3>
+                </div>
+
+                <div class="diagram-container">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 20px 0;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2em;">📝</div>
+                            <h4>תוכנה 1</h4>
+                            <p style="margin-top: 10px;">עורך טקסט</p>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2em;">🖼️</div>
+                            <h4>תוכנה 2</h4>
+                            <p style="margin-top: 10px;">עורך תמונות</p>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2em;">📊</div>
+                            <h4>תוכנה 3</h4>
+                            <p style="margin-top: 10px;">מערכת ניהול</p>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 1.2em; text-align: center; margin: 20px 0;">
+                        <strong>כל 3 התוכנות צריכות:</strong>
+                    </p>
+                    
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                        <ul style="font-size: 1.1em; line-height: 2;">
+                            <li>✅ לפתוח ולשמור קבצים</li>
+                            <li>✅ להציג דיאלוגים למשתמש</li>
+                            <li>✅ להדפיס מסמכים</li>
+                            <li>✅ לעבוד עם תאריכים ושעות</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>❌ גישה מסורתית (בלי DLL):</h3>
+                    <div style="background: #ffebee; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.1em; line-height: 1.8;">
+                            1. כותבים את כל הפונקציות <strong>3 פעמים</strong> (בכל תוכנה)<br>
+                            2. כל תוכנה גדולה ב-<strong>10-20MB</strong><br>
+                            3. מצאנו באג בפונקציית תאריכים? צריך לתקן ב-<strong>3 מקומות</strong><br>
+                            4. רוצים לשפר משהו? שוב <strong>3 פעמים</strong><br>
+                            <br>
+                            <strong style="color: #d32f2f; font-size: 1.2em;">= בזבוז זמן, קוד כפול, טעויות!</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>✅ גישה חכמה (עם DLL):</h3>
+                    <div style="background: #e8f5e9; padding: 20px; border-radius: 10px;">
+                        <p style="font-size: 1.1em; line-height: 1.8;">
+                            1. כותבים <strong>פעם אחת</strong> את כל הפונקציות ב-<strong>MyUtils.dll</strong><br>
+                            2. כל 3 התוכנות משתמשות באותו DLL<br>
+                            3. מצאנו באג? מתקנים ב-<strong>מקום אחד</strong><br>
+                            4. רוצים לשפר? עושים זאת <strong>פעם אחת</strong><br>
+                            <br>
+                            <strong style="color: #2e7d32; font-size: 1.2em;">= חיסכון בזמן, קוד מסודר, פחות טעויות!</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <h3>💡 מסקנה:</h3>
+                    <p style="font-size: 1.2em; text-align: center;">
+                        DLL מאפשר לנו לכתוב קוד <strong>פעם אחת</strong><br>
+                        ולהשתמש בו <strong>בהמון מקומות</strong>!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Slide 5: Now - How does it work? -->
+            <div class="slide" id="slide5">
+                <h2 class="section-title">🔍 עכשיו נבין איך זה עובד!</h2>
+                
+                <div class="info-box" style="padding: 40px; text-align: center;">
+                    <p style="font-size: 1.5em; line-height: 2;">
+                        הבנו <strong>מה</strong> זה DLL 📦<br>
+                        הבנו <strong>למה</strong> צריכים אותו 🎯<br>
+                        הבנו <strong>מתי</strong> להשתמש בו ✅<br><br>
+                        <strong style="color: #667eea; font-size: 1.3em;">עכשיו נלמד איך זה עובד מאחורי הקלעים! 🔧</strong>
+                    </p>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>המסע שלנו:</h3>
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px;">
+                        <ol style="font-size: 1.2em; line-height: 2.5;">
+                            <li><strong>איך קוד C הופך ל-DLL?</strong> (Compiling, Assembling, Linking)</li>
+                            <li><strong>מה קורה כשהתוכנה נטענת?</strong> (Loading)</li>
+                            <li><strong>איך המעבד יודע איפה הכל?</strong> (כתובות וירטואליות)</li>
+                            <li><strong>איך יוצרים DLL בעצמנו?</strong> (תרגול מעשי)</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h3>💪 אתגר:</h3>
+                    <p style="font-size: 1.2em;">
+                        בסוף השיעור תדעו ליצור DLL משלכם<br>
+                        ולהשתמש בו בפרויקטים שלכם!
+                    </p>
+                </div>
+
+                <div class="success-box" style="text-align: center; font-size: 1.3em;">
+                    בואו נתחיל! 🚀
+                </div>
+            </div>
+
+            <!-- Slide 6: Introduction to Process -->
+            <div class="slide" id="slide6">
+                <h2 class="section-title">🎯 תהליך יצירת DLL - מבט על</h2>
+                
+                <div class="info-box">
+                    <h3>❓ שלוש שאלות מרכזיות:</h3>
+                    <ol style="font-size: 1.2em; line-height: 2; margin-top: 15px;">
+                        <li>כיצד המעבד יודע לאיזו כתובת וירטואלית עליו לפנות כדי לגשת לפקודה או למשתנה?</li>
+                        <li>מהי שרשרת התהליכים שגורמת למשתנה או פקודה להופיע בכתובת מסוימת ב-RAM?</li>
+                        <li>איך המעבד יודע לאן לגשת?</li>
+                    </ol>
+                </div>
+
+                <div class="diagram-container">
+                    <h3 style="text-align: center; margin-bottom: 20px;">תהליך המרת קוד מ-C ל-EXE/DLL</h3>
+                    <div class="process-flow">
+                        <div class="process-box">📝<br>קוד C</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box">⚙️<br>Compiling</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box">📋<br>ASM</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box">🔧<br>Assembling</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box">📦<br>OBJ</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box highlight">🔗<br>Linking</div>
+                        <div class="arrow">←</div>
+                        <div class="process-box">🚀<br>EXE/DLL</div>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ שימו לב:</strong> בשלב זה נניח שיש בידינו כבר קובץ הרצה או DLL, ונבין כיצד הם נטענים לזיכרון.
+                </div>
+            </div>
+
+            <!-- Slide 7: Compiling Process -->
+            <div class="slide" id="slide7">
+                <h2 class="section-title">⚙️ שלב ה-Compiling</h2>
+                
+                <pre class="code-block">
+<span class="keyword">#include</span> &lt;stdio.h&gt;
+<span class="keyword">#include</span> <span class="string">"my_funcs.h"</span>
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    <span class="keyword">static int</span> a = 2;
+    <span class="keyword">static int</span> b = 3;
+    <span class="keyword">int</span> c;
+    
+    c = <span class="function">my_add</span>(a, b);
+    <span class="function">printf</span>(<span class="string">"%d"</span>, c);
+    
+    <span class="keyword">return</span> 0;
+}
+                </pre>
+
+                <div class="info-box">
+                    <h3>🔍 מה קורה בקומפילציה?</h3>
+                    <ul style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        <li>הקוד מחולק לחלקים לפי הפעולות</li>
+                        <li>המשתנים <span class="symbol-explanation">a</span> ו-<span class="symbol-explanation">b</span> מוחלפים בסימבולים: <span class="symbol-explanation">_a.2063</span> ו-<span class="symbol-explanation">_b.2064</span></li>
+                        <li>הסימבולים מציינים שיש להם כתובת בזיכרון, אך הכתובת עדיין לא ידועה</li>
+                        <li>המשתנה <span class="symbol-explanation">c</span> (לא static) נשמר על המחסנית ולא דורש סימבול</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <strong>💡 למה static?</strong><br>
+                    המשתנים הוגדרו כ-static בכוונה כדי שיישמרו ב-data section ולא במחסנית. זה מאפשר לנו לעקוב אחרי תהליך ה-linking בצורה ברורה יותר.
+                </div>
+            </div>
+
+            <!-- Slide 8: Assembling Process -->
+            <div class="slide" id="slide8">
+                <h2 class="section-title">🔧 שלב ה-Assembling</h2>
+                
+                <div class="diagram-container">
+                    <h3>המרה לקוד בינארי (Machine Code)</h3>
+                    <pre class="code-block" style="font-size: 0.9em;">
+seg000:00000112  mov    edx, ds:dword_0
+seg000:00000118  mov    eax, ds:dword_4
+seg000:0000011D  mov    [esp+4], edx
+seg000:00000121  mov    [esp], eax
+seg000:00000124  call   $+5
+seg000:00000129  mov    [esp+1Ch], eax
+                    </pre>
+                </div>
+
+                <div class="info-box">
+                    <h3>📦 מה נוצר בקובץ OBJ?</h3>
+                    <ol style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        <li><strong>מידע כללי:</strong> שם הקובץ, גודל, זמן יצירה</li>
+                        <li><strong>קוד בינארי:</strong> פקודות בשפת מכונה</li>
+                        <li><strong>Relocation Info:</strong> רשימת כתובות שצריכות תיקון</li>
+                        <li><strong>טבלת סימבולים:</strong> סימבולים גלובליים ומיובאים</li>
+                        <li><strong>מידע לדיבוג:</strong> שמות משתנים ופונקציות</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <strong>🎯 Static Analysis vs Dynamic Analysis</strong><br>
+                    כרגע אנחנו מבצעים <strong>Static Analysis</strong> - ניתוח של קוד שנמצא על הדיסק.<br>
+                    זאת בניגוד ל-<strong>Dynamic Analysis</strong> - ניתוח של קוד שנטען ל-RAM.
+                </div>
+            </div>
+
+            <!-- Slide 9: Quiz 1 -->
+            <div class="slide" id="slide9">
+                <h2 class="section-title">🧠 שאלת הבנה #1</h2>
+                
+                <div class="quiz-container">
+                    <div class="question">
+                        מדוע משתנה שהוגדר כ-static זקוק לסימבול (symbol) בשלב הקומפילציה?
+                    </div>
+                    <div class="options" id="quiz1">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="feedback" id="feedback10"></div>
+                </div>
+            </div>
+
+            <!-- Slide 10: Linking Process -->
+            <div class="slide" id="slide10">
+                <h2 class="section-title">🔗 שלב ה-Linking</h2>
+                
+                <div class="info-box">
+                    <h3>תפקיד ה-Linker:</h3>
+                    <p style="font-size: 1.2em; line-height: 1.8;">
+                        ה-Linker מאחד את כל אזורי הקוד לאזור אחד ואת כל אזורי הנתונים לאזור אחד. 
+                        כאשר ברור איזו פקודה מגיעה אחרי איזו פקודה ומהם כל המשתנים, 
+                        אפשר לחלק <strong>כתובות וירטואליות</strong> לכל פונקציה ומשתנה.
+                    </p>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>מה ה-Linker מחלק?</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>סוג</th>
+                            <th>דוגמה</th>
+                            <th>כתובת לדוגמה</th>
+                        </tr>
+                        <tr>
+                            <td><strong>כתובות פקודות</strong></td>
+                            <td>main, my_add</td>
+                            <td>0x00401410</td>
+                        </tr>
+                        <tr>
+                            <td><strong>כתובות משתנים</strong></td>
+                            <td>a, b, one</td>
+                            <td>0x00404004, 0x00404008</td>
+                        </tr>
+                        <tr>
+                            <td><strong>כתובות פונקציות</strong></td>
+                            <td>my_add, printf</td>
+                            <td>0x0000001F, 0x00002673</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ סייגים חשובים:</strong>
+                    <ul style="margin-top: 10px; font-size: 1.1em;">
+                        <li>הכתובות יכולות לזוז כאשר הקובץ ייטען ל-RAM</li>
+                        <li>ה-Linker לא מסדר כתובות לפונקציות מ-DLL (כמו printf)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Slide 11: Static Linking -->
+            <div class="slide" id="slide11">
+                <h2 class="section-title">📚 Static Linking ויצירת Library</h2>
+                
+                <div class="diagram-container">
+                    <div class="process-flow" style="flex-direction: column;">
+                        <div class="process-box" style="width: 100%;">📝 קבצי OBJ מרובים</div>
+                        <div class="arrow" style="transform: rotate(90deg);">←</div>
+                        <div class="process-box highlight" style="width: 100%;">🔗 Linking ביניהם</div>
+                        <div class="arrow" style="transform: rotate(90deg);">←</div>
+                        <div class="process-box" style="width: 100%;">📦 קובץ LIB</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>מהו קובץ LIB?</h3>
+                    <ul style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        <li>קוד מקומפל שעדיין לא עבר את השלב האחרון להפיכתו ל-EXE</li>
+                        <li>קוד בשפת מכונה, אך המעבד לא יכול להריץ אותו (הכתובות עדיין לא אמיתיות)</li>
+                        <li>תוצר של אחד או יותר קבצי OBJ שעברו Linking ביניהם</li>
+                        <li>מאפשר חלוקת קוד בלי לחלק את קוד המקור</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <strong>✅ יתרונות Static Linking:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li>קל לחלק חבילות קוד</li>
+                        <li>שומר על סודיות קוד המקור</li>
+                        <li>הקוד משולב ישירות ב-EXE</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <strong>❌ חסרונות Static Linking:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li>הקוד מועתק לכל תוכנה - בזבוז זיכרון</li>
+                        <li>עדכון דורש הידור מחדש של כל התוכנות</li>
+                        <li>קבצי EXE גדולים יותר</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Slide 12: Quiz 2 -->
+            <div class="slide" id="slide12">
+                <h2 class="section-title">🧠 שאלת הבנה #2</h2>
+                
+                <div class="quiz-container">
+                    <div class="question">
+                        מה הבעיה העיקרית של Static Linking שמובילה לצורך ב-DLL?
+                    </div>
+                    <div class="options" id="quiz2">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="feedback" id="feedback2"></div>
+                </div>
+            </div>
+
+            <!-- Slide 13: DLL Introduction -->
+            <div class="slide" id="slide13">
+                <h2 class="section-title">💎 מהו DLL?</h2>
+                
+                <div class="info-box" style="text-align: center; font-size: 1.5em; padding: 30px;">
+                    <strong>DLL = Dynamic Link Library</strong><br>
+                    <span style="font-size: 0.7em;">ספריית קישור דינמית</span>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>בעיות ש-Static Linking לא פותר:</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>בעיה</th>
+                            <th>דוגמה</th>
+                            <th>פתרון DLL</th>
+                        </tr>
+                        <tr>
+                            <td><strong>תחזוקת קוד</strong></td>
+                            <td>עדכון באג ב-library דורש הידור מחדש של כל התוכנות</td>
+                            <td>עדכון קובץ DLL אחד</td>
+                        </tr>
+                        <tr>
+                            <td><strong>בזבוז זיכרון</strong></td>
+                            <td>10 תוכנות משתמשות בעכבר = 10 עותקים של אותו קוד</td>
+                            <td>DLL נטען פעם אחת לזיכרון</td>
+                        </tr>
+                        <tr>
+                            <td><strong>גודל קבצים</strong></td>
+                            <td>כל EXE מכיל את כל הקוד</td>
+                            <td>EXE קטן יותר</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="success-box">
+                    <h3>🎯 דוגמה מעשית: user32.dll</h3>
+                    <p style="font-size: 1.1em; margin-top: 10px;">
+                        הקובץ user32.dll כולל פונקציות לניהול עכבר ומקלדת. 
+                        ב-Windows, יש <strong>182 תוכנות</strong> שמשתמשות בו בו זמנית!
+                        במקום לטעון 182 עותקים, הקוד נטען <strong>פעם אחת</strong> לזיכרון.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Slide 14: Load Time vs Run Time -->
+            <div class="slide" id="slide14">
+                <h2 class="section-title">⏱️ Load Time vs Run Time Dynamic Linking</h2>
+                
+                <table class="comparison-table">
+                    <tr>
+                        <th style="width: 50%;">Load Time Dynamic Linking</th>
+                        <th style="width: 50%;">Run Time Dynamic Linking</th>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="info-box" style="background: #e3f2fd;">
+                                <strong>📋 איך זה עובד?</strong>
+                                <ul style="margin-top: 10px;">
+                                    <li>לקובץ EXE רשימת DLL-ים</li>
+                                    <li>ה-DLL נטען עם טעינת התוכנה</li>
+                                    <li>אם כבר קיים ב-RAM - משתמש בעותק הקיים</li>
+                                    <li>אוטומטי ושקוף למפתח</li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="warning-box" style="background: #fff3e0;">
+                                <strong>🎮 איך זה עובד?</strong>
+                                <ul style="margin-top: 10px;">
+                                    <li>לא רשום מראש ב-EXE</li>
+                                    <li>בזמן ריצה קוראים לפונקציות LoadLibrary</li>
+                                    <li>טוענים את ה-DLL בעצמנו</li>
+                                    <li>יותר שליטה, פחות אוטומטי</li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>✅ יתרונות:</strong>
+                            <ul>
+                                <li>קל יותר לשימוש</li>
+                                <li>אוטומטי</li>
+                                <li>שגיאות מוקדמות</li>
+                            </ul>
+                        </td>
+                        <td>
+                            <strong>✅ יתרונות:</strong>
+                            <ul>
+                                <li>גמישות מקסימלית</li>
+                                <li>טעינה לפי דרישה</li>
+                                <li>Plugin systems</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Slide 15: Quiz 3 -->
+            <div class="slide" id="slide15">
+                <h2 class="section-title">🧠 שאלת הבנה #3</h2>
+                
+                <div class="quiz-container">
+                    <div class="question">
+                        מתי כדאי להשתמש ב-Run Time Dynamic Linking במקום Load Time?
+                    </div>
+                    <div class="options" id="quiz3">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="feedback" id="feedback3"></div>
+                </div>
+            </div>
+
+            <!-- Slide 16: Creating DLL in C# -->
+            <div class="slide" id="slide16">
+                <h2 class="section-title">🛠️ יצירת DLL ב-C#</h2>
+                
+                <div class="info-box">
+                    <h3>שלבי יצירת DLL:</h3>
+                </div>
+
+                <pre class="code-block">
+// קובץ Calculate.cs
+<span class="keyword">namespace</span> Calculation
+{
+    <span class="keyword">public class</span> <span class="function">Calculate</span>
+    {
+        <span class="comment">// פונקציה לחיבור</span>
+        <span class="keyword">public int</span> <span class="function">Add</span>(<span class="keyword">int</span> a, <span class="keyword">int</span> b)
+        {
+            <span class="keyword">return</span> a + b;
+        }
+        
+        <span class="comment">// פונקציה לחיסור</span>
+        <span class="keyword">public int</span> <span class="function">Sub</span>(<span class="keyword">int</span> a, <span class="keyword">int</span> b)
+        {
+            <span class="keyword">return</span> a - b;
+        }
+    }
+}
+                </pre>
+
+                <div class="diagram-container">
+                    <h3>תהליך היצירה:</h3>
+                    <div class="process-flow" style="flex-direction: column;">
+                        <div class="process-box">1️⃣ פתיחת Visual Studio</div>
+                        <div class="arrow" style="transform: rotate(90deg);">↓</div>
+                        <div class="process-box">2️⃣ File → New → Project → Class Library</div>
+                        <div class="arrow" style="transform: rotate(90deg);">↓</div>
+                        <div class="process-box">3️⃣ כתיבת הקוד</div>
+                        <div class="arrow" style="transform: rotate(90deg);">↓</div>
+                        <div class="process-box">4️⃣ Build (Ctrl+Shift+B)</div>
+                        <div class="arrow" style="transform: rotate(90deg);">↓</div>
+                        <div class="process-box highlight">✅ Calculation.dll נוצר!</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 17: Using DLL -->
+            <div class="slide" id="slide17">
+                <h2 class="section-title">🎯 שימוש ב-DLL</h2>
+                
+                <pre class="code-block">
+// שימוש ב-DLL בפרויקט אחר
+<span class="keyword">using</span> Calculation;
+
+<span class="keyword">class</span> <span class="function">Program</span>
+{
+    <span class="keyword">static void</span> <span class="function">Main</span>()
+    {
+        Calculate calc = <span class="keyword">new</span> <span class="function">Calculate</span>();
+        
+        <span class="keyword">int</span> result1 = calc.<span class="function">Add</span>(5, 3);
+        Console.<span class="function">WriteLine</span>(<span class="string">$"5 + 3 = {result1}"</span>);
+        
+        <span class="keyword">int</span> result2 = calc.<span class="function">Sub</span>(10, 4);
+        Console.<span class="function">WriteLine</span>(<span class="string">$"10 - 4 = {result2}"</span>);
+    }
+}
+                </pre>
+
+                <div class="success-box">
+                    <h3>📝 שלבי השימוש:</h3>
+                    <ol style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        <li>צור פרויקט חדש (Console App או Windows Forms)</li>
+                        <li>הוסף Reference ל-DLL (לחיצה ימנית על הפרויקט → Add → Reference)</li>
+                        <li>בחר את הקובץ Calculation.dll</li>
+                        <li>הוסף <code>using Calculation;</code> בראש הקוד</li>
+                        <li>השתמש בפונקציות!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Slide 18: Quiz 4 -->
+            <div class="slide" id="slide18">
+                <h2 class="section-title">🧠 שאלת יישום</h2>
+                
+                <div class="quiz-container">
+                    <div class="question">
+                        אתה רוצה ליצור DLL עם פונקציות מתמטיות שישמשו כמה פרויקטים. 
+                        איזו פונקציה חייבת להיות public?
+                    </div>
+                    <div class="options" id="quiz4">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="feedback" id="feedback4"></div>
+                </div>
+            </div>
+
+            <!-- Slide 19: DLL Injection -->
+            <div class="slide" id="slide19">
+                <h2 class="section-title">💉 DLL Injection - מושג מתקדם</h2>
+                
+                <div class="warning-box">
+                    <h3>⚠️ אזהרה חשובה!</h3>
+                    <p style="font-size: 1.1em; line-height: 1.6;">
+                        DLL Injection הוא כלי חזק שיכול לשמש לטוב ולרע. 
+                        השתמשו בידע הזה רק למטרות לגיטימיות כמו debugging ומחקר אבטחה!
+                    </p>
+                </div>
+
+                <div class="info-box">
+                    <h3>מהו DLL Injection?</h3>
+                    <p style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        הזרקת קוד (DLL) לתהליך (Process) שכבר רץ במערכת. 
+                        זה מאפשר להוסיף פונקציונליות לתוכנה קיימת בזמן ריצה.
+                    </p>
+                </div>
+
+                <div class="diagram-container">
+                    <h3>שימושים לגיטימיים:</h3>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>שימוש</th>
+                            <th>הסבר</th>
+                        </tr>
+                        <tr>
+                            <td>🐛 Debugging</td>
+                            <td>עקיבה אחרי קריאות לפונקציות ומשתנים</td>
+                        </tr>
+                        <tr>
+                            <td>🧪 Testing</td>
+                            <td>בדיקת התנהגות התוכנה</td>
+                        </tr>
+                        <tr>
+                            <td>🎮 Modding</td>
+                            <td>הוספת תכונות למשחקים</td>
+                        </tr>
+                        <tr>
+                            <td>🔒 Security Research</td>
+                            <td>מחקר ניקוד תורפה</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ שימושים לא חוקיים:</h3>
+                    <ul style="margin-top: 10px; font-size: 1.1em;">
+                        <li>הזרקת malware לתהליכים</li>
+                        <li>גניבת מידע</li>
+                        <li>מעקב לא מורשה</li>
+                        <li>עקיפת אבטחה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Slide 20: Quiz 5 -->
+            <div class="slide" id="slide20">
+                <h2 class="section-title">🧠 שאלה אתית</h2>
+                
+                <div class="quiz-container">
+                    <div class="question">
+                        איזה מהשימושים הבאים ב-DLL Injection הוא לגיטימי לחלוטין?
+                    </div>
+                    <div class="options" id="quiz5">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <div class="feedback" id="feedback5"></div>
+                </div>
+            </div>
+
+            <!-- Slide 21: Summary -->
+            <div class="slide" id="slide21">
+                <h2 class="section-title">📚 סיכום</h2>
+                
+                <div class="diagram-container">
+                    <h3>מסע ההמרה מקוד ל-RAM:</h3>
+                    <div class="process-flow">
+                        <div class="process-box">C Source</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">Compiling</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">ASM</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">Assembling</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">OBJ</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box highlight">Linking</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">EXE/DLL</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">Loading</div>
+                        <div class="arrow">→</div>
+                        <div class="process-box">RAM</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>🔑 נקודות מפתח:</h3>
+                    <ul style="font-size: 1.1em; line-height: 1.8; margin-top: 10px;">
+                        <li><strong>Compiling:</strong> המרה לשפת אסמבלי, יצירת סימבולים</li>
+                        <li><strong>Assembling:</strong> המרה לקוד בינארי, יצירת OBJ</li>
+                        <li><strong>Linking:</strong> חלוקת כתובות וירטואליות, מיזוג קבצים</li>
+                        <li><strong>Static Linking:</strong> הטמעת הקוד ב-EXE</li>
+                        <li><strong>Dynamic Linking (DLL):</strong> קוד משותף, חסכון בזיכרון</li>
+                        <li><strong>Load Time:</strong> טעינה אוטומטית עם התוכנה</li>
+                        <li><strong>Run Time:</strong> טעינה ידנית בזמן ריצה</li>
+                    </ul>
+                </div>
+
+                <div class="score-display">
+                    ציון שלך: <span id="finalScore">0</span>/5 ✨
+                </div>
+            </div>
+
+            <!-- Slide 22: Final Task -->
+            <div class="slide" id="slide22">
+                <h2 class="section-title">🎯 משימת סיכום</h2>
+                
+                <div class="final-task">
+                    <h3>🚀 פרויקט: מערכת ניהול ספרייה</h3>
+                    
+                    <div class="task-steps">
+                        <h4>חלק א': יצירת DLL</h4>
+                        <ol style="margin-top: 10px;">
+                            <li>צרו DLL בשם <strong>LibraryManager.dll</strong> עם המחלקה <code>Library</code></li>
+                            <li>המחלקה תכיל:
+                                <ul style="margin-top: 5px;">
+                                    <li>מילון (Dictionary) של ספרים: <code>Dictionary&lt;string, string&gt;</code> (מספר ספר → שם ספר)</li>
+                                    <li>פונקציה <code>AddBook(string id, string name)</code> - להוספת ספר</li>
+                                    <li>פונקציה <code>RemoveBook(string id)</code> - להסרת ספר</li>
+                                    <li>פונקציה <code>SearchBook(string id)</code> - לחיפוש ספר, מחזירה שם או null</li>
+                                    <li>פונקציה <code>GetAllBooks()</code> - מחזירה רשימת כל הספרים</li>
+                                    <li>פונקציה <code>GetBookCount()</code> - מחזירה מספר הספרים</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+
+                    <div class="task-steps">
+                        <h4>חלק ב': אפליקציה משתמשת ב-DLL</h4>
+                        <ol style="margin-top: 10px;">
+                            <li>צרו אפליקציית Console או Windows Forms</li>
+                            <li>הוסיפו Reference ל-DLL שיצרתם</li>
+                            <li>צרו ממשק משתמש עם האפשרויות:
+                                <ul style="margin-top: 5px;">
+                                    <li>הוספת ספר חדש</li>
+                                    <li>מחיקת ספר</li>
+                                    <li>חיפוש ספר</li>
+                                    <li>הצגת כל הספרים</li>
+                                    <li>הצגת מספר הספרים</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+
+                    <div class="task-steps">
+                        <h4>חלק ג': אתגר מתקדם (בונוס)</h4>
+                        <ol style="margin-top: 10px;">
+                            <li>הוסיפו DLL נוסף בשם <strong>LibraryStatistics.dll</strong> עם:
+                                <ul style="margin-top: 5px;">
+                                    <li>פונקציה שמחשבת את הספר הכי ארוך בשם</li>
+                                    <li>פונקציה שמחזירה סטטיסטיקות (ספרים שמתחילים בכל אות)</li>
+                                    <li>פונקציה שמחפשת ספרים לפי חלק משם</li>
+                                </ul>
+                            </li>
+                            <li>השתמשו ב-<strong>Run Time Dynamic Linking</strong> לטעינת ה-DLL הזה רק כאשר המשתמש בוחר "סטטיסטיקות"</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <h3>✅ קריטריונים להגשה:</h3>
+                    <ul style="font-size: 1.1em; line-height: 1.6;">
+                        <li>קוד מתועד ונקי</li>
+                        <li>ה-DLL עובד ללא תלות באפליקציה</li>
+                        <li>ממשק משתמש ידידותי</li>
+                        <li>טיפול בשגיאות (try-catch)</li>
+                        <li>בדיקות קצה (ספר שלא קיים, מספר כפול וכו')</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h3>💡 טיפים:</h3>
+                    <ul>
+                        <li>התחילו מ-DLL פשוט ובדקו שהוא עובד</li>
+                        <li>ודאו שה-DLL נמצא בתיקייה הנכונה</li>
+                        <li>השתמשו ב-<code>using</code> statements</li>
+                        <li>תעדו את הקוד בעברית</li>
+                    </ul>
+                </div>
+
+                <div class="info-box" style="text-align: center; font-size: 1.2em;">
+                    <strong>⏱️ זמן משוער: 60-90 דקות</strong><br>
+                    <span style="font-size: 0.9em;">בהצלחה! 🚀</span>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="navigation">
+                <button class="btn btn-secondary" id="prevBtn" onclick="changeSlide(-1)">► הקודם</button>
+                <button class="btn btn-primary" id="nextBtn" onclick="changeSlide(1)">הבא ◄</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 22;
+        let score = 0;
+        const answeredQuestions = new Set();
+
+        // Quiz questions and answers
+        const quizData = {
+            quiz1: {
+                question: "מדוע משתנה שהוגדר כ-static זקוק לסימבול (symbol) בשלב הקומפילציה?",
+                options: [
+                    { text: "כדי שה-Linker יוכל להקצות לו כתובת קבועה ב-data section ולא במחסנית", correct: true },
+                    { text: "כי המשתנה נשמר על המחסנית ודורש מעקב מיוחד", correct: false },
+                    { text: "כדי לאפשר למעבד לגשת אליו ישירות ללא דרך הרגיסטרים", correct: false },
+                    { text: "כי הקומפיילר לא יודע איך להמיר אותו לשפת מכונה", correct: false }
+                ]
+            },
+            quiz2: {
+                question: "מה הבעיה העיקרית של Static Linking שמובילה לצורך ב-DLL?",
+                options: [
+                    { text: "הקוד מועתק לכל תוכנה - בזבוז זיכרון ובעיות תחזוקה", correct: true },
+                    { text: "הקוד רץ לאט יותר כי הוא מוטמע בתוך ה-EXE", correct: false },
+                    { text: "לא ניתן לשתף קוד בין מפתחים שונים", correct: false },
+                    { text: "הקומפיילר לא תומך ביותר מ-10 קבצי LIB בפרויקט אחד", correct: false }
+                ]
+            },
+            quiz3: {
+                question: "מתי כדאי להשתמש ב-Run Time Dynamic Linking במקום Load Time?",
+                options: [
+                    { text: "כאשר רוצים לטעון plugins או modules לפי דרישה ולא בהכרח", correct: true },
+                    { text: "כאשר רוצים שהתוכנה תרוץ מהר יותר בהפעלה", correct: false },
+                    { text: "כאשר ה-DLL גדול מאוד וצריך לחסוך מקום על הדיסק", correct: false },
+                    { text: "כאשר עובדים עם קבצי EXE ישנים שלא תומכים ב-DLL", correct: false }
+                ]
+            },
+            quiz4: {
+                question: "אתה רוצה ליצור DLL עם פונקציות מתמטיות שישמשו כמה פרויקטים. איזו פונקציה חייבת להיות public?",
+                options: [
+                    { text: "כל הפונקציות שאתה רוצה שיהיו נגישות מחוץ ל-DLL", correct: true },
+                    { text: "רק הפונקציה הראשונה שמוגדרת במחלקה", correct: false },
+                    { text: "רק פונקציות שמחזירות ערך (לא void)", correct: false },
+                    { text: "כל הפונקציות אוטומטית public כי זה DLL", correct: false }
+                ]
+            },
+            quiz5: {
+                question: "איזה מהשימושים הבאים ב-DLL Injection הוא לגיטימי לחלוטין?",
+                options: [
+                    { text: "שימוש בכלי debugging לעקוב אחרי התנהגות תוכנה שפיתחתי", correct: true },
+                    { text: "הזרקת קוד לתהליך של בנק כדי לבדוק את האבטחה שלו", correct: false },
+                    { text: "הוספת פונקציות למשחק מקוון כדי לקבל יתרון על שחקנים אחרים", correct: false },
+                    { text: "מעקב אחרי הודעות של משתמשים אחרים ללא אישורם", correct: false }
+                ]
+            }
+        };
+
+        // Shuffle array function
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // Initialize quiz
+        function initQuiz(quizId) {
+            const quiz = quizData[quizId];
+            const container = document.getElementById(quizId);
+            const shuffledOptions = shuffleArray(quiz.options);
+            
+            container.innerHTML = shuffledOptions.map((option, index) => `
+                <div class="option" onclick="checkAnswer('${quizId}', ${option.correct}, this)">
+                    ${option.text}
+                </div>
+            `).join('');
+        }
+
+        // Check answer
+        function checkAnswer(quizId, isCorrect, element) {
+            // Prevent multiple answers
+            if (answeredQuestions.has(quizId)) return;
+            
+            const options = document.querySelectorAll(`#${quizId} .option`);
+            const feedback = document.getElementById(`feedback${quizId.slice(-1)}`);
+            
+            // Disable all options
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+            
+            // Mark answer
+            if (isCorrect) {
+                element.classList.add('correct');
+                feedback.textContent = '✅ כל הכבוד! תשובה נכונה!';
+                feedback.className = 'feedback correct show';
+                if (!answeredQuestions.has(quizId)) {
+                    score++;
+                    answeredQuestions.add(quizId);
+                }
+            } else {
+                element.classList.add('wrong');
+                feedback.textContent = '❌ לא נכון. נסו לחשוב שוב על התהליך שלמדנו.';
+                feedback.className = 'feedback wrong show';
+                answeredQuestions.add(quizId);
+                
+                // Highlight correct answer
+                options.forEach((opt, idx) => {
+                    const optText = opt.textContent.trim();
+                    const correctOption = quizData[quizId].options.find(o => o.correct);
+                    if (optText === correctOption.text) {
+                        opt.classList.add('correct');
+                    }
+                });
+            }
+            
+            // Update final score
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('currentScore').textContent = score;
+        }
+
+        // Update section indicator
+        function updateSectionIndicator(slide) {
+            // Remove active class from all sections
+            document.querySelectorAll('.section-indicator span').forEach(s => {
+                s.classList.remove('active-section');
+            });
+            
+            // Determine current section and add active class
+            // שקפים 1-7: מבוא והסבר על DLL
+            // שקפים 8-16: תיאוריה - Compiling, Assembling, Linking
+            // שקפים 17-21: תרגול - יצירת DLL ו-Injection
+            // שקף 22: סיכום ומשימה
+            
+            if (slide <= 7) {
+                document.getElementById('section1').classList.add('active-section');
+            } else if (slide <= 16) {
+                document.getElementById('section2').classList.add('active-section');
+            } else if (slide <= 21) {
+                document.getElementById('section3').classList.add('active-section');
+            } else {
+                document.getElementById('section4').classList.add('active-section');
+            }
+        }
+
+        // Change slide
+        function changeSlide(direction) {
+            const slides = document.querySelectorAll('.slide');
+            slides[currentSlide - 1].classList.remove('active');
+            
+            currentSlide += direction;
+            
+            // Bounds checking
+            if (currentSlide < 1) currentSlide = 1;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            
+            slides[currentSlide - 1].classList.add('active');
+            
+            // Update buttons
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').textContent = currentSlide === totalSlides ? 'סיים ✓' : 'הבא ◄';
+            
+            // Update progress
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Update page numbers and percentage
+            document.getElementById('currentPageNumber').textContent = currentSlide;
+            document.getElementById('totalPageNumber').textContent = totalSlides;
+            document.getElementById('progressPercentage').textContent = Math.round(progress) + '%';
+            
+            // Update section indicator
+            updateSectionIndicator(currentSlide);
+            
+            // Initialize quiz if on quiz slide
+            if (currentSlide === 9) initQuiz('quiz1');
+            if (currentSlide === 12) initQuiz('quiz2');
+            if (currentSlide === 15) initQuiz('quiz3');
+            if (currentSlide === 18) initQuiz('quiz4');
+            if (currentSlide === 20) initQuiz('quiz5');
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(1);
+            if (e.key === 'ArrowRight') changeSlide(-1);
+        });
+
+        // Initialize on load
+        window.onload = () => {
+            document.getElementById('prevBtn').disabled = true;
+            changeSlide(0); // Initialize first slide
+        };
+    </script>
+</body>
+</html>

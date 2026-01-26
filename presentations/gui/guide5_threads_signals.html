@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מדריך 5: QThread ו-Signals מתקדמים</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.8;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 3em; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-right: 5px solid #667eea;
+        }
+        .section h2 {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .section h3 { color: #34495e; font-size: 1.8em; margin: 25px 0 15px 0; }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+            font-family: 'Consolas', monospace;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .function { color: #dcdcaa; }
+        .comment { color: #6a9955; font-style: italic; }
+        .class-name { color: #4ec9b0; }
+        .number { color: #b5cea8; }
+        .warning-box {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border-right: 5px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .warning-box h4 { color: #e65100; margin-bottom: 10px; font-size: 1.5em; }
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-right: 5px solid #2196f3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .info-box h4 { color: #1565c0; margin-bottom: 10px; font-size: 1.5em; }
+        .success-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-right: 5px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .success-box h4 { color: #2e7d32; margin-bottom: 10px; font-size: 1.5em; }
+        .diagram {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .thread-box {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        ul, ol { margin: 15px 0 15px 40px; }
+        li { margin: 10px 0; font-size: 1.1em; }
+        .icon { font-size: 1.5em; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📘 מדריך 5: QThread ו-Signals</h1>
+            <p>תהליכונים ותקשורת בין רכיבים</p>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2><span class="icon">⚡</span>למה צריך Threads?</h2>
+                
+                <p style="font-size: 1.2em; margin: 20px 0;">
+                    כאשר מריצים פעולה ארוכה (כמו הורדת קובץ או חישוב מורכב) בחוט הראשי,
+                    הממשק "קופא" ולא מגיב. <strong>QThread</strong> מאפשר להריץ פעולות ברקע.
+                </p>
+
+                <div class="warning-box">
+                    <h4>⚠️ בעיה ללא Threads</h4>
+                    <pre class="code-block">
+<span class="keyword">import</span> time
+
+<span class="keyword">def</span> <span class="function">long_task</span>(self):
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10</span>):
+        time.sleep(<span class="number">1</span>)  <span class="comment"># הממשק קופא!</span>
+        <span class="function">print</span>(<span class="string">f'שלב {i+1}'</span>)
+                    </pre>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="icon">🔧</span>יצירת Thread</h2>
+
+                <pre class="code-block">
+<span class="keyword">from</span> PyQt6.QtCore <span class="keyword">import</span> QThread, pyqtSignal
+<span class="keyword">import</span> time
+
+<span class="keyword">class</span> <span class="class-name">WorkerThread</span>(QThread):
+    <span class="comment"># הגדרת Signals</span>
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(str)
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, name):
+        <span class="keyword">super</span>().__init__()
+        self.name = name
+    
+    <span class="keyword">def</span> <span class="function">run</span>(self):
+        <span class="comment"># הקוד שירוץ ברקע</span>
+        <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">1</span>, <span class="number">11</span>):
+            time.sleep(<span class="number">0.5</span>)
+            self.progress.emit(i * <span class="number">10</span>)  <span class="comment"># שליחת אחוז</span>
+        
+        self.finished.emit(<span class="string">f'{self.name} סיים!'</span>)
+                </pre>
+
+                <div class="info-box">
+                    <h4>💡 הסבר</h4>
+                    <ul>
+                        <li><strong>run()</strong> - הפונקציה שרצה ב-thread</li>
+                        <li><strong>emit()</strong> - שליחת Signal</li>
+                        <li><strong>pyqtSignal</strong> - הגדרת Signal מותאם</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="icon">🎯</span>שימוש ב-Thread</h2>
+
+                <pre class="code-block">
+<span class="keyword">class</span> <span class="class-name">MainWindow</span>(QWidget):
+    <span class="keyword">def</span> <span class="function">__init__</span>(self):
+        <span class="keyword">super</span>().__init__()
+        
+        <span class="comment"># יצירת thread</span>
+        self.worker = WorkerThread(<span class="string">'עובד 1'</span>)
+        
+        <span class="comment"># חיבור signals</span>
+        self.worker.progress.connect(self.update_progress)
+        self.worker.finished.connect(self.on_finished)
+        
+        <span class="comment"># כפתור התחלה</span>
+        btn = QPushButton(<span class="string">'התחל'</span>)
+        btn.clicked.connect(self.start_task)
+    
+    <span class="keyword">def</span> <span class="function">start_task</span>(self):
+        self.worker.start()  <span class="comment"># הפעלת ה-thread</span>
+    
+    <span class="keyword">def</span> <span class="function">update_progress</span>(self, value):
+        <span class="comment"># עדכון מהממשק</span>
+        self.label.setText(<span class="string">f'התקדמות: {value}%'</span>)
+    
+    <span class="keyword">def</span> <span class="function">on_finished</span>(self, message):
+        self.label.setText(message)
+                </pre>
+
+                <div class="diagram">
+                    <h4>תרשים זרימה:</h4>
+                    <div class="thread-box">
+                        Main Thread<br>
+                        (UI)
+                    </div>
+                    <div style="display: inline; font-size: 2em;">→</div>
+                    <div class="thread-box">
+                        Worker Thread<br>
+                        (Background)
+                    </div>
+                    <div style="display: inline; font-size: 2em;">→</div>
+                    <div class="thread-box">
+                        Signals<br>
+                        (Updates)
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="icon">🚨</span>כללי זהב</h2>
+
+                <div class="warning-box">
+                    <h4>⚠️ אסור!</h4>
+                    <ul>
+                        <li>לגעת ב-UI widgets ישירות מתוך run()</li>
+                        <li>להפעיל thread פעמיים (צור מחדש)</li>
+                        <li>לשכוח לחכות ל-thread לפני סגירה</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h4>✅ מותר!</h4>
+                    <ul>
+                        <li>לשלוח Signals מה-thread</li>
+                        <li>לעבד נתונים ב-run()</li>
+                        <li>להריץ מספר threads במקביל</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="icon">📝</span>דוגמה מלאה - מוריד קבצים</h2>
+
+                <pre class="code-block">
+<span class="keyword">class</span> <span class="class-name">DownloaderThread</span>(QThread):
+    progress_update = pyqtSignal(int, str)
+    
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, urls):
+        <span class="keyword">super</span>().__init__()
+        self.urls = urls
+    
+    <span class="keyword">def</span> <span class="function">run</span>(self):
+        total = len(self.urls)
+        <span class="keyword">for</span> i, url <span class="keyword">in</span> enumerate(self.urls):
+            <span class="comment"># סימולציה של הורדה</span>
+            time.sleep(<span class="number">1</span>)
+            progress = int(((i + <span class="number">1</span>) / total) * <span class="number">100</span>)
+            self.progress_update.emit(progress, url)
+
+<span class="keyword">class</span> <span class="class-name">DownloaderApp</span>(QWidget):
+    <span class="keyword">def</span> <span class="function">__init__</span>(self):
+        <span class="keyword">super</span>().__init__()
+        
+        layout = QVBoxLayout()
+        
+        self.progress_bar = QProgressBar()
+        self.status_label = QLabel(<span class="string">'מוכן'</span>)
+        
+        start_btn = QPushButton(<span class="string">'התחל הורדה'</span>)
+        start_btn.clicked.connect(self.start_download)
+        
+        layout.addWidget(self.progress_bar)
+        layout.addWidget(self.status_label)
+        layout.addWidget(start_btn)
+        
+        self.setLayout(layout)
+    
+    <span class="keyword">def</span> <span class="function">start_download</span>(self):
+        urls = [<span class="string">'file1.txt'</span>, <span class="string">'file2.txt'</span>, <span class="string">'file3.txt'</span>]
+        self.thread = DownloaderThread(urls)
+        self.thread.progress_update.connect(self.on_progress)
+        self.thread.start()
+    
+    <span class="keyword">def</span> <span class="function">on_progress</span>(self, percent, filename):
+        self.progress_bar.setValue(percent)
+        self.status_label.setText(<span class="string">f'מוריד: {filename}'</span>)
+                </pre>
+            </div>
+
+            <div class="section">
+                <h2><span class="icon">📝</span>סיכום</h2>
+
+                <div class="success-box">
+                    <h4>✅ מה למדנו?</h4>
+                    <ul>
+                        <li>מהם Threads ולמה צריך אותם</li>
+                        <li>יצירת Worker Thread עם QThread</li>
+                        <li>שימוש ב-pyqtSignal לתקשורת</li>
+                        <li>כללי זהב ומה אסור לעשות</li>
+                        <li>דוגמה מעשית למוריד קבצים</li>
+                    </ul>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                            color: white; padding: 30px; border-radius: 15px; text-align: center;">
+                    <h3 style="font-size: 2em; margin-bottom: 10px;">🎉 כל הכבוד!</h3>
+                    <p style="font-size: 1.3em;">
+                        סיימת את כל 5 המדריכים!<br>
+                        עכשיו אתה יודע ליצור אפליקציות PyQt6 מלאות.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

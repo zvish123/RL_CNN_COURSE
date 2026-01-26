@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תרגיל: ניתוח מידע אוטומטי בעזרת Procmon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .header .authors {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 15px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin: 15px 0 15px 0;
+        }
+
+        .icon {
+            font-size: 1.2em;
+        }
+
+        .intro-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-right: 5px solid #667eea;
+        }
+
+        .intro-box p {
+            line-height: 1.8;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .objectives {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .objective-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .objective-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .objective-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .objective-card p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .downloads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .download-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s;
+        }
+
+        .download-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+        }
+
+        .download-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .download-card h3 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+        }
+
+        .download-card .description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            min-height: 60px;
+        }
+
+        .download-card .file-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .download-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
+
+        .steps {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            position: relative;
+            padding: 20px 60px 20px 60px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+        }
+
+        .step::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .step h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .step p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 5px solid;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            color: #1565C0;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            border-color: #ff9800;
+            color: #e65100;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .alert h4 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .exercises {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .exercise-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        .exercise-card:hover {
+            border-color: #764ba2;
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.1);
+        }
+
+        .exercise-card h3 {
+            color: #764ba2;
+            margin-bottom: 15px;
+        }
+
+        .exercise-card .goal {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .exercise-card .goal strong {
+            color: #764ba2;
+        }
+
+        .exercise-card ul {
+            margin-right: 20px;
+            line-height: 1.8;
+        }
+
+        .exercise-card li {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .requirements {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .req-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-right: 3px solid #667eea;
+        }
+
+        .req-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .footer p {
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e91e63;
+            font-size: 0.9em;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 5px solid #fdcb6e;
+        }
+
+        .highlight-box h4 {
+            color: #d63031;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .downloads-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .objectives {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+
+        .download-all-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 10px 0;
+            color: white;
+        }
+
+        .download-all-section h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .download-all-btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .download-all-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 ניתוח מידע אוטומטי בעזרת Procmon</h1>
+            <div class="subtitle">תרגיל מתקדם למגמת סייבר - תיכון</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Introduction -->
+            <div class="section">
+                <h2><span class="icon">📖</span> מבוא</h2>
+                <div class="intro-box">
+                    <p>
+                        ברוכים הבאים לתרגיל המתקדם בניתוח אבטחת מידע! בתרגיל זה תלמדו כיצד לנטר ולנתח
+                        את הפעולות שתוכנות מבצעות במחשב באופן אוטומטי. תשתמשו בכלי Procmon המקצועי של
+                        Microsoft ותפתחו סקריפט Python שמנתח את התוצאות ומזהה שינויים במערכת.
+                    </p>
+                </div>
+
+                <div class="alert alert-info">
+                    <h4>💡 למה זה חשוב?</h4>
+                    <p>
+                        כאנשי אבטחת מידע, עלינו להבין מה תוכנות עושות "מאחורי הקלעים". האם תוכנה משנה
+                        קבצים רגישים? האם היא מתחברת לשרתים חיצוניים? האם היא מוסיפה את עצמה להפעלה
+                        אוטומטית? כל זה נלמד בתרגיל הזה!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Objectives -->
+            <div class="section">
+                <h2><span class="icon">🎯</span> מטרות התרגיל</h2>
+                <div class="objectives">
+                    <div class="objective-card">
+                        <h4>🔧 פיתוח כלי אבטחה</h4>
+                        <p>בניית סקריפט Python מתקדם לניתוח פעילות תוכנות באופן אוטומטי</p>
+                    </div>
+                    <div class="objective-card">
+                        <h4>📊 ניתוח מערכות</h4>
+                        <p>הבנת File System, Registry וארכיטקטורת Windows ברמה עמוקה</p>
+                    </div>
+                    <div class="objective-card">
+                        <h4>🔍 זיהוי איומים</h4>
+                        <p>לימוד זיהוי התנהגות חשודה ו-Indicators of Compromise (IOCs)</p>
+                    </div>
+                    <div class="objective-card">
+                        <h4>🛡️ אבטחת מידע</h4>
+                        <p>הבנת טכניקות Malware Analysis ו-Dynamic Analysis</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requirements -->
+            <div class="section">
+                <h2><span class="icon">💻</span> דרישות מקדימות</h2>
+                <div class="requirements">
+                    <div class="req-item">
+                        <strong>מערכת הפעלה</strong>
+                        Windows 10/11 (64-bit)
+                    </div>
+                    <div class="req-item">
+                        <strong>Python</strong>
+                        גרסה 3.7 ומעלה
+                    </div>
+                    <div class="req-item">
+                        <strong>הרשאות</strong>
+                        Administrator נדרשות
+                    </div>
+                    <div class="req-item">
+                        <strong>נפח דיסק</strong>
+                        500MB פנויים
+                    </div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <h4>⚠️ חשוב!</h4>
+                    <p>
+                        <strong>נדרשות הרשאות מנהל (Administrator)!</strong><br>
+                        Procmon צריך גישה לרמת kernel כדי לנטר את כל הפעולות במערכת.
+                        וודאו שאתם מריצים את Command Prompt כמנהל.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Downloads -->
+            <div class="section">
+                <h2><span class="icon">📥</span> הורדת קבצי התרגיל</h2>
+                
+                <div class="download-all-section">
+                    <h3>💾 הורדה מהירה</h3>
+<!--                    <p style="margin-bottom: 20px;">הורידו את כל הקבצים בלחיצה אחת</p>-->
+<!--                    <button class="download-all-btn" onclick="downloadAll()">-->
+<!--                        ⬇️ הורד את כל הקבצים-->
+<!--                    </button>-->
+                    <a
+                          href="https://drive.google.com/uc?export=download&id=1A6HMQS6gi0KT06USdbnckp44kkcGcwlc"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-all-btn">
+                        ⬇️ הורד את כל הקבצים
+                        </a>
+
+                </div>
+
+                <h3>קבצים בודדים:</h3>
+                <div class="downloads-grid">
+                    <!-- File 1: Exercise Document -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">📄</span> מסמך התרגיל המלא</h3>
+                        <div class="description">
+                            תיעוד מקיף של כל התרגיל כולל רקע תיאורטי, הסברים מפורטים,
+                            דוגמאות קוד, ושאלות להבנה.
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: procmon_exercise.md</span>
+                            <span>📏 גודל: ~34KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('procmon_exercise.md', 'procmon_exercise.md')">-->
+<!--                            ⬇️ הורד מסמך-->
+<!--                        </button>-->
+
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=1qZlMIO7kDCj3rO3-hhkfXQmBLfliylzy"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד procmon_exercise.md
+                        </a>
+
+                    </div>
+
+                    <!-- File 2: Main Script -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">🐍</span> הסקריפט הראשי</h3>
+                        <div class="description">
+                            קוד Python מלא ועובד לניתוח Procmon, כולל הערות מפורטות
+                            בעברית ומבנה מודולרי.
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: procmon_analyzer.py</span>
+                            <span>📏 גודל: ~18KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('procmon_analyzer.py', 'procmon_analyzer.py')">-->
+<!--                            ⬇️ הורד סקריפט-->
+<!--                        </button>-->
+
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=1VnM-WvJ9H8_FrtcYOzAn-fiCQ4fsM6FU"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד procmon_analyzer.py
+                        </a>
+                    </div>
+
+                    <!-- File 3: Helper Functions -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">🔧</span> פונקציות עזר</h3>
+                        <div class="description">
+                            פונקציות מתקדמות לזיהוי IOCs, ייצוא לפורמטים שונים,
+                            וסטטיסטיקות מפורטות.
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: helper_functions.py</span>
+                            <span>📏 גודל: ~19KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('helper_functions.py', 'helper_functions.py')">-->
+<!--                            ⬇️ הורד פונקציות-->
+<!--                        </button>-->
+
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=1zqbLeSlt8BdRv2h7JrfLRrRSMmjPl7Yi"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד helper_functions.py
+                        </a>
+                    </div>
+
+                    <!-- File 4: Test File -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">📜</span> קובץ JavaScript לבדיקה</h3>
+                        <div class="description">
+                            קובץ לדוגמה שמדמה פעילות חשודה - לשימוש בתרגיל הראשון.
+                            בטוח לחלוטין!
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: suspicious.js</span>
+                            <span>📏 גודל: ~6KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('suspicious.js', 'suspicious.js')">-->
+<!--                            ⬇️ הורד דוגמה-->
+<!--                        </button>-->
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=1kbOHe728lxPowqdMPAsp3OIdHwrIARAj"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד suspicious.js
+                        </a>
+
+                    </div>
+
+                    <!-- File 5: README -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">📋</span> מדריך שימוש</h3>
+                        <div class="description">
+                            הוראות התקנה מפורטות, פתרון בעיות, דוגמאות שימוש,
+                            ושאלות נפוצות.
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: README.md</span>
+                            <span>📏 גודל: ~11KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('README.md', 'README.md')">-->
+<!--                            ⬇️ הורד מדריך-->
+<!--                        </button>-->
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=1x8TUo36L56PRxOl-zylULMpNZ5xhWndZ"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד README.md
+                        </a>
+                    </div>
+
+                    <!-- File 6: Requirements -->
+                    <div class="download-card">
+                        <h3><span class="file-icon">📦</span> תלויות Python</h3>
+                        <div class="description">
+                            רשימת ספריות Python נדרשות להתקנה עם pip.
+                        </div>
+                        <div class="file-info">
+                            <span>📦 קובץ: requirements.txt</span>
+                            <span>📏 גודל: ~1KB</span>
+                        </div>
+<!--                        <button class="download-btn" onclick="downloadFile('requirements.txt', 'requirements.txt')">-->
+<!--                            ⬇️ הורד תלויות-->
+<!--                        </button>-->
+
+                        <a
+                          href="https://drive.google.com/uc?export=download&id=12Ys7FLr6Et-t4uI2hETg0ybFx1R8rCFA"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="download-btn">
+                        ⬇️ הורד requirements.txt
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installation Steps -->
+            <div class="section">
+                <h2><span class="icon">🚀</span> שלבי התקנה</h2>
+                <div class="steps">
+                    <div class="step">
+                        <h4>הורדת Process Monitor</h4>
+                        <p>
+                            היכנסו לאתר Microsoft Sysinternals והורידו את Procmon:<br>
+                            <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/procmon" 
+                               target="_blank" style="color: #667eea;">
+                                https://docs.microsoft.com/en-us/sysinternals/downloads/procmon
+                            </a><br>
+                            חלצו את הקבצים לתיקייה נגישה, למשל: <code>C:\Tools\Procmon\</code>
+                        </p>
+                    </div>
+
+                    <div class="step">
+                        <h4>התקנת Python</h4>
+                        <p>
+                            הורידו והתקינו Python 3.11 או גרסה עדכנית יותר.<br>
+                            <strong>חשוב:</strong> בהתקנה, סמנו ✅ "Add Python to PATH"<br>
+                            אתר ההורדה: <a href="https://www.python.org/downloads/" 
+                               target="_blank" style="color: #667eea;">python.org</a>
+                        </p>
+                    </div>
+
+                    <div class="step">
+                        <h4>הורדת קבצי הפרויקט</h4>
+                        <p>
+                            לחצו על כפתורי ההורדה למעלה והורידו את כל הקבצים.<br>
+                            שימו את כולם באותה תיקייה, למשל: <code>C:\Projects\ProcmonAnalyzer\</code>
+                        </p>
+                    </div>
+
+                    <div class="step">
+                        <h4>התקנת ספריות Python</h4>
+                        <p>
+                            פתחו Command Prompt <strong>כמנהל</strong> והריצו:<br>
+                            <code>cd C:\Projects\ProcmonAnalyzer</code><br>
+                            <code>pip install -r requirements.txt</code>
+                        </p>
+                    </div>
+
+                    <div class="step">
+                        <h4>עדכון הגדרות</h4>
+                        <p>
+                            ערכו את הקובץ <code>procmon_analyzer.py</code> ועדכנו את הנתיב ל-Procmon:<br>
+                            <code>PROCMON_PATH = r"C:\Tools\Procmon\Procmon.exe"</code>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <h4>✅ מוכנים להתחיל!</h4>
+                    <p>
+                        אחרי השלמת כל השלבים, אתם מוכנים להתחיל לעבוד על התרגילים.
+                        פתחו את המסמך המלא לקבלת הוראות מפורטות.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Exercises -->
+            <div class="section">
+                <h2><span class="icon">🧪</span> התרגילים</h2>
+                <div class="exercises">
+                    <!-- Exercise 1 -->
+                    <div class="exercise-card">
+                        <h3>תרגיל 1️⃣: ניתוח JavaScript חשוד</h3>
+                        <div class="goal">
+                            <strong>מטרה:</strong> הבינו מה קובץ JavaScript עושה באמת, גם אם הקוד מבולבל
+                        </div>
+                        <ul>
+                            <li>הריצו את <code>suspicious.js</code> עם הכלי שפיתחתם</li>
+                            <li>זהו אילו קבצים נוצרו ונשארו במערכת</li>
+                            <li>מצאו אילו מפתחות Registry נוספו</li>
+                            <li>ענו על השאלות בסוף התרגיל</li>
+                        </ul>
+                    </div>
+
+                    <!-- Exercise 2 -->
+                    <div class="exercise-card">
+                        <h3>תרגיל 2️⃣: Self-Extracting Archive</h3>
+                        <div class="goal">
+                            <strong>מטרה:</strong> עקוב אחר חילוץ קבצים וזהה קבצים זמניים
+                        </div>
+                        <ul>
+                            <li>צרו או הורידו קובץ self-extracting (.exe)</li>
+                            <li>נטרו את תהליך החילוץ</li>
+                            <li>בדקו אילו קבצים נוצרו ואיפה</li>
+                            <li>זהו קבצים זמניים שנמחקו</li>
+                        </ul>
+                    </div>
+
+                    <!-- Exercise 3 -->
+                    <div class="exercise-card">
+                        <h3>תרגיל 3️⃣ (בונוס): ניתוח תוכנת התקנה</h3>
+                        <div class="goal">
+                            <strong>מטרה:</strong> הבינו מה תוכנה מתקינה במערכת
+                        </div>
+                        <ul>
+                            <li>בחרו תוכנה קטנה (Notepad++, 7-Zip, וכו')</li>
+                            <li>נטרו את תהליך ההתקנה</li>
+                            <li>זהו את כל השינויים שנעשו</li>
+                            <li>בדקו אם התוכנה הוסיפה את עצמה ל-Startup</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What You'll Learn -->
+            <div class="section">
+                <h2><span class="icon">🎓</span> מה תלמדו?</h2>
+                <div class="highlight-box">
+                    <h4>כישורים שתרכשו:</h4>
+                    <ul style="margin-right: 20px; line-height: 2;">
+                        <li>✅ הבנת Windows Internals - File System, Registry, Processes</li>
+                        <li>✅ פיתוח כלי אבטחת מידע מתקדמים ב-Python</li>
+                        <li>✅ ניתוח דינמי (Dynamic Analysis) של תוכנות</li>
+                        <li>✅ זיהוי IOCs (Indicators of Compromise)</li>
+                        <li>✅ זיהוי התנהגות זדונית של Malware</li>
+                        <li>✅ עבודה עם כלי Sysinternals מקצועיים</li>
+                        <li>✅ אוטומציה של תהליכי ניתוח אבטחה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="section">
+                <h2><span class="icon">💡</span> טיפים להצלחה</h2>
+                <div class="alert alert-info">
+                    <ul style="margin-right: 20px; line-height: 1.8;">
+                        <li><strong>קראו את המדריך המלא</strong> לפני שמתחילים לקוד</li>
+                        <li><strong>התחילו קטן</strong> - בדקו שהסקריפט עובד על תוכנה פשוטה (notepad) לפני שעוברים לתרגילים המורכבים</li>
+                        <li><strong>השתמשו ב-print()</strong> בשפע כדי להבין מה קורה בקוד</li>
+                        <li><strong>שמרו גיבויים</strong> לפני שמנסים דברים חדשים</li>
+                        <li><strong>תעדו את הממצאים</strong> - כתבו מה מצאתם בכל תרגיל</li>
+                        <li><strong>אל תפחדו לשאול</strong> - תכנות זה תהליך של למידה!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>בהצלחה בפרויקט! 🚀</strong></p>
+            <p> בית ספר תיכון בליך</p>
+            <p>מגמת סייבר 2026</p>
+        </div>
+    </div>
+
+    <script>
+        // Function to download a single file
+        function downloadFile(filename, displayName) {
+            // Create a temporary link element
+            const link = document.createElement('a');
+            link.href = filename;
+            link.download = displayName;
+            link.style.display = 'none';
+            
+            // Append to body, click, and remove
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Visual feedback
+            showNotification(`מוריד: ${displayName}...`);
+        }
+
+        // Function to download all files
+        function downloadAll() {
+            const files = [
+                ['procmon_exercise.md', 'procmon_exercise.md'],
+                ['procmon_analyzer.py', 'procmon_analyzer.py'],
+                ['helper_functions.py', 'helper_functions.py'],
+                ['suspicious.js', 'suspicious.js'],
+                ['README.md', 'README.md'],
+                ['requirements.txt', 'requirements.txt']
+            ];
+
+            let delay = 0;
+            files.forEach(([filename, displayName]) => {
+                setTimeout(() => {
+                    downloadFile(filename, displayName);
+                }, delay);
+                delay += 300; // Small delay between downloads
+            });
+
+            showNotification('🎉 מוריד את כל הקבצים!', 'success');
+        }
+
+        // Function to show notifications
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${type === 'success' ? '#4caf50' : '#667eea'};
+                color: white;
+                padding: 15px 30px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-weight: bold;
+                animation: slideDown 0.3s ease;
+            `;
+
+            // Add animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(-20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Add to page
+            document.body.appendChild(notification);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideDown 0.3s ease reverse';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Add smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

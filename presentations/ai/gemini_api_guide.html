@@ -120,6 +120,7 @@
         .code-block pre {
             margin: 0;
             margin-top: 25px;
+            font-size: 1.2em;
         }
 
         .highlight {
@@ -357,7 +358,7 @@
                 <p>קודם כל, עליך להתקין את הספריה הרשמית של Gemini:</p>
                 
                 <div class="code-block" data-lang="bash">
-<pre>pip install google-generativeai</pre>
+<pre>pip install google-genai</pre>
                 </div>
 
                 <h3>🔑 קבלת API Key</h3>
@@ -377,11 +378,12 @@
                 
                 <div class="code-block" data-lang="python">
 <pre>import os
-from google import generativeai as genai
+import json
+from google import genai
 
-# קריאת ה-API Key ממשתנה סביבה
+# הגדרת API
 api_key = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=api_key)</pre>
+client = genai.Client(api_key=api_key)</pre>
                 </div>
 
                 <div class="tip">
@@ -591,23 +593,21 @@ genai.configure(api_key=api_key)</pre>
                         <div class="code-block" data-lang="python">
 <pre>import os
 import json
-from google import generativeai as genai
+from google import genai
 
 # הגדרת API
 api_key = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=api_key)
+client = genai.Client(api_key=api_key)
 
-# יצירת המודל
-model = genai.GenerativeModel('gemini-pro')
 
 def ask_gemini_json(prompt, json_schema=None):
     """
     שולח שאלה ל-Gemini ומחזיר תשובה כ-JSON
-    
+
     Args:
         prompt: השאלה/בקשה
         json_schema: מבנה JSON רצוי (אופציונלי)
-    
+
     Returns:
         dict: התשובה כ-dictionary
     """
@@ -616,25 +616,32 @@ def ask_gemini_json(prompt, json_schema=None):
 
 אנא השב בפורמט JSON בלבד, ללא טקסט נוסף.
 """
-    
+
     if json_schema:
         full_prompt += f"\nהמבנה הרצוי:\n{json.dumps(json_schema, indent=2, ensure_ascii=False)}"
-    
-    # שליחת הבקשה
-    response = model.generate_content(full_prompt)
-    
+
+    # שליחת הבקשה עם המודל החדש
+    response = client.models.generate_content(
+        model='gemini-2.0-flash-exp',  # או 'gemini-1.5-pro' / 'gemini-1.5-flash'
+        contents=full_prompt
+    )
+
     # חילוץ הטקסט
     text = response.text
-    
+
     # ניקוי (הסרת markdown אם יש)
     if text.startswith('```json'):
         text = text.split('```json')[1]
         text = text.split('```')[0]
-    
+    elif text.startswith('```'):
+        text = text.split('```')[1]
+        text = text.split('```')[0]
+
     text = text.strip()
-    
+
     # המרה ל-JSON
     return json.loads(text)
+
 
 # דוגמת שימוש
 if __name__ == "__main__":
@@ -643,7 +650,9 @@ if __name__ == "__main__":
         "הסבר מהו רקורסיה בתכנות בשני משפטים"
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    
+
+    print("\n" + "=" * 50 + "\n")
+
     # דוגמה 2: עם סכמה מוגדרת
     schema = {
         "concept": "string",
@@ -651,7 +660,7 @@ if __name__ == "__main__":
         "example_code": "string",
         "difficulty": "easy/medium/hard"
     }
-    
+
     result = ask_gemini_json(
         "הסבר מהו decorator ב-Python",
         json_schema=schema
@@ -666,14 +675,14 @@ if __name__ == "__main__":
 import json
 import time
 from typing import Dict, Any, Optional
-from google import generativeai as genai
+from google import genai
 
 class GeminiJSONClient:
     """
     קלאס מתקדם לעבודה עם Gemini API וקבלת תשובות JSON
     """
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = 'gemini-pro'):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = 'gemini-2.0-flash-exp'):
         """
         אתחול הקלאס
         
@@ -685,8 +694,8 @@ class GeminiJSONClient:
         if not self.api_key:
             raise ValueError("API key not found!")
         
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_name = model_name
         self.conversation_history = []
     
     def create_json_prompt(self, 
@@ -759,7 +768,10 @@ class GeminiJSONClient:
         for attempt in range(max_retries):
             try:
                 # שליחת הבקשה
-                response = self.model.generate_content(full_prompt)
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=full_prompt
+                )
                 text = response.text.strip()
                 
                 # ניקוי הטקסט
@@ -863,8 +875,7 @@ if __name__ == "__main__":
 import json
 import logging
 from typing import Dict, Any, Optional
-from google import generativeai as genai
-from google.api_core import exceptions
+from google import genai
 
 # הגדרת לוגים
 logging.basicConfig(level=logging.INFO)
@@ -887,10 +898,11 @@ class SafeGeminiClient:
     קלאס עם טיפול מקיף בשגיאות
     """
     
-    def __init__(self):
+    def __init__(self, model_name: str = 'gemini-2.0-flash-exp'):
         self.api_key = self._get_api_key()
-        self._configure_api()
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_name = model_name
+        logger.info("Client initialized successfully")
     
     def _get_api_key(self) -> str:
         """
@@ -902,16 +914,6 @@ class SafeGeminiClient:
                 "API Key not found! Please set GEMINI_API_KEY environment variable."
             )
         return api_key
-    
-    def _configure_api(self):
-        """
-        מגדיר את ה-API בצורה בטוחה
-        """
-        try:
-            genai.configure(api_key=self.api_key)
-            logger.info("API configured successfully")
-        except Exception as e:
-            raise APIKeyError(f"Failed to configure API: {e}")
     
     def ask_json(self, 
                  prompt: str, 
@@ -926,18 +928,10 @@ class SafeGeminiClient:
             
             # שליחת הבקשה
             logger.info(f"Sending request to Gemini API...")
-            response = self.model.generate_content(
-                full_prompt,
-                request_options={'timeout': timeout}
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=full_prompt
             )
-            
-            # בדיקת חסימה
-            if response.prompt_feedback.block_reason:
-                logger.warning(f"Response blocked: {response.prompt_feedback.block_reason}")
-                return {
-                    "error": "Response was blocked",
-                    "reason": str(response.prompt_feedback.block_reason)
-                }
             
             # חילוץ הטקסט
             text = response.text
@@ -953,34 +947,42 @@ class SafeGeminiClient:
             logger.info("Successfully parsed and validated JSON")
             return result
             
-        except exceptions.ResourceExhausted:
-            logger.error("API quota exceeded")
-            return {
-                "error": "API quota exceeded",
-                "message": "נגמר המכסה היומית. נסי שוב מאוחר יותר."
-            }
-        
-        except exceptions.InvalidArgument as e:
-            logger.error(f"Invalid request: {e}")
-            return {
-                "error": "Invalid request",
-                "message": "הבקשה לא תקינה. בדקי את הפרומפט."
-            }
-        
-        except JSONParseError as e:
-            logger.error(f"JSON parsing failed: {e}")
-            return {
-                "error": "JSON parsing failed",
-                "message": "לא הצלחתי לפרסר את התשובה כ-JSON",
-                "raw_response": text if 'text' in locals() else None
-            }
-        
         except Exception as e:
-            logger.error(f"Unexpected error: {e}", exc_info=True)
-            return {
-                "error": "Unexpected error",
-                "message": str(e)
-            }
+            # בדיקת סוג השגיאה
+            error_message = str(e)
+            
+            # שגיאות מכסה
+            if "quota" in error_message.lower() or "resource_exhausted" in error_message.lower():
+                logger.error("API quota exceeded")
+                return {
+                    "error": "API quota exceeded",
+                    "message": "נגמר המכסה היומית. נסי שוב מאוחר יותר."
+                }
+            
+            # שגיאות בקשה לא תקינה
+            elif "invalid" in error_message.lower():
+                logger.error(f"Invalid request: {e}")
+                return {
+                    "error": "Invalid request",
+                    "message": "הבקשה לא תקינה. בדקי את הפרומפט."
+                }
+            
+            # שגיאות JSON
+            elif isinstance(e, JSONParseError):
+                logger.error(f"JSON parsing failed: {e}")
+                return {
+                    "error": "JSON parsing failed",
+                    "message": "לא הצלחתי לפרסר את התשובה כ-JSON",
+                    "raw_response": text if 'text' in locals() else None
+                }
+            
+            # שגיאות כלליות
+            else:
+                logger.error(f"Unexpected error: {e}", exc_info=True)
+                return {
+                    "error": "Unexpected error",
+                    "message": str(e)
+                }
     
     def _build_prompt(self, prompt: str, schema: Optional[Dict]) -> str:
         """

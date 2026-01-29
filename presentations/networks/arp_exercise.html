@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מבצע זיהוי התוקף - ARP Poisoning Lab</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #c31432 0%, #240b36 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: "🚨";
+            position: absolute;
+            font-size: 150px;
+            opacity: 0.1;
+            right: 50px;
+            top: -20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .alert-box {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+            color: white;
+            padding: 25px;
+            margin: 20px;
+            border-radius: 15px;
+            border-right: 6px solid #c92a2a;
+            box-shadow: 0 10px 30px rgba(201, 42, 42, 0.3);
+        }
+
+        .alert-box h2 {
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .alert-box .time {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        .mission-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            margin: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .mission-card h2 {
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .mission-card ul {
+            margin-right: 20px;
+            line-height: 2;
+        }
+
+        .mission-card li {
+            margin: 10px 0;
+            padding-right: 10px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 30px;
+            margin: 25px 0;
+            border-radius: 15px;
+            border-right: 5px solid #667eea;
+        }
+
+        .section h3 {
+            color: #667eea;
+            font-size: 1.6em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theory-box {
+            background: #e7f3ff;
+            border-right: 4px solid #2196F3;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .theory-box h4 {
+            color: #1976D2;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .theory-box p, .theory-box ul {
+            line-height: 1.8;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .theory-box ul {
+            margin-right: 20px;
+        }
+
+        .code-editor {
+            background: #1e1e1e;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .code-header {
+            background: #323232;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-header .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        .code-header .filename {
+            color: #ccc;
+            margin-right: 15px;
+            font-family: monospace;
+        }
+
+        .code-content {
+            padding: 20px;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .code-content .comment {
+            color: #6A9955;
+        }
+
+        .code-content .keyword {
+            color: #569CD6;
+        }
+
+        .code-content .string {
+            color: #CE9178;
+        }
+
+        .code-content .function {
+            color: #DCDCAA;
+        }
+
+        .code-content .variable {
+            color: #9CDCFE;
+        }
+
+        .task-card {
+            background: white;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-right: 4px solid #f59e0b;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .task-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .task-card h4 {
+            color: #1f2937;
+            margin: 15px 0;
+            font-size: 1.2em;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            transition: border-color 0.3s;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .feedback {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            display: none;
+            animation: slideIn 0.3s;
+        }
+
+        .feedback.success {
+            background: #d4edda;
+            border-right: 4px solid #28a745;
+            color: #155724;
+        }
+
+        .feedback.error {
+            background: #f8d7da;
+            border-right: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .feedback.info {
+            background: #d1ecf1;
+            border-right: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .hint-box {
+            background: #fff8e1;
+            border-right: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .hint-box:hover {
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .hint-box h4 {
+            color: #f57c00;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hint-content {
+            display: none;
+            margin-top: 15px;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .hint-box.open .hint-content {
+            display: block;
+        }
+
+        .hint-box.open h4::after {
+            content: " ▼";
+        }
+
+        .hint-box h4::after {
+            content: " ◄";
+            font-size: 0.8em;
+        }
+
+        .network-diagram {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .diagram-node {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 10px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .diagram-node.attacker {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+
+        .diagram-node.victim {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .diagram-arrow {
+            display: inline-block;
+            margin: 0 10px;
+            font-size: 1.5em;
+            color: #667eea;
+        }
+
+        .terminal {
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .terminal .prompt {
+            color: #0f0;
+        }
+
+        .terminal .output {
+            color: #fff;
+        }
+
+        .terminal .error {
+            color: #f00;
+        }
+
+        .progress-tracker {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-right: 4px solid #ddd;
+        }
+
+        .progress-item.completed {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .progress-item .icon {
+            font-size: 1.5em;
+            margin-left: 15px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .badge-level1 {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-level2 {
+            background: #ff9800;
+            color: white;
+        }
+
+        .badge-level3 {
+            background: #f44336;
+            color: white;
+        }
+
+        .gemini-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            margin: 25px 0;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .gemini-section h3 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .api-result {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .diagram-node {
+                display: block;
+                margin: 10px auto;
+            }
+
+            .diagram-arrow {
+                display: block;
+                transform: rotate(90deg);
+                margin: 10px auto;
+            }
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(17, 153, 142, 0.3);
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-right: 4px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            color: #856404;
+        }
+
+        .warning-box strong {
+            color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 מבצע זיהוי התוקף</h1>
+            <p class="subtitle">מעבדה מעשית: זיהוי ומניעת ARP Poisoning עם Python & Scapy</p>
+        </div>
+
+        <div class="alert-box">
+            <h2>⚠️ התראת אבטחה דחופה!</h2>
+            <p style="font-size: 1.1em; line-height: 1.8;">
+                <strong>מ:</strong> מנהל אבטחת המידע - CyberTech Corp<br>
+                <strong>אל:</strong> צוות הסייבר הצעיר<br>
+                <strong>נושא:</strong> פעילות חשודה ברשת החברה
+            </p>
+            <p style="margin-top: 15px; line-height: 1.8;">
+                בוקר טוב חוקרים,<br><br>
+                במהלך השעות האחרונות זיהינו פעילות חריגה ברשת הפנימית של החברה. נראה שתוקף מתוחכם
+                מנסה ליירט תעבורת רשת רגישה באמצעות מתקפת <strong>ARP Poisoning</strong>.
+                מנהל הפיתוח דיווח על האטה משמעותית בתקשורת הרשת, ומערכות האבטחה שלנו זיהו כתובות MAC
+                כפולות בטבלאות ARP.<br><br>
+                <strong style="color: #ffe066;">המשימה שלכם: לבנות כלי זיהוי אוטומטי שיגלה את התוקף בזמן אמת!</strong>
+            </p>
+            <p class="time">🕐 זמן משוער למשימה: 90-120 דקות | רמת דחיפות: גבוהה</p>
+        </div>
+
+        <div class="mission-card">
+            <h2>🎯 יעדי המשימה</h2>
+            <ul>
+                <li>🔍 <strong>שלב 1:</strong> הבנת מתקפת ARP Poisoning והדרך שבה היא פועלת</li>
+                <li>💻 <strong>שלב 2:</strong> כתיבת קוד Python עם Scapy לזיהוי המתקפה</li>
+                <li>⚡ <strong>שלב 3:</strong> ניטור רשת בזמן אמת וזיהוי התוקף</li>
+                <li>🤖 <strong>שלב 4:</strong> שימוש ב-Gemini AI לניתוח מתקדם והמלצות הגנה</li>
+                <li>🛡️ <strong>שלב 5:</strong> בניית מערכת הגנה מלאה</li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <!-- Section 1: Theory -->
+            <div class="section">
+                <h3>📚 שלב 1: הבנת האיום - ARP Poisoning</h3>
+
+                <div class="theory-box">
+                    <h4>מה זה פרוטוקול ARP?</h4>
+                    <p><strong>ARP (Address Resolution Protocol)</strong> הוא פרוטוקול שממיר כתובות IP לכתובות MAC ברשת מקומית.</p>
+                    <p><strong>למה זה נחוץ?</strong> כדי לשלוח מידע ברשת מקומית, המחשב צריך לדעת את כתובת ה-MAC של המכשיר היעד.</p>
+
+                    <p style="margin-top: 15px;"><strong>תהליך ARP תקין:</strong></p>
+                    <ol style="margin-right: 20px; line-height: 2;">
+                        <li>מחשב A רוצה לשלוח מידע למחשב B (יודע רק את ה-IP)</li>
+                        <li>מחשב A שולח <strong>ARP Request</strong> (broadcast): "מי הבעלים של IP הזה?"</li>
+                        <li>מחשב B עונה <strong>ARP Reply</strong>: "זה אני! כתובת ה-MAC שלי היא XX:XX:XX"</li>
+                        <li>מחשב A שומר את המידע ב-<strong>ARP Cache</strong> לשימוש עתידי</li>
+                    </ol>
+                </div>
+
+                <div class="theory-box" style="border-color: #f44336; background: #ffebee;">
+                    <h4 style="color: #c62828;">🔴 מה זה ARP Poisoning?</h4>
+                    <p><strong>ARP Poisoning</strong> (או ARP Spoofing) היא מתקפה שבה התוקף שולח הודעות ARP מזויפות לרשת.</p>
+
+                    <p style="margin-top: 15px;"><strong>מה קורה במתקפה?</strong></p>
+                    <ul>
+                        <li>התוקף אומר לקורבן: "אני הנתב! שלח לי את כל התעבורה!"</li>
+                        <li>התוקף אומר לנתב: "אני הקורבן! שלח לי את כל התעבורה שלו!"</li>
+                        <li>כל התעבורה בין הקורבן לאינטרנט עוברת דרך התוקף</li>
+                        <li>התוקף יכול לקרוא, לשנות, או לחסום את המידע</li>
+                    </ul>
+
+                    <p style="margin-top: 15px;"><strong>למה זה מסוכן?</strong></p>
+                    <ul>
+                        <li>💳 גניבת סיסמאות ופרטי כרטיסי אשראי</li>
+                        <li>📧 קריאת הודעות פרטיות ואימיילים</li>
+                        <li>🎭 התחזות למשתמשים אחרים</li>
+                        <li>🚫 מניעת גישה לאינטרנט (DoS)</li>
+                    </ul>
+                </div>
+
+                <div class="network-diagram">
+                    <h4>תרשים: מתקפת ARP Poisoning</h4>
+                    <div style="margin: 30px 0;">
+                        <div class="diagram-node victim">🖥️ קורבן<br>192.168.1.10</div>
+                        <div class="diagram-arrow">⚡</div>
+                        <div class="diagram-node attacker">👤 תוקף<br>192.168.1.42<br>MAC: AA:BB:CC:DD:EE:01</div>
+                        <div class="diagram-arrow">⚡</div>
+                        <div class="diagram-node">🌐 נתב (Gateway)<br>192.168.1.1</div>
+                    </div>
+                    <p style="color: #d32f2f; font-weight: bold;">
+                        התוקף משכנע את הקורבן והנתב שהוא האמצעי ביניהם!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Section 2: Basic Detection Code -->
+            <div class="section">
+                <h3>💻 שלב 2: בניית גלאי ARP Poisoning בסיסי</h3>
+
+                <div class="theory-box">
+                    <h4>מה זה Scapy?</h4>
+                    <p><strong>Scapy</strong> היא ספרייה חזקה ב-Python ליצירה, שליחה וניתוח של חבילות רשת.</p>
+                    <p><strong>יכולות:</strong> יצירת חבילות מותאמות אישית, סריקת רשת, ניתוח פרוטוקולים, בניית כלי אבטחה</p>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ הערת אבטחה חשובה:</strong><br>
+                    כל הקוד במעבדה זו מיועד למטרות חינוכיות בלבד! אין לבצע מתקפות על רשתות שאינכם מורשים לבדוק.
+                    שימוש בכלים אלו ברשתות ציבוריות או פרטיות ללא אישור הוא <strong>עבירה פלילית</strong>.
+                </div>
+
+                <h4 style="margin: 20px 0;">התקנת Scapy</h4>
+                <div class="terminal">
+<span class="prompt">$</span> pip install scapy
+<span class="output">Collecting scapy
+  Downloading scapy-2.5.0-py2.py3-none-any.whl (1.2 MB)
+Successfully installed scapy-2.5.0</span>
+                </div>
+
+                <h4 style="margin: 20px 0;">קוד מלא: גלאי ARP Poisoning</h4>
+
+                <div class="code-editor">
+                    <div class="code-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <span class="filename">arp_detector.py</span>
+                    </div>
+                    <pre class="code-content"><span class="keyword">from</span> scapy.all <span class="keyword">import</span> sniff, ARP
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+<span class="comment"># טבלה לשמירת מיפויי IP-MAC שנצפו</span>
+arp_table = {}
+
+<span class="comment"># מונה התראות</span>
+alert_count = 0
+
+<span class="keyword">def</span> <span class="function">detect_arp_poisoning</span>(packet):
+    <span class="string">"""
+    פונקציה שמנתחת כל חבילת ARP ומזהה מתקפות
+    """</span>
+    <span class="keyword">global</span> alert_count
+
+    <span class="comment"># בדיקה שיש שכבת ARP בחבילה</span>
+    <span class="keyword">if</span> packet.haslayer(ARP):
+        <span class="comment"># חילוץ מידע מהחבילה</span>
+        ip_src = packet[ARP].psrc    <span class="comment"># כתובת IP מקור</span>
+        mac_src = packet[ARP].hwsrc   <span class="comment"># כתובת MAC מקור</span>
+
+        <span class="comment"># זיהוי שינוי במיפוי IP-MAC</span>
+        <span class="keyword">if</span> ip_src <span class="keyword">in</span> arp_table:
+            <span class="keyword">if</span> arp_table[ip_src] != mac_src:
+                <span class="comment"># 🚨 התראה! כתובת MAC השתנתה לאותה IP</span>
+                alert_count += 1
+                timestamp = datetime.now().strftime(<span class="string">"%H:%M:%S"</span>)
+
+                <span class="keyword">print</span>(<span class="string">f"\n{'='*70}"</span>)
+                <span class="keyword">print</span>(<span class="string">f"🚨 [ALERT #{alert_count}] זוהתה מתקפת ARP Poisoning!"</span>)
+                <span class="keyword">print</span>(<span class="string">f"⏰ זמן: {timestamp}"</span>)
+                <span class="keyword">print</span>(<span class="string">f"📍 IP: {ip_src}"</span>)
+                <span class="keyword">print</span>(<span class="string">f"🔴 MAC ישן: {arp_table[ip_src]}"</span>)
+                <span class="keyword">print</span>(<span class="string">f"🔴 MAC חדש: {mac_src}"</span>)
+                <span class="keyword">print</span>(<span class="string">f"{'='*70}\n"</span>)
+
+                <span class="comment"># עדכון הטבלה</span>
+                arp_table[ip_src] = mac_src
+        <span class="keyword">else</span>:
+            <span class="comment"># IP חדש - נוסיף לטבלה</span>
+            arp_table[ip_src] = mac_src
+            <span class="keyword">print</span>(<span class="string">f"✅ מיפוי חדש: {ip_src} -> {mac_src}"</span>)
+
+<span class="keyword">def</span> <span class="function">start_monitoring</span>():
+    <span class="string">"""
+    הפעלת ניטור רשת
+    """</span>
+    <span class="keyword">print</span>(<span class="string">"="</span> * 70)
+    <span class="keyword">print</span>(<span class="string">"🔍 מערכת זיהוי ARP Poisoning הופעלה"</span>)
+    <span class="keyword">print</span>(<span class="string">"📡 מאזין לתעבורת ARP ברשת..."</span>)
+    <span class="keyword">print</span>(<span class="string">"❌ לעצירה: Ctrl+C"</span>)
+    <span class="keyword">print</span>(<span class="string">"="</span> * 70 + <span class="string">"\n"</span>)
+
+    <span class="keyword">try</span>:
+        <span class="comment"># האזנה לחבילות ARP בלבד</span>
+        sniff(filter=<span class="string">"arp"</span>, prn=detect_arp_poisoning, store=0)
+    <span class="keyword">except</span> KeyboardInterrupt:
+        <span class="keyword">print</span>(<span class="string">f"\n\n🛑 הניטור הופסק"</span>)
+        <span class="keyword">print</span>(<span class="string">f"📊 סה\"כ התראות: {alert_count}"</span>)
+        <span class="keyword">print</span>(<span class="string">f"📋 מכשירים שנצפו: {len(arp_table)}"</span>)
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    start_monitoring()</pre>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 2.1</span>
+                    <h4>הבנת הקוד</h4>
+                    <p>ענה על השאלות הבאות לגבי הקוד:</p>
+
+                    <p style="margin-top: 15px;"><strong>1. מה עושה השורה <code>if packet.haslayer(ARP)</code>?</strong></p>
+                    <textarea id="q2_1" placeholder="הסבר כאן..."></textarea>
+
+                    <p style="margin-top: 15px;"><strong>2. מדוע אנחנו משתמשים במילון (dictionary) בשם arp_table?</strong></p>
+                    <textarea id="q2_2" placeholder="הסבר כאן..."></textarea>
+
+                    <p style="margin-top: 15px;"><strong>3. באיזה מקרה נדליק התראה?</strong></p>
+                    <textarea id="q2_3" placeholder="הסבר כאן..."></textarea>
+
+                    <button class="btn btn-primary" onclick="checkUnderstanding()">בדוק תשובות</button>
+                    <div class="feedback" id="feedback_understanding"></div>
+                </div>
+
+                <div class="hint-box" onclick="toggleHint('hint1')">
+                    <h4>💡 רמז להבנת הקוד</h4>
+                    <div class="hint-content" id="hint1">
+                        <p><strong>packet.haslayer(ARP):</strong> בודק אם בחבילה יש שכבת ARP (לא כל חבילה ברשת היא ARP)</p>
+                        <p><strong>arp_table:</strong> מילון ש-key הוא IP ו-value הוא MAC - מאפשר חיפוש מהיר</p>
+                        <p><strong>התראה:</strong> כאשר IP קיים אבל ה-MAC שונה מהשמור - סימן למתקפה!</p>
+                    </div>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 2.2</span>
+                    <h4>שיפור הקוד - הוספת תכונות</h4>
+                    <p>שפר את הקוד בדרכים הבאות:</p>
+
+                    <ol style="margin-right: 20px; line-height: 2;">
+                        <li><strong>שמירת לוג לקובץ:</strong> כל התראה תישמר בקובץ <code>alerts.log</code></li>
+                        <li><strong>סינון IP של Gateway:</strong> התרעה מיוחדת אם ה-Gateway הותקף</li>
+                        <li><strong>ספירת זמן:</strong> הצג כמה זמן עבר מההתראה הראשונה</li>
+                    </ol>
+
+                    <p style="margin-top: 20px;"><strong>הדבק כאן את הקוד המשופר שלך:</strong></p>
+                    <textarea id="improved_code" style="min-height: 300px;" placeholder="# הדבק כאן את הקוד המשופר..."></textarea>
+
+                    <button class="btn btn-primary" onclick="saveImprovedCode()">שמור קוד</button>
+                    <button class="btn btn-success" onclick="testImprovedCode()">בדוק תקינות</button>
+                    <div class="feedback" id="feedback_improved"></div>
+                </div>
+            </div>
+
+            <!-- Section 3: Advanced Detection -->
+            <div class="section">
+                <h3>⚡ שלב 3: זיהוי מתקדם וניתוח דפוסים</h3>
+
+                <div class="theory-box">
+                    <h4>זיהוי מתקדם של מתקפות ARP</h4>
+                    <p>גלאי בסיסי מזהה שינוי MAC, אבל תוקפים מתוחכמים עשויים:</p>
+                    <ul>
+                        <li>לשלוח חבילות ARP במרווחים קבועים</li>
+                        <li>לשדר מכמה כתובות MAC שונות</li>
+                        <li>לתקוף רק מכשירים ספציפיים</li>
+                    </ul>
+                    <p><strong>נצטרך גילוי מתקדם יותר!</strong></p>
+                </div>
+
+                <h4 style="margin: 20px 0;">קוד מתקדם: ניתוח דפוסים וסטטיסטיקה</h4>
+
+                <div class="code-editor">
+                    <div class="code-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <span class="filename">advanced_detector.py</span>
+                    </div>
+                    <pre class="code-content"><span class="keyword">from</span> scapy.all <span class="keyword">import</span> sniff, ARP
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+<span class="keyword">from</span> collections <span class="keyword">import</span> defaultdict
+<span class="keyword">import</span> time
+
+<span class="keyword">class</span> <span class="function">AdvancedARPDetector</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, gateway_ip=<span class="string">"192.168.1.1"</span>):
+        self.arp_table = {}
+        self.mac_to_ips = defaultdict(set)  <span class="comment"># MAC -> IPs</span>
+        self.arp_request_count = defaultdict(int)  <span class="comment"># ספירת בקשות</span>
+        self.last_seen = {}  <span class="comment"># זמן אחרון שנצפה</span>
+        self.gateway_ip = gateway_ip
+        self.alerts = []
+        self.start_time = time.time()
+
+    <span class="keyword">def</span> <span class="function">analyze_packet</span>(self, packet):
+        <span class="keyword">if</span> <span class="keyword">not</span> packet.haslayer(ARP):
+            <span class="keyword">return</span>
+
+        ip_src = packet[ARP].psrc
+        mac_src = packet[ARP].hwsrc
+        timestamp = datetime.now()
+
+        <span class="comment"># בדיקה 1: שינוי MAC לאותה IP</span>
+        <span class="keyword">if</span> ip_src <span class="keyword">in</span> self.arp_table:
+            <span class="keyword">if</span> self.arp_table[ip_src] != mac_src:
+                self.<span class="function">create_alert</span>(
+                    <span class="string">"MAC_CHANGE"</span>,
+                    <span class="string">f"IP {ip_src} שינה MAC"</span>,
+                    {<span class="string">"old_mac"</span>: self.arp_table[ip_src], <span class="string">"new_mac"</span>: mac_src}
+                )
+
+        <span class="comment"># בדיקה 2: MAC אחד עבור מספר IPs (חשוד מאוד!)</span>
+        self.mac_to_ips[mac_src].add(ip_src)
+        <span class="keyword">if</span> len(self.mac_to_ips[mac_src]) > 1:
+            self.<span class="function">create_alert</span>(
+                <span class="string">"MULTI_IP"</span>,
+                <span class="string">f"MAC {mac_src} משויך ל-{len(self.mac_to_ips[mac_src])} IPs!"</span>,
+                {<span class="string">"ips"</span>: list(self.mac_to_ips[mac_src])}
+            )
+
+        <span class="comment"># בדיקה 3: התקפה על Gateway</span>
+        <span class="keyword">if</span> ip_src == self.gateway_ip:
+            <span class="keyword">if</span> self.gateway_ip <span class="keyword">in</span> self.arp_table:
+                <span class="keyword">if</span> self.arp_table[self.gateway_ip] != mac_src:
+                    self.<span class="function">create_alert</span>(
+                        <span class="string">"GATEWAY_ATTACK"</span>,
+                        <span class="string">"🔴 התקפה על Gateway!"</span>,
+                        {<span class="string">"ip"</span>: ip_src, <span class="string">"mac"</span>: mac_src}
+                    )
+
+        <span class="comment"># בדיקה 4: שיטפון ARP (הרבה בקשות במהירות)</span>
+        self.arp_request_count[mac_src] += 1
+        <span class="keyword">if</span> self.arp_request_count[mac_src] > 10:  <span class="comment"># סף</span>
+            self.<span class="function">create_alert</span>(
+                <span class="string">"ARP_FLOOD"</span>,
+                <span class="string">f"שיטפון ARP מ-{mac_src}"</span>,
+                {<span class="string">"count"</span>: self.arp_request_count[mac_src]}
+            )
+
+        <span class="comment"># עדכון טבלאות</span>
+        self.arp_table[ip_src] = mac_src
+        self.last_seen[ip_src] = timestamp
+
+    <span class="keyword">def</span> <span class="function">create_alert</span>(self, alert_type, message, details):
+        alert = {
+            <span class="string">"type"</span>: alert_type,
+            <span class="string">"message"</span>: message,
+            <span class="string">"details"</span>: details,
+            <span class="string">"timestamp"</span>: datetime.now(),
+            <span class="string">"elapsed"</span>: time.time() - self.start_time
+        }
+        self.alerts.append(alert)
+        self.<span class="function">display_alert</span>(alert)
+
+    <span class="keyword">def</span> <span class="function">display_alert</span>(self, alert):
+        <span class="keyword">print</span>(<span class="string">f"\n{'='*70}"</span>)
+        <span class="keyword">print</span>(<span class="string">f"🚨 התראה: {alert['type']}"</span>)
+        <span class="keyword">print</span>(<span class="string">f"📝 {alert['message']}"</span>)
+        <span class="keyword">print</span>(<span class="string">f"⏱️  זמן מהתחלה: {alert['elapsed']:.1f} שניות"</span>)
+        <span class="keyword">print</span>(<span class="string">f"📊 פרטים: {alert['details']}"</span>)
+        <span class="keyword">print</span>(<span class="string">"="</span> * 70)
+
+    <span class="keyword">def</span> <span class="function">get_statistics</span>(self):
+        <span class="keyword">return</span> {
+            <span class="string">"total_devices"</span>: len(self.arp_table),
+            <span class="string">"total_alerts"</span>: len(self.alerts),
+            <span class="string">"runtime"</span>: time.time() - self.start_time,
+            <span class="string">"suspicious_macs"</span>: len([m <span class="keyword">for</span> m <span class="keyword">in</span> self.mac_to_ips <span class="keyword">if</span> len(self.mac_to_ips[m]) > 1])
+        }
+
+<span class="comment"># שימוש</span>
+detector = AdvancedARPDetector(gateway_ip=<span class="string">"192.168.1.1"</span>)
+<span class="keyword">print</span>(<span class="string">"🔍 מערכת זיהוי מתקדמת הופעלה..."</span>)
+sniff(filter=<span class="string">"arp"</span>, prn=detector.analyze_packet, store=0)</pre>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 3.1</span>
+                    <h4>ניתוח הקוד המתקדם</h4>
+                    <p>השלם את המשימות הבאות:</p>
+
+                    <ol style="margin-right: 20px; line-height: 2;">
+                        <li>הסבר מה ההבדל בין הגלאי הבסיסי למתקדם</li>
+                        <li>מה המשמעות של בדיקה 2 (MULTI_IP)?</li>
+                        <li>למה בדיקת Gateway חשובה במיוחד?</li>
+                        <li>מה המשמעות של ARP Flood?</li>
+                    </ol>
+
+                    <textarea id="q3_1" style="min-height: 200px;" placeholder="כתוב את התשובות שלך כאן..."></textarea>
+
+                    <button class="btn btn-primary" onclick="checkAdvancedAnalysis()">בדוק תשובות</button>
+                    <div class="feedback" id="feedback_advanced"></div>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 3.2</span>
+                    <h4>הוספת בדיקות נוספות</h4>
+                    <p>הוסף לקוד המתקדם בדיקה נוספת שמזהה:</p>
+                    <ul style="margin-right: 20px; line-height: 2;">
+                        <li><strong>Gratuitous ARP:</strong> חבילות ARP שלא התבקשו</li>
+                        <li><strong>Time-based detection:</strong> זיהוי דפוס של שליחה בזמנים קבועים</li>
+                    </ul>
+
+                    <textarea id="extra_detection" style="min-height: 200px;" placeholder="כתוב כאן את הקוד החדש..."></textarea>
+
+                    <button class="btn btn-success" onclick="saveExtraDetection()">שמור קוד</button>
+                    <div class="feedback" id="feedback_extra"></div>
+                </div>
+            </div>
+
+            <!-- Section 4: Gemini Integration -->
+            <div class="gemini-section">
+                <h3>🤖 שלב 4: שילוב Gemini AI לניתוח מתקדם</h3>
+
+                <div class="theory-box" style="background: rgba(255,255,255,0.15); border-color: white;">
+                    <h4 style="color: white;">למה AI בכלי אבטחה?</h4>
+                    <p style="color: rgba(255,255,255,0.95);">
+                        מודלי AI כמו Gemini יכולים לנתח דפוסים מורכבים, להמליץ על צעדי הגנה מותאמים אישית,
+                        ולעזור להבין את הקונטקסט המלא של המתקפה.
+                    </p>
+                </div>
+
+                <h4 style="color: white; margin: 20px 0;">התקנת Gemini SDK</h4>
+                <div class="terminal">
+<span class="prompt">$</span> pip install google-generativeai
+<span class="output">Successfully installed google-generativeai</span>
+                </div>
+
+                <h4 style="color: white; margin: 20px 0;">קוד: שילוב Gemini לניתוח התראות</h4>
+
+                <div class="code-editor">
+                    <div class="code-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <span class="filename">gemini_analyzer.py</span>
+                    </div>
+                    <pre class="code-content"><span class="keyword">import</span> google.generativeai <span class="keyword">as</span> genai
+<span class="keyword">import</span> json
+
+<span class="keyword">class</span> <span class="function">GeminiSecurityAnalyzer</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, api_key):
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(<span class="string">'gemini-pro'</span>)
+
+    <span class="keyword">def</span> <span class="function">analyze_attack</span>(self, alerts, arp_table):
+        <span class="string">"""
+        ניתוח מתקפה עם AI
+        """</span>
+        <span class="comment"># הכנת הנתונים</span>
+        attack_data = {
+            <span class="string">"total_alerts"</span>: len(alerts),
+            <span class="string">"alert_types"</span>: [a[<span class="string">"type"</span>] <span class="keyword">for</span> a <span class="keyword">in</span> alerts],
+            <span class="string">"devices_count"</span>: len(arp_table),
+            <span class="string">"alerts_details"</span>: alerts[:5]  <span class="comment"># 5 ראשונות</span>
+        }
+
+        <span class="comment"># בניית הפרומפט</span>
+        prompt = <span class="string">f"""
+אתה מומחה אבטחת סייבר. נתגלתה פעילות חשודה ברשת:
+
+נתונים:
+{json.dumps(attack_data, indent=2, ensure_ascii=False)}
+
+בצע ניתוח מעמיק וספק:
+1. זיהוי סוג המתקפה המדויק
+2. רמת החומרה (נמוכה/בינונית/גבוהה)
+3. השלכות אפשריות
+4. צעדי הגנה מומלצים (לפחות 5)
+5. האם זו התקפה אוטומטית או ידנית?
+
+השב בפורמט JSON עם המבנה:
+{{
+  "attack_type": "...",
+  "severity": "...",
+  "impact": ["..."],
+  "recommendations": ["..."],
+  "attack_nature": "..."
+}}
+"""</span>
+
+        <span class="keyword">try</span>:
+            response = self.model.generate_content(prompt)
+            <span class="keyword">return</span> self.<span class="function">parse_ai_response</span>(response.text)
+        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+            <span class="keyword">return</span> {<span class="string">"error"</span>: str(e)}
+
+    <span class="keyword">def</span> <span class="function">parse_ai_response</span>(self, text):
+        <span class="string">"""
+        ניתוח תשובת ה-AI
+        """</span>
+        <span class="keyword">try</span>:
+            <span class="comment"># ניסיון לחלץ JSON</span>
+            start = text.find(<span class="string">"{"</span>)
+            end = text.rfind(<span class="string">"}"</span>) + 1
+            <span class="keyword">if</span> start != -1 <span class="keyword">and</span> end > start:
+                json_str = text[start:end]
+                <span class="keyword">return</span> json.loads(json_str)
+            <span class="keyword">return</span> {<span class="string">"raw_response"</span>: text}
+        <span class="keyword">except</span>:
+            <span class="keyword">return</span> {<span class="string">"raw_response"</span>: text}
+
+    <span class="keyword">def</span> <span class="function">suggest_prevention</span>(self, network_details):
+        <span class="string">"""
+        המלצות למניעה עתידית
+        """</span>
+        prompt = <span class="string">f"""
+רשת עם המאפיינים הבאים:
+{json.dumps(network_details, indent=2, ensure_ascii=False)}
+
+המלץ על אסטרטגיית הגנה מקיפה מפני ARP Poisoning.
+כלול:
+1. הגדרות רשת (Switch, VLAN וכו')
+2. כלי אבטחה מומלצים
+3. מדיניות ארגונית
+4. הדרכת משתמשים
+5. ניטור שוטף
+
+השב בעברית ובצורה מפורטת.
+"""</span>
+
+        <span class="keyword">try</span>:
+            response = self.model.generate_content(prompt)
+            <span class="keyword">return</span> response.text
+        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+            <span class="keyword">return</span> <span class="string">f"שגיאה: {e}"</span>
+
+<span class="comment"># דוגמת שימוש</span>
+<span class="keyword">def</span> <span class="function">main</span>():
+    API_KEY = <span class="string">"YOUR_GEMINI_API_KEY"</span>  <span class="comment"># החלף במפתח שלך!</span>
+
+    analyzer = GeminiSecurityAnalyzer(API_KEY)
+
+    <span class="comment"># דוגמת התראות</span>
+    sample_alerts = [
+        {<span class="string">"type"</span>: <span class="string">"MAC_CHANGE"</span>, <span class="string">"message"</span>: <span class="string">"IP שינה MAC"</span>},
+        {<span class="string">"type"</span>: <span class="string">"GATEWAY_ATTACK"</span>, <span class="string">"message"</span>: <span class="string">"התקפה על Gateway"</span>}
+    ]
+
+    sample_table = {
+        <span class="string">"192.168.1.1"</span>: <span class="string">"aa:bb:cc:dd:ee:01"</span>,
+        <span class="string">"192.168.1.10"</span>: <span class="string">"aa:bb:cc:dd:ee:01"</span>
+    }
+
+    <span class="keyword">print</span>(<span class="string">"🤖 מנתח עם Gemini AI..."</span>)
+    result = analyzer.analyze_attack(sample_alerts, sample_table)
+    <span class="keyword">print</span>(json.dumps(result, indent=2, ensure_ascii=<span class="keyword">False</span>))
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    main()</pre>
+                </div>
+
+                <div class="task-card" style="background: rgba(255,255,255,0.95);">
+                    <span class="task-number">משימה 4.1 - הכרחית</span>
+                    <h4>שילוב Gemini במערכת שלך</h4>
+
+                    <ol style="margin-right: 20px; line-height: 2;">
+                        <li>קבל API Key מ-<a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                        <li>הכנס את ה-API Key כאן (לא ישמר!):</li>
+                    </ol>
+
+                    <input type="password" id="gemini_api_key" placeholder="הדבק את ה-API Key כאן..." style="width: 100%; margin: 10px 0;">
+
+                    <p style="margin: 15px 0;"><strong>3. בחר תרחיש לניתוח:</strong></p>
+
+                    <select id="scenario_select" style="width: 100%; padding: 10px; margin: 10px 0;">
+                        <option value="">בחר תרחיש...</option>
+                        <option value="scenario1">תרחיש 1: מתקפה פשוטה - שינוי MAC בודד</option>
+                        <option value="scenario2">תרחיש 2: מתקפה ממוקדת - התקפה על Gateway</option>
+                        <option value="scenario3">תרחיש 3: שיטפון ARP - מתקפה מאסיבית</option>
+                        <option value="scenario4">תרחיש 4: מתקפה מתוחכמת - Multi-IP</option>
+                    </select>
+
+                    <button class="btn btn-primary" onclick="analyzeWithGemini()" style="width: 100%; margin: 10px 0;">
+                        🤖 נתח עם Gemini AI
+                    </button>
+
+                    <div class="api-result" id="gemini_result" style="display: none; color: #333;">
+                        <h4>תוצאות ניתוח AI:</h4>
+                        <div id="analysis_content"></div>
+                    </div>
+                </div>
+
+                <div class="task-card" style="background: rgba(255,255,255,0.95);">
+                    <span class="task-number">משימה 4.2</span>
+                    <h4>פיתוח תכונה: דו"ח אוטומטי</h4>
+                    <p>כתוב פונקציה שמייצרת דו"ח מלא על המתקפה באמצעות Gemini:</p>
+
+                    <ul style="margin-right: 20px; line-height: 2;">
+                        <li>סיכום כל ההתראות</li>
+                        <li>ציר זמן (Timeline) של המתקפה</li>
+                        <li>רשימת מכשירים מושפעים</li>
+                        <li>צעדי תיקון מיידיים</li>
+                        <li>המלצות לטווח ארוך</li>
+                    </ul>
+
+                    <textarea id="report_code" style="min-height: 250px;" placeholder="כתוב את הקוד שלך כאן..."></textarea>
+
+                    <button class="btn btn-success" onclick="saveReportCode()">שמור קוד</button>
+                    <button class="btn btn-primary" onclick="generateReport()">צור דו"ח דוגמה</button>
+                    <div class="feedback" id="feedback_report"></div>
+                </div>
+            </div>
+
+            <!-- Section 5: Defense System -->
+            <div class="section">
+                <h3>🛡️ שלב 5: בניית מערכת הגנה אקטיבית</h3>
+
+                <div class="theory-box">
+                    <h4>מזיהוי להגנה אקטיבית</h4>
+                    <p>לא מספיק לזהות מתקפה - צריך גם להגן! נבנה מערכת שתגיב אוטומטית:</p>
+                    <ul>
+                        <li><strong>Gratuitous ARP:</strong> שליחת הודעות ARP "מתקנות" לרשת</li>
+                        <li><strong>התראות:</strong> שליחת התראות למנהל האבטחה</li>
+                        <li><strong>חסימה:</strong> חסימת כתובת MAC חשודה (במתגים תומכים)</li>
+                        <li><strong>תיעוד:</strong> שמירת כל הפעילות לחקירה עתידית</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ אזהרה חשובה:</strong><br>
+                    שליחת חבילות ARP לרשת יכולה להשפיע על פעילות הרשת. השתמש בזהירות ורק ברשתות מבודדות/ניסיוניות!
+                </div>
+
+                <h4 style="margin: 20px 0;">קוד: מערכת הגנה מלאה</h4>
+
+                <div class="code-editor">
+                    <div class="code-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <span class="filename">defense_system.py</span>
+                    </div>
+                    <pre class="code-content"><span class="keyword">from</span> scapy.all <span class="keyword">import</span> ARP, Ether, send, sniff
+<span class="keyword">import</span> logging
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+<span class="keyword">class</span> <span class="function">ARPDefenseSystem</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, gateway_ip, gateway_mac, interface=<span class="string">"eth0"</span>):
+        self.gateway_ip = gateway_ip
+        self.gateway_mac = gateway_mac
+        self.interface = interface
+        self.arp_table = {}
+
+        <span class="comment"># הגדרת logging</span>
+        logging.basicConfig(
+            filename=<span class="string">'defense.log'</span>,
+            level=logging.INFO,
+            format=<span class="string">'%(asctime)s - %(levelname)s - %(message)s'</span>
+        )
+        self.logger = logging.getLogger(__name__)
+
+    <span class="keyword">def</span> <span class="function">send_gratuitous_arp</span>(self, target_ip, correct_mac):
+        <span class="string">"""
+        שליחת Gratuitous ARP לתיקון טבלאות
+        """</span>
+        <span class="keyword">try</span>:
+            <span class="comment"># יצירת חבילת ARP מתקנת</span>
+            arp_response = ARP(
+                op=2,  <span class="comment"># ARP Reply</span>
+                psrc=target_ip,
+                hwsrc=correct_mac,
+                pdst=<span class="string">"255.255.255.255"</span>  <span class="comment"># Broadcast</span>
+            )
+
+            <span class="comment"># שליחה לרשת</span>
+            send(arp_response, iface=self.interface, count=3, verbose=<span class="keyword">False</span>)
+
+            self.logger.info(
+                <span class="string">f"✅ נשלח Gratuitous ARP: {target_ip} -> {correct_mac}"</span>
+            )
+            <span class="keyword">return</span> <span class="keyword">True</span>
+        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+            self.logger.error(<span class="string">f"❌ שגיאה בשליחת ARP: {e}"</span>)
+            <span class="keyword">return</span> <span class="keyword">False</span>
+
+    <span class="keyword">def</span> <span class="function">restore_gateway</span>(self):
+        <span class="string">"""
+        שחזור נתב לאחר מתקפה
+        """</span>
+        <span class="keyword">print</span>(<span class="string">"🔧 משחזר את הנתב לכל המכשירים..."</span>)
+
+        <span class="keyword">for</span> ip <span class="keyword">in</span> self.arp_table.keys():
+            <span class="keyword">if</span> ip != self.gateway_ip:
+                self.<span class="function">send_gratuitous_arp</span>(self.gateway_ip, self.gateway_mac)
+
+        <span class="keyword">print</span>(<span class="string">"✅ שחזור הושלם"</span>)
+
+    <span class="keyword">def</span> <span class="function">detect_and_defend</span>(self, packet):
+        <span class="string">"""
+        זיהוי והגנה בזמן אמת
+        """</span>
+        <span class="keyword">if</span> <span class="keyword">not</span> packet.haslayer(ARP):
+            <span class="keyword">return</span>
+
+        ip_src = packet[ARP].psrc
+        mac_src = packet[ARP].hwsrc
+
+        <span class="comment"># בדיקת שינוי</span>
+        <span class="keyword">if</span> ip_src <span class="keyword">in</span> self.arp_table:
+            <span class="keyword">if</span> self.arp_table[ip_src] != mac_src:
+                <span class="comment"># 🚨 זוהתה מתקפה!</span>
+                self.logger.warning(
+                    <span class="string">f"🚨 מתקפה זוהתה: {ip_src} שינה MAC"</span>
+                )
+
+                <span class="comment"># תגובה אוטומטית</span>
+                <span class="keyword">if</span> ip_src == self.gateway_ip:
+                    <span class="keyword">print</span>(<span class="string">"🔴 התקפה על Gateway! מפעיל הגנה..."</span>)
+                    self.<span class="function">restore_gateway</span>()
+
+                <span class="keyword">print</span>(<span class="string">f"⚠️  התראה: {ip_src} חשוד במתקפה"</span>)
+
+        <span class="comment"># עדכון טבלה</span>
+        self.arp_table[ip_src] = mac_src
+
+    <span class="keyword">def</span> <span class="function">start_protection</span>(self):
+        <span class="string">"""
+        הפעלת מערכת ההגנה
+        """</span>
+        <span class="keyword">print</span>(<span class="string">"="</span> * 70)
+        <span class="keyword">print</span>(<span class="string">"🛡️  מערכת הגנת ARP הופעלה"</span>)
+        <span class="keyword">print</span>(<span class="string">f"📡 ממשק: {self.interface}"</span>)
+        <span class="keyword">print</span>(<span class="string">f"🌐 Gateway: {self.gateway_ip} ({self.gateway_mac})"</span>)
+        <span class="keyword">print</span>(<span class="string">"="</span> * 70 + <span class="string">"\n"</span>)
+
+        <span class="keyword">try</span>:
+            sniff(
+                filter=<span class="string">"arp"</span>,
+                prn=self.detect_and_defend,
+                iface=self.interface,
+                store=0
+            )
+        <span class="keyword">except</span> KeyboardInterrupt:
+            <span class="keyword">print</span>(<span class="string">"\n🛑 מערכת ההגנה הופסקה"</span>)
+        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+            <span class="keyword">print</span>(<span class="string">f"❌ שגיאה: {e}"</span>)
+
+<span class="comment"># שימוש במערכת</span>
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    <span class="comment"># הגדרות - התאם לרשת שלך!</span>
+    GATEWAY_IP = <span class="string">"192.168.1.1"</span>
+    GATEWAY_MAC = <span class="string">"aa:bb:cc:dd:ee:ff"</span>  <span class="comment"># מצא עם: arp -a</span>
+    INTERFACE = <span class="string">"eth0"</span>  <span class="comment"># או "wlan0" לאלחוטי</span>
+
+    defense = ARPDefenseSystem(GATEWAY_IP, GATEWAY_MAC, INTERFACE)
+    defense.start_protection()</pre>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 5.1</span>
+                    <h4>בדיקת מערכת ההגנה</h4>
+
+                    <p><strong>הוראות:</strong></p>
+                    <ol style="margin-right: 20px; line-height: 2;">
+                        <li>התקן סביבה וירטואלית מבודדת (VirtualBox + 2-3 VMs)</li>
+                        <li>הפעל את מערכת ההגנה במכשיר אחד</li>
+                        <li>סמלץ מתקפה ממכשיר אחר (אופציונלי - רק לניסוי מבוקר!)</li>
+                        <li>צור screenshots של התראות ותוצאות</li>
+                    </ol>
+
+                    <p style="margin: 15px 0;"><strong>תיעוד הבדיקה:</strong></p>
+                    <textarea id="test_results" style="min-height: 200px;" placeholder="תאר את מה שקרה בבדיקה, הדבק logs, screenshots..."></textarea>
+
+                    <button class="btn btn-success" onclick="saveTestResults()">שמור תוצאות</button>
+                    <div class="feedback" id="feedback_test"></div>
+                </div>
+
+                <div class="task-card">
+                    <span class="task-number">משימה 5.2 - פרויקט סיום</span>
+                    <h4>בניית מערכת מלאה עם ממשק גרפי</h4>
+
+                    <p>בנה מערכת מלאה שכוללת:</p>
+                    <ul style="margin-right: 20px; line-height: 2;">
+                        <li>✅ ממשק גרפי (GUI) עם tkinter או PyQt</li>
+                        <li>✅ תצוגה בזמן אמת של מכשירים ברשת</li>
+                        <li>✅ התראות חזותיות ומשמיעת צליל</li>
+                        <li>✅ גרפים וסטטיסטיקות</li>
+                        <li>✅ שמירת דו"חות PDF</li>
+                        <li>✅ אינטגרציה עם Gemini לניתוח</li>
+                        <li>✅ הגנה אוטומטית מתוזמנת</li>
+                    </ul>
+
+                    <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="color: #2e7d32;">💡 רעיונות להרחבה:</h4>
+                        <ul style="margin-right: 20px;">
+                            <li>שילוב עם Telegram Bot להתראות למובייל</li>
+                            <li>שמירת נתונים ב-SQLite לניתוח היסטורי</li>
+                            <li>דשבורד Web עם Flask</li>
+                            <li>למידת מכונה לזיהוי דפוסים חריגים</li>
+                            <li>יצוא נתונים ל-Wireshark</li>
+                        </ul>
+                    </div>
+
+                    <button class="btn btn-warning" onclick="downloadProjectTemplate()">📥 הורד תבנית פרויקט</button>
+                    <button class="btn btn-primary" onclick="showProjectGuidelines()">📘 הצג הנחיות מפורטות</button>
+                </div>
+            </div>
+
+            <!-- Final Section: Summary -->
+            <div class="section" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                <h3 style="color: white;">🎯 סיכום המשימה</h3>
+
+                <div class="progress-tracker" style="background: rgba(255,255,255,0.15);">
+                    <div class="progress-item completed" style="background: rgba(255,255,255,0.2); border-color: white;">
+                        <span class="icon">✅</span>
+                        <div>
+                            <strong style="color: white;">שלב 1:</strong>
+                            <span style="color: rgba(255,255,255,0.9);"> הבנת תיאוריית ARP Poisoning</span>
+                        </div>
+                    </div>
+                    <div class="progress-item" style="background: rgba(255,255,255,0.2); border-color: white;">
+                        <span class="icon">⏳</span>
+                        <div>
+                            <strong style="color: white;">שלב 2:</strong>
+                            <span style="color: rgba(255,255,255,0.9);"> בניית גלאי בסיסי עם Scapy</span>
+                        </div>
+                    </div>
+                    <div class="progress-item" style="background: rgba(255,255,255,0.2); border-color: white;">
+                        <span class="icon">⏳</span>
+                        <div>
+                            <strong style="color: white;">שלב 3:</strong>
+                            <span style="color: rgba(255,255,255,0.9);"> זיהוי מתקדם וניתוח דפוסים</span>
+                        </div>
+                    </div>
+                    <div class="progress-item" style="background: rgba(255,255,255,0.2); border-color: white;">
+                        <span class="icon">⏳</span>
+                        <div>
+                            <strong style="color: white;">שלב 4:</strong>
+                            <span style="color: rgba(255,255,255,0.9);"> שילוב Gemini AI</span>
+                        </div>
+                    </div>
+                    <div class="progress-item" style="background: rgba(255,255,255,0.2); border-color: white;">
+                        <span class="icon">⏳</span>
+                        <div>
+                            <strong style="color: white;">שלב 5:</strong>
+                            <span style="color: rgba(255,255,255,0.9);"> מערכת הגנה מלאה</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.15); padding: 25px; border-radius: 15px; margin: 25px 0;">
+                    <h4 style="color: white; margin-bottom: 15px;">🎓 מה למדתם?</h4>
+                    <ul style="color: rgba(255,255,255,0.95); line-height: 2;">
+                        <li>הבנה מעמיקה של פרוטוקול ARP וחולשות האבטחה שלו</li>
+                        <li>כתיבת קוד Python מתקדם עם ספריית Scapy</li>
+                        <li>ניתוח חבילות רשת בזמן אמת</li>
+                        <li>שילוב AI (Gemini) בכלי אבטחה</li>
+                        <li>בניית מערכת הגנה אקטיבית</li>
+                        <li>תהליך מלא של זיהוי, ניתוח והגנה מפני איומי סייבר</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <h3 style="color: white; margin-bottom: 20px;">📥 חומרי עזר להורדה</h3>
+                    <a href="#" class="download-btn" onclick="downloadFullCode()">💾 הורד את כל הקוד</a>
+                    <a href="#" class="download-btn" onclick="downloadPresentation()">📊 הורד מצגת סיכום</a>
+                    <a href="#" class="download-btn" onclick="downloadCertificate()">🏆 הורד תעודת סיום</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper functions
+        function toggleHint(hintId) {
+            const hint = document.getElementById(hintId);
+            const hintBox = hint.parentElement;
+            hintBox.classList.toggle('open');
+        }
+
+        function showFeedback(elementId, type, message) {
+            const feedback = document.getElementById(elementId);
+            feedback.className = `feedback ${type}`;
+            feedback.textContent = message;
+            feedback.style.display = 'block';
+            feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Task checks
+        function checkUnderstanding() {
+            const q1 = document.getElementById('q2_1').value;
+            const q2 = document.getElementById('q2_2').value;
+            const q3 = document.getElementById('q2_3').value;
+
+            if (!q1 || !q2 || !q3) {
+                showFeedback('feedback_understanding', 'error', '❌ אנא ענה על כל השאלות');
+                return;
+            }
+
+            let score = 0;
+            let feedback = '';
+
+            // Check Q1
+            if (q1.toLowerCase().includes('בדיק') || q1.toLowerCase().includes('arp')) {
+                score++;
+            }
+
+            // Check Q2
+            if (q2.toLowerCase().includes('מיפוי') || q2.toLowerCase().includes('ip') || q2.toLowerCase().includes('mac')) {
+                score++;
+            }
+
+            // Check Q3
+            if (q3.toLowerCase().includes('שונ') || q3.toLowerCase().includes('שינוי') || q3.toLowerCase().includes('mac')) {
+                score++;
+            }
+
+            if (score >= 2) {
+                feedback = `✅ מצוין! קלטת את העיקר. התשובות שלך מראות הבנה טובה של הקוד.`;
+                showFeedback('feedback_understanding', 'success', feedback);
+            } else {
+                feedback = `⚠️ נראה שיש קצת בלבול. חזור על ההסברים ונסה שוב.`;
+                showFeedback('feedback_understanding', 'error', feedback);
+            }
+        }
+
+        function saveImprovedCode() {
+            const code = document.getElementById('improved_code').value;
+
+            if (!code || code.trim().length < 50) {
+                showFeedback('feedback_improved', 'error', '❌ הקוד קצר מדי. הוסף את השיפורים המבוקשים');
+                return;
+            }
+
+            // Check for improvements
+            let hasLog = code.toLowerCase().includes('log') || code.toLowerCase().includes('file');
+            let hasGateway = code.toLowerCase().includes('gateway');
+            let hasTime = code.toLowerCase().includes('time') || code.toLowerCase().includes('datetime');
+
+            if (hasLog && hasGateway) {
+                showFeedback('feedback_improved', 'success', '✅ מעולה! הקוד המשופר נשמר. זיהינו שיפורים משמעותיים');
+            } else {
+                showFeedback('feedback_improved', 'info', '💡 הקוד נשמר, אך אפשר להוסיף עוד תכונות מהרשימה');
+            }
+        }
+
+        function testImprovedCode() {
+            showFeedback('feedback_improved', 'info', '🔍 בודק תקינות הקוד... בסביבה אמיתית תריץ את הקוד ותבדוק שהוא עובד');
+        }
+
+        function checkAdvancedAnalysis() {
+            const answer = document.getElementById('q3_1').value;
+
+            if (!answer || answer.length < 100) {
+                showFeedback('feedback_advanced', 'error', '❌ אנא כתוב תשובה מפורטת יותר');
+                return;
+            }
+
+            const keywords = ['multi', 'gateway', 'flood', 'זמן', 'mac', 'ip'];
+            const hasKeywords = keywords.filter(kw => answer.toLowerCase().includes(kw)).length;
+
+            if (hasKeywords >= 3) {
+                showFeedback('feedback_advanced', 'success', '✅ תשובה מצוינת! הבנת את ההבדלים המרכזיים');
+            } else {
+                showFeedback('feedback_advanced', 'info', '💡 תשובה טובה, אך נסה להוסיף פרטים על כל סוג בדיקה');
+            }
+        }
+
+        function saveExtraDetection() {
+            const code = document.getElementById('extra_detection').value;
+
+            if (code && code.length > 50) {
+                showFeedback('feedback_extra', 'success', '✅ קוד הבדיקה הנוסף נשמר!');
+            } else {
+                showFeedback('feedback_extra', 'error', '❌ נדרש קוד מפורט יותר');
+            }
+        }
+
+        // Gemini Integration
+        async function analyzeWithGemini() {
+            const apiKey = document.getElementById('gemini_api_key').value;
+            const scenario = document.getElementById('scenario_select').value;
+
+            if (!apiKey) {
+                alert('אנא הכנס Gemini API Key');
+                return;
+            }
+
+            if (!scenario) {
+                alert('אנא בחר תרחיש לניתוח');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('gemini_result').style.display = 'block';
+            document.getElementById('analysis_content').innerHTML = '<p>🔄 מנתח עם Gemini AI...</p>';
+
+            // Prepare scenarios
+            const scenarios = {
+                scenario1: {
+                    alerts: [{type: "MAC_CHANGE", message: "IP 192.168.1.10 שינה MAC"}],
+                    description: "שינוי MAC בודד"
+                },
+                scenario2: {
+                    alerts: [{type: "GATEWAY_ATTACK", message: "התקפה על Gateway"}],
+                    description: "התקפה ממוקדת על Gateway"
+                },
+                scenario3: {
+                    alerts: Array(20).fill({type: "ARP_FLOOD", message: "שיטפון ARP"}),
+                    description: "מתקפת שיטפון מאסיבית"
+                },
+                scenario4: {
+                    alerts: [{type: "MULTI_IP", message: "MAC אחד ל-5 IPs"}],
+                    description: "מתקפה מתוחכמת"
+                }
+            };
+
+            const selectedScenario = scenarios[scenario];
+
+            try {
+                // Call Gemini API
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `אתה מומחה אבטחת סייבר. נתגלתה מתקפת ARP Poisoning:
+
+תרחיש: ${selectedScenario.description}
+התראות: ${JSON.stringify(selectedScenario.alerts)}
+
+בצע ניתוח ותן:
+1. זיהוי סוג המתקפה
+2. רמת חומרה (נמוכה/בינונית/גבוהה/קריטית)
+3. השלכות אפשריות (3-4 נקודות)
+4. המלצות להגנה (5-6 צעדים קונקרטיים)
+
+השב בעברית וצורה מסודרת.`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates[0]) {
+                    const analysisText = data.candidates[0].content.parts[0].text;
+                    document.getElementById('analysis_content').innerHTML = `
+                        <div style="background: white; padding: 20px; border-radius: 10px; color: #333;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">📊 ניתוח Gemini AI</h4>
+                            <pre style="white-space: pre-wrap; line-height: 1.8;">${analysisText}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('No response from Gemini');
+                }
+            } catch (error) {
+                document.getElementById('analysis_content').innerHTML = `
+                    <p style="color: #f44336;">❌ שגיאה: ${error.message}</p>
+                    <p>בדוק את ה-API Key ואת החיבור לאינטרנט</p>
+                `;
+            }
+        }
+
+        function saveReportCode() {
+            const code = document.getElementById('report_code').value;
+            if (code && code.length > 100) {
+                showFeedback('feedback_report', 'success', '✅ קוד הדו"ח נשמר בהצלחה!');
+            } else {
+                showFeedback('feedback_report', 'error', '❌ נדרש קוד מפורט יותר ליצירת דו"ח');
+            }
+        }
+
+        function generateReport() {
+            showFeedback('feedback_report', 'info', '📄 ביצירת דו"ח דוגמה... בפרויקט אמיתי זה יפעיל את הקוד שכתבת');
+        }
+
+        function saveTestResults() {
+            const results = document.getElementById('test_results').value;
+            if (results && results.length > 50) {
+                showFeedback('feedback_test', 'success', '✅ תוצאות הבדיקה נשמרו! כל הכבוד על העבודה המעשית');
+            } else {
+                showFeedback('feedback_test', 'error', '❌ נדרש תיעוד מפורט יותר של הבדיקה');
+            }
+        }
+
+        // Download functions
+        function downloadFullCode() {
+            alert('מוריד את כל הקוד מהמעבדה...\n(בפועל יצור קובץ ZIP עם כל הקבצים)');
+        }
+
+        function downloadPresentation() {
+            alert('מוריד מצגת סיכום...\n(בפועל יוצר PDF עם סיכום המעבדה)');
+        }
+
+        function downloadCertificate() {
+            alert('🏆 כל הכבוד על סיום המעבדה!\n(בפועל יצור תעודת סיום מעוצבת)');
+        }
+
+        function downloadProjectTemplate() {
+            alert('📥 מוריד תבנית פרויקט...\n(בפועל יוריד תיקיה עם מבנה פרויקט מלא)');
+        }
+
+        function showProjectGuidelines() {
+            alert('📘 הנחיות הפרויקט:\n\n1. צור מבנה תיקיות מסודר\n2. פצל את הקוד למודולים\n3. כתוב documentation\n4. הוסף tests\n5. צור README מפורט\n\nמצורף יהיה מסמך מפורט...');
+        }
+    </script>
+</body>
+</html>

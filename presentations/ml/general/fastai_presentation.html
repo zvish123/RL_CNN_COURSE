@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מצגת אינטראקטיבית - fastai לזיהוי תמונות</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Fira+Code:wght@400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --code-bg: #0f172a;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--dark);
+        }
+        
+        .presentation-container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-bar {
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            position: absolute;
+            top: 0;
+            right: 0;
+            transition: width 0.3s ease;
+            z-index: 100;
+        }
+        
+        .slide {
+            padding: 60px 80px;
+            min-height: 600px;
+            display: none;
+            animation: slideIn 0.5s ease;
+            direction: rtl;
+        }
+        
+        .slide.active {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        h1 {
+            font-size: 3em;
+            font-weight: 900;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        h2 {
+            font-size: 2.2em;
+            color: var(--primary);
+            margin-bottom: 30px;
+            font-weight: 700;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 80px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+        
+        h3 {
+            font-size: 1.6em;
+            color: var(--secondary);
+            margin: 30px 0 15px;
+            font-weight: 600;
+        }
+        
+        p, li {
+            font-size: 1.15em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #334155;
+        }
+        
+        ul {
+            list-style: none;
+            padding-right: 0;
+        }
+        
+        ul li {
+            padding-right: 30px;
+            position: relative;
+            margin-bottom: 12px;
+        }
+        
+        ul li::before {
+            content: '◆';
+            position: absolute;
+            right: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-right: 4px solid var(--accent);
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-right: 4px solid var(--primary);
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+        
+        .success-box {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-right: 4px solid var(--success);
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+        }
+        
+        .code-block {
+            background: var(--code-bg);
+            color: #e2e8f0;
+            padding: 25px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 25px 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            direction: ltr;
+            text-align: left;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .code-block::before {
+            content: 'Python';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--accent);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
+        .keyword { color: #c792ea; }
+        .string { color: #c3e88d; }
+        .comment { color: #676e95; font-style: italic; }
+        .function { color: #82aaff; }
+        .number { color: #f78c6c; }
+        
+        .quiz-container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .quiz-question {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .quiz-option {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            padding: 18px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            text-align: right;
+        }
+        
+        .quiz-option:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            transform: translateX(-5px);
+        }
+        
+        .quiz-option.correct {
+            border-color: var(--success);
+            background: #d1fae5;
+            animation: correctPulse 0.5s ease;
+        }
+        
+        .quiz-option.incorrect {
+            border-color: var(--danger);
+            background: #fee2e2;
+            animation: shake 0.5s ease;
+        }
+        
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .quiz-feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .quiz-feedback.correct {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid var(--success);
+        }
+        
+        .quiz-feedback.incorrect {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid var(--danger);
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 80px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .nav-btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Heebo', sans-serif;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .nav-btn.prev {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .nav-btn.next {
+            background: var(--gradient);
+            color: white;
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .slide-counter {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #64748b;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin: 25px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: var(--gradient);
+            color: white;
+            padding: 18px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        td {
+            padding: 16px 18px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: right;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        .emoji {
+            font-size: 1.5em;
+            margin-left: 10px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 35px;
+            height: 35px;
+            background: var(--gradient);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .example-box {
+            background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+            border-right: 4px solid #ec4899;
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.1);
+        }
+
+        .term {
+            font-weight: 600;
+            color: var(--secondary);
+            background: #f3e8ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+                min-height: 500px;
+            }
+            
+            .navigation {
+                padding: 20px 30px;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            h2 {
+                font-size: 1.6em;
+            }
+            
+            .nav-btn {
+                padding: 12px 24px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="progress-bar" id="progressBar"></div>
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🎯 fastai לזיהוי תמונות</h1>
+            <h2 style="color: var(--secondary); margin-top: 40px;">מדריך אינטראקטיטי למתחילים</h2>
+            
+            <div class="highlight-box" style="margin-top: 60px;">
+                <h3 style="margin-top: 0;">📚 מה נלמד היום?</h3>
+                <ul style="font-size: 1.2em;">
+                    <li>מהי הספרייה fastai ולמה היא מדהימה</li>
+                    <li>איך להתחיל לעבוד - צעד אחר צעד</li>
+                    <li>הכנת נתונים בצורה נכונה</li>
+                    <li>פרמטרים חשובים ואיך לבחור אותם</li>
+                    <li>דוגמאות מעשיות וקוד אמיתי</li>
+                    <li>תרגול עם שאלות אינטראקטיביות</li>
+                </ul>
+            </div>
+
+            <div class="info-box" style="margin-top: 40px;">
+                <p style="font-size: 1.2em; margin-bottom: 0;">
+                    <span class="emoji">💡</span>
+                    <strong>טיפ:</strong> המצגת אינטראקטיבית - נסו לענות על השאלות בעצמכם!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is fastai -->
+        <div class="slide">
+            <h2>🚀 מהי fastai?</h2>
+            
+            <p style="font-size: 1.3em; margin-bottom: 30px;">
+                <strong>fastai</strong> היא ספריית Python שמאפשרת לכם לבנות מודלים של בינה מלאכותית 
+                לזיהוי תמונות בקוד פשוט ומינימלי.
+            </p>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: למידה עמוקה (Deep Learning)</h3>
+                <p>
+                    <span class="term">למידה עמוקה</span> היא שיטה שבה המחשב לומד לזהות דפוסים בתמונות 
+                    (או בנתונים אחרים) על ידי "הסתכלות" על המון דוגמאות. בדיוק כמו שילד לומד לזהות 
+                    חתול אחרי שראה הרבה חתולים - כך גם המחשב.
+                </p>
+            </div>
+
+            <h3>למה fastai מיוחדת?</h3>
+            <ul style="font-size: 1.15em;">
+                <li><strong>פשוטה לשימוש</strong> - קוד קצר ומובן, מתאים למתחילים</li>
+                <li><strong>חזקה</strong> - מבוססת על PyTorch ומכילה best practices מובנים</li>
+                <li><strong>מהירה</strong> - ניתן לקבל תוצאות מרשימות תוך דקות</li>
+                <li><strong>גמישה</strong> - אפשר להתאים אותה למגוון משימות</li>
+            </ul>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">💭 אנלוגיה מהחיים:</h3>
+                <p style="font-size: 1.15em;">
+                    תארו לעצמכם שאתם לומדים לנהוג. אפשר ללמוד כל פרט טכני על איך המנוע עובד, 
+                    או פשוט ללמוד את הבסיס ולהתחיל לנהוג. <strong>fastai</strong> היא כמו מורה טוב 
+                    לנהיגה - היא מלמדת אתכם את מה שצריך כדי להתחיל, בלי להכביד עליכם בפרטים מיותרים.
+                </p>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🎯 דוגמה למה אפשר לבנות:</h3>
+                <ul>
+                    <li>מסווג שמזהה בעלי חיים בתמונות (חתול, כלב, ציפור...)</li>
+                    <li>מזהה רגשות בפנים (שמח, עצוב, כועס...)</li>
+                    <li>סורק תמונות רפואיות לזיהוי מחלות</li>
+                    <li>מזהה סוגים שונים של פירות או ירקות</li>
+                    <li>בודק איכות מוצרים על פס ייצור</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: Installation and Setup -->
+        <div class="slide">
+            <h2>⚙️ איך מתחילים לעבוד?</h2>
+            
+            <div class="info-box">
+                <h3 style="margin-top: 0;">📝 הסבר המושג: Notebook</h3>
+                <p>
+                    <span class="term">Jupyter Notebook</span> הוא סביבת עבודה אינטראקטיבית שבה אפשר 
+                    לכתוב קוד Python, להריץ אותו, ולראות תוצאות מיד. זה כמו מחברת דיגיטלית שמשלבת 
+                    קוד, טקסט והסברים.
+                </p>
+            </div>
+
+            <h3><span class="step-number">1</span>התקנה</h3>
+            <pre class="code-block">
+<span class="comment"># בטרמינל או command prompt, הריצו:</span>
+pip install fastai
+
+<span class="comment"># או אם אתם משתמשים ב-Conda:</span>
+conda install -c fastai fastai
+            </pre>
+
+            <div class="success-box">
+                <p style="margin-bottom: 0;">
+                    <span class="emoji">💡</span>
+                    <strong>טיפ למתחילים:</strong> מומלץ להשתמש ב-<strong>Google Colab</strong> - 
+                    זה חינמי ו-fastai כבר מותקנת שם! אין צורך בהתקנות מסובכות במחשב שלכם.
+                </p>
+            </div>
+
+            <h3><span class="step-number">2</span>ייבוא הספרייה</h3>
+            <pre class="code-block">
+<span class="keyword">from</span> fastai.vision.all <span class="keyword">import</span> *
+
+<span class="comment"># השורה הזו מייבאת את כל הכלים הדרושים לעבודה עם תמונות</span>
+<span class="comment"># ה-* פירושו "הכל" - כל הפונקציות והמחלקות שנצטרך</span>
+            </pre>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Import</h3>
+                <p>
+                    <span class="term">import</span> הוא הפקודה שמאפשרת לנו להשתמש בקוד שכבר נכתב 
+                    על ידי אחרים. במקום לכתוב את כל הקוד מאפס, אנחנו "מביאים" פונקציונליות מוכנה 
+                    מספריות חיצוניות.
+                </p>
+            </div>
+
+            <h3><span class="step-number">3</span>הורדת dataset לדוגמה</h3>
+            <pre class="code-block">
+<span class="comment"># fastai מגיעה עם datasets מוכנים לתרגול</span>
+path = <span class="function">untar_data</span>(URLs.PETS)
+
+<span class="comment"># הפונקציה הזו מורידה dataset של חתולים וכלבים</span>
+<span class="comment"># ושומרת אותו במחשב שלכם (רק בפעם הראשונה)</span>
+<span class="function">print</span>(path)  <span class="comment"># יציג את המיקום של הקבצים</span>
+            </pre>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">📊 datasets מוכנים זמינים ב-fastai:</h3>
+                <ul>
+                    <li><code>URLs.PETS</code> - חתולים וכלבים (37 גזעים)</li>
+                    <li><code>URLs.MNIST</code> - ספרות בכתב יד</li>
+                    <li><code>URLs.CIFAR</code> - תמונות כלליות (10 קטגוריות)</li>
+                    <li><code>URLs.IMAGENETTE</code> - גרסה קטנה של ImageNet</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 4: Data Preparation -->
+        <div class="slide">
+            <h2>📁 הכנת נתונים</h2>
+            
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                הכנת הנתונים היא השלב הכי חשוב! מודל טוב מתחיל מנתונים מאורגנים כראוי.
+            </p>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: DataLoaders</h3>
+                <p>
+                    <span class="term">DataLoaders</span> הוא אובייקט שאחראי על טעינת התמונות, 
+                    חלוקה ל-batches (קבוצות), ביצוע augmentation (שינויים קלים בתמונות), 
+                    וכל מה שקשור להזנת הנתונים למודל בזמן האימון.
+                </p>
+            </div>
+
+            <h3>שלוש דרכים נפוצות לארגן נתונים:</h3>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">אפשרות 1: לפי תיקיות</h3>
+                <p>המבנה הכי פשוט - כל קטגוריה בתיקייה נפרדת:</p>
+                <pre class="code-block">
+<span class="comment"># מבנה התיקיות:</span>
+<span class="comment"># data/</span>
+<span class="comment">#   ├── cats/</span>
+<span class="comment">#   │   ├── cat1.jpg</span>
+<span class="comment">#   │   ├── cat2.jpg</span>
+<span class="comment">#   └── dogs/</span>
+<span class="comment">#       ├── dog1.jpg</span>
+<span class="comment">#       └── dog2.jpg</span>
+
+dls = ImageDataLoaders.<span class="function">from_folder</span>(
+    path,                  <span class="comment"># נתיב לתיקיית הבסיס</span>
+    valid_pct=<span class="number">0.2</span>,        <span class="comment"># 20% מהנתונים לבדיקה (validation)</span>
+    item_tfms=<span class="function">Resize</span>(<span class="number">224</span>),  <span class="comment"># שינוי גודל כל התמונות ל-224x224</span>
+    bs=<span class="number">32</span>                   <span class="comment"># batch size - כמה תמונות בכל פעם</span>
+)
+                </pre>
+            </div>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">אפשרות 2: לפי שם הקובץ</h3>
+                <p>כאשר שם הקובץ מכיל את הקטגוריה:</p>
+                <pre class="code-block">
+<span class="comment"># שמות קבצים: Persian_123.jpg, Golden_Retriever_456.jpg</span>
+
+dls = ImageDataLoaders.<span class="function">from_name_re</span>(
+    path, 
+    <span class="function">get_image_files</span>(path),     <span class="comment"># מביא את כל התמונות</span>
+    pat=<span class="string">r'(.+)_\d+\.jpg$'</span>,     <span class="comment"># regex שמחלץ את שם הגזע</span>
+    item_tfms=<span class="function">Resize</span>(<span class="number">224</span>)
+)
+
+<span class="comment"># הסבר ה-regex:</span>
+<span class="comment"># (.+) - תופס את כל התווים עד ה-underscore</span>
+<span class="comment"># \d+ - מספרים</span>
+<span class="comment"># \.jpg$ - סיומת jpg</span>
+                </pre>
+            </div>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Validation Set</h3>
+                <p>
+                    <span class="term">Validation set</span> (מערך בדיקה) הוא חלק מהנתונים ששומרים 
+                    בצד ולא משתמשים בו לאימון. הוא משמש לבדיקה האם המודל באמת למד או רק "שינן" 
+                    את התמונות שראה. זה כמו מבחן הפתעה בבית הספר!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 5: Data Preparation Parameters -->
+        <div class="slide">
+            <h2>🎛️ פרמטרים חשובים בהכנת נתונים</h2>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>תיאור</th>
+                            <th>ערכים מומלצים</th>
+                            <th>פרמטר</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>כמה תמונות בכל קבוצה (batch) שמועברת למודל בפעם אחת</td>
+                            <td>16-64 (תלוי בזיכרון)</td>
+                            <td><strong>bs</strong><br>(batch_size)</td>
+                        </tr>
+                        <tr>
+                            <td>אחוז הנתונים ששומרים לבדיקה (ולא לאימון)</td>
+                            <td>0.2 (20%)</td>
+                            <td><strong>valid_pct</strong></td>
+                        </tr>
+                        <tr>
+                            <td>שינוי גודל התמונות - חייב להיות אחיד</td>
+                            <td>224, 299, 448</td>
+                            <td><strong>item_tfms</strong><br>(Resize)</td>
+                        </tr>
+                        <tr>
+                            <td>שינויים אקראיים בתמונות (סיבוב, חיתוך, תאורה)</td>
+                            <td>aug_transforms()</td>
+                            <td><strong>batch_tfms</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">💡 איך לבחור batch size?</h3>
+                <ul>
+                    <li><strong>batch size גדול (64)</strong> - מהיר יותר, צריך הרבה זיכרון RAM/GPU</li>
+                    <li><strong>batch size קטן (16)</strong> - איטי יותר, מתאים למחשבים חלשים</li>
+                    <li><strong>כלל אצבע:</strong> התחילו מ-32, אם יש שגיאת זיכרון - הקטינו ל-16</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Data Augmentation</h3>
+                <p>
+                    <span class="term">Data Augmentation</span> הוא טכניקה שיוצרת גרסאות מעט שונות 
+                    של אותן תמונות (סיבוב קל, חיתוך, שינוי תאורה). זה עוזר למודל ללמוד טוב יותר 
+                    ולא להיתקע על התמונות המדויקות שראה.
+                </p>
+                <p style="margin-top: 10px;">
+                    <strong>אנלוגיה:</strong> אם אתם לומדים לזהות כלבים, עדיף לראות כלבים 
+                    מזוויות שונות, בתאורות שונות, ובגדלים שונים - כך תוכלו לזהות כל כלב!
+                </p>
+            </div>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">קוד מלא עם augmentation:</h3>
+                <pre class="code-block">
+dls = ImageDataLoaders.<span class="function">from_folder</span>(
+    path,
+    valid_pct=<span class="number">0.2</span>,
+    item_tfms=<span class="function">Resize</span>(<span class="number">224</span>),
+    batch_tfms=<span class="function">aug_transforms</span>(
+        mult=<span class="number">1.5</span>,          <span class="comment"># עוצמת הטרנספורמציות</span>
+        do_flip=<span class="keyword">True</span>,      <span class="comment"># היפוך אופקי</span>
+        max_rotate=<span class="number">15</span>,    <span class="comment"># סיבוב עד 15 מעלות</span>
+        max_lighting=<span class="number">0.3</span>  <span class="comment"># שינוי תאורה</span>
+    ),
+    bs=<span class="number">32</span>
+)
+
+<span class="comment"># הצגת דוגמאות לתמונות עם augmentation</span>
+dls.show_batch(max_n=<span class="number">9</span>)
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 6: Building Model -->
+        <div class="slide">
+            <h2>🏗️ בניית המודל</h2>
+
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                עכשיו נגיע לחלק המרגש - יצירת המודל שיזהה תמונות!
+            </p>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Transfer Learning</h3>
+                <p>
+                    <span class="term">Transfer Learning</span> זה כמו ללמוד צרפתית אחרי שכבר יודעים 
+                    ספרדית - אתם מתחילים עם ידע בסיסי ורק מתאימים אותו למשימה החדשה.
+                </p>
+                <p style="margin-top: 10px;">
+                    המודל מתחיל ממשקלים שכבר אומנו על מיליוני תמונות (ImageNet), וצריך רק 
+                    "לכוונן" אותו למשימה הספציפית שלכם. זה חוסך המון זמן!
+                </p>
+            </div>
+
+            <h3><span class="step-number">1</span>יצירת Learner</h3>
+            <pre class="code-block">
+learn = <span class="function">vision_learner</span>(
+    dls,                      <span class="comment"># הנתונים שהכנו קודם</span>
+    resnet34,                 <span class="comment"># ארכיטקטורת המודל</span>
+    metrics=error_rate        <span class="comment"># מה למדוד (אחוז שגיאות)</span>
+)
+
+<span class="comment"># הפונקציה vision_learner יוצרת מודל מוכן לעבודה!</span>
+                </pre>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🏛️ ארכיטקטורות נפוצות (מומלצות למתחילים):</h3>
+                <ul>
+                    <li><strong>resnet18</strong> - קטן ומהיר, טוב לניסויים</li>
+                    <li><strong>resnet34</strong> - איזון טוב בין מהירות לדיוק</li>
+                    <li><strong>resnet50</strong> - גדול ומדויק יותר, צריך יותר זיכרון</li>
+                </ul>
+                <p style="margin-top: 15px; margin-bottom: 0;">
+                    <span class="emoji">💡</span>
+                    <strong>טיפ:</strong> התחילו תמיד מ-resnet34, זה ה-"סוס עבודה" של fastai
+                </p>
+            </div>
+
+            <h3><span class="step-number">2</span>אימון המודל - השיטה הפשוטה</h3>
+            <pre class="code-block">
+learn.<span class="function">fine_tune</span>(<span class="number">3</span>)
+
+<span class="comment"># 3 = מספר epochs (מחזורים)</span>
+<span class="comment"># בכל epoch, המודל עובר על כל הנתונים פעם אחת</span>
+<span class="comment"># fine_tune עושה אופטימיזציה אוטומטית</span>
+                </pre>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Epoch</h3>
+                <p>
+                    <span class="term">Epoch</span> הוא מחזור אחד שבו המודל עובר על כל התמונות 
+                    באימון. בכל epoch, המודל לומד ומשפר את עצמו. בדרך כלל צריך 3-10 epochs 
+                    כדי לקבל מודל טוב.
+                </p>
+            </div>
+
+            <div class="success-box">
+                <h3 style="margin-top: 0;">✅ מה קורה ב-fine_tune?</h3>
+                <ol style="padding-right: 20px;">
+                    <li><strong>שלב 1:</strong> "הקפאת" השכבות הראשונות (שכבר יודעות לזהות קצוות וצבעים)</li>
+                    <li><strong>שלב 2:</strong> אימון השכבה האחרונה (ספציפית למשימה שלכם)</li>
+                    <li><strong>שלב 3:</strong> "הפשרת" כל השכבות ואימון עדין של כל המודל</li>
+                </ol>
+                <p style="margin-top: 15px; margin-bottom: 0;">
+                    זו הגישה המומלצת למתחילים - פשוט קוראים ל-<code>fine_tune</code> וזה עובד!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 7: Training Parameters -->
+        <div class="slide">
+            <h2>⚙️ פרמטרים מתקדמים לאימון</h2>
+
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                אחרי שהבנתם את הבסיס, אפשר לשלוט יותר בתהליך האימון
+            </p>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>תיאור</th>
+                            <th>ערכים מומלצים</th>
+                            <th>פרמטר</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>כמה פעמים המודל עובר על כל הנתונים</td>
+                            <td>3-10</td>
+                            <td><strong>epochs</strong></td>
+                        </tr>
+                        <tr>
+                            <td>גודל הצעד בלמידה - קובע כמה המודל משתנה בכל צעד</td>
+                            <td>1e-3 (0.001)</td>
+                            <td><strong>lr</strong><br>(learning rate)</td>
+                        </tr>
+                        <tr>
+                            <td>כמה epochs לאמן רק את הראש (לפני כל המודל)</td>
+                            <td>1-2</td>
+                            <td><strong>freeze_epochs</strong></td>
+                        </tr>
+                        <tr>
+                            <td>משקל לאיזון בין קטגוריות לא מאוזנות</td>
+                            <td>None (רוב המקרים)</td>
+                            <td><strong>class_weight</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Learning Rate</h3>
+                <p>
+                    <span class="term">Learning Rate</span> (קצב למידה) הוא הפרמטר החשוב ביותר! 
+                    הוא קובע כמה "גדולים" השינויים שהמודל עושה בכל צעד.
+                </p>
+                <ul style="margin-top: 10px;">
+                    <li><strong>LR גבוה מדי:</strong> המודל "מדלג" ולא מתכנס לפתרון טוב</li>
+                    <li><strong>LR נמוך מדי:</strong> המודל לומד לאט מדי ועלול להיתקע</li>
+                    <li><strong>LR מתאים:</strong> המודל לומד מהר ומגיע לתוצאות טובות</li>
+                </ul>
+            </div>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">🔍 מציאת Learning Rate אופטימלי</h3>
+                <p>fastai כוללת כלי מדהים למציאת ה-LR הטוב ביותר:</p>
+                <pre class="code-block">
+<span class="comment"># מציאת learning rate מומלץ</span>
+learn.<span class="function">lr_find</span>()
+
+<span class="comment"># הפונקציה מציגה גרף שעוזר לבחור LR</span>
+<span class="comment"># מחפשים נקודה שבה הגרף יורד בחדות</span>
+<span class="comment"># לרוב זה סביב 1e-3 או 1e-2</span>
+                </pre>
+                <p style="margin-top: 15px;">
+                    הגרף מראה איך ה-loss משתנה עם LR שונים. בחרו נקודה שבה 
+                    הגרף יורד במהירות, לפני שהוא מתחיל לעלות.
+                </p>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🎯 אימון עם פרמטרים מפורשים</h3>
+                <pre class="code-block">
+learn.<span class="function">fine_tune</span>(
+    epochs=<span class="number">5</span>,              <span class="comment"># 5 מחזורי אימון</span>
+    base_lr=<span class="number">1e-3</span>,          <span class="comment"># learning rate בסיס</span>
+    freeze_epochs=<span class="number">1</span>       <span class="comment"># קפוא epoch אחד בהתחלה</span>
+)
+
+<span class="comment"># או שליטה מלאה עם fit_one_cycle:</span>
+learn.<span class="function">fit_one_cycle</span>(
+    <span class="number">5</span>,                    <span class="comment"># epochs</span>
+    lr_max=<span class="number">1e-3</span>           <span class="comment"># learning rate מקסימלי</span>
+)
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 8: Making Predictions -->
+        <div class="slide">
+            <h2>🎯 שימוש במודל - חיזוי תוצאות</h2>
+
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                אחרי האימון, זמן להשתמש במודל כדי לזהות תמונות חדשות!
+            </p>
+
+            <h3><span class="step-number">1</span>הצגת תוצאות על נתוני הבדיקה</h3>
+            <pre class="code-block">
+<span class="comment"># מציג דוגמאות של תמונות עם החיזויים</span>
+learn.<span class="function">show_results</span>()
+
+<span class="comment"># כל תמונה תוצג עם:</span>
+<span class="comment"># - התווית האמיתית (actual)</span>
+<span class="comment"># - החיזוי של המודל (predicted)</span>
+<span class="comment"># - רמת הביטחון (confidence)</span>
+                </pre>
+
+            <h3><span class="step-number">2</span>חיזוי לתמונה ספציפית</h3>
+            <pre class="code-block">
+<span class="comment"># טעינת תמונה חדשה</span>
+img = PILImage.<span class="function">create</span>(<span class="string">'path/to/your/image.jpg'</span>)
+
+<span class="comment"># קבלת חיזוי</span>
+pred_class, pred_idx, probs = learn.<span class="function">predict</span>(img)
+
+<span class="comment"># הדפסת התוצאות</span>
+<span class="function">print</span>(<span class="string">f'חיזוי: </span>{pred_class}<span class="string">'</span>)
+<span class="function">print</span>(<span class="string">f'ביטחון: </span>{probs[pred_idx]:<span class="number">.2</span>f}<span class="string">'</span>)
+
+<span class="comment"># probs מכיל הסתברויות לכל הקטגוריות</span>
+<span class="function">print</span>(<span class="string">f'כל ההסתברויות: </span>{probs}<span class="string">'</span>)
+                </pre>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Confidence (ביטחון)</h3>
+                <p>
+                    <span class="term">Confidence</span> הוא מספר בין 0 ל-1 שמראה כמה המודל "בטוח" 
+                    בחיזוי שלו. למשל:
+                </p>
+                <ul style="margin-top: 10px;">
+                    <li><strong>0.95 (95%)</strong> - המודל מאוד בטוח</li>
+                    <li><strong>0.70 (70%)</strong> - המודל די בטוח, אבל יש ספק</li>
+                    <li><strong>0.51 (51%)</strong> - המודל כמעט לא בטוח (רק קצת יותר מחצי)</li>
+                </ul>
+            </div>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">דוגמה מלאה - מא' ועד ת'</h3>
+                <pre class="code-block">
+<span class="keyword">from</span> fastai.vision.all <span class="keyword">import</span> *
+
+<span class="comment"># 1. הכנת נתונים</span>
+path = <span class="function">untar_data</span>(URLs.PETS)
+dls = ImageDataLoaders.<span class="function">from_name_re</span>(
+    path, <span class="function">get_image_files</span>(path),
+    pat=<span class="string">r'(.+)_\d+\.jpg$'</span>,
+    item_tfms=<span class="function">Resize</span>(<span class="number">224</span>),
+    batch_tfms=<span class="function">aug_transforms</span>(),
+    bs=<span class="number">32</span>
+)
+
+<span class="comment"># 2. בניית מודל</span>
+learn = <span class="function">vision_learner</span>(dls, resnet34, metrics=error_rate)
+
+<span class="comment"># 3. אימון</span>
+learn.<span class="function">fine_tune</span>(<span class="number">3</span>)
+
+<span class="comment"># 4. שימוש במודל</span>
+img = PILImage.<span class="function">create</span>(<span class="string">'my_pet.jpg'</span>)
+pred, idx, probs = learn.<span class="function">predict</span>(img)
+<span class="function">print</span>(<span class="string">f'זה </span>{pred}<span class="string">! (ביטחון: </span>{probs[idx]<span class="number">*100</span>:<span class="number">.1</span>f}<span class="string">%)'</span>)
+                </pre>
+                <p style="margin-top: 15px; margin-bottom: 0;">
+                    <span class="emoji">🎉</span>
+                    זהו! ב-10 שורות קוד בניתם מזהה תמונות מקצועי!
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Model Evaluation -->
+        <div class="slide">
+            <h2>📊 הערכת ביצועי המודל</h2>
+
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                איך יודעים אם המודל באמת טוב? צריך לבדוק אותו בצורה מדעית!
+            </p>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">🎓 הסבר המושג: Confusion Matrix</h3>
+                <p>
+                    <span class="term">Confusion Matrix</span> (מטריצת בלבול) היא טבלה שמראה את כל 
+                    החיזויים של המודל - נכונים ושגויים. היא עוזרת להבין איפה המודל טועה.
+                </p>
+            </div>
+
+            <h3><span class="step-number">1</span>יצירת Classification Interpretation</h3>
+            <pre class="code-block">
+<span class="comment"># יצירת אובייקט לניתוח</span>
+interp = ClassificationInterpretation.<span class="function">from_learner</span>(learn)
+
+<span class="comment"># האובייקט הזה מכיל כלים לניתוח מעמיק</span>
+                </pre>
+
+            <h3><span class="step-number">2</span>הצגת Confusion Matrix</h3>
+            <pre class="code-block">
+<span class="comment"># מטריצה שמראה איפה המודל טועה</span>
+interp.<span class="function">plot_confusion_matrix</span>()
+
+<span class="comment"># בטבלה:</span>
+<span class="comment"># - שורות = קטגוריות אמיתיות</span>
+<span class="comment"># - עמודות = חיזויים של המודל</span>
+<span class="comment"># - האלכסון = חיזויים נכונים (רוצים שיהיו גבוהים!)</span>
+                </pre>
+
+            <h3><span class="step-number">3</span>הצגת השגיאות הגדולות ביותר</h3>
+            <pre class="code-block">
+<span class="comment"># איפה המודל הכי טעה? (סורט לפי ביטחון גבוה + טעות)</span>
+interp.<span class="function">plot_top_losses</span>(<span class="number">9</span>)
+
+<span class="comment"># מציג 9 תמונות שהמודל היה בטוח בהן אבל טעה</span>
+<span class="comment"># זה עוזר להבין למה המודל טועה</span>
+                </pre>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🔍 מדדים נוספים חשובים</h3>
+                <pre class="code-block">
+<span class="comment"># אחוז הדיוק הכללי</span>
+accuracy = <span class="number">1</span> - learn.recorder.values[-<span class="number">1</span>][<span class="number">2</span>]
+<span class="function">print</span>(<span class="string">f'דיוק כללי: </span>{accuracy<span class="number">*100</span>:<span class="number">.2</span>f}<span class="string">%'</span>)
+
+<span class="comment"># שגיאות הכי מבלבלות (confusion pairs)</span>
+interp.<span class="function">most_confused</span>(min_val=<span class="number">5</span>)
+<span class="comment"># מציג זוגות קטגוריות שהמודל מבלבל ביניהן</span>
+<span class="comment"># לדוגמה: ("Golden_Retriever", "Labrador", 12)</span>
+<span class="comment"># פירוש: המודל בילבל 12 פעמים בין שני הגזעים</span>
+                </pre>
+            </div>
+
+            <div class="success-box">
+                <h3 style="margin-top: 0;">✅ מה נחשב לתוצאות טובות?</h3>
+                <ul>
+                    <li><strong>מעל 95%</strong> - מעולה! המודל עובד מצוין</li>
+                    <li><strong>85%-95%</strong> - טוב מאוד, בסדר לרוב המשימות</li>
+                    <li><strong>70%-85%</strong> - סביר, צריך שיפור (יותר נתונים או epochs)</li>
+                    <li><strong>מתחת ל-70%</strong> - חלש, צריך לבדוק מה הבעיה</li>
+                </ul>
+                <p style="margin-top: 15px; margin-bottom: 0;">
+                    <span class="emoji">💡</span>
+                    זכרו: זה תלוי בקושי המשימה! לזהות 2 קטגוריות קל יותר מ-37.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Quiz 1 -->
+        <div class="slide">
+            <h2>🧠 שאלה 1: הבנת מושגים בסיסיים</h2>
+            
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    מהו Transfer Learning?
+                </div>
+                <div class="quiz-options" data-correct="2">
+                    <div class="quiz-option" data-index="0">
+                        טכניקה להעברת תמונות בין תיקיות שונות במחשב לצורך ארגון הנתונים בצורה יעילה יותר
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        שיטה להעברת נתונים מהמחשב האישי לשרת בענן בזמן אימון המודל כדי לחסוך זמן עיבוד
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        שימוש במודל שכבר אומן על מיליוני תמונות והתאמה שלו למשימה הספציפית שלנו, במקום להתחיל מאפס
+                    </div>
+                    <div class="quiz-option" data-index="3">
+                        העברת הידע שלמדנו בשפת תכנות אחת לשפת תכנות אחרת על מנת לשפר את יכולות הקוד
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">💡 עצה לפתרון:</h3>
+                <p>
+                    חישבו על האנלוגיה שנתנו: זה כמו ללמוד צרפתית אחרי שכבר יודעים ספרדית - 
+                    אתם לא מתחילים מאפס, אלא משתמשים בידע קיים ומתאימים אותו.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 11: Quiz 2 -->
+        <div class="slide">
+            <h2>🧠 שאלה 2: פרמטרים ואופטימיזציה</h2>
+            
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    מה הפרמטר החשוב ביותר שקובע את מהירות וטיב הלמידה של המודל?
+                </div>
+                <div class="quiz-options" data-correct="1">
+                    <div class="quiz-option" data-index="0">
+                        batch_size - הפרמטר שקובע כמה תמונות עוברות במודל בו-זמנית ומשפיע על מהירות האימון
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        learning_rate - הפרמטר שקובע את גודל הצעדים בלמידה, ערך נכון קריטי להצלחת האימון
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        validation_split - האחוז של הנתונים ששומרים לבדיקה כדי למדוד את ביצועי המודל באופן אובייקטיבי
+                    </div>
+                    <div class="quiz-option" data-index="3">
+                        image_size - הגודל לו משנים את כל התמונות, משפיע על דיוק המודל וכמות הזיכרון הנדרשת
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">💡 עצה לפתרון:</h3>
+                <p>
+                    זכרו שזה הפרמטר שאפילו יש לו כלי מיוחד למציאתו (<code>lr_find()</code>), 
+                    והסברנו שערך לא נכון שלו יכול "לדלג" על הפתרון או לגרום ללמידה איטית מדי.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 12: Quiz 3 -->
+        <div class="slide">
+            <h2>🧠 שאלה 3: הכנת נתונים</h2>
+            
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    מדוע חשוב להשתמש ב-Data Augmentation?
+                </div>
+                <div class="quiz-options" data-correct="3">
+                    <div class="quiz-option" data-index="0">
+                        כדי להגדיל את גודל הקבצים ולשפר את איכות התמונות המקוריות לפני האימון
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        כדי להאיץ את תהליך האימון על ידי שינוי אוטומטי של גודל התמונות לפורמט מהיר יותר
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        כדי לתקן תמונות פגומות או מטושטשות ולהפוך אותן לשימושיות יותר עבור המודל
+                    </div>
+                    <div class="quiz-option" data-index="3">
+                        כדי ליצור וריאציות של התמונות (סיבובים, חיתוכים, שינויי תאורה) ולמנוע overfitting
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">💡 עצה לפתרון:</h3>
+                <p>
+                    חישבו על המטרה - אנחנו רוצים שהמודל יראה את אותם אובייקטים במצבים שונים, 
+                    לא רק במצב אחד קבוע. זה כמו ללמוד לזהות חבר גם כשהוא עומד בזווית אחרת.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 13: Quiz 4 -->
+        <div class="slide">
+            <h2>🧠 שאלה 4: הבנת קוד</h2>
+            
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    מה עושה השורה הבאה?<br>
+                    <code style="background: #f1f5f9; padding: 5px 10px; border-radius: 4px; font-size: 1em;">
+                        learn = vision_learner(dls, resnet34, metrics=error_rate)
+                    </code>
+                </div>
+                <div class="quiz-options" data-correct="1">
+                    <div class="quiz-option" data-index="0">
+                        רק מייבאת את המודל resnet34 מהספרייה ושומרת אותו במשתנה מבלי לחבר אותו לנתונים
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        יוצרת מודל מלא לזיהוי תמונות עם ארכיטקטורת resnet34, מחברת לנתונים, ומגדירה מדד הערכה
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        מאמנת את המודל באופן אוטומטי עד שהוא מגיע לרמת דיוק מינימלית שהוגדרה מראש
+                    </div>
+                    <div class="quiz-option" data-index="3">
+                        מריצה בדיקה על הנתונים כדי לוודא שהם מתאימים לארכיטקטורה של resnet34 לפני האימון
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">💡 עצה לפתרון:</h3>
+                <p>
+                    <code>vision_learner</code> היא פונקציה שיוצרת מודל מוכן לעבודה. היא מקבלת 
+                    3 פרמטרים: את הנתונים, את סוג המודל, ואיך למדוד ביצועים. זו פעולת <strong>הקמה</strong>, 
+                    לא אימון.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 14: Quiz 5 -->
+        <div class="slide">
+            <h2>🧠 שאלה 5: יישום מעשי</h2>
+            
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    יש לכם dataset של 1000 תמונות. המחשב שלכם נתקע עם שגיאת זיכרון בזמן האימון. 
+                    מה כדאי לעשות ראשון?
+                </div>
+                <div class="quiz-options" data-correct="2">
+                    <div class="quiz-option" data-index="0">
+                        להוריד את מספר ה-epochs מ-10 ל-3 כדי שהאימון ייקח פחות זמן ויצרוך פחות משאבי זיכרון
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        להחליף את המודל מ-resnet34 ל-resnet18 כי הוא קטן יותר ולכן צורך הרבה פחות זיכרון בזמן אימון
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        להקטין את ה-batch_size מ-64 ל-16 כי זה ישנה כמה תמונות נטענות לזיכרון בו-זמנית
+                    </div>
+                    <div class="quiz-option" data-index="3">
+                        להקטין את ה-learning_rate כי ערך נמוך יותר דורש פחות חישובים מורכבים בכל צעד
+                    </div>
+                </div>
+                <div class="quiz-feedback"></div>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">💡 עצה לפתרון:</h3>
+                <p>
+                    שגיאת זיכרון קורית בדרך כלל כי המודל מנסה לעבד יותר מדי תמונות <strong>בו-זמנית</strong>. 
+                    איזה פרמטר קובע כמה תמונות נטענות לזיכרון בפעם אחת?
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 15: Practical Example -->
+        <div class="slide">
+            <h2>💻 דוגמה מעשית מלאה</h2>
+
+            <p style="font-size: 1.25em; margin-bottom: 30px;">
+                בואו נבנה יחד מזהה פירות - מתחילה ועד סוף!
+            </p>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">המשימה: זיהוי 5 סוגי פירות</h3>
+                <p>תפוח 🍎, בננה 🍌, תפוז 🍊, תות 🍓, אבטיח 🍉</p>
+            </div>
+
+            <h3><span class="step-number">1</span>ארגון התמונות</h3>
+            <pre class="code-block">
+<span class="comment"># מבנה התיקיות:</span>
+<span class="comment"># fruits/</span>
+<span class="comment">#   ├── apple/</span>
+<span class="comment">#   │   ├── img1.jpg</span>
+<span class="comment">#   │   └── img2.jpg</span>
+<span class="comment">#   ├── banana/</span>
+<span class="comment">#   ├── orange/</span>
+<span class="comment">#   ├── strawberry/</span>
+<span class="comment">#   └── watermelon/</span>
+            </pre>
+
+            <h3><span class="step-number">2</span>הקוד המלא</h3>
+            <pre class="code-block">
+<span class="keyword">from</span> fastai.vision.all <span class="keyword">import</span> *
+
+<span class="comment"># הכנת נתונים</span>
+path = Path(<span class="string">'fruits'</span>)
+dls = ImageDataLoaders.<span class="function">from_folder</span>(
+    path,
+    valid_pct=<span class="number">0.2</span>,              <span class="comment"># 20% לבדיקה</span>
+    item_tfms=<span class="function">Resize</span>(<span class="number">224</span>),
+    batch_tfms=<span class="function">aug_transforms</span>(  <span class="comment"># שינויים אקראיים</span>
+        do_flip=<span class="keyword">True</span>,
+        max_rotate=<span class="number">20</span>,
+        max_lighting=<span class="number">0.3</span>
+    ),
+    bs=<span class="number">32</span>
+)
+
+<span class="comment"># בדיקה מהירה</span>
+dls.<span class="function">show_batch</span>(max_n=<span class="number">9</span>)
+
+<span class="comment"># בניית מודל</span>
+learn = <span class="function">vision_learner</span>(
+    dls, 
+    resnet34, 
+    metrics=error_rate
+)
+
+<span class="comment"># מציאת learning rate טוב</span>
+learn.<span class="function">lr_find</span>()
+
+<span class="comment"># אימון</span>
+learn.<span class="function">fine_tune</span>(<span class="number">5</span>, base_lr=<span class="number">1e-3</span>)
+
+<span class="comment"># הצגת תוצאות</span>
+learn.<span class="function">show_results</span>()
+
+<span class="comment"># ניתוח שגיאות</span>
+interp = ClassificationInterpretation.<span class="function">from_learner</span>(learn)
+interp.<span class="function">plot_confusion_matrix</span>()
+interp.<span class="function">plot_top_losses</span>(<span class="number">9</span>)
+
+<span class="comment"># שימוש במודל על תמונה חדשה</span>
+img = PILImage.<span class="function">create</span>(<span class="string">'my_fruit.jpg'</span>)
+pred, idx, probs = learn.<span class="function">predict</span>(img)
+<span class="function">print</span>(<span class="string">f'זה </span>{pred}<span class="string">! ביטחון: </span>{probs[idx]<span class="number">*100</span>:<span class="number">.1</span>f}<span class="string">%'</span>)
+            </pre>
+        </div>
+
+        <!-- Slide 16: Common Issues -->
+        <div class="slide">
+            <h2>🔧 בעיות נפוצות ופתרונות</h2>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">❌ שגיאה: RuntimeError - CUDA out of memory</h3>
+                <p><strong>הבעיה:</strong> הזיכרון של כרטיס המסך אזל</p>
+                <p><strong>פתרון:</strong></p>
+                <ul>
+                    <li>הקטנת batch_size (מ-64 ל-32 או ל-16)</li>
+                    <li>שימוש במודל קטן יותר (resnet18 במקום resnet34)</li>
+                    <li>הקטנת גודל התמונות (Resize(128) במקום 224)</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">❌ המודל לא משתפר (accuracy נמוך)</h3>
+                <p><strong>סיבות אפשריות:</strong></p>
+                <ul>
+                    <li><strong>מעט מדי נתונים</strong> - צריך לפחות 100 תמונות לקטגוריה</li>
+                    <li><strong>נתונים לא מאוזנים</strong> - קטגוריה אחת עם 1000 תמונות ואחרת עם 50</li>
+                    <li><strong>Learning rate לא נכון</strong> - השתמשו ב-lr_find()</li>
+                    <li><strong>מעט epochs</strong> - נסו להגדיל מ-3 ל-10</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">❌ Overfitting - דיוק טוב באימון, גרוע בבדיקה</h3>
+                <p><strong>הבעיה:</strong> המודל "שינן" את התמונות במקום ללמוד</p>
+                <p><strong>פתרון:</strong></p>
+                <ul>
+                    <li>הוספת data augmentation חזק יותר</li>
+                    <li>הגדלת validation set (valid_pct=0.3)</li>
+                    <li>הקטנת מספר epochs</li>
+                    <li>שימוש במודל קטן יותר</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <h3 style="margin-top: 0;">✅ טיפים לשיפור ביצועים:</h3>
+                <ul>
+                    <li>אספו יותר תמונות - זו התרופה הטובה ביותר!</li>
+                    <li>ודאו שהתמונות מגוונות (זוויות, תאורות, רקעים שונים)</li>
+                    <li>נקו נתונים רעים - תמונות מטושטשות או שגויות</li>
+                    <li>התחילו פשוט ושפרו בהדרגה</li>
+                    <li>תעדו ניסויים - מה עבד ומה לא</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 17: Next Steps -->
+        <div class="slide">
+            <h2>🚀 לאן ממשיכים מכאן?</h2>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">📚 מושגים מתקדמים ללימוד עצמאי:</h3>
+                <ul>
+                    <li><strong>Mixed Precision Training</strong> - אימון מהיר יותר עם FP16</li>
+                    <li><strong>Discriminative Learning Rates</strong> - LR שונה לשכבות שונות</li>
+                    <li><strong>Progressive Resizing</strong> - אימון עם תמונות קטנות ואז גדולות</li>
+                    <li><strong>Test Time Augmentation</strong> - שיפור חיזויים עם augmentation</li>
+                    <li><strong>Ensemble Methods</strong> - שילוב מספר מודלים</li>
+                </ul>
+            </div>
+
+            <div class="example-box">
+                <h3 style="margin-top: 0; color: #be185d;">💡 רעיונות לפרויקטים:</h3>
+                <ul>
+                    <li>מזהה רגשות בפנים (שמח, עצוב, כועס, מופתע)</li>
+                    <li>מסווג מחלות צמחים (עלים בריאים vs חולים)</li>
+                    <li>זיהוי מספרי בתי רכב</li>
+                    <li>סיווג סוגי אוכל (פיצה, המבורגר, סלט...)</li>
+                    <li>זיהוי מיני ציפורים</li>
+                    <li>בודק איכות מוצרים (תקין/פגום)</li>
+                    <li>מזהה סגנון אמנות (אימפרסיוניזם, קוביזם...)</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🔗 משאבים נוספים:</h3>
+                <ul>
+                    <li><strong>תיעוד רשמי:</strong> <a href="https://docs.fast.ai" target="_blank">docs.fast.ai</a></li>
+                    <li><strong>קורס מלא:</strong> Practical Deep Learning for Coders (חינמי!)</li>
+                    <li><strong>פורום:</strong> forums.fast.ai - קהילה מעולה</li>
+                    <li><strong>דוגמאות:</strong> github.com/fastai/fastbook</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <h3 style="margin-top: 0;">🎯 המלצות להמשך:</h3>
+                <ol style="padding-right: 20px;">
+                    <li><strong>תרגלו!</strong> בנו 2-3 מזהים שונים עם datasets שונים</li>
+                    <li><strong>נסו פרמטרים שונים</strong> - תעדו מה עובד טוב</li>
+                    <li><strong>שתפו את הפרויקטים</strong> - קבלו feedback</li>
+                    <li><strong>קראו את התיעוד</strong> - יש שם המון טיפים</li>
+                    <li><strong>הצטרפו לקהילה</strong> - שאלו שאלות בפורום</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Slide 18: Summary -->
+        <div class="slide">
+            <h1 style="font-size: 2.5em;">🎓 סיכום</h1>
+            
+            <div class="success-box">
+                <h3 style="margin-top: 0;">מה למדנו היום?</h3>
+                <ul style="font-size: 1.15em;">
+                    <li>מהי fastai ולמה היא מעולה למתחילים</li>
+                    <li>איך להכין נתונים בצורה נכונה</li>
+                    <li>הפרמטרים החשובים ואיך לבחור אותם</li>
+                    <li>איך לבנות, לאמן ולהעריך מודל</li>
+                    <li>פתרון בעיות נפוצות</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">🔑 נקודות מפתח לזכור:</h3>
+                <ol style="padding-right: 20px; font-size: 1.15em;">
+                    <li><strong>Transfer Learning</strong> חוסך זמן עצום - תמיד התחילו ממודל מאומן</li>
+                    <li><strong>Learning Rate</strong> הוא הפרמטר הכי חשוב - השתמשו ב-lr_find()</li>
+                    <li><strong>Data Augmentation</strong> משפר את המודל - אל תשכחו אותו</li>
+                    <li><strong>נתונים טובים</strong> חשובים יותר מארכיטקטורה מתוחכמת</li>
+                    <li><strong>התחילו פשוט</strong> ושפרו בהדרגה - אל תקפצו לעמוק</li>
+                </ol>
+            </div>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0;">📝 תרגיל בית:</h3>
+                <p style="font-size: 1.2em;">
+                    בחרו נושא שמעניין אתכם, אספו 200-300 תמונות (לפחות 50 לקטגוריה), 
+                    ובנו מזהה תמונות. תעדו את התהליך, התוצאות, והבעיות שנתקלתם בהן.
+                </p>
+                <p style="margin-top: 15px; margin-bottom: 0; font-size: 1.1em;">
+                    <strong>בונוס:</strong> שתפו את הפרויקט שלכם בכיתה! 🎉
+                </p>
+            </div>
+
+            <div class="example-box" style="margin-top: 30px;">
+                <h3 style="margin-top: 0; color: #be185d; text-align: center; font-size: 1.8em;">
+                    בהצלחה! 🚀✨
+                </h3>
+                <p style="text-align: center; font-size: 1.3em; margin-bottom: 0;">
+                    יש לכם שאלות? פנו למורה או לפורום של fastai
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn prev" onclick="previousSlide()">→ הקודם</button>
+            <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">18</span></span>
+            <button class="nav-btn next" onclick="nextSlide()">הבא ←</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const progressBar = document.getElementById('progressBar');
+        
+        // Initialize
+        document.getElementById('totalSlides').textContent = totalSlides;
+        updateSlide();
+        
+        function updateSlide() {
+            // Hide all slides
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            // Show current slide
+            slides[currentSlideIndex].classList.add('active');
+            
+            // Update counter
+            document.getElementById('currentSlide').textContent = currentSlideIndex + 1;
+            
+            // Update progress bar
+            const progress = ((currentSlideIndex + 1) / totalSlides) * 100;
+            progressBar.style.width = progress + '%';
+            
+            // Update buttons
+            document.querySelector('.prev').disabled = currentSlideIndex === 0;
+            document.querySelector('.next').disabled = currentSlideIndex === totalSlides - 1;
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        function nextSlide() {
+            if (currentSlideIndex < totalSlides - 1) {
+                currentSlideIndex++;
+                updateSlide();
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlideIndex > 0) {
+                currentSlideIndex--;
+                updateSlide();
+            }
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                if (e.key === 'ArrowRight') nextSlide();
+                if (e.key === 'ArrowLeft') previousSlide();
+            }
+        });
+        
+        // Quiz functionality
+        document.querySelectorAll('.quiz-options').forEach(container => {
+            const correctIndex = parseInt(container.dataset.correct);
+            const options = container.querySelectorAll('.quiz-option');
+            const feedback = container.nextElementSibling;
+            
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    const selectedIndex = parseInt(this.dataset.index);
+                    
+                    // Disable all options
+                    options.forEach(opt => {
+                        opt.style.pointerEvents = 'none';
+                        opt.classList.remove('correct', 'incorrect');
+                    });
+                    
+                    // Mark answers
+                    if (selectedIndex === correctIndex) {
+                        this.classList.add('correct');
+                        feedback.classList.add('correct');
+                        feedback.classList.remove('incorrect');
+                        feedback.textContent = '✅ נכון מצוין! ' + getExplanation(container);
+                    } else {
+                        this.classList.add('incorrect');
+                        options[correctIndex].classList.add('correct');
+                        feedback.classList.add('incorrect');
+                        feedback.classList.remove('correct');
+                        feedback.textContent = '❌ לא מדויק. ' + getExplanation(container);
+                    }
+                    
+                    feedback.style.display = 'block';
+                    
+                    // Re-enable after 3 seconds
+                    setTimeout(() => {
+                        options.forEach(opt => opt.style.pointerEvents = 'auto');
+                    }, 3000);
+                });
+            });
+        });
+        
+        function getExplanation(container) {
+            const correctIndex = parseInt(container.dataset.correct);
+            const explanations = {
+                0: 'Transfer Learning משתמש במודל קיים שכבר למד מיליוני תמונות ומתאים אותו למשימה החדשה - זה חוסך המון זמן ומשאבים!',
+                1: 'Learning Rate קובע את גודל הצעדים בלמידה. ערך נכון קריטי - גבוה מדי והמודל "מדלג", נמוך מדי והלמידה איטית.',
+                2: 'Data Augmentation יוצר וריאציות של התמונות (סיבובים, חיתוכים, שינויי תאורה) כדי שהמודל יראה כל אובייקט במצבים שונים ויכליל טוב יותר.',
+                3: 'vision_learner יוצרת מודל מלא ומוכן לעבודה, מחברת אותו לנתונים (dls), מגדירה ארכיטקטורה (resnet34), ומדד הערכה (error_rate).',
+                4: 'batch_size קובע כמה תמונות נטענות לזיכרון בו-זמנית. הקטנת הערך מאפשרת לעבוד עם פחות זיכרון - זה הפתרון הראשון לשגיאות זיכרון!'
+            };
+            
+            // Find which quiz this is based on parent structure
+            const slide = container.closest('.slide');
+            const slideIndex = Array.from(slides).indexOf(slide);
+            const quizNumber = slideIndex - 9; // Quizzes start at slide 10 (index 9)
+            
+            return explanations[quizNumber] || 'התשובה הנכונה היא האפשרות המסומנת בירוק.';
+        }
+    </script>
+</body>
+</html>

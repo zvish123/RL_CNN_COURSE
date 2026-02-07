@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generators בפיצוח צופן | מצגת אינטראקטיבית</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #12182b;
+            --bg-tertiary: #1a2333;
+            --accent-cyan: #00ffcc;
+            --accent-purple: #a855f7;
+            --accent-blue: #3b82f6;
+            --text-primary: #e8eaed;
+            --text-secondary: #9ca3af;
+            --danger: #ef4444;
+            --success: #10b981;
+            --code-bg: #0d1117;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        .presentation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Background effect */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, var(--accent-cyan) 2px, var(--accent-cyan) 3px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, var(--accent-cyan) 2px, var(--accent-cyan) 3px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem;
+            opacity: 0;
+            transform: translateX(100px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: all;
+            z-index: 10;
+        }
+
+        .slide.prev {
+            transform: translateX(-100px);
+        }
+
+        /* Title Slide */
+        .slide h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 5rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 255, 204, 0.3)); }
+            50% { filter: drop-shadow(0 0 40px rgba(0, 255, 204, 0.5)); }
+        }
+
+        .slide h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--accent-cyan);
+            text-align: center;
+        }
+
+        .slide h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--accent-cyan);
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+            background: var(--bg-secondary);
+            padding: 3rem;
+            border-radius: 20px;
+            border: 2px solid rgba(0, 255, 204, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .content-wide {
+            max-width: 1400px;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .column {
+            background: var(--bg-tertiary);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 204, 0.1);
+        }
+
+        .column.bad {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .column.good {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .column-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .badge-bad {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .badge-good {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            direction: ltr;
+            text-align: left;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'Python';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .code-keyword { color: #ff79c6; }
+        .code-function { color: #50fa7b; }
+        .code-string { color: #f1fa8c; }
+        .code-number { color: #bd93f9; }
+        .code-comment { color: #6272a4; font-style: italic; }
+
+        /* Lists */
+        ul, ol {
+            margin: 1.5rem 0;
+            padding-right: 2rem;
+        }
+
+        li {
+            margin: 1rem 0;
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        li strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .highlight {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .factorial-demo {
+            background: var(--bg-tertiary);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            border-right: 4px solid var(--accent-cyan);
+        }
+
+        .factorial-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--code-bg);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .factorial-item span:first-child {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .factorial-item span:last-child {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+        }
+
+        .factorial-item.danger {
+            border: 2px solid var(--danger);
+        }
+
+        /* Quiz */
+        .quiz-container {
+            background: var(--bg-tertiary);
+            padding: 2.5rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .quiz-question {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--accent-cyan);
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .quiz-option {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid rgba(0, 255, 204, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 20px rgba(0, 255, 204, 0.2);
+        }
+
+        .quiz-option.selected {
+            background: var(--bg-primary);
+            border-color: var(--accent-purple);
+        }
+
+        .quiz-option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--danger);
+        }
+
+        .quiz-feedback {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        .quiz-feedback.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .quiz-feedback.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .quiz-feedback.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid var(--danger);
+            color: var(--danger);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 204, 0.3);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .nav-btn:disabled:hover {
+            background: var(--bg-secondary);
+            color: var(--accent-cyan);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-cyan);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            z-index: 100;
+        }
+
+        .important-box {
+            background: rgba(168, 85, 247, 0.1);
+            border: 2px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .important-box h4 {
+            color: var(--accent-purple);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tip-box {
+            background: rgba(59, 130, 246, 0.1);
+            border-right: 4px solid var(--accent-blue);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+        }
+
+        .tip-box strong {
+            color: var(--accent-blue);
+        }
+
+        @media (max-width: 768px) {
+            .slide h1 { font-size: 3rem; }
+            .slide h2 { font-size: 2rem; }
+            .content { padding: 2rem; }
+            .two-column { grid-template-columns: 1fr; }
+            .nav-controls { bottom: 1rem; right: 1rem; }
+            .slide-counter { bottom: 1rem; left: 1rem; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <h1>Generators</h1>
+            <p class="subtitle">למה צריך Generator בפיצוח צופן?</p>
+            <div class="content">
+                <p style="font-size: 1.3rem; text-align: center; line-height: 2;">
+                    כשאנחנו מפצחים צופנים בשיטת <span class="highlight">Brute Force</span>,<br>
+                    אנחנו צריכים לנסות מיליוני אפשרויות.<br>
+                    <span class="highlight">Generator</span> עוזר לנו לעשות את זה בצורה חכמה ויעילה.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Problem -->
+        <div class="slide" data-slide="2">
+            <h2>הבעיה: פיצוח Transposition</h2>
+            <div class="content">
+                <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+                    בפיצוח <span class="highlight">Transposition</span> אנחנו מנסים הרבה "סודות" (מפתחות) עד שמוצאים אחד שמחזיר טקסט הגיוני.
+                </p>
+                <h3>הבעיה: מספר האפשרויות גדל מהר מאוד! 💥</h3>
+                <p style="font-size: 1.1rem; margin: 1.5rem 0;">
+                    אם המפתח באורך <code style="background: var(--code-bg); padding: 0.25rem 0.5rem; border-radius: 4px; color: var(--accent-cyan);">k</code>, 
+                    מספר הסודות הוא <code style="background: var(--code-bg); padding: 0.25rem 0.5rem; border-radius: 4px; color: var(--accent-purple);">k!</code> (פקטוריאל):
+                </p>
+                
+                <div class="factorial-demo">
+                    <div class="factorial-item">
+                        <span>k = 6</span>
+                        <span>6! = 720 אפשרויות <span style="color: var(--success);">✓ סביר</span></span>
+                    </div>
+                    <div class="factorial-item">
+                        <span>k = 8</span>
+                        <span>8! = 40,320 אפשרויות <span style="color: var(--accent-cyan);">⚠ כבר הרבה</span></span>
+                    </div>
+                    <div class="factorial-item danger">
+                        <span>k = 10</span>
+                        <span>10! = 3,628,800 אפשרויות <span style="color: var(--danger);">⛔ מיליונים!</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Memory Problem -->
+        <div class="slide" data-slide="3">
+            <h2>מה הבעיה אם נייצר הכול מראש?</h2>
+            <div class="content">
+                <ul>
+                    <li><strong>זה תופס הרבה זיכרון</strong> – אם יש לך 3 מיליון אפשרויות, אתה צריך לשמור אותן כולן ב-RAM</li>
+                    <li><strong>זה גורם לתוכנית להיות איטית</strong> – לוקח זמן לבנות רשימה ענקית לפני שמתחילים לבדוק</li>
+                    <li><strong>לפעמים זה אפילו יקרוס</strong> – אם המחשב אוזל לו הזיכרון</li>
+                </ul>
+
+                <pre class="code-block">
+<span class="code-comment"># ⛔ רע - בונה מיליוני פריטים בזיכרון!</span>
+<span class="code-keyword">from</span> itertools <span class="code-keyword">import</span> permutations
+
+all_keys = <span class="code-function">list</span>(permutations(<span class="code-function">range</span>(<span class="code-number">1</span>, <span class="code-number">11</span>)))  
+<span class="code-comment"># 10! = 3,628,800 פריטים בזיכרון! 💾💥</span>
+                </pre>
+
+                <div class="important-box">
+                    <h4>💡 הפתרון: Generator</h4>
+                    <p style="font-size: 1.2rem;">
+                        Generator מייצר סוד אחד בכל פעם, <strong>"לפי דרישה"</strong>, בלי לשמור את כולם!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: What is Generator -->
+        <div class="slide" data-slide="4">
+            <h2>מה זה Generator בפייתון?</h2>
+            <div class="content content-wide">
+                <p style="font-size: 1.2rem; margin-bottom: 2rem; text-align: center;">
+                    Generator הוא <span class="highlight">"מכונה"</span> שמחזירה ערך אחד בכל פעם, כשמבקשים.
+                </p>
+
+                <div class="two-column">
+                    <div class="column">
+                        <div class="column-title">
+                            <span>דרך 1:</span>
+                            <span class="badge badge-good">פונקציה עם yield</span>
+                        </div>
+                        <pre class="code-block">
+<span class="code-keyword">def</span> <span class="code-function">numbers</span>():
+    <span class="code-keyword">yield</span> <span class="code-number">1</span>
+    <span class="code-keyword">yield</span> <span class="code-number">2</span>
+    <span class="code-keyword">yield</span> <span class="code-number">3</span>
+
+<span class="code-keyword">for</span> x <span class="code-keyword">in</span> <span class="code-function">numbers</span>():
+    <span class="code-function">print</span>(x)
+<span class="code-comment"># מדפיס: 1, 2, 3</span>
+                        </pre>
+                    </div>
+
+                    <div class="column">
+                        <div class="column-title">
+                            <span>דרך 2:</span>
+                            <span class="badge badge-good">מספרייה (itertools)</span>
+                        </div>
+                        <pre class="code-block">
+<span class="code-keyword">import</span> itertools
+
+<span class="code-keyword">for</span> p <span class="code-keyword">in</span> itertools.permutations([<span class="code-number">1</span>,<span class="code-number">2</span>,<span class="code-number">3</span>]):
+    <span class="code-function">print</span>(p)
+
+<span class="code-comment"># מדפיס:</span>
+<span class="code-comment"># (1, 2, 3)</span>
+<span class="code-comment"># (1, 3, 2)</span>
+<span class="code-comment"># ...</span>
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="tip-box">
+                    <strong>שימו לב:</strong> זה לא מחזיר <code>list</code>. זה מחזיר משהו שמייצר איברים אחד-אחד!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: List vs Generator -->
+        <div class="slide" data-slide="5">
+            <h2>ההבדל הקריטי: list מול generator</h2>
+            <div class="content content-wide">
+                <div class="two-column">
+                    <div class="column bad">
+                        <div class="column-title">
+                            <span class="badge badge-bad">❌ רע</span>
+                            <span>בונה הכול מראש</span>
+                        </div>
+                        <pre class="code-block">
+<span class="code-keyword">from</span> itertools <span class="code-keyword">import</span> permutations
+
+<span class="code-comment"># בונה רשימה ענקית!</span>
+all_keys = <span class="code-function">list</span>(
+    permutations(
+        <span class="code-function">range</span>(<span class="code-number">1</span>, <span class="code-number">11</span>)
+    )
+)
+<span class="code-comment"># 10! = 3,628,800 פריטים</span>
+<span class="code-comment"># תופס המון זיכרון! 💾</span>
+                        </pre>
+                        <p style="color: var(--danger); font-weight: 700; margin-top: 1rem;">
+                            ⚠️ כל 3.6 מיליון המפתחות בזיכרון בבת אחת!
+                        </p>
+                    </div>
+
+                    <div class="column good">
+                        <div class="column-title">
+                            <span class="badge badge-good">✓ טוב</span>
+                            <span>מייצר אחד-אחד</span>
+                        </div>
+                        <pre class="code-block">
+<span class="code-keyword">from</span> itertools <span class="code-keyword">import</span> permutations
+
+<span class="code-comment"># לא בונה כלום מראש</span>
+<span class="code-keyword">for</span> key <span class="code-keyword">in</span> permutations(
+    <span class="code-function">range</span>(<span class="code-number">1</span>, <span class="code-number">11</span>)
+):
+    <span class="code-comment"># כאן יש מפתח אחד בכל פעם</span>
+    <span class="code-keyword">pass</span>
+                        </pre>
+                        <p style="color: var(--success); font-weight: 700; margin-top: 1rem;">
+                            ✓ רק מפתח אחד בזיכרון בכל רגע נתון!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Implementation -->
+        <div class="slide" data-slide="6">
+            <h2>איך משתמשים ב-Generator בפיצוח?</h2>
+            <div class="content content-wide">
+                <h3 style="margin-bottom: 1.5rem;">Generator לסודות (כמחרוזת)</h3>
+                
+                <pre class="code-block">
+<span class="code-keyword">import</span> itertools
+
+<span class="code-keyword">def</span> <span class="code-function">secrets_generator</span>(key_len):
+    <span class="code-keyword">for</span> perm <span class="code-keyword">in</span> itertools.permutations(<span class="code-function">range</span>(<span class="code-number">1</span>, key_len + <span class="code-number">1</span>)):
+        <span class="code-keyword">yield</span> <span class="code-string">''</span>.join(<span class="code-function">map</span>(<span class="code-function">str</span>, perm))
+                </pre>
+
+                <h3 style="margin: 2rem 0 1.5rem 0;">שימוש בפיצוח</h3>
+                
+                <pre class="code-block">
+<span class="code-keyword">for</span> secret <span class="code-keyword">in</span> <span class="code-function">secrets_generator</span>(key):
+    decrypted = <span class="code-function">decrypt</span>(cipher_text, key, secret)
+    ok, total, good = <span class="code-function">is_english</span>(decrypted, english_dict)
+    
+    <span class="code-keyword">if</span> ok:
+        <span class="code-function">print</span>(<span class="code-string">"FOUND:"</span>, key, secret)
+        <span class="code-function">print</span>(decrypted)
+        <span class="code-keyword">break</span>  <span class="code-comment"># עוצרים מיד! 🎯</span>
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 7: Why Smart -->
+        <div class="slide" data-slide="7">
+            <h2>למה זה "חכם" יותר? 🧠</h2>
+            <div class="content">
+                <ol style="font-size: 1.3rem;">
+                    <li>
+                        <strong>חוסך זיכרון:</strong> לא שומר מיליוני סודות ב-RAM – רק אחד בכל פעם
+                    </li>
+                    <li>
+                        <strong>מהיר יותר להתחיל:</strong> לא מחכה "לבנות רשימה" לפני שמתחילים לבדוק
+                    </li>
+                    <li>
+                        <strong>אפשר לעצור מיד:</strong> ברגע שמצאת פתרון, <code class="highlight">break</code> – ולא בזבזת זמן על יצירת שאר הסודות
+                    </li>
+                </ol>
+
+                <div class="important-box">
+                    <h4>דוגמה מהחיים:</h4>
+                    <p style="font-size: 1.2rem; line-height: 1.8;">
+                        דמיינו שאתם מחפשים ספר בספרייה. <br>
+                        <strong style="color: var(--danger);">רשימה:</strong> לוקחים את כל הספרים למחשב, סורקים אותם, ואז מתחילים לחפש.<br>
+                        <strong style="color: var(--success);">Generator:</strong> עוברים מדף לדף ובודקים ספר-ספר עד שמוצאים את הנכון – ועוצרים!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Common Trap -->
+        <div class="slide" data-slide="8">
+            <h2>⚠️ "מלכודת" נפוצה לתלמידים</h2>
+            <div class="content">
+                <h3 style="color: var(--danger); margin-bottom: 2rem;">אל תעשו את זה!</h3>
+                
+                <pre class="code-block">
+<span class="code-comment"># ❌ הפכתם את ה-generator חזרה לרשימה!</span>
+secrets = <span class="code-function">list</span>(<span class="code-function">secrets_generator</span>(key))
+
+<span class="code-comment"># עכשיו איבדתם את כל היתרונות! 😢</span>
+                </pre>
+
+                <div style="background: rgba(239, 68, 68, 0.15); border: 3px solid var(--danger); border-radius: 15px; padding: 2.5rem; margin: 2rem 0;">
+                    <p style="font-size: 1.4rem; font-weight: 700; text-align: center; line-height: 2;">
+                        אם אתם עושים <code style="background: var(--code-bg); padding: 0.5rem 1rem; border-radius: 6px;">list(...)</code> 
+                        על ה-generator,<br>
+                        <span style="color: var(--danger); font-size: 1.6rem;">איבדתם את כל היתרון!</span>
+                    </p>
+                </div>
+
+                <div class="tip-box">
+                    <strong>כלל אצבע:</strong> השתמשו ב-generator ישירות ב-<code>for</code> לולאה, אל תמירו אותו ל-<code>list</code>!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Quiz 1 -->
+        <div class="slide" data-slide="9">
+            <h2>שאלת הבנה #1</h2>
+            <div class="content">
+                <div class="quiz-container" data-quiz="1">
+                    <div class="quiz-question">
+                        מה היתרון העיקרי של שימוש ב-Generator במקום רשימה בפיצוח צופן?
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            Generator יותר מהיר לחשב מתמטית
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            Generator חוסך זיכרון כי הוא מייצר ערך אחד בכל פעם במקום לשמור הכול
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            Generator יכול למצוא מפתחות שרשימה לא יכולה למצוא
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            Generator עובד רק עם מספרים קטנים
+                        </div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Quiz 2 -->
+        <div class="slide" data-slide="10">
+            <h2>שאלת יישום #1</h2>
+            <div class="content">
+                <div class="quiz-container" data-quiz="2">
+                    <div class="quiz-question">
+                        איזה קוד יגרום לבעיית זיכרון עם מפתח באורך 10?
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+<code>for key in permutations(range(1, 11)):</code>
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+<code>all_keys = list(permutations(range(1, 11)))</code>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+<code>for key in secrets_generator(10):</code>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+<code>yield permutations(range(1, 11))</code>
+                        </div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Quiz 3 -->
+        <div class="slide" data-slide="11">
+            <h2>שאלת הבנה #2</h2>
+            <div class="content">
+                <div class="quiz-container" data-quiz="3">
+                    <div class="quiz-question">
+                        למה אי אפשר לעשות <code>len(secrets_generator(10))</code>?
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            כי secrets_generator לא מוגדרת נכון
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            כי המספר 10 גדול מדי
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            כי generator לא מחזיק את כל הערכים מראש, הוא מייצר אותם תוך כדי
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            כי len() עובד רק עם רשימות מספרים
+                        </div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Quiz 4 -->
+        <div class="slide" data-slide="12">
+            <h2>שאלת יישום #2</h2>
+            <div class="content">
+                <div class="quiz-container" data-quiz="4">
+                    <div class="quiz-question">
+                        מה יקרה אם נריץ את הקוד הזה?<br>
+                        <code style="background: var(--code-bg); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block; margin-top: 1rem;">
+                            gen = secrets_generator(5)<br>
+                            first = next(gen)<br>
+                            first_again = next(gen)
+                        </code>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            first ו-first_again יהיו זהים
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            first ו-first_again יהיו שונים (2 סודות שונים)
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            הקוד ייתן שגיאה
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            first_again יהיה None
+                        </div>
+                    </div>
+                    <div class="quiz-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Advanced Tip -->
+        <div class="slide" data-slide="13">
+            <h2>טיפ של אלופים 🏆</h2>
+            <div class="content">
+                <h3>לא חייבים להחזיר "סטרינג"</h3>
+                <p style="font-size: 1.2rem; margin: 1.5rem 0;">
+                    אפשר לעבוד ישירות עם הטופל ש-<code class="highlight">permutations</code> נותן:
+                </p>
+
+                <pre class="code-block">
+<span class="code-keyword">from</span> itertools <span class="code-keyword">import</span> permutations
+
+<span class="code-keyword">for</span> perm <span class="code-keyword">in</span> permutations(<span class="code-function">range</span>(<span class="code-number">1</span>, key+<span class="code-number">1</span>)):
+    <span class="code-comment"># perm זה טופל, לדוגמה: (1, 3, 2, 4)</span>
+    secret = <span class="code-string">''</span>.join(<span class="code-function">map</span>(<span class="code-function">str</span>, perm))
+    <span class="code-comment"># עכשיו secret = "1324"</span>
+    
+    <span class="code-comment"># אפשר להשתמש ב-secret לפענוח...</span>
+                </pre>
+
+                <div class="tip-box">
+                    <strong>למה זה טוב?</strong> לפעמים לא צריך בכלל להפוך לסטרינג – אפשר לעבוד ישירות עם הטופל, זה עוד יותר יעיל!
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Practice Exercise -->
+        <div class="slide" data-slide="14">
+            <h2>תרגיל לבדיקה עצמית 📝</h2>
+            <div class="content">
+                <div style="background: var(--bg-tertiary); padding: 2.5rem; border-radius: 15px; border: 2px solid var(--accent-cyan);">
+                    <h3 style="margin-bottom: 1.5rem;">תרגיל 1: הדפסת 5 סודות ראשונים</h3>
+                    <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+                        כתבו קוד שמדפיס רק את 5 הסודות הראשונים של <code>secrets_generator(4)</code>
+                    </p>
+                    <p style="color: var(--text-secondary);">
+                        <strong>רמז:</strong> השתמשו ב-<code>itertools.islice</code>
+                    </p>
+                    
+                    <details style="margin-top: 2rem;">
+                        <summary style="cursor: pointer; font-size: 1.2rem; font-weight: 700; color: var(--accent-cyan); padding: 1rem; background: var(--code-bg); border-radius: 8px;">
+                            👁️ לחצו לצפייה בפתרון
+                        </summary>
+                        <pre class="code-block" style="margin-top: 1rem;">
+<span class="code-keyword">import</span> itertools
+
+<span class="code-keyword">def</span> <span class="code-function">secrets_generator</span>(key_len):
+    <span class="code-keyword">for</span> perm <span class="code-keyword">in</span> itertools.permutations(<span class="code-function">range</span>(<span class="code-number">1</span>, key_len + <span class="code-number">1</span>)):
+        <span class="code-keyword">yield</span> <span class="code-string">''</span>.join(<span class="code-function">map</span>(<span class="code-function">str</span>, perm))
+
+<span class="code-comment"># הדפסת 5 ראשונים:</span>
+<span class="code-keyword">for</span> s <span class="code-keyword">in</span> itertools.islice(<span class="code-function">secrets_generator</span>(<span class="code-number">4</span>), <span class="code-number">5</span>):
+    <span class="code-function">print</span>(s)
+
+<span class="code-comment"># פלט:</span>
+<span class="code-comment"># 1234</span>
+<span class="code-comment"># 1243</span>
+<span class="code-comment"># 1324</span>
+<span class="code-comment"># 1342</span>
+<span class="code-comment"># 1423</span>
+                        </pre>
+                    </details>
+                </div>
+
+                <div style="background: var(--bg-tertiary); padding: 2.5rem; border-radius: 15px; border: 2px solid var(--accent-purple); margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: var(--accent-purple);">תרגיל 2: למה אי אפשר len()?</h3>
+                    <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+                        הסבירו במילים שלכם: למה אי אפשר לעשות <code>len(secrets_generator(10))</code>?
+                    </p>
+                    
+                    <details style="margin-top: 2rem;">
+                        <summary style="cursor: pointer; font-size: 1.2rem; font-weight: 700; color: var(--accent-purple); padding: 1rem; background: var(--code-bg); border-radius: 8px;">
+                            👁️ לחצו לצפייה בתשובה
+                        </summary>
+                        <div style="background: var(--code-bg); padding: 2rem; border-radius: 12px; margin-top: 1rem; font-size: 1.1rem; line-height: 1.8;">
+                            <p>
+                                <strong>תשובה:</strong> Generator לא מחזיק את כל הערכים בזיכרון בו-זמנית. 
+                                הוא מייצר אותם <strong>אחד-אחד</strong>, "לפי דרישה". 
+                            </p>
+                            <p style="margin-top: 1rem;">
+                                הפונקציה <code>len()</code> צריכה לדעת כמה פריטים יש, אבל ב-generator אין דרך לדעת את זה 
+                                בלי לעבור על כל הפריטים (וזה יהרוס את ה-generator).
+                            </p>
+                            <p style="margin-top: 1rem; color: var(--accent-cyan);">
+                                אנלוגיה: זה כמו לשאול "כמה זמן יקח לך ללכת?" בלי לדעת לאן אתה הולך!
+                            </p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Summary -->
+        <div class="slide" data-slide="15">
+            <h2>מסר לסיכום 💡</h2>
+            <div class="content">
+                <div class="important-box" style="text-align: center; padding: 3rem;">
+                    <p style="font-size: 1.5rem; line-height: 2; margin-bottom: 2rem;">
+                        <strong>Generator לא "מחליף מחשבה"</strong> – 
+                        עדיין יש מיליוני אפשרויות.
+                    </p>
+                    <p style="font-size: 1.3rem; line-height: 2; color: var(--text-secondary);">
+                        אבל הוא גורם לקוד להיות <span class="highlight">אפשרי להרצה</span> 
+                        ו<span class="highlight">יותר מקצועי</span>.
+                    </p>
+                </div>
+
+                <div style="margin-top: 3rem; padding: 2rem; background: var(--bg-tertiary); border-radius: 12px; border-right: 4px solid var(--accent-blue);">
+                    <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">השלב הבא 🚀</h3>
+                    <p style="font-size: 1.2rem; line-height: 1.8;">
+                        אחרי שעובדים עם generator, השלב הבא הוא ללמוד גם 
+                        <strong>"קיצורי דרך" (heuristics)</strong> 
+                        כדי לא לבדוק את כל המיליונים – אלא רק את האפשרויות הסבירות יותר!
+                    </p>
+                </div>
+
+                <div style="margin-top: 3rem; text-align: center; font-size: 1.3rem;">
+                    <p style="color: var(--accent-cyan); font-weight: 700;">
+                        זכרו: קוד טוב = קוד יעיל 💪
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="slide-counter">
+        <span id="current-slide">1</span> / <span id="total-slides">15</span>
+    </div>
+    
+    <div class="nav-controls">
+        <button class="nav-btn" id="prev-btn">→ הקודם</button>
+        <button class="nav-btn" id="next-btn">הבא ←</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+        
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) n = totalSlides;
+            if (n < 1) n = 1;
+            
+            slides.forEach(slide => {
+                slide.classList.remove('active', 'prev');
+            });
+            
+            slides[n - 1].classList.add('active');
+            if (n > 1) {
+                slides[n - 2].classList.add('prev');
+            }
+            
+            currentSlide = n;
+            document.getElementById('current-slide').textContent = n;
+            
+            // Update button states
+            document.getElementById('prev-btn').disabled = (n === 1);
+            document.getElementById('next-btn').disabled = (n === totalSlides);
+        }
+        
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            showSlide(currentSlide - 1);
+        });
+        
+        document.getElementById('next-btn').addEventListener('click', () => {
+            showSlide(currentSlide + 1);
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') showSlide(currentSlide + 1); // RTL
+            if (e.key === 'ArrowRight') showSlide(currentSlide - 1); // RTL
+        });
+
+        // Quiz functionality
+        document.querySelectorAll('.quiz-container').forEach(container => {
+            const options = container.querySelectorAll('.quiz-option');
+            const feedback = container.querySelector('.quiz-feedback');
+            let answered = false;
+
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    if (answered) return;
+
+                    const isCorrect = option.dataset.correct === 'true';
+                    answered = true;
+
+                    option.classList.add('selected');
+                    
+                    if (isCorrect) {
+                        option.classList.add('correct');
+                        feedback.textContent = '✓ נכון מצוין! תשובה מדויקת.';
+                        feedback.classList.add('correct', 'show');
+                    } else {
+                        option.classList.add('incorrect');
+                        // Show correct answer
+                        options.forEach(opt => {
+                            if (opt.dataset.correct === 'true') {
+                                opt.classList.add('correct');
+                            }
+                        });
+                        feedback.textContent = '✗ לא נכון. התשובה הנכונה מסומנת בירוק.';
+                        feedback.classList.add('incorrect', 'show');
+                    }
+                });
+            });
+        });
+
+        // Initialize
+        showSlide(1);
+    </script>
+</body>
+</html>

@@ -46,6 +46,93 @@
             opacity: 0.9;
         }
 
+        .save-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .save-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .save-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .load-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .load-btn:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .reset-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .reset-btn:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .auto-save-indicator {
+            color: #4CAF50;
+            font-size: 0.9em;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .auto-save-indicator.show {
+            opacity: 1;
+        }
+
         .mission-brief {
             background: #fff3cd;
             border-right: 5px solid #ffc107;
@@ -446,6 +533,23 @@
         <div class="header">
             <h1>🕵️‍♂️ מבצע שביל הנתונים</h1>
             <p class="subtitle">תרגיל אינטראקטיבי בשכבת הרשת | מגמת סייבר</p>
+            
+            <div class="save-controls">
+                <button class="save-btn" onclick="saveToFile()">
+                    💾 שמור תשובות לקובץ
+                </button>
+                <button class="load-btn" onclick="document.getElementById('fileInput').click()">
+                    📁 טען תשובות מקובץ
+                </button>
+                <button class="reset-btn" onclick="resetProgress()">
+                    🔄 התחל מחדש
+                </button>
+                <input type="file" id="fileInput" accept=".json" onchange="loadFromFile(event)">
+            </div>
+            
+            <div class="auto-save-indicator" id="autoSaveIndicator">
+                ✓ נשמר אוטומטית
+            </div>
         </div>
 
         <div class="mission-brief">
@@ -1258,6 +1362,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ תשובה שגויה, נסה שוב');
                 answers[questionId] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Check IP answer
@@ -1278,6 +1383,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ תשובה שגויה. ודא שהכתובת בפורמט נכון (X.X.X.X)');
                 answers[questionId] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Check number answer
@@ -1298,6 +1404,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ תשובה שגויה. נסה לחשב שוב');
                 answers[questionId] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Check text answer
@@ -1320,6 +1427,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ התשובה לא מכילה את הנקודות העיקריות. נסה להוסיף פרטים');
                 answers[questionId] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Handle key answer for decryption
@@ -1341,6 +1449,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ תשובה שגויה. מה הבית האחרון של 10.0.1.254?');
                 answers['q5_3'] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Check decryption
@@ -1369,6 +1478,7 @@ Z → C
                 showFeedback(feedback, 'error', '✗ הפענוח לא נכון. זכור: shift של 254 mod 26 = 20. נסה להזיז כל אות ב-20 מקומות קדימה (או 6 אחורה)');
                 answers['q5_4'] = false;
             }
+            autoSave(); // שמירה אוטומטית
         }
 
         // Show feedback
@@ -1459,7 +1569,244 @@ Z → C
         // Initialize
         window.onload = function() {
             updateProgress();
+            loadFromLocalStorage(); // טען תשובות שמורות בעת טעינת הדף
         };
+
+        // Auto-save to localStorage
+        function autoSave() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                currentStage: currentStage,
+                completedStages: Array.from(completedStages),
+                answers: answers,
+                scores: scores,
+                formData: getAllFormData()
+            };
+            
+            localStorage.setItem('networkLayerExercise', JSON.stringify(data));
+            showAutoSaveIndicator();
+        }
+
+        // Get all form data
+        function getAllFormData() {
+            const formData = {};
+            const inputs = document.querySelectorAll('input[type="text"], textarea, select');
+            inputs.forEach(input => {
+                if (input.id) {
+                    formData[input.id] = input.value;
+                }
+            });
+            return formData;
+        }
+
+        // Show auto-save indicator
+        function showAutoSaveIndicator() {
+            const indicator = document.getElementById('autoSaveIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 2000);
+        }
+
+        // Load from localStorage
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('networkLayerExercise');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    
+                    // Restore state
+                    currentStage = data.currentStage || 1;
+                    completedStages = new Set(data.completedStages || []);
+                    answers = data.answers || {};
+                    scores = data.scores || {stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0};
+                    
+                    // Restore form data
+                    if (data.formData) {
+                        Object.entries(data.formData).forEach(([id, value]) => {
+                            const element = document.getElementById(id);
+                            if (element) {
+                                element.value = value;
+                            }
+                        });
+                    }
+                    
+                    // Update UI
+                    completedStages.forEach(stage => {
+                        const tabIndex = stage - 1;
+                        if (tabIndex >= 0 && tabIndex < 5) {
+                            document.querySelectorAll('.tab')[tabIndex].classList.add('completed');
+                        }
+                    });
+                    
+                    showStage(currentStage);
+                    updateProgress();
+                    
+                    console.log('נטען מהשמירה האוטומטית:', data.timestamp);
+                } catch (e) {
+                    console.error('שגיאה בטעינת נתונים:', e);
+                }
+            }
+        }
+
+        // Save to file
+        function saveToFile() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                studentName: prompt('הכנס את שמך (אופציונלי):') || 'אלמוני',
+                currentStage: currentStage,
+                completedStages: Array.from(completedStages),
+                answers: answers,
+                scores: scores,
+                formData: getAllFormData(),
+                totalScore: Object.values(scores).reduce((a, b) => a + b, 0)
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `network_exercise_${data.studentName}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('✅ הקובץ נשמר בהצלחה!');
+        }
+
+        // Load from file
+        function loadFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Confirm before loading
+                    const msg = `האם לטעון את הנתונים של: ${data.studentName}
+מתאריך: ${new Date(data.timestamp).toLocaleString('he-IL')}
+ציון כולל: ${Math.round(data.totalScore)}/100
+
+זה ימחק את התשובות הנוכחיות!`;
+                    
+                    if (!confirm(msg)) return;
+                    
+                    // Restore state
+                    currentStage = data.currentStage || 1;
+                    completedStages = new Set(data.completedStages || []);
+                    answers = data.answers || {};
+                    scores = data.scores || {stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0};
+                    
+                    // Restore form data
+                    if (data.formData) {
+                        Object.entries(data.formData).forEach(([id, value]) => {
+                            const element = document.getElementById(id);
+                            if (element) {
+                                element.value = value;
+                            }
+                        });
+                    }
+                    
+                    // Update UI
+                    document.querySelectorAll('.tab').forEach(tab => {
+                        tab.classList.remove('completed');
+                    });
+                    
+                    completedStages.forEach(stage => {
+                        const tabIndex = stage - 1;
+                        if (tabIndex >= 0 && tabIndex < 5) {
+                            document.querySelectorAll('.tab')[tabIndex].classList.add('completed');
+                        }
+                    });
+                    
+                    showStage(currentStage);
+                    updateProgress();
+                    
+                    // Save to localStorage as well
+                    localStorage.setItem('networkLayerExercise', JSON.stringify(data));
+                    
+                    alert('✅ הנתונים נטענו בהצלחה!');
+                } catch (err) {
+                    alert('❌ שגיאה בקריאת הקובץ: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        // Add auto-save on input change
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-save on any input change
+            document.addEventListener('input', function(e) {
+                if (e.target.matches('input[type="text"], textarea, select')) {
+                    autoSave();
+                }
+            });
+            
+            // Auto-save on stage change
+            const originalShowStage = showStage;
+            showStage = function(stage) {
+                originalShowStage(stage);
+                autoSave();
+            };
+        });
+
+        // Reset all progress
+        function resetProgress() {
+            if (!confirm('האם אתה בטוח שברצונך למחוק את כל התקדמותך והתשובות? פעולה זו לא ניתנת לביטול!')) {
+                return;
+            }
+            
+            // Clear localStorage
+            localStorage.removeItem('networkLayerExercise');
+            
+            // Reset all variables
+            currentStage = 1;
+            completedStages = new Set();
+            answers = {};
+            scores = {
+                stage1: 0,
+                stage2: 0,
+                stage3: 0,
+                stage4: 0,
+                stage5: 0
+            };
+            
+            // Clear all form inputs
+            document.querySelectorAll('input[type="text"], textarea, select').forEach(input => {
+                input.value = '';
+            });
+            
+            // Clear all feedbacks
+            document.querySelectorAll('.feedback').forEach(feedback => {
+                feedback.style.display = 'none';
+            });
+            
+            // Reset tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('completed', 'active');
+            });
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            
+            // Reset stages
+            document.querySelectorAll('.stage').forEach(stage => {
+                stage.classList.remove('active');
+            });
+            document.getElementById('stage1').classList.add('active');
+            document.getElementById('summary').style.display = 'none';
+            
+            // Reset progress bar
+            updateProgress();
+            
+            alert('✅ ההתקדמות אופסה בהצלחה!');
+        }
     </script>
 </body>
 </html>

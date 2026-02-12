@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHCP ו-DHCP Spoofing - מצגת אינטראקטיבית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            overflow: hidden;
+            direction: rtl;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            padding: 60px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(90deg, #fff, #a8dadc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            direction: rtl;
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            color: #a8dadc;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        h3 {
+            direction: rtl;
+            font-size: 1.6em;
+            margin: 25px 0 15px;
+            color: #f1faee;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        .box:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .dhcp-process {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .dhcp-step {
+            background: linear-gradient(135deg, #457b9d, #1d3557);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .dhcp-step:nth-child(1) { animation-delay: 0.2s; }
+        .dhcp-step:nth-child(2) { animation-delay: 0.4s; }
+        .dhcp-step:nth-child(3) { animation-delay: 0.6s; }
+        .dhcp-step:nth-child(4) { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+
+        .dhcp-step::before {
+            content: '←';
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2em;
+            color: #a8dadc;
+        }
+
+        .dhcp-step:last-child::after {
+            display: none;
+        }
+
+        .step-number {
+            background: #e63946;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .network-diagram {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .device {
+            background: rgba(255, 255, 255, 0.15);
+            border: 3px solid;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            min-width: 150px;
+            position: relative;
+        }
+
+        .device.client {
+            border-color: #a8dadc;
+        }
+
+        .device.legitimate {
+            border-color: #06ffa5;
+            box-shadow: 0 0 20px rgba(6, 255, 165, 0.4);
+        }
+
+        .device.malicious {
+            border-color: #e63946;
+            box-shadow: 0 0 20px rgba(230, 57, 70, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .connection {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, #a8dadc, transparent);
+            animation: flowLTR 2s linear infinite;
+        }
+
+        .connection.malicious {
+            background: linear-gradient(90deg, #e63946, transparent);
+        }
+
+        @keyframes flowLTR {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .detection-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .detection-card {
+            background: linear-gradient(135deg, rgba(29, 53, 87, 0.9), rgba(69, 123, 157, 0.9));
+            border: 2px solid #a8dadc;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .detection-card:hover {
+            transform: translateY(-5px);
+            border-color: #06ffa5;
+            box-shadow: 0 10px 30px rgba(6, 255, 165, 0.3);
+        }
+
+        .detection-card h4 {
+            color: #06ffa5;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .code-box {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            direction: ltr;
+            text-align: left;
+           overflow -x: auto;
+            border: 2px solid #06ffa5;
+        }
+
+        .code-box .comment {
+            color: #6a9955;
+        }
+
+        .code-box .keyword {
+            color: #569cd6;
+        }
+
+        .code-box .string {
+            color: #ce9178;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.2), rgba(230, 57, 70, 0.1));
+            border: 2px solid #e63946;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-right: 6px solid #e63946;
+        }
+
+        .warning-box h4 {
+            color: #e63946;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(6, 255, 165, 0.2), rgba(6, 255, 165, 0.1));
+            border: 2px solid #06ffa5;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-right: 6px solid #06ffa5;
+        }
+
+        .info-box h4 {
+            color: #06ffa5;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+        }
+
+        ul {
+            list-style: none;
+            padding-right: 20px;
+        }
+
+        ul li {
+            padding: 10px 0;
+            padding-right: 30px;
+            position: relative;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        ul li::before {
+            content: '◆';
+            position: absolute;
+            right: 0;
+            color: #06ffa5;
+            font-size: 1.2em;
+        }
+
+        .attack-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .timeline-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-right: 4px solid #e63946;
+            border-radius: 8px;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            animation: slideRight 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .timeline-item:nth-child(1) { animation-delay: 0.1s; }
+        .timeline-item:nth-child(2) { animation-delay: 0.2s; }
+        .timeline-item:nth-child(3) { animation-delay: 0.3s; }
+        .timeline-item:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes slideRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timeline-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(-5px);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        button {
+            background: linear-gradient(135deg, #457b9d, #1d3557);
+            color: white;
+            border: 2px solid #a8dadc;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #1d3557, #457b9d);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1em;
+        }
+
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-column {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .comparison-column.good {
+            border: 3px solid #06ffa5;
+        }
+
+        .comparison-column.bad {
+            border: 3px solid #e63946;
+        }
+
+        .comparison-column h4 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .starvation-visual {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .ip-address {
+            background: #1d3557;
+            border: 2px solid #a8dadc;
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .ip-address.taken {
+            background: #e63946;
+            border-color: #e63946;
+            animation: takeover 0.5s ease-out;
+        }
+
+        @keyframes takeover {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .highlight {
+            color: #06ffa5;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #a8dadc;
+            margin-bottom: 20px;
+        }
+
+        strong {
+            color: #06ffa5;
+        }
+
+        .em {
+            color: #e63946;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slide-counter">
+            <span id="current-slide">1</span> / <span id="total-slides">12</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="content" style="justify-content: center; text-align: center;">
+                <h1 style="font-size: 4em; margin-bottom: 20px;">🌐 DHCP Protocol</h1>
+                <h2 style="font-size: 2.5em;">התקפות DHCP ו-Spoofing </h2>
+                <div class="subtitle" style="font-size: 1.5em; margin-top: 30px;">הבנת הפרוטוקול, התקפות נפוצות ושיטות זיהוי</div>
+                <div class="box" style="margin-top: 50px; max-width: 600px; margin-right: auto; margin-left: auto;">
+                    <p style="font-size: 1.3em;">מצגת מקיפה המסבירה את פרוטוקול DHCP, חולשות אבטחה, ושיטות הגנה מתקדמות</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is DHCP -->
+        <div class="slide">
+<!--            <h2 dir="rtl">?DHCP - Dynamic Host Configuration Protocol מה זה</h2>-->
+            <h2 dir="rtl">   מה זה DHCP - Dynamic Host Configuration Protocol</h2>
+            <div class="content">
+                <div class="info-box">
+                    <h4>📋 הגדרה</h4>
+                    <p><strong>DHCP</strong> הוא פרוטוקול רשת המאפשר לשרת להקצות אוטומטית כתובות IP ופרמטרי רשת אחרים למכשירים ברשת.</p>
+                </div>
+
+                <div class="box">
+                    <h3>פרמטרים שהשרת מספק:</h3>
+                    <ul>
+                        <li><strong>כתובת IP</strong> - זיהוי ייחודי למכשיר ברשת</li>
+                        <li><strong>Subnet Mask</strong> - הגדרת תחום הרשת המקומית</li>
+                        <li><strong>Default Gateway</strong> - הנתב המוביל לרשתות חיצוניות/אינטרנט</li>
+                        <li><strong>DNS Servers</strong> - שרתים לתרגום שמות דומיין לכתובות IP</li>
+                        <li><strong>Lease Time</strong> - משך הזמן שהכתובת מוקצית למכשיר</li>
+                    </ul>
+                </div>
+
+                <div class="box">
+                    <h3>יתרונות:</h3>
+                    <ul>
+                        <li>הקצאה אוטומטית - חוסך תצורה ידנית</li>
+                        <li>ניהול מרכזי של כתובות IP</li>
+                        <li>מניעת התנגשויות בכתובות</li>
+                        <li>גמישות בשינויי רשת</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: DHCP DORA Process -->
+        <div class="slide">
+            <h2>תהליך ה- DORA - DHCP</h2>
+            <div class="content">
+                <div class="subtitle">ארבעת השלבים בהקצאת כתובת IP:</div>
+                
+                <div class="dhcp-process">
+                    <div class="dhcp-step">
+                        <div class="step-number">1</div>
+                        <h3>DISCOVER</h3>
+                        <p>הלקוח שולח broadcast לחיפוש שרת DHCP ברשת</p>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #a8dadc;">
+                            Source: 0.0.0.0<br>
+                            Dest: 255.255.255.255
+                        </div>
+                    </div>
+
+                    <div class="dhcp-step">
+                        <div class="step-number">2</div>
+                        <h3>OFFER</h3>
+                        <p>השרת מציע כתובת IP זמינה ופרמטרי רשת</p>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #a8dadc;">
+                            IP: 192.168.1.100<br>
+                            Gateway: 192.168.1.1
+                        </div>
+                    </div>
+
+                    <div class="dhcp-step">
+                        <div class="step-number">3</div>
+                        <h3>REQUEST</h3>
+                        <p>הלקוח מבקש באופן רשמי את הכתובת שהוצעה</p>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #a8dadc;">
+                            Accepting IP<br>
+                            from Server
+                        </div>
+                    </div>
+
+                    <div class="dhcp-step">
+                        <div class="step-number">4</div>
+                        <h3>ACK</h3>
+                        <p>השרת מאשר את ההקצאה והלקוח יכול להשתמש בכתובת</p>
+                        <div style="margin-top: 10px; font-size: 0.9em; color: #a8dadc;">
+                            Lease confirmed<br>
+                            Configuration complete
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 30px;">
+                    <h4>💡 חשוב לדעת</h4>
+                    <p>כל שלבי DISCOVER ו-REQUEST נשלחים ב-<strong>broadcast</strong>, כך שכל מכשיר ברשת יכול "לשמוע" אותם - זו נקודת תורפה מרכזית!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: DHCP Spoofing - Introduction -->
+        <div class="slide">
+            <h2> - מה זה DHCP Spoofing</h2>
+            <div class="content">
+                <div class="warning-box">
+                    <h4>⚠️ הגדרת ההתקפה</h4>
+                    <p><strong>DHCP Spoofing</strong> היא התקפת Man-in-the-Middle בה תוקף מפעיל שרת DHCP מזויף ברשת, המציע כתובות IP ופרמטרי רשת זדוניים ללקוחות.</p>
+                </div>
+
+                <div class="network-diagram" style="margin: 40px 0;">
+                    <div class="device client">
+                        <div style="font-size: 3em;">💻</div>
+                        <div>Client</div>
+                        <div style="font-size: 0.9em; margin-top: 10px;">שולח<br>DHCP DISCOVER</div>
+                    </div>
+
+                    <div class="device legitimate">
+                        <div style="font-size: 3em;">✅</div>
+                        <div>Legitimate Server</div>
+                        <div style="font-size: 0.9em; margin-top: 10px; color: #06ffa5;">שרת לגיטימי</div>
+                    </div>
+
+                    <div class="device malicious">
+                        <div style="font-size: 3em;">☠️</div>
+                        <div>Rogue Server</div>
+                        <div style="font-size: 0.9em; margin-top: 10px; color: #e63946;">שרת זדוני</div>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>מטרות התוקף:</h3>
+                    <ul>
+                        <li><strong>Man-in-the-Middle</strong> - הפניית תעבורה דרך מחשב התוקף</li>
+                        <li><strong>DNS Poisoning</strong> - הפניה לשרתי DNS זדוניים</li>
+                        <li><strong>מניעת שירות (DoS)</strong> - הקצאת פרמטרים שגויים</li>
+                        <li><strong>גניבת מידע</strong> - ניתוח תעבורת הרשת</li>
+                        <li><strong>התקפות Phishing</strong> - הפניה לאתרים מזויפים</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Detection Methods - Basic -->
+        <div class="slide">
+            <h2> זיהוי בסיסי של - DHCP Spoofing</h2>
+            <div class="content">
+                <div class="subtitle">שרתי DHCP ברשת - זיהוי ריבוי</div>
+
+                <div class="detection-methods">
+                    <div class="detection-card">
+                        <h4>🔍 1. ניטור תעבורת DHCP</h4>
+                        <p><strong>שיטה:</strong> האזנה לחבילות DHCP OFFER ברשת</p>
+                        <ul style="margin-top: 15px;">
+                            <li>שימוש ב-Wireshark עם פילטר: <code style="background: #1a1a1a; padding: 3px 8px; border-radius: 4px;">dhcp</code></li>
+                            <li>זיהוי מקורות מרובים לחבילות OFFER</li>
+                            <li>בדיקת MAC Address של השרתים</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🖥️ 2. בדיקה ברמת הלקוח</h4>
+                        <p><strong>פקודות לבדיקה:</strong></p>
+                        <pre class="code-box" style="margin-top: 10px;">
+<span class="comment"># Windows</span>
+ipconfig /all
+
+<span class="comment"># Linux</span>
+ip addr show
+cat /var/lib/dhcp/dhclient.leases
+
+<span class="comment"># בדיקת DHCP Server שהקצה IP</span>
+grep <span class="string">"DHCPACK"</span> /var/log/syslog
+                        </pre>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>📊 3. השוואת תצורות</h4>
+                        <p><strong>בדיקת עקביות:</strong></p>
+                        <ul style="margin-top: 15px;">
+                            <li>השוואת Gateway בין מכשירים שונים</li>
+                            <li>בדיקת שרתי DNS שהוקצו</li>
+                            <li>זיהוי סטיות מתצורה מוכרת</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>⚡ 4. Network Scanning</h4>
+                        <p><strong>כלים לסריקה:</strong></p>
+                        <pre class="code-box" style="margin-top: 10px;">
+<span class="comment"># Nmap - זיהוי DHCP Servers</span>
+nmap --script broadcast-dhcp-discover
+
+<span class="comment"># dhcpdump - ניטור DHCP</span>
+dhcpdump -i eth0
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Detection - Legitimate vs Malicious -->
+        <div class="slide">
+            <h2> הבחנה בין שרתים לגיטימיים לזדוניים - DHCP Spoofing</h2>
+            <div class="content">
+                <div class="comparison-table">
+                    <div class="comparison-column good">
+                        <h4>✅ שרת לגיטימי</h4>
+                        <ul>
+                            <li><strong>כתובת IP</strong> - תואמת לתשתית הרשת הידועה</li>
+                            <li><strong>MAC Address</strong> - של ציוד רשת מוכר (Router/Server)</li>
+                            <li><strong>Gateway</strong> - כתובת נכונה של הנתב</li>
+                            <li><strong>DNS</strong> - שרתים מוכרים של ספק האינטרנט/ארגון</li>
+                            <li><strong>Lease Time</strong> - זמן סביר (בדרך כלל מספר שעות/ימים)</li>
+                            <li><strong>תזמון</strong> - זמן תגובה רגיל</li>
+                        </ul>
+                    </div>
+
+                    <div class="comparison-column bad">
+                        <h4>❌ שרת זדוני</h4>
+                        <ul>
+                            <li><strong>כתובת IP</strong> - לא תואמת לתשתית, לעיתים IP של workstation</li>
+                            <li><strong>MAC Address</strong> - של מחשב רגיל או כתובת מזויפת</li>
+                            <li><strong>Gateway</strong> - כתובת של מחשב התוקף (MitM)</li>
+                            <li><strong>DNS</strong> - שרתים לא מוכרים או זדוניים</li>
+                            <li><strong>Lease Time</strong> - קצר מאוד או ארוך חריגה</li>
+                            <li><strong>תזמון</strong> - תגובה מהירה במיוחד</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="warning-box" style="margin-top: 20px;">
+                    <h4>🔴 סימנים מרכזיים לזיהוי:</h4>
+                    <ul>
+                        <li><span class="em">Gateway שונה</span> ממה שהיה קודם או ממכשירים אחרים</li>
+                        <li><span class="em">DNS Servers</span> לא מוכרים (לא של ספק האינטרנט או Google/Cloudflare)</li>
+                        <li><span class="em">מספר OFFER</span> מגיעים לאותו DISCOVER</li>
+                        <li><span class="em">שרת DHCP</span> שלא בכתובת IP של הנתב הידוע</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Checking Offer Contents -->
+        <div class="slide">
+            <h2>בדיקת תוכן ההצעות - פרמטרים קריטיים</h2>
+            <div class="content">
+                <div class="box">
+                    <h3> בדיקת ה Gateway - Default Gateway </h3>
+                    <p>זהו הפרמטר <strong>הקריטי ביותר</strong> להתקפת MitM!</p>
+                    <pre class="code-box" style="margin-top: 15px;">
+<span class="comment"># בדיקה ב-Wireshark</span>
+DHCP Option: (3) Router
+    Router: 192.168.1.1   <span class="comment">← לגיטימי</span>
+    Router: 192.168.1.50  <span class="comment">← חשוד! (לא כתובת הנתב)</span>
+
+<span class="comment"># בדיקה במערכת</span>
+ip route show | grep default
+default via <span class="highlight">192.168.1.1</span> dev eth0
+                    </pre>
+                </div>
+
+                <div class="detection-methods">
+                    <div class="detection-card">
+                        <h4>🌐 DNS Servers בדיקת</h4>
+                        <pre class="code-box" style="margin-top: 10px; font-size: 0.85em;">
+<span class="comment"># Wireshark</span>
+Option: (6) Domain Name Server
+    DNS: 8.8.8.8        <span class="comment">✅ Google</span>
+    DNS: 1.1.1.1        <span class="comment">✅ Cloudflare</span>
+    DNS: 192.168.1.100  <span class="comment">⚠️ חשוד!</span>
+                        </pre>
+                        <p style="margin-top: 10px;"><strong>זהירות:</strong> DNS זדוני = התקפת Phishing אפשרית</p>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>⏱️ Lease Time בדיקת</h4>
+                        <pre class="code-box" style="margin-top: 10px; font-size: 0.85em;">
+Option: (51) IP Address Lease Time
+    Lease: <span class="highlight">86400 seconds</span> (24 hours)  <span class="comment">✅ נורמלי</span>
+    Lease: <span class="em">60 seconds</span>                      <span class="comment">⚠️ חשוד!</span>
+    Lease: <span class="em">999999 seconds</span>                  <span class="comment">⚠️ חשוד!</span>
+                        </pre>
+                        <ul style="margin-top: 10px; font-size: 0.95em;">
+                            <li>Lease קצר = ניסיון לשלוט בתעבורה באופן רציף</li>
+                            <li>Lease ארוך מדי = חשד לכוונה זדונית</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 15px;">
+                    <h4>💡 טיפ מעשי</h4>
+                    <p>צור רשימה של הפרמטרים הלגיטימיים ברשת שלך והשווה כל הצעה חדשה אליהם. כל שינוי = חשד!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: DHCP Starvation -->
+        <div class="slide">
+            <h2> התקפת DHCP Starvation Attack</h2>
+            <div class="content">
+                <div class="warning-box">
+                    <h4>⚠️ מה זו התקפת Starvation?</h4>
+                    <p>תוקף מבצע מספר עצום של בקשות DHCP עם <strong>כתובות MAC שונות</strong>, ממצה את מאגר כתובות ה-IP הפנויות של השרת הלגיטימי.</p>
+                </div>
+
+                <div class="attack-timeline">
+                    <div class="timeline-item">
+                        <strong>שלב 1:</strong> התוקף שולח מאות/אלפי DHCP DISCOVER עם MAC addresses מזויפות
+                    </div>
+                    <div class="timeline-item">
+                        <strong>שלב 2:</strong> השרת הלגיטימי מקצה IP לכל בקשה עד שנגמר מאגר הכתובות
+                    </div>
+                    <div class="timeline-item">
+                        <strong>שלב 3:</strong> לקוחות לגיטימיים חדשים לא מקבלים כתובת IP (DoS)
+                    </div>
+                    <div class="timeline-item">
+                        <strong>שלב 4:</strong> התוקף מפעיל שרת DHCP זדוני והופך לספק היחיד ברשת
+                    </div>
+                </div>
+
+                <div class="starvation-visual">
+                    <div class="ip-address taken">192.168.1.10<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.11<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.12<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.13<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.14<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.15<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.16<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.17<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.18<br>❌ Taken</div>
+                    <div class="ip-address taken">192.168.1.19<br>❌ Taken</div>
+                </div>
+
+                <div class="detection-card">
+                    <h4>🔍 זיהוי התקפת Starvation</h4>
+                    <ul>
+                        <li>ניטור <strong>קצב גבוה</strong> של בקשות DHCP ממקורות שונים</li>
+                        <li>זיהוי <strong>MAC addresses חריגים</strong> או מזויפים</li>
+                        <li>בדיקת <strong>ניצול מלא</strong> של מאגר כתובות ה-IP</li>
+                        <li>התרעות מהשרת על <strong>"DHCP pool exhausted"</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: DNS Spoofing via DHCP -->
+        <div class="slide">
+            <h2> התקפת DNS Spoofing דרך DHCP</h2>
+            <div class="content">
+                <div class="warning-box">
+                    <h4>☠️ התקפה משולבת מסוכנת</h4>
+                    <p>תוקף משתמש ב-DHCP Spoofing כדי להקצות <strong>שרתי DNS זדוניים</strong> ללקוחות, ובכך לשלוט על כל תרגום הדומיינים!</p>
+                </div>
+
+                <div class="box">
+                    <h3>שרשרת ההתקפה:</h3>
+                    <div class="attack-timeline">
+                        <div class="timeline-item">
+                            <strong>1. DHCP Spoofing:</strong> השרת הזדוני מספק DNS: 192.168.1.66 (שרת התוקף)
+                        </div>
+                        <div class="timeline-item">
+                            <strong>2. DNS Poisoning:</strong> הקורבן שואל: "מה הכתובת של bank.com?"
+                        </div>
+                        <div class="timeline-item">
+                            <strong>3. תשובה זדונית:</strong> DNS זדוני משיב: "bank.com = 10.0.0.66" (אתר הפישינג)
+                        </div>
+                        <div class="timeline-item">
+                            <strong>4. Phishing:</strong> הקורבן נכנס לאתר מזויף ומזין פרטים רגישים
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detection-methods" style="margin-top: 20px;">
+                    <div class="detection-card">
+                        <h4>🔍 זיהוי DNS זדוני</h4>
+                        <ul>
+                            <li>בדיקת שרתי DNS שהוקצו</li>
+                            <li>השוואה לרשימת DNS מוכרים</li>
+                            <li>בדיקת תשובות DNS חשודות</li>
+                        </ul>
+                        <pre class="code-box" style="margin-top: 10px; font-size: 0.85em;">
+<span class="comment"># בדיקת DNS שהוקצה</span>
+cat /etc/resolv.conf
+nslookup google.com
+                        </pre>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🛡️ הגנה</h4>
+                        <ul>
+                            <li><strong>DHCP Snooping</strong> - סינון DHCP ברמת Switch</li>
+                            <li><strong>DNS Filtering</strong> - חסימת DNS לא מורשים</li>
+                            <li><strong>DNSSEC</strong> - אימות דיגיטלי של תשובות DNS</li>
+                            <li><strong>Static DNS</strong> - הגדרת DNS ידנית במערכות קריטיות</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 15px;">
+                    <h4>💡 שרתי DNS לגיטימיים נפוצים</h4>
+                    <p><strong>Google:</strong> 8.8.8.8, 8.8.4.4 | <strong>Cloudflare:</strong> 1.1.1.1, 1.0.0.1 | <strong>Quad9:</strong> 9.9.9.9</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Response Timing -->
+        <div class="slide">
+            <h2>התייחסות לתזמון ההצעות</h2>
+            <div class="content">
+                <div class="info-box">
+                    <h4>⚡ מירוץ להקצאה</h4>
+                    <p>שרתים זדוניים לעיתים קרובות מגיבים <strong>מהר יותר</strong> משרתים לגיטימיים כדי "לנצח" בתחרות על הלקוח.</p>
+                </div>
+
+                <div class="comparison-table">
+                    <div class="comparison-column good">
+                        <h4>⏱️ שרת לגיטימי</h4>
+                        <ul>
+                            <li><strong>זמן תגובה:</strong> 50-200ms</li>
+                            <li><strong>סיבות לאיטיות:</strong>
+                                <ul style="margin-top: 10px;">
+                                    <li>עומס על השרת</li>
+                                    <li>בדיקת זמינות IP</li>
+                                    <li>ARP ping לאימות</li>
+                                    <li>רישום בדאטהבייס</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="comparison-column bad">
+                        <h4>⚡ שרת זדוני</h4>
+                        <ul>
+                            <li><strong>זמן תגובה:</strong> <10ms (מהיר מאוד)</li>
+                            <li><strong>סיבות למהירות:</strong>
+                                <ul style="margin-top: 10px;">
+                                    <li>ללא בדיקות אימות</li>
+                                    <li>OFFER מוכן מראש</li>
+                                    <li>אין רישום</li>
+                                    <li>יושב ממש על הרשת המקומית</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="box" style="margin-top: 20px;">
+                    <h3>ניתוח תזמון ב-Wireshark:</h3>
+                    <pre class="code-box" style="margin-top: 15px;">
+<span class="comment"># סינון ב-Wireshark</span>
+dhcp.option.dhcp == 2   <span class="comment">← DHCP OFFER packets</span>
+
+<span class="comment"># בדיקת Time Delta</span>
+Time from DISCOVER to OFFER:
+  Server 192.168.1.1  : <span class="highlight">0.120 seconds</span>  <span class="comment">✅ נורמלי</span>
+  Server 192.168.1.50 : <span class="em">0.003 seconds</span>  <span class="comment">⚠️ חשוד מאוד!</span>
+                    </pre>
+                </div>
+
+                <div class="detection-card" style="margin-top: 20px;">
+                    <h4>🎯 סימני אזהרה בתזמון</h4>
+                    <ul>
+                        <li>הפרש זמן <strong>משמעותי</strong> בין תגובות השרתים</li>
+                        <li>תגובה מהירה <strong>חריגה</strong> (פחות מ-5ms)</li>
+                        <li>שרת שתמיד "מנצח" בתחרות על הלקוח</li>
+                        <li>תגובות <strong>עקביות מדי</strong> (אותו זמן תמיד)</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box" style="margin-top: 15px;">
+                    <h4>⚠️ הערה חשובה</h4>
+                    <p>תזמון לבדו אינו הוכחה מספקת, אך <strong>בשילוב</strong> עם פרמטרים חשודים אחרים - זה סימן ברור להתקפה!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Additional Detection Points -->
+        <div class="slide">
+            <h2>נקודות זיהוי נוספות ומתקדמות</h2>
+            <div class="content">
+                <div class="detection-methods">
+                    <div class="detection-card">
+                        <h4>📍 1. בדיקת מיקום פיזי</h4>
+                        <ul>
+                            <li>זיהוי <strong>Switch Port</strong> ממנו מגיע השרת הזדוני</li>
+                            <li>איתור פיזי של המכשיר התוקף</li>
+                            <li>בדיקת OUI של MAC Address</li>
+                        </ul>
+                        <pre class="code-box" style="margin-top: 10px; font-size: 0.85em;">
+<span class="comment"># בדיקת OUI (Organizationally Unique Identifier)</span>
+MAC: <span class="highlight">00:50:56:XX:XX:XX</span>  <span class="comment">→ VMware Virtual</span>
+MAC: <span class="em">DE:AD:BE:EF:XX:XX</span>  <span class="comment">→ Spoofed/Random</span>
+                        </pre>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>📊 2. ניתוח סטטיסטי</h4>
+                        <ul>
+                            <li>מעקב אחר <strong>דפוסי הקצאה</strong> חריגים</li>
+                            <li>זיהוי <strong>Subnet שונה</strong> מהרגיל</li>
+                            <li>ניטור שינויים פתאומיים ב-Gateway</li>
+                            <li>התרעה על <strong>שרתים חדשים</strong> ברשת</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🔒 3. DHCP Snooping</h4>
+                        <p>טכנולוגיית אבטחה ברמת ה-Switch:</p>
+                        <ul>
+                            <li><strong>Trusted Ports</strong> - רק פורטים מוגדרים יכולים להפעיל DHCP Server</li>
+                            <li><strong>Binding Database</strong> - רישום של IP-to-MAC-to-Port</li>
+                            <li><strong>Rate Limiting</strong> - הגבלת מספר בקשות DHCP</li>
+                        </ul>
+                        <pre class="code-box" style="margin-top: 10px; font-size: 0.85em;">
+<span class="comment"># תצורת Cisco Switch</span>
+ip dhcp snooping
+ip dhcp snooping vlan 10
+interface GigabitEthernet0/1
+  ip dhcp snooping trust
+                        </pre>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🛡️ 4. Port Security</h4>
+                        <ul>
+                            <li>הגבלת <strong>מספר MAC addresses</strong> לפורט</li>
+                            <li>מניעת התקפות MAC Flooding</li>
+                            <li>השבתת פורטים בעת זיהוי חריגה</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🔍 5. ניטור לוגים</h4>
+                        <ul>
+                            <li>בדיקת <strong>Syslog</strong> של שרתי DHCP</li>
+                            <li>זיהוי DHCP DECLINE messages</li>
+                            <li>התרעות על pool depletion</li>
+                            <li>ניטור events חריגים</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>⚙️ 6. Dynamic ARP Inspection</h4>
+                        <ul>
+                            <li>אימות <strong>ARP packets</strong> מול DHCP Snooping DB</li>
+                            <li>מניעת ARP Spoofing משולבת</li>
+                            <li>הגנה מפני MitM מבוסס ARP</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    <h4>💡 הגנה מרובדת (Defense in Depth)</h4>
+                    <p>שילוב של <strong>מספר שיטות</strong> ייצור הגנה אפקטיבית. אף פתרון בודד אינו מושלם!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Summary and Protection -->
+        <div class="slide">
+            <h2>סיכום והמלצות הגנה</h2>
+            <div class="content">
+                <div class="box">
+                    <h3>🎯 נקודות מפתח לזיהוי:</h3>
+                    <ul>
+                        <li><strong>שרתים מרובים</strong> - יותר מ-OFFER אחד לבקשה</li>
+                        <li><strong>Gateway חשוד</strong> - לא תואם לנתב המוכר</li>
+                        <li><strong>DNS זר</strong> - שרתי DNS לא מוכרים</li>
+                        <li><strong>תגובה מהירה חריגה</strong> - פחות מ-5ms</li>
+                        <li><strong>MAC Address חשוד</strong> - לא של ציוד רשת</li>
+                        <li><strong>Starvation patterns</strong> - מיצוי מאגר IP</li>
+                    </ul>
+                </div>
+
+                <div class="detection-methods">
+                    <div class="detection-card">
+                        <h4>🛡️ הגנות מומלצות</h4>
+                        <ul>
+                            <li><strong>DHCP Snooping</strong> - הפעלה על כל ה-VLANs</li>
+                            <li><strong>Port Security</strong> - הגבלת MAC addresses</li>
+                            <li><strong>DAI</strong> - Dynamic ARP Inspection</li>
+                            <li><strong>802.1X</strong> - אימות משתמשים ברשת</li>
+                            <li><strong>Network Monitoring</strong> - ניטור מתמיד</li>
+                        </ul>
+                    </div>
+
+                    <div class="detection-card">
+                        <h4>🔧 כלים מעשיים</h4>
+                        <ul>
+                            <li><strong>Wireshark</strong> - ניתוח תעבורה</li>
+                            <li><strong>Nmap</strong> - זיהוי שרתים</li>
+                            <li><strong>dhcpdump</strong> - ניטור DHCP</li>
+                            <li><strong>arpwatch</strong> - מעקב ARP</li>
+                            <li><strong>Snort/Suricata</strong> - IDS/IPS</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="warning-box" style="margin-top: 20px;">
+                    <h4>⚠️ זכור!</h4>
+                    <ul>
+                        <li>DHCP Spoofing היא <strong>נקודת כניסה</strong> להתקפות מורכבות יותר</li>
+                        <li>התקפה מוצלחת יכולה להוביל ל-<strong>MitM, Phishing, DoS</strong> ועוד</li>
+                        <li>הגנה אפקטיבית דורשת <strong>שילוב טכנולוגיות</strong> ו<strong>ניטור מתמיד</strong></li>
+                    </ul>
+                </div>
+
+                <div class="info-box" style="margin-top: 20px; text-align: center;">
+                    <h4>✅ סיום המצגת</h4>
+                    <p style="font-size: 1.2em; margin-top: 15px;">זכרו: <strong>הבנת הפרוטוקול</strong> היא המפתח לזיהוי וסיכול התקפות!</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="controls">
+        <button onclick="prevSlide()">⏭️ הקודם</button>
+        <button onclick="nextSlide()">הבא ⏮️</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        document.getElementById('total-slides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                showSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                showSlide(totalSlides - 1);
+            }
+        });
+
+        // Touch support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) nextSlide();
+            if (touchEndX > touchStartX + 50) prevSlide();
+        }
+    </script>
+</body>
+</html>

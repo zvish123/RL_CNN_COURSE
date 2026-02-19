@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPU vs GPU vs NPU | מדריך אינטראקטיבי</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cpu: #00d4ff;
+    --gpu: #ff6b35;
+    --npu: #a855f7;
+    --bg: #060a14;
+    --surface: #0d1526;
+    --surface2: #131f35;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8eaf0;
+    --text-muted: #8892a4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    padding: 2rem;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0,212,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 50%, rgba(168,85,247,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 50% 90%, rgba(255,107,53,0.1) 0%, transparent 60%);
+    animation: pulse-bg 6s ease-in-out infinite alternate;
+  }
+  @keyframes pulse-bg { from { opacity: 0.6; } to { opacity: 1; } }
+
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--cpu);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    padding: 0.4rem 1.2rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .hero h1 {
+    font-size: clamp(2.5rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+  }
+  .hero h1 .cpu-t { color: var(--cpu); }
+  .hero h1 .gpu-t { color: var(--gpu); }
+  .hero h1 .npu-t { color: var(--npu); }
+  .hero p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    max-width: 520px;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+  }
+  .hero-chips {
+    display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem;
+  }
+  .hero-chip {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.6rem 1.4rem;
+    border-radius: 100px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .hero-chip:hover { transform: translateY(-3px); border-color: currentColor; }
+  .hero-chip.cpu { color: var(--cpu); }
+  .hero-chip.gpu { color: var(--gpu); }
+  .hero-chip.npu { color: var(--npu); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .scroll-hint {
+    position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    color: var(--text-muted); font-size: 0.8rem; text-align: center;
+    animation: bounce 2s infinite;
+  }
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+  .arrow-down { font-size: 1.4rem; display: block; }
+
+  /* ── NAV TABS ── */
+  .tabs-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(6,10,20,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; gap: 0; justify-content: center;
+  }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted);
+    padding: 1.1rem 2rem;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active-cpu { color: var(--cpu); border-bottom-color: var(--cpu); }
+  .tab-btn.active-gpu { color: var(--gpu); border-bottom-color: var(--gpu); }
+  .tab-btn.active-npu { color: var(--npu); border-bottom-color: var(--npu); }
+  .tab-btn.active-cmp { color: #fff; border-bottom-color: #fff; }
+
+  /* ── SECTIONS ── */
+  .section {
+    display: none; max-width: 1100px; margin: 0 auto; padding: 4rem 2rem;
+  }
+  .section.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── SECTION HEADER ── */
+  .sec-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 3rem; }
+  .sec-icon {
+    width: 72px; height: 72px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; flex-shrink: 0;
+  }
+  .cpu-icon { background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.3); }
+  .gpu-icon { background: rgba(255,107,53,0.12); border: 1px solid rgba(255,107,53,0.3); }
+  .npu-icon { background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3); }
+  .sec-title { font-size: 2.4rem; font-weight: 900; letter-spacing: -0.02em; }
+  .sec-sub { color: var(--text-muted); font-size: 1rem; margin-top: 0.3rem; }
+
+  /* ── CARDS GRID ── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.8rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 20px 20px 0 0;
+  }
+  .cpu-card::before { background: linear-gradient(90deg, var(--cpu), transparent); }
+  .gpu-card::before { background: linear-gradient(90deg, var(--gpu), transparent); }
+  .npu-card::before { background: linear-gradient(90deg, var(--npu), transparent); }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+  .card-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; margin-bottom: 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .cpu-card .card-label { color: var(--cpu); }
+  .gpu-card .card-label { color: var(--gpu); }
+  .npu-card .card-label { color: var(--npu); }
+  .card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.7rem; }
+  .card p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.65; }
+
+  /* ── ANALOGY BOX ── */
+  .analogy-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    display: flex; gap: 1.5rem; align-items: flex-start;
+  }
+  .analogy-emoji { font-size: 3rem; flex-shrink: 0; }
+  .analogy-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .analogy-box p { color: var(--text-muted); line-height: 1.65; font-size: 0.95rem; }
+
+  /* ── VISUAL DIAGRAM ── */
+  .diagram-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+  }
+  .diagram-title { font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--text-muted); text-align: center; text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+
+  /* CPU Diagram */
+  .cpu-diagram { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .cpu-cores { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+  .cpu-core {
+    width: 90px; height: 90px; border-radius: 12px;
+    background: rgba(0,212,255,0.1);
+    border: 2px solid rgba(0,212,255,0.4);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; color: var(--cpu);
+    position: relative; cursor: pointer; transition: all 0.3s;
+  }
+  .cpu-core:hover, .cpu-core.active-core {
+    background: rgba(0,212,255,0.2);
+    box-shadow: 0 0 20px rgba(0,212,255,0.3);
+    transform: scale(1.05);
+  }
+  .core-num { font-size: 1.4rem; font-weight: 700; }
+  .core-label { font-size: 0.6rem; opacity: 0.7; }
+  .core-power {
+    position: absolute; top: 4px; right: 4px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cpu);
+    animation: blink 1.5s infinite;
+  }
+  .cpu-bus {
+    width: 100%; max-width: 450px; height: 20px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), rgba(0,212,255,0.5), rgba(0,212,255,0.3), transparent);
+    border-radius: 4px; position: relative; overflow: hidden;
+  }
+  .bus-packet {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 8px; border-radius: 4px;
+    background: var(--cpu);
+    animation: bus-move 2s linear infinite;
+  }
+  .bus-packet:nth-child(2) { animation-delay: 0.7s; }
+  .bus-packet:nth-child(3) { animation-delay: 1.4s; }
+  @keyframes bus-move { from { left: -40px; } to { left: 100%; } }
+  .cpu-mem {
+    background: rgba(0,212,255,0.06);
+    border: 1px dashed rgba(0,212,255,0.3);
+    border-radius: 10px; padding: 0.7rem 2rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--cpu); font-size: 0.8rem;
+  }
+
+  /* GPU Diagram */
+  .gpu-diagram { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .shader-grid {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 3px;
+    max-width: 500px;
+  }
+  .shader-unit {
+    width: 100%; aspect-ratio: 1;
+    border-radius: 2px;
+    background: rgba(255,107,53,0.15);
+    border: 1px solid rgba(255,107,53,0.25);
+    transition: background 0.2s;
+  }
+  .shader-unit.lit {
+    background: var(--gpu);
+    box-shadow: 0 0 4px rgba(255,107,53,0.6);
+  }
+  .shader-legend { color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+
+  /* NPU Diagram */
+  .npu-diagram { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .nn-visual { position: relative; width: 100%; max-width: 500px; height: 200px; }
+  .nn-layer {
+    position: absolute; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  }
+  .nn-node {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.55rem; font-family: 'Share Tech Mono', monospace;
+  }
+  .input-layer { left: 20px; }
+  .input-layer .nn-node { background: rgba(168,85,247,0.2); border: 2px solid var(--npu); color: var(--npu); }
+  .hidden1 { left: 110px; }
+  .hidden2 { left: 200px; }
+  .hidden1 .nn-node, .hidden2 .nn-node { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.4); color: var(--npu); }
+  .output-layer { left: 290px; }
+  .output-layer .nn-node { background: rgba(168,85,247,0.3); border: 2px solid var(--npu); color: #fff; font-weight: 700; }
+  canvas#nn-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .npu-legend { color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+
+  /* ── REAL WORLD EXAMPLES ── */
+  .examples-section { margin-bottom: 3rem; }
+  .examples-section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.2rem; }
+  .examples-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+  .example-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem;
+    text-align: center;
+    transition: transform 0.3s;
+    cursor: default;
+  }
+  .example-card:hover { transform: translateY(-3px); }
+  .example-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .example-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .example-card p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+
+  /* ── SPECS BAR ── */
+  .spec-bars { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 3rem; }
+  .spec-row { display: flex; align-items: center; gap: 1rem; }
+  .spec-name { width: 160px; font-size: 0.85rem; color: var(--text-muted); flex-shrink: 0; text-align: right; }
+  .spec-track {
+    flex: 1; height: 10px; border-radius: 100px;
+    background: var(--surface2); overflow: hidden;
+  }
+  .spec-fill {
+    height: 100%; border-radius: 100px;
+    width: 0%; transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .cpu-fill { background: linear-gradient(90deg, var(--cpu), rgba(0,212,255,0.5)); }
+  .gpu-fill { background: linear-gradient(90deg, var(--gpu), rgba(255,107,53,0.5)); }
+  .npu-fill { background: linear-gradient(90deg, var(--npu), rgba(168,85,247,0.5)); }
+  .spec-val { font-size: 0.85rem; font-weight: 700; font-family: 'Share Tech Mono', monospace; width: 60px; }
+
+  /* ── COMPARISON TABLE ── */
+  #section-compare .cards-grid { display: block; }
+  .compare-table-wrap { overflow-x: auto; margin-bottom: 3rem; }
+  .compare-table {
+    width: 100%; border-collapse: collapse; min-width: 600px;
+  }
+  .compare-table th, .compare-table td {
+    padding: 1rem 1.2rem; text-align: center; border-bottom: 1px solid var(--border);
+  }
+  .compare-table th { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; }
+  .compare-table th:first-child { text-align: right; }
+  .compare-table td:first-child { text-align: right; color: var(--text-muted); font-size: 0.9rem; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .th-cpu { color: var(--cpu); }
+  .th-gpu { color: var(--gpu); }
+  .th-npu { color: var(--npu); }
+  .pill {
+    display: inline-block; padding: 0.25rem 0.8rem; border-radius: 100px;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .pill-hi { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .pill-mid { background: rgba(250,204,21,0.15); color: #facc15; }
+  .pill-lo { background: rgba(248,113,113,0.15); color: #f87171; }
+
+  /* ── QUIZ ── */
+  .quiz-section { margin-top: 2rem; }
+  .quiz-section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+  .quiz-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .quiz-q { font-size: 1.05rem; font-weight: 600; margin-bottom: 1.2rem; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.6rem; }
+  .quiz-opt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.8rem 1.2rem;
+    cursor: pointer; font-size: 0.9rem;
+    font-family: 'Heebo', sans-serif;
+    text-align: right;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); }
+  .quiz-opt.correct { border-color: #4ade80; background: rgba(74,222,128,0.1); color: #4ade80; }
+  .quiz-opt.wrong { border-color: #f87171; background: rgba(248,113,113,0.1); color: #f87171; }
+  .quiz-feedback { margin-top: 0.8rem; font-size: 0.9rem; display: none; }
+  .quiz-feedback.show { display: block; }
+
+  /* ── INTERACTIVE DEMO ── */
+  .demo-section { margin-bottom: 3rem; }
+  .demo-section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.2rem; }
+  .task-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+  }
+  .task-item:hover { transform: translateY(-3px); }
+  .task-item.selected { border-color: #fff; background: rgba(255,255,255,0.07); }
+  .task-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .task-item h4 { font-size: 0.9rem; font-weight: 700; }
+  .task-item p { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+  .task-result {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: none;
+  }
+  .task-result.show { display: block; animation: fadeIn 0.3s ease; }
+  .result-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.8rem; }
+  .result-chip {
+    width: 70px; font-size: 0.8rem; font-weight: 700;
+    font-family: 'Share Tech Mono', monospace;
+    text-align: center; flex-shrink: 0;
+  }
+  .result-bar-track {
+    flex: 1; height: 12px; background: var(--surface); border-radius: 100px; overflow: hidden;
+  }
+  .result-bar {
+    height: 100%; border-radius: 100px;
+    width: var(--w); transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .result-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem; }
+  .best-badge {
+    font-size: 0.7rem; font-weight: 700;
+    background: rgba(74,222,128,0.15); color: #4ade80;
+    border-radius: 100px; padding: 0.2rem 0.6rem; margin-right: 0.4rem;
+  }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    text-align: center; padding: 3rem 2rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 0.85rem;
+  }
+  .page-footer span { color: var(--text); font-weight: 700; }
+
+  @media (max-width: 600px) {
+    .sec-title { font-size: 1.8rem; }
+    .tab-btn { padding: 0.9rem 1rem; font-size: 0.85rem; }
+    .shader-grid { grid-template-columns: repeat(12, 1fr); }
+    .spec-name { width: 100px; font-size: 0.75rem; }
+  }
+
+  /* ══════════════════════════════
+     MEMORY & WORKFLOW STYLES
+  ══════════════════════════════ */
+
+  /* Section divider */
+  .mem-section-title {
+    font-size: 1.3rem; font-weight: 800; margin: 3rem 0 1.5rem;
+    display: flex; align-items: center; gap: 0.8rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .mem-section-title .badge {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    padding: 0.3rem 0.8rem; border-radius: 100px;
+    font-family: 'Share Tech Mono', monospace;
+    text-transform: uppercase;
+  }
+  .cpu-badge { background: rgba(0,212,255,0.12); color: var(--cpu); border: 1px solid rgba(0,212,255,0.25); }
+  .gpu-badge { background: rgba(255,107,53,0.12); color: var(--gpu); border: 1px solid rgba(255,107,53,0.25); }
+  .npu-badge { background: rgba(168,85,247,0.12); color: var(--npu); border: 1px solid rgba(168,85,247,0.25); }
+
+  /* ── CACHE PYRAMID ── */
+  .cache-pyramid {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    margin: 1.5rem 0;
+  }
+  .cache-level {
+    display: flex; align-items: center; justify-content: space-between;
+    border-radius: 10px; padding: 0.7rem 1.2rem;
+    cursor: pointer; transition: all 0.3s; position: relative;
+    border: 1px solid transparent;
+  }
+  .cache-level:hover { filter: brightness(1.2); transform: scaleX(1.02); }
+  .cache-lv1 { width: 220px; background: rgba(0,212,255,0.25); border-color: rgba(0,212,255,0.5); }
+  .cache-lv2 { width: 310px; background: rgba(0,212,255,0.17); border-color: rgba(0,212,255,0.35); }
+  .cache-lv3 { width: 400px; background: rgba(0,212,255,0.10); border-color: rgba(0,212,255,0.2); }
+  .cache-ram { width: 490px; background: rgba(0,212,255,0.05); border-color: rgba(0,212,255,0.12); }
+  .cache-storage { width: 580px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08); }
+  .cache-name { font-weight: 700; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: var(--cpu); }
+  .cache-stats { font-size: 0.75rem; color: var(--text-muted); text-align: left; }
+  .cache-speed { font-size: 0.75rem; font-weight: 700; color: #4ade80; }
+  .cache-tooltip {
+    display: none; position: absolute; top: 110%; right: 50%; transform: translateX(50%);
+    background: #0d1e3a; border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.8rem 1rem; z-index: 10; width: 260px;
+    font-size: 0.82rem; line-height: 1.5; color: var(--text);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    text-align: right;
+  }
+  .cache-level:hover .cache-tooltip { display: block; }
+
+  /* ── PIPELINE FLOW ── */
+  .pipeline-flow {
+    display: flex; align-items: center; gap: 0;
+    overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0;
+    scrollbar-width: thin;
+  }
+  .pipe-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.9rem 1rem;
+    min-width: 110px; text-align: center; flex-shrink: 0;
+    transition: all 0.3s; cursor: default;
+  }
+  .pipe-step:hover { transform: translateY(-4px); }
+  .pipe-step.cpu-step { border-top: 3px solid var(--cpu); }
+  .pipe-step.gpu-step { border-top: 3px solid var(--gpu); }
+  .pipe-step.npu-step { border-top: 3px solid var(--npu); }
+  .pipe-icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
+  .pipe-label { font-size: 0.75rem; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+  .pipe-sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
+  .pipe-arrow {
+    color: var(--text-muted); font-size: 1.2rem;
+    padding: 0 0.3rem; flex-shrink: 0;
+  }
+  .pipe-active { background: rgba(0,212,255,0.08); border-color: var(--cpu) !important; }
+
+  /* ── MEMORY TYPE CARDS ── */
+  .mem-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem; margin: 1.5rem 0;
+  }
+  .mem-type-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.4rem;
+    position: relative; overflow: hidden;
+    transition: transform 0.3s;
+  }
+  .mem-type-card:hover { transform: translateY(-3px); }
+  .mem-type-icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+  .mem-type-name {
+    font-size: 0.8rem; font-weight: 700;
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 0.4rem;
+  }
+  .mem-type-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .mem-type-card p { font-size: 0.82rem; color: var(--text-muted); line-height: 1.55; }
+  .mem-tag {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    padding: 0.2rem 0.6rem; border-radius: 100px; margin-top: 0.6rem;
+  }
+  .tag-fast { background: rgba(74,222,128,0.12); color: #4ade80; }
+  .tag-mid  { background: rgba(250,204,21,0.12);  color: #facc15; }
+  .tag-slow { background: rgba(248,113,113,0.12); color: #f87171; }
+  .tag-huge { background: rgba(148,163,184,0.12); color: #94a3b8; }
+
+  /* ── DATA FLOW ANIMATION ── */
+  .data-flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem;
+    margin: 1.5rem 0; overflow: hidden; position: relative;
+  }
+  .data-flow-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); }
+  .data-flow-track {
+    position: relative; height: 50px;
+    background: var(--surface2); border-radius: 8px; overflow: hidden; margin-bottom: 0.8rem;
+  }
+  .flow-label {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 0.75rem; font-weight: 700;
+    font-family: 'Share Tech Mono', monospace; z-index: 2;
+  }
+  .flow-bw {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 0.7rem; color: var(--text-muted); z-index: 2;
+  }
+  .flow-bar {
+    position: absolute; top: 0; right: 0;
+    height: 100%; opacity: 0.25; border-radius: 8px;
+  }
+  .flow-packet {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    height: 12px; border-radius: 6px;
+    animation: flow-anim linear infinite;
+  }
+  @keyframes flow-anim {
+    from { right: 100%; }
+    to   { right: -20%; }
+  }
+
+  /* ── HOW IT WORKS STEPS ── */
+  .steps-container { margin: 1.5rem 0; }
+  .step-row {
+    display: flex; gap: 1rem; align-items: flex-start;
+    margin-bottom: 1rem; padding: 1rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; transition: all 0.3s; cursor: default;
+  }
+  .step-row:hover { border-color: rgba(255,255,255,0.15); transform: translateX(-4px); }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 0.85rem; flex-shrink: 0;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .step-num-cpu { background: rgba(0,212,255,0.15); color: var(--cpu); border: 1px solid rgba(0,212,255,0.3); }
+  .step-num-gpu { background: rgba(255,107,53,0.15); color: var(--gpu); border: 1px solid rgba(255,107,53,0.3); }
+  .step-num-npu { background: rgba(168,85,247,0.15); color: var(--npu); border: 1px solid rgba(168,85,247,0.3); }
+  .step-content h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .step-content p  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
+  .step-content code {
+    background: rgba(255,255,255,0.07); padding: 0.1rem 0.4rem;
+    border-radius: 4px; font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem; color: #e2e8f0;
+  }
+
+  /* ── BANDWIDTH RACE ── */
+  .bandwidth-race { margin: 1.5rem 0; }
+  .bw-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.7rem; }
+  .bw-label { width: 140px; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; text-align: right;
+              font-family: 'Share Tech Mono', monospace; }
+  .bw-track { flex: 1; height: 14px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+  .bw-bar { height: 100%; border-radius: 100px; width: 0; transition: width 1.2s cubic-bezier(.25,.46,.45,.94); }
+  .bw-val { font-size: 0.8rem; font-weight: 700; width: 90px; font-family: 'Share Tech Mono', monospace; }
+
+  /* ── QUANTIZATION VISUAL ── */
+  .quant-demo {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem; margin: 1.5rem 0;
+  }
+  .quant-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); }
+  .quant-compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  }
+  .quant-box {
+    background: var(--surface2); border-radius: 12px; padding: 1rem; text-align: center;
+  }
+  .quant-box h5 { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .quant-bits {
+    display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-bottom: 0.5rem;
+  }
+  .bit {
+    width: 14px; height: 14px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.5rem; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+  }
+  .bit-1 { background: rgba(0,212,255,0.6); color: #000; }
+  .bit-0 { background: rgba(0,212,255,0.15); color: rgba(0,212,255,0.5); }
+  .bit-npu-1 { background: rgba(168,85,247,0.7); color: #000; }
+  .bit-npu-0 { background: rgba(168,85,247,0.15); color: rgba(168,85,247,0.5); }
+  .quant-info { font-size: 0.75rem; color: var(--text-muted); }
+  .quant-gain { font-size: 0.8rem; font-weight: 700; color: #4ade80; margin-top: 0.4rem; }
+
+  /* ── MEMORY FLOW DIAGRAM (GPU) ── */
+  .gpu-mem-diagram {
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    padding: 1.5rem 0; position: relative;
+  }
+  .gmd-level {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    width: 100%;
+  }
+  .gmd-box {
+    border-radius: 10px; padding: 0.6rem 1rem;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+    font-weight: 700; text-align: center; min-width: 110px;
+    border: 1px solid transparent;
+  }
+  .gmd-arrow { font-size: 1.2rem; color: var(--text-muted); writing-mode: horizontal-tb; }
+  .gmd-vert { font-size: 1.2rem; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="grid-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-badge">🎓 מגמת הנדסת תוכנה | מדריך אינטראקטיבי</div>
+    <h1>
+      <span class="cpu-t">CPU</span> &nbsp;·&nbsp;
+      <span class="gpu-t">GPU</span> &nbsp;·&nbsp;
+      <span class="npu-t">NPU</span>
+    </h1>
+    <p>שלושת המעבדים שמניעים את העולם הדיגיטלי — מה ההבדל ביניהם, ולמה כל אחד קיים?</p>
+    <div class="hero-chips">
+      <div class="hero-chip cpu" onclick="showTab('cpu')"><span class="dot"></span> Central Processing Unit</div>
+      <div class="hero-chip gpu" onclick="showTab('gpu')"><span class="dot"></span> Graphics Processing Unit</div>
+      <div class="hero-chip npu" onclick="showTab('npu')"><span class="dot"></span> Neural Processing Unit</div>
+    </div>
+    <div style="color:var(--text-muted);font-size:0.9rem;">לחץ על מעבד כלשהו כדי להתחיל, או גלול למטה ↓</div>
+  </div>
+  <div class="scroll-hint">
+    <span class="arrow-down">⬇</span>
+    גלול למטה
+  </div>
+</section>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn" id="tab-cpu" onclick="showTab('cpu')">🧠 CPU</button>
+  <button class="tab-btn" id="tab-gpu" onclick="showTab('gpu')">🎮 GPU</button>
+  <button class="tab-btn" id="tab-npu" onclick="showTab('npu')">🤖 NPU</button>
+  <button class="tab-btn" id="tab-compare" onclick="showTab('compare')">⚖️ השוואה</button>
+  <button class="tab-btn" id="tab-memory" onclick="showTab('memory')">🗄️ זיכרון</button>
+</div>
+
+<!-- ══════════════════════════════ CPU SECTION ══════════════════════════════ -->
+<section class="section" id="section-cpu">
+  <div class="sec-header">
+    <div class="sec-icon cpu-icon">🧠</div>
+    <div>
+      <div class="sec-title" style="color:var(--cpu)">CPU</div>
+      <div class="sec-sub">Central Processing Unit | המוח של המחשב</div>
+    </div>
+  </div>
+
+  <!-- THEORY CARDS -->
+  <div class="cards-grid">
+    <div class="card cpu-card">
+      <div class="card-label">תיאוריה</div>
+      <h3>מה זה CPU?</h3>
+      <p>מעבד מרכזי שמבצע פקודות של תוכנות. הוא מעבד משימות ב<strong>סדר</strong> (Sequential) — אחת אחרי השנייה, עם מהירות מדהימה. מורכב ממספר קטן של <strong>ליבות (Cores)</strong> חזקות מאוד — בד"כ 4 עד 32.</p>
+    </div>
+    <div class="card cpu-card">
+      <div class="card-label">ארכיטקטורה</div>
+      <h3>איך הוא עובד?</h3>
+      <p>כל ליבה מורכבת מ: <strong>ALU</strong> (יחידת חישוב), <strong>Control Unit</strong> (מפקד), <strong>Cache</strong> (זיכרון מהיר), ו-<strong>Registers</strong> (תאי זיכרון זמניים). הוא מסוגל לטפל בכל סוג של משימה — גנרלי לחלוטין.</p>
+    </div>
+    <div class="card cpu-card">
+      <div class="card-label">ביצועים</div>
+      <h3>מה הוא טוב בו?</h3>
+      <p>קבלת החלטות מורכבות, הרצת קוד לינארי, ניהול משאבים, מניפולציה על נתונים עם הרבה תנאים (if/else), ו-<strong>latency נמוך</strong> — תגובה מהירה במיוחד לפקודות בודדות.</p>
+    </div>
+  </div>
+
+  <!-- ANALOGY -->
+  <div class="analogy-box">
+    <div class="analogy-emoji">👨‍⚕️</div>
+    <div>
+      <h3>דוגמה מוחשית — הרופא הכללי</h3>
+      <p>דמיין CPU כ<strong>רופא מנוסה ומוכשר</strong>. הוא יכול לטפל בכל בעיה רפואית — שבר בעצם, מחלת עיניים, בעיה נפשית. הוא חכם מאוד, מקבל החלטות מורכבות, אבל עובד עם <strong>מטופל אחד בכל פעם</strong>. אם לחכות בתור — זה לוקח זמן. מתאים לבעיות מורכבות שדורשות שיקול דעת עמוק.</p>
+    </div>
+  </div>
+
+  <!-- VISUAL DIAGRAM -->
+  <div class="diagram-container">
+    <div class="diagram-title">📊 ויזואליזציה — ליבות CPU בפעולה (לחץ על ליבה!)</div>
+    <div class="cpu-diagram">
+      <div class="cpu-cores" id="cpu-cores-container">
+        <!-- generated by JS -->
+      </div>
+      <div class="cpu-bus">
+        <div class="bus-packet"></div>
+        <div class="bus-packet"></div>
+        <div class="bus-packet"></div>
+      </div>
+      <div class="cpu-mem">💾 RAM Cache — L1 / L2 / L3</div>
+    </div>
+    <p id="core-info" style="text-align:center;color:var(--text-muted);font-size:0.85rem;margin-top:1rem;">לחץ על ליבה כלשהי לפרטים</p>
+  </div>
+
+  <!-- SPECS -->
+  <div style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">⚡ ביצועי CPU — יחסי (לעומת GPU ו-NPU)</div>
+  <div class="spec-bars" id="cpu-specs">
+    <div class="spec-row"><div class="spec-name">Single-Core Speed</div><div class="spec-track"><div class="spec-fill cpu-fill" data-val="95"></div></div><div class="spec-val" style="color:var(--cpu)">95%</div></div>
+    <div class="spec-row"><div class="spec-name">Parallel Power</div><div class="spec-track"><div class="spec-fill cpu-fill" data-val="25"></div></div><div class="spec-val" style="color:var(--cpu)">25%</div></div>
+    <div class="spec-row"><div class="spec-name">Flexibility</div><div class="spec-track"><div class="spec-fill cpu-fill" data-val="99"></div></div><div class="spec-val" style="color:var(--cpu)">99%</div></div>
+    <div class="spec-row"><div class="spec-name">AI Efficiency</div><div class="spec-track"><div class="spec-fill cpu-fill" data-val="30"></div></div><div class="spec-val" style="color:var(--cpu)">30%</div></div>
+    <div class="spec-row"><div class="spec-name">Power Efficiency</div><div class="spec-track"><div class="spec-fill cpu-fill" data-val="60"></div></div><div class="spec-val" style="color:var(--cpu)">60%</div></div>
+  </div>
+
+  <!-- ══ CPU MEMORY SECTION ══ -->
+  <div class="mem-section-title">
+    💾 ארכיטקטורת הזיכרון של ה-CPU
+    <span class="badge cpu-badge">Memory Deep Dive</span>
+  </div>
+
+  <div class="mem-types-grid">
+    <div class="mem-type-card" style="border-top:3px solid var(--cpu)">
+      <div class="mem-type-icon">⚡</div>
+      <div class="mem-type-name" style="color:var(--cpu)">REGISTERS</div>
+      <h4>רגיסטרים</h4>
+      <p>הזיכרון המהיר ביותר שקיים — ממש בתוך המעבד. כל ליבה מחזיקה כ-<strong>16–32 רגיסטרים</strong> של 64 ביט. המעבד עובד ישירות מולם. הם כמו השולחן שעליו הרופא שם את הכלים שבשימוש עכשיו.</p>
+      <span class="mem-tag tag-fast">⚡ פחות מ-1 מחזור</span>
+      <span class="mem-tag tag-fast">~1KB בסה"כ</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(0,212,255,0.7)">
+      <div class="mem-type-icon">🗂️</div>
+      <div class="mem-type-name" style="color:var(--cpu)">L1 CACHE</div>
+      <h4>מטמון רמה 1</h4>
+      <p>הזיכרון הקרוב ביותר לליבה — <strong>32–64 KB לכל ליבה</strong>. מחולק ל-L1i (פקודות) ו-L1d (נתונים). אם הנתון שהמעבד צריך נמצא כאן — המחשב הכי מאושר.</p>
+      <span class="mem-tag tag-fast">⚡ ~4 מחזורים</span>
+      <span class="mem-tag tag-fast">32–64 KB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(0,212,255,0.5)">
+      <div class="mem-type-icon">📦</div>
+      <div class="mem-type-name" style="color:var(--cpu)">L2 CACHE</div>
+      <h4>מטמון רמה 2</h4>
+      <p>גדול יותר, קצת יותר איטי. <strong>256KB–1MB לליבה</strong>. משמש כרשת ביטחון כשה-L1 לא מצאנו את הנתון (Cache Miss). בדוגמת הרופא — זה ארגז הכלים שליד השולחן.</p>
+      <span class="mem-tag tag-mid">⏱ ~12 מחזורים</span>
+      <span class="mem-tag tag-mid">256KB–1MB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(0,212,255,0.3)">
+      <div class="mem-type-icon">🏪</div>
+      <div class="mem-type-name" style="color:var(--cpu)">L3 CACHE</div>
+      <h4>מטמון רמה 3</h4>
+      <p><strong>משותף לכל הליבות</strong> — 8MB עד 64MB. מאפשר לליבות לשתף נתונים מהר. ה-L3 הוא כמו המחסן של קומת הקרקע — גדול אבל קצת רחוק.</p>
+      <span class="mem-tag tag-mid">⏱ ~40 מחזורים</span>
+      <span class="mem-tag tag-mid">8–64 MB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,255,255,0.2)">
+      <div class="mem-type-icon">🗄️</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">RAM</div>
+      <h4>זיכרון ראשי (DDR5)</h4>
+      <p>זיכרון נפרד מהמעבד, מחובר דרך <strong>memory bus</strong>. אחסון של כל התוכנות הפעילות — <strong>8GB עד 192GB</strong>. RAM Miss = ה-CPU מחכה מאות מחזורים = בזבוז זמן.</p>
+      <span class="mem-tag tag-slow">🐢 ~100 מחזורים</span>
+      <span class="mem-tag tag-huge">8GB–192GB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,255,255,0.1)">
+      <div class="mem-type-icon">💿</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">STORAGE (SSD)</div>
+      <h4>אחסון קבוע</h4>
+      <p>הכי איטי, הכי גדול. המעבד לא ניגש ישירות — ה-OS טוען מה-SSD ל-RAM תחילה. <strong>אלפי ננו-שניות</strong> לאחזור. כמו ספרייה קומה 5 בלי מעלית.</p>
+      <span class="mem-tag tag-slow">🐌 מיקרו-שניות</span>
+      <span class="mem-tag tag-huge">256GB–8TB</span>
+    </div>
+  </div>
+
+  <!-- CACHE PYRAMID -->
+  <div class="diagram-container">
+    <div class="diagram-title">🔺 היררכיית הזיכרון של CPU — עמד מעל כל שכבה לפרטים!</div>
+    <div class="cache-pyramid">
+      <div class="cache-level cache-lv1">
+        <span class="cache-name">REGISTERS</span>
+        <span class="cache-stats">~1 KB | ×16 ליבה</span>
+        <span class="cache-speed">⚡ &lt;1ns</span>
+        <div class="cache-tooltip">📌 <strong>רגיסטרים</strong><br>הנתונים שהמעבד עובד עליהם ברגע זה ממש. כמו הידיים של הרופא — מה שהוא אוחז עכשיו. מהיר אין-סופית אבל מקום לפחות מ-100 מספרים.</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:1rem;">▼</div>
+      <div class="cache-level cache-lv2">
+        <span class="cache-name">L1 CACHE</span>
+        <span class="cache-stats">32–64 KB | לכל ליבה</span>
+        <span class="cache-speed">⚡ ~1–4ns</span>
+        <div class="cache-tooltip">📌 <strong>L1 Cache</strong><br><strong>Cache Hit Rate:</strong> ~95% מהגישות מסתיימות כאן.<br><strong>L1i</strong> = Instruction Cache (הפקודות הבאות)<br><strong>L1d</strong> = Data Cache (הנתונים בשימוש)</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:1rem;">▼</div>
+      <div class="cache-level cache-lv3">
+        <span class="cache-name">L2 CACHE</span>
+        <span class="cache-stats">256KB–1MB | לכל ליבה</span>
+        <span class="cache-speed">🟡 ~5–12ns</span>
+        <div class="cache-tooltip">📌 <strong>L2 Cache</strong><br>רשת ביטחון ל-L1 Miss. <strong>Cache Line = 64 bytes</strong> — הנתונים נטענים בחבילות. אפילו אם צריך byte אחד, נטענים 64 bytes.</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:1rem;">▼</div>
+      <div class="cache-level cache-ram">
+        <span class="cache-name">L3 CACHE</span>
+        <span class="cache-stats">8–64 MB | משותף</span>
+        <span class="cache-speed">🟡 ~30–40ns</span>
+        <div class="cache-tooltip">📌 <strong>L3 Shared Cache</strong><br>שותף לכל הליבות — מאפשר להן לתקשר מהר. Intel i9-13900K = <strong>36MB L3.</strong> Thread-safe גישה דרך Cache Coherency Protocol.</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:1rem;">▼</div>
+      <div class="cache-level cache-storage" style="max-width:580px;width:100%">
+        <span class="cache-name" style="color:var(--text-muted)">RAM (DDR5)</span>
+        <span class="cache-stats">8–192 GB | חיצוני</span>
+        <span class="cache-speed" style="color:#facc15">🐢 ~60–100ns</span>
+        <div class="cache-tooltip">📌 <strong>RAM — מה קורה ב-Cache Miss?</strong><br>המעבד ממש <strong>עוצר ומחכה</strong> (stall). זה נקרא <strong>Memory Latency Penalty</strong> — עד 200 מחזורים אבודים. מסיבה זו Cache חשוב כל כך לביצועים!</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem;">ככל שיורדים — גדול יותר, איטי יותר, זול יותר</p>
+  </div>
+
+  <!-- CPU PIPELINE - HOW IT WORKS -->
+  <div class="mem-section-title" style="margin-top:2rem;">
+    ⚙️ שיטת עבודה — Pipeline של ה-CPU
+    <span class="badge cpu-badge">How It Works</span>
+  </div>
+
+  <div class="analogy-box" style="margin-bottom:1.5rem;">
+    <div class="analogy-emoji">🏗️</div>
+    <div>
+      <h3>מה זה Pipeline?</h3>
+      <p>CPU לא מבצע פקודה אחת בבת אחת — הוא מחלק כל פקודה ל-<strong>5 שלבים</strong> ומריץ כמה פקודות <strong>בשלבים שונים בו-זמנית</strong>. כמו מפעל לייצור מכוניות: בזמן שמכונית אחת נצבעת, השנייה מורכבת, והשלישית מוּדבקת. זה מאפשר תפוקה גבוהה מאוד!</p>
+    </div>
+  </div>
+
+  <div class="pipeline-flow">
+    <div class="pipe-step cpu-step">
+      <div class="pipe-icon">📥</div>
+      <div class="pipe-label">FETCH</div>
+      <div class="pipe-sub">שלוף פקודה מ-L1i Cache</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step cpu-step">
+      <div class="pipe-icon">🔍</div>
+      <div class="pipe-label">DECODE</div>
+      <div class="pipe-sub">פרש את הפקודה לפעולות micro-ops</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step cpu-step">
+      <div class="pipe-icon">🏃</div>
+      <div class="pipe-label">EXECUTE</div>
+      <div class="pipe-sub">הרץ ב-ALU או FPU</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step cpu-step">
+      <div class="pipe-icon">📖</div>
+      <div class="pipe-label">MEM ACCESS</div>
+      <div class="pipe-sub">גש ל-Cache/RAM אם דרוש</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step cpu-step">
+      <div class="pipe-icon">💾</div>
+      <div class="pipe-label">WRITE BACK</div>
+      <div class="pipe-sub">שמור תוצאה ברגיסטר</div>
+    </div>
+  </div>
+
+  <div class="steps-container">
+    <div class="step-row">
+      <div class="step-num step-num-cpu">1</div>
+      <div class="step-content">
+        <h4>📥 Fetch — שליפת הפקודה</h4>
+        <p>ה-PC (Program Counter) מצביע לפקודה הבאה בזיכרון. ה-CPU שולף אותה מה-<strong>L1 Instruction Cache</strong>. אם היא לא שם — Cache Miss! ממתין ל-L2, L3 או RAM. דוגמה: <code>MOV R1, [0x1000]</code></p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-cpu">2</div>
+      <div class="step-content">
+        <h4>🔍 Decode — פירוש הפקודה</h4>
+        <p>הפקודה מפוצחת על ידי יחידת הפירוש. פקודה מורכבת (כמו <code>IMUL</code>) מתפרקת למספר <strong>micro-operations</strong> פשוטות. בארכיטקטורות מודרניות (x86-64) זה קורה ב-3–4 שלבים.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-cpu">3</div>
+      <div class="step-content">
+        <h4>🏃 Execute — ביצוע בפועל</h4>
+        <p>ה-<strong>ALU</strong> (Arithmetic Logic Unit) מבצע את החישוב. ה-<strong>FPU</strong> מטפל בנקודה צפה. יחידת ה-<strong>Branch Predictor</strong> מנחשת מראש לאן יקפוץ הקוד (if/else) כדי לא לבזבוז זמן.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-cpu">4</div>
+      <div class="step-content">
+        <h4>📖 Memory Access — גישה לזיכרון</h4>
+        <p>אם הפקודה דורשת קריאה/כתיבה לזיכרון — גישה להיררכיית Cache. <strong>Data locality</strong> קריטי כאן — נתונים קרובים זה לזה ב-RAM נטענים יחד ל-Cache Line (64 bytes). לכן לולאת <code>for</code> על array מהירה מאוד!</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-cpu">5</div>
+      <div class="step-content">
+        <h4>💾 Write Back — שמירת התוצאה</h4>
+        <p>התוצאה נשמרת חזרה לרגיסטר. ב-<strong>Out-of-Order Execution</strong> — פקודות מאוחרות יכולות להסתיים לפני מוקדמות, ה-CPU מסדר אותן בסוף. זה מה שמאפשר ל-Intel/AMD להיות כל כך מהירים.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXAMPLES -->
+  <div class="examples-section">
+    <h2>🌍 דוגמאות שימוש אמיתיות</h2>
+    <div class="examples-grid">
+      <div class="example-card">
+        <div class="example-icon">💻</div>
+        <h4>הרצת תוכנות</h4>
+        <p>Word, Chrome, VSCode — כל אפליקציה רגילה</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🗃️</div>
+        <h4>מסדי נתונים</h4>
+        <p>שאילתות SQL, עיבוד לוגיקה עסקית</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🌐</div>
+        <h4>Web Servers</h4>
+        <p>Node.js, Django — ניהול בקשות HTTP</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🔒</div>
+        <h4>הצפנה</h4>
+        <p>SSL/TLS, AES, RSA — פרוטוקולי אבטחה</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🎵</div>
+        <h4>עיבוד אודיו</h4>
+        <p>קומפילציה, אלגוריתמים מורכבים</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ GPU SECTION ══════════════════════════════ -->
+<section class="section" id="section-gpu">
+  <div class="sec-header">
+    <div class="sec-icon gpu-icon">🎮</div>
+    <div>
+      <div class="sec-title" style="color:var(--gpu)">GPU</div>
+      <div class="sec-sub">Graphics Processing Unit | מעבד המסביל</div>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card gpu-card">
+      <div class="card-label">תיאוריה</div>
+      <h3>מה זה GPU?</h3>
+      <p>מעבד מיוחד שמבצע אלפי פעולות <strong>במקביל (Parallel)</strong>. במקום 8–32 ליבות חזקות, ל-GPU יש <strong>אלפי עד עשרות אלפי ליבות קטנות</strong> (Shader Cores) שעובדות יחד בו-זמנית.</p>
+    </div>
+    <div class="card gpu-card">
+      <div class="card-label">ארכיטקטורה</div>
+      <h3>איך הוא עובד?</h3>
+      <p>הנתונים מחולקים למקטעים זעירים, וכל Shader Core מטפל בחלק אחד. RTX 4090 לדוגמה מכילה <strong>16,384 CUDA cores</strong>. מנוהל ע"י SM (Streaming Multiprocessors) וזיכרון VRAM מהיר במיוחד.</p>
+    </div>
+    <div class="card gpu-card">
+      <div class="card-label">ביצועים</div>
+      <h3>מה הוא טוב בו?</h3>
+      <p>פעולות <strong>מטריציות (Matrix Operations)</strong> — כפל מטריצות, חישובים גיאומטריים, render של פיקסלים. כל משימה שניתן לחלק לחתיכות קטנות זהות וחישוב כולן בו-זמנית.</p>
+    </div>
+  </div>
+
+  <div class="analogy-box">
+    <div class="analogy-emoji">🏭</div>
+    <div>
+      <h3>דוגמה מוחשית — קו ייצור במפעל</h3>
+      <p>GPU הוא כמו <strong>קו ייצור מודרני</strong>. במקום רופא אחד מוכשר (CPU), יש לך <strong>5,000 עובדים פשוטים</strong> שכל אחד מבצע משימה זהה ופשוטה — לדוגמה, צביעת פיקסל אחד. יחד הם מספיקים לצייר את כל המסך שלך ב-1/60 שנייה (60 FPS). מצוין לעבודה חוזרת ומקבילה, לא מתאים להחלטות מורכבות.</p>
+    </div>
+  </div>
+
+  <!-- GPU VISUAL -->
+  <div class="diagram-container">
+    <div class="diagram-title">📊 ויזואליזציה — Shader Cores בפעולה</div>
+    <div class="gpu-diagram">
+      <div class="shader-grid" id="shader-grid">
+        <!-- generated by JS -->
+      </div>
+      <div class="shader-legend" id="shader-legend">⬛ = Shader Core בהמתנה &nbsp;|&nbsp; 🟧 = Core בפעולה</div>
+    </div>
+    <div style="text-align:center;margin-top:1rem;">
+      <button onclick="runGPUDemo()" style="background:var(--gpu);color:white;border:none;padding:0.6rem 1.6rem;border-radius:100px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:700;font-size:0.9rem;">▶ הפעל את כל הליבות!</button>
+    </div>
+  </div>
+
+  <!-- ══ GPU MEMORY SECTION ══ -->
+  <div class="mem-section-title">
+    💾 ארכיטקטורת הזיכרון של ה-GPU
+    <span class="badge gpu-badge">Memory Deep Dive</span>
+  </div>
+
+  <div class="mem-types-grid">
+    <div class="mem-type-card" style="border-top:3px solid var(--gpu)">
+      <div class="mem-type-icon">🚀</div>
+      <div class="mem-type-name" style="color:var(--gpu)">VRAM (GDDR6X)</div>
+      <h4>זיכרון וידאו ייעודי</h4>
+      <p>הזיכרון הראשי של ה-GPU — <strong>נפרד לחלוטין מה-RAM</strong>. RTX 4090 מכיל <strong>24GB GDDR6X</strong>. על ה-VRAM מאוחסנות: טקסטורות, frame buffers, מודלי AI. ה-GPU ניגש ישירות, ללא עבודה דרך ה-CPU.</p>
+      <span class="mem-tag tag-fast">⚡ ~1TB/s רוחב פס</span>
+      <span class="mem-tag tag-fast">8–80 GB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,107,53,0.7)">
+      <div class="mem-type-icon">⚡</div>
+      <div class="mem-type-name" style="color:var(--gpu)">L2 GPU CACHE</div>
+      <h4>מטמון GPU משותף</h4>
+      <p>Cache משותף לכל ה-SM (Streaming Multiprocessors). ב-RTX 4090 = <strong>72MB L2</strong>! גדול פי 3 מ-CPU רגיל. מאפשר ל-SMs רבים לגשת לנתונים זהים (כמו vertex של משולש) בלי לחזור ל-VRAM.</p>
+      <span class="mem-tag tag-fast">⚡ ~40ns</span>
+      <span class="mem-tag tag-mid">16–72 MB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,107,53,0.5)">
+      <div class="mem-type-icon">🧵</div>
+      <div class="mem-type-name" style="color:var(--gpu)">SHARED MEMORY / L1</div>
+      <h4>זיכרון משותף ב-SM</h4>
+      <p><strong>Programmable Cache</strong> — מפתחים יכולים לנהל אותו ידנית! בתוך כל SM: <strong>128KB</strong> שמתחלק בין L1 Cache ו-Shared Memory. ב-CUDA/OpenGL ניתן להזמין נתונים כאן מראש (Prefetch).</p>
+      <span class="mem-tag tag-fast">⚡ ~1–5ns</span>
+      <span class="mem-tag tag-fast">48–128 KB / SM</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,107,53,0.3)">
+      <div class="mem-type-icon">🧮</div>
+      <div class="mem-type-name" style="color:var(--gpu)">REGISTERS (per thread)</div>
+      <h4>רגיסטרים לכל Thread</h4>
+      <p>כל <strong>Thread</strong> (חוט) מקבל רגיסטרים משלו — עד <strong>255 רגיסטרים של 32-bit</strong> לThread. GPU מחזיק <strong>עשרות אלפי Threads</strong> פעילים בו-זמנית, לכל אחד את הרגיסטרים שלו — Register File ענקי!</p>
+      <span class="mem-tag tag-fast">⚡ &lt;1 מחזור</span>
+      <span class="mem-tag tag-mid">255 reg/thread</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,255,255,0.15)">
+      <div class="mem-type-icon">🔗</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">PCIe / NVLink</div>
+      <h4>גשר CPU↔GPU</h4>
+      <p>ה-CPU ו-GPU מחוברים דרך <strong>PCIe 5.0</strong> (~128 GB/s) או <strong>NVLink</strong> (~900 GB/s לשרתי AI). העברת נתונים מ-RAM ל-VRAM דרך הגשר הזה היא לרוב <strong>הצוואר-הבקבוק הגדול ביותר</strong> במערכת.</p>
+      <span class="mem-tag tag-slow">🐢 צוואר-בקבוק</span>
+      <span class="mem-tag tag-mid">32–900 GB/s</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(255,255,255,0.1)">
+      <div class="mem-type-icon">🖼️</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">TEXTURE CACHE</div>
+      <h4>מטמון טקסטורות</h4>
+      <p>Cache ייעודי <strong>לטקסטורות 2D/3D</strong> — מבצע אינטרפולציה (ערבוב צבעים) ישירות בחומרה. מכיל יחידות MIP-map שמחשבות אוטומטית גדלי טקסטורה שונים לפי מרחק. קריטי לגיימינג.</p>
+      <span class="mem-tag tag-fast">⚡ ~10ns</span>
+      <span class="mem-tag tag-fast">ייעודי ל-SM</span>
+    </div>
+  </div>
+
+  <!-- GPU MEMORY HIERARCHY VISUAL -->
+  <div class="diagram-container">
+    <div class="diagram-title">📊 היררכיית זיכרון GPU — מהמהיר ביותר לאיטי ביותר</div>
+    <div class="gpu-mem-diagram">
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,107,53,0.3);border-color:rgba(255,107,53,0.6);color:var(--gpu)">
+          Registers<br><small style="opacity:0.7">255 reg × 1000s threads</small>
+        </div>
+      </div>
+      <div class="gmd-vert">▼</div>
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,107,53,0.2);border-color:rgba(255,107,53,0.4);color:var(--gpu)">
+          L1 / Shared Mem<br><small style="opacity:0.7">128KB per SM | ~1ns</small>
+        </div>
+        <div class="gmd-arrow">✕ 128 SMs</div>
+      </div>
+      <div class="gmd-vert">▼</div>
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,107,53,0.13);border-color:rgba(255,107,53,0.3);color:var(--gpu);min-width:180px">
+          Texture Cache<br><small style="opacity:0.7">ייעודי לגרפיקה | ~10ns</small>
+        </div>
+      </div>
+      <div class="gmd-vert">▼</div>
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,107,53,0.08);border-color:rgba(255,107,53,0.2);color:var(--gpu);min-width:200px">
+          L2 Cache (72MB)<br><small style="opacity:0.7">משותף לכל SMs | ~40ns</small>
+        </div>
+      </div>
+      <div class="gmd-vert">▼</div>
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,107,53,0.05);border-color:rgba(255,107,53,0.12);color:#facc15;min-width:220px">
+          VRAM (GDDR6X 24GB)<br><small style="opacity:0.7">~1TB/s bandwidth | ~200ns</small>
+        </div>
+      </div>
+      <div class="gmd-vert">▼</div>
+      <div class="gmd-level">
+        <div class="gmd-box" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:#f87171;min-width:240px">
+          System RAM (PCIe)<br><small style="opacity:0.7">~128GB/s | מיקרו-שניות — צוואר בקבוק!</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANDWIDTH COMPARISON -->
+  <div class="diagram-container">
+    <div class="diagram-title">⚡ השוואת Bandwidth — GPU מנצח CPU פי 10!</div>
+    <div class="bandwidth-race" id="gpu-bw-race">
+      <div class="bw-row">
+        <div class="bw-label" style="color:#94a3b8">DDR5 RAM (CPU)</div>
+        <div class="bw-track"><div class="bw-bar" style="background:#64748b" data-val="10"></div></div>
+        <div class="bw-val" style="color:#94a3b8">~100 GB/s</div>
+      </div>
+      <div class="bw-row">
+        <div class="bw-label" style="color:#60a5fa">PCIe 5.0 (גשר)</div>
+        <div class="bw-track"><div class="bw-bar" style="background:#3b82f6" data-val="13"></div></div>
+        <div class="bw-val" style="color:#60a5fa">~128 GB/s</div>
+      </div>
+      <div class="bw-row">
+        <div class="bw-label" style="color:#fb923c">RTX 3090 (VRAM)</div>
+        <div class="bw-track"><div class="bw-bar" style="background:#f97316" data-val="100"></div></div>
+        <div class="bw-val" style="color:#fb923c">~936 GB/s</div>
+      </div>
+      <div class="bw-row">
+        <div class="bw-label" style="color:var(--gpu)">RTX 4090 (VRAM)</div>
+        <div class="bw-track"><div class="bw-bar" style="background:linear-gradient(90deg,var(--gpu),#ff9562)" data-val="100"></div></div>
+        <div class="bw-val" style="color:var(--gpu)">1 TB/s! 🔥</div>
+      </div>
+      <div class="bw-row">
+        <div class="bw-label" style="color:#e879f9">H100 NVLink (AI)</div>
+        <div class="bw-track"><div class="bw-bar" style="background:#c026d3" data-val="90"></div></div>
+        <div class="bw-val" style="color:#e879f9">~900 GB/s</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem">למה VRAM מהיר כך? כי ה-GPU ו-VRAM <strong>על אותו השבב</strong> — אין מרחק פיזי ארוך!</p>
+  </div>
+
+  <!-- GPU PIPELINE -->
+  <div class="mem-section-title" style="margin-top:2rem;">
+    ⚙️ שיטת עבודה — Rendering Pipeline של ה-GPU
+    <span class="badge gpu-badge">How It Works</span>
+  </div>
+
+  <div class="analogy-box">
+    <div class="analogy-emoji">🎨</div>
+    <div>
+      <h3>איך GPU מצייר פריים (Frame)?</h3>
+      <p>בכל 1/60 שנייה ה-GPU צריך לצייר מסך שלם — <strong>2 מיליון פיקסלים</strong>. הוא עושה זאת דרך pipeline מדורג, כאשר בכל שלב <strong>אלפי Threads עובדים במקביל</strong>.</p>
+    </div>
+  </div>
+
+  <div class="pipeline-flow">
+    <div class="pipe-step gpu-step">
+      <div class="pipe-icon">📐</div>
+      <div class="pipe-label">VERTEX</div>
+      <div class="pipe-sub">עיבוד נקודות 3D וטרנספורמציות</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step gpu-step">
+      <div class="pipe-icon">🔺</div>
+      <div class="pipe-label">TESSELLATION</div>
+      <div class="pipe-sub">פירוק משטחים לאלפי משולשים</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step gpu-step">
+      <div class="pipe-icon">🗺️</div>
+      <div class="pipe-label">RASTERIZE</div>
+      <div class="pipe-sub">המרת משולשים 3D לפיקסלים 2D</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step gpu-step">
+      <div class="pipe-icon">🎨</div>
+      <div class="pipe-label">FRAGMENT</div>
+      <div class="pipe-sub">חישוב צבע לכל פיקסל (תאורה, צל)</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step gpu-step">
+      <div class="pipe-icon">🖥️</div>
+      <div class="pipe-label">DISPLAY</div>
+      <div class="pipe-sub">כתיבה ל-Frame Buffer → מסך</div>
+    </div>
+  </div>
+
+  <div class="steps-container">
+    <div class="step-row">
+      <div class="step-num step-num-gpu">1</div>
+      <div class="step-content">
+        <h4>📥 העברת נתונים מ-CPU ל-GPU (חשוב!)</h4>
+        <p>ה-CPU שולח נתונים (vertices, טקסטורות) דרך <strong>PCIe</strong> ל-VRAM. זה לרוב <strong>הצוואר הגדול ביותר</strong>! כלל בסיסי: העבר נתונים <strong>בבת אחת, לא בחתיכות קטנות</strong>. לאחר שהנתונים ב-VRAM, ה-GPU עובד לבד.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-gpu">2</div>
+      <div class="step-content">
+        <h4>🧵 חלוקת עבודה ל-Threads ו-Warps</h4>
+        <p>ה-GPU מחלק את העבודה ל-<strong>Threads</strong>. כל 32 Threads נקראים <strong>Warp</strong> — הם מבצעים תמיד את <strong>אותה הפקודה</strong> על נתונים שונים (SIMT — Single Instruction Multiple Threads). Warps מרובים מאורגנים ב-<strong>Thread Block</strong>, ו-Blocks מרובים מרכיבים <strong>Grid</strong>.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-gpu">3</div>
+      <div class="step-content">
+        <h4>🏃 הרצה מקבילית ב-Streaming Multiprocessors</h4>
+        <p>כל <strong>SM (Streaming Multiprocessor)</strong> מריץ מספר Warps בו-זמנית. כש-Warp אחד ממתין לזיכרון (Memory Latency), ה-SM עובר מיד ל-Warp אחר — כך <strong>אין זמן מת</strong>! זה נקרא <strong>Latency Hiding</strong> ומסביר למה ל-GPU צריך כל כך הרבה Threads.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-gpu">4</div>
+      <div class="step-content">
+        <h4>📦 שימוש ב-Shared Memory לאופטימיזציה</h4>
+        <p>ב-<strong>CUDA / OpenGL Shaders</strong>, מפתחים טוענים נתונים שדרושים לכל ה-Threads ב-Block לתוך <strong>Shared Memory</strong> (128KB). גישה מ-Shared Memory מהירה פי 100 מ-VRAM! לדוגמה: כפל מטריצות — כל Block טוען אריח (Tile) של המטריצה ל-Shared Memory.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-gpu">5</div>
+      <div class="step-content">
+        <h4>🖥️ כתיבה ל-Frame Buffer</h4>
+        <p>התוצאה נכתבת ל-<strong>Frame Buffer</strong> ב-VRAM — כפול (Double Buffering). בזמן שמסך מציג <strong>Buffer A</strong>, ה-GPU מצייר ב-<strong>Buffer B</strong>. כשהציור הסתיים — <strong>Swap!</strong> מכאן מגיע ה-V-Sync ו-G-Sync.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPU SPECS -->
+  <div style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">⚡ ביצועי GPU — יחסי</div>
+  <div class="spec-bars" id="gpu-specs">
+    <div class="spec-row"><div class="spec-name">Single-Core Speed</div><div class="spec-track"><div class="spec-fill gpu-fill" data-val="40"></div></div><div class="spec-val" style="color:var(--gpu)">40%</div></div>
+    <div class="spec-row"><div class="spec-name">Parallel Power</div><div class="spec-track"><div class="spec-fill gpu-fill" data-val="99"></div></div><div class="spec-val" style="color:var(--gpu)">99%</div></div>
+    <div class="spec-row"><div class="spec-name">Flexibility</div><div class="spec-track"><div class="spec-fill gpu-fill" data-val="55"></div></div><div class="spec-val" style="color:var(--gpu)">55%</div></div>
+    <div class="spec-row"><div class="spec-name">AI Training</div><div class="spec-track"><div class="spec-fill gpu-fill" data-val="90"></div></div><div class="spec-val" style="color:var(--gpu)">90%</div></div>
+    <div class="spec-row"><div class="spec-name">Power Efficiency</div><div class="spec-track"><div class="spec-fill gpu-fill" data-val="45"></div></div><div class="spec-val" style="color:var(--gpu)">45%</div></div>
+  </div>
+
+  <div class="examples-section">
+    <h2>🌍 דוגמאות שימוש אמיתיות</h2>
+    <div class="examples-grid">
+      <div class="example-card">
+        <div class="example-icon">🎮</div>
+        <h4>גיימינג</h4>
+        <p>Render של מיליוני פיקסלים ב-60+ FPS</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🤖</div>
+        <h4>אימון AI</h4>
+        <p>ChatGPT, DALL-E — אימון על מיליארדי פרמטרים</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🎬</div>
+        <h4>Rendering 3D</h4>
+        <p>Blender, סרטי אנימציה, אפקטים ויזואליים</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🔬</div>
+        <h4>מדע</h4>
+        <p>סימולציות פיזיקה, ביולוגיה מולקולרית</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">💰</div>
+        <h4>קריפטו</h4>
+        <p>Mining — חישובי Hash מקבילים</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ NPU SECTION ══════════════════════════════ -->
+<section class="section" id="section-npu">
+  <div class="sec-header">
+    <div class="sec-icon npu-icon">🤖</div>
+    <div>
+      <div class="sec-title" style="color:var(--npu)">NPU</div>
+      <div class="sec-sub">Neural Processing Unit | המעבד שנבנה לבינה מלאכותית</div>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card npu-card">
+      <div class="card-label">תיאוריה</div>
+      <h3>מה זה NPU?</h3>
+      <p>מעבד שנועד <strong>בלעדית</strong> לחישובי רשתות עצביות (Neural Networks). בניגוד ל-CPU/GPU שהם כלליים, NPU מבצע <strong>Inference</strong> (הרצת מודלים AI) בצורה יעילה להפליא — עם צריכת חשמל נמוכה.</p>
+    </div>
+    <div class="card npu-card">
+      <div class="card-label">ארכיטקטורה</div>
+      <h3>איך הוא עובד?</h3>
+      <p>בנוי סביב <strong>MAC arrays</strong> (Multiply-Accumulate) — הפעולה הבסיסית של רשתות עצביות. תומך ב-<strong>quantization</strong> (INT8/INT4) שמכפיל יעילות. מכיל זיכרון פנימי (SRAM) קרוב לחישוב לחסכון בסבב הנתונים.</p>
+    </div>
+    <div class="card npu-card">
+      <div class="card-label">ביצועים</div>
+      <h3>מה הוא טוב בו?</h3>
+      <p><strong>AI Inference</strong> — הרצת מודל שכבר אומן. זיהוי פנים, תרגום שפה, עיבוד קול, פילטרים של מצלמה. יעיל 10–100x ביחס ל-CPU לאותן משימות, עם שבריר צריכת החשמל.</p>
+    </div>
+  </div>
+
+  <div class="analogy-box">
+    <div class="analogy-emoji">🧩</div>
+    <div>
+      <h3>דוגמה מוחשית — המומחה המיוחד</h3>
+      <p>NPU הוא כמו <strong>מכונה שתוכנתה לעשות דבר אחד בלבד</strong>, אבל מדהים בו. כמו מכונת אספרסו — היא לא מבשלת סטייק ולא תופרת בגדים, אבל קפה? היא תכין לך 1,000 כוסות ביום בצריכת חשמל של נורת LED. CPU זה שף רב-תכליתי, GPU זה קו ייצור, NPU זה <strong>מכונת ייצור שנבנתה לדבר אחד בלבד.</strong></p>
+    </div>
+  </div>
+
+  <!-- ══ NPU MEMORY SECTION ══ -->
+  <div class="mem-section-title">
+    💾 ארכיטקטורת הזיכרון של ה-NPU
+    <span class="badge npu-badge">Memory Deep Dive</span>
+  </div>
+
+  <div class="mem-types-grid">
+    <div class="mem-type-card" style="border-top:3px solid var(--npu)">
+      <div class="mem-type-icon">⚡</div>
+      <div class="mem-type-name" style="color:var(--npu)">ON-CHIP SRAM</div>
+      <h4>זיכרון פנימי מהיר</h4>
+      <p>הזיכרון <strong>הקרוב ביותר לחישוב</strong> — ממש לצד ה-MAC Arrays. ב-Apple Neural Engine: <strong>~2MB SRAM</strong>. מאחסן את משקולות השכבה הנוכחית (Weights) ואת ה-Activations. הסיבה ש-NPU יעיל כל כך: הנתונים לא צריכים לנסוע!</p>
+      <span class="mem-tag tag-fast">⚡ &lt;1ns</span>
+      <span class="mem-tag tag-fast">0.5–8 MB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(168,85,247,0.7)">
+      <div class="mem-type-icon">🏋️</div>
+      <div class="mem-type-name" style="color:var(--npu)">WEIGHT BUFFER</div>
+      <h4>אחסון משקולות המודל</h4>
+      <p>פרמטרי המודל (Weights) — המספרים שנלמדו באימון — מאוחסנים בזיכרון ייעודי. מודל GPT-2 = <strong>500MB משקולות</strong>. מודל LLaMA-7B = <strong>14GB</strong>. ה-NPU טוען שכבה-שכבה מה-RAM הראשי.</p>
+      <span class="mem-tag tag-mid">⏱ עד 50ns</span>
+      <span class="mem-tag tag-huge">256MB–16GB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(168,85,247,0.5)">
+      <div class="mem-type-icon">⚙️</div>
+      <div class="mem-type-name" style="color:var(--npu)">MAC ARRAYS</div>
+      <h4>מערכי כפל-הצבר</h4>
+      <p>הלב של ה-NPU — <strong>Multiply-Accumulate Units</strong>. כל MAC מבצע: <code>result += input × weight</code>. Apple A17 NPU מכיל <strong>~35 TOPS</strong> (35 טריליון MAC לשנייה!). מאורגנים כ-<strong>Systolic Array</strong> לזרימת נתונים אוטומטית.</p>
+      <span class="mem-tag tag-fast">⚡ 10–300 TOPS</span>
+      <span class="mem-tag tag-fast">הלב הפועם</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(168,85,247,0.35)">
+      <div class="mem-type-icon">🎯</div>
+      <div class="mem-type-name" style="color:var(--npu)">ACTIVATION BUFFER</div>
+      <h4>תוצאות ביניים</h4>
+      <p>ה-<strong>Activations</strong> — תוצאות כל שכבה שמוזנות לשכבה הבאה — מאוחסנות כאן. ה-NPU מנהל אותן בחכמה: ברגע שהשכבה מסיימת, הזיכרון משוחרר לשכבה הבאה. <strong>Memory Reuse</strong> מרכזי ל-NPU יעיל.</p>
+      <span class="mem-tag tag-fast">⚡ מהיר</span>
+      <span class="mem-tag tag-mid">כמה MB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(168,85,247,0.2)">
+      <div class="mem-type-icon">📱</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">LPDDR5 / Unified Memory</div>
+      <h4>זיכרון ראשי מוביילי</h4>
+      <p>ב-Apple Silicon (M1/M2/M3) — CPU, GPU ו-NPU <strong>חולקים זיכרון אחד</strong> (Unified Memory). אין העברת נתונים PCIe! זה מסביר מדוע MacBook M3 כל כך יעיל — פחות bottlenecks.</p>
+      <span class="mem-tag tag-mid">⏱ ~60ns</span>
+      <span class="mem-tag tag-huge">8–128 GB</span>
+    </div>
+    <div class="mem-type-card" style="border-top:3px solid rgba(168,85,247,0.1)">
+      <div class="mem-type-icon">🗜️</div>
+      <div class="mem-type-name" style="color:var(--text-muted)">INT8 / INT4 Storage</div>
+      <h4>זיכרון דחוס (Quantized)</h4>
+      <p>NPU שומר משקולות <strong>דחוסות</strong> — במקום FP32 (32-bit), משתמש ב-INT8 (8-bit) או INT4 (4-bit). דיוק מעט נמוך יותר, אבל <strong>מודל קטן פי 8!</strong> וצריכת חשמל נמוכה פי 4. זה מה שמאפשר AI בטלפון!</p>
+      <span class="mem-tag tag-fast">✓ פי 4–8 קטן יותר</span>
+      <span class="mem-tag tag-fast">כוח סוללה</span>
+    </div>
+  </div>
+
+  <!-- QUANTIZATION DEMO -->
+  <div class="quant-demo">
+    <div class="quant-title">🗜️ Quantization — איך NPU חוסך 75% זיכרון</div>
+    <div class="quant-compare">
+      <div class="quant-box">
+        <h5 style="color:var(--cpu)">FP32 (CPU/GPU רגיל)</h5>
+        <div class="quant-bits" id="fp32-bits"></div>
+        <div class="quant-info">32 ביט לכל משקולת</div>
+        <div class="quant-info">0.37452318 (דיוק מלא)</div>
+        <div class="quant-gain" style="color:#f87171">💾 100% זיכרון</div>
+      </div>
+      <div class="quant-box">
+        <h5 style="color:var(--npu)">INT8 (NPU Quantized)</h5>
+        <div class="quant-bits" id="int8-bits"></div>
+        <div class="quant-info">8 ביט בלבד לכל משקולת</div>
+        <div class="quant-info">0.375 (כמעט זהה!)</div>
+        <div class="quant-gain">💾 25% זיכרון בלבד ⚡</div>
+      </div>
+    </div>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-top:1rem;text-align:center">
+      ⚡ INT4 עוד יותר קיצוני — <strong>8x קטן יותר</strong> מ-FP32. מודל Llama 7B מ-28GB → 3.5GB!
+    </p>
+  </div>
+
+  <!-- NPU Neural Net Visual -->
+  <div class="diagram-container">
+    <div class="diagram-title">📊 ויזואליזציה — רשת עצבית (Neural Network) ב-NPU</div>
+    <div class="npu-diagram">
+      <div class="nn-visual" id="nn-visual">
+        <canvas id="nn-canvas"></canvas>
+        <div class="nn-layer input-layer" style="left:30px">
+          <div class="nn-node">IN</div>
+          <div class="nn-node">IN</div>
+          <div class="nn-node">IN</div>
+          <div class="nn-node">IN</div>
+        </div>
+        <div class="nn-layer hidden1" style="left:130px">
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+        </div>
+        <div class="nn-layer hidden2" style="left:230px">
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+          <div class="nn-node">H</div>
+        </div>
+        <div class="nn-layer output-layer" style="left:330px">
+          <div class="nn-node" style="background:rgba(168,85,247,0.4)">😀</div>
+          <div class="nn-node" style="background:rgba(168,85,247,0.4)">😡</div>
+          <div class="nn-node" style="background:rgba(168,85,247,0.4)">😐</div>
+        </div>
+      </div>
+      <div class="npu-legend">ויזואליזציה של מודל לזיהוי רגשות — מה ה-NPU מריץ</div>
+    </div>
+  </div>
+
+  <!-- NPU PIPELINE -->
+  <div class="mem-section-title" style="margin-top:2rem;">
+    ⚙️ שיטת עבודה — Inference Pipeline של ה-NPU
+    <span class="badge npu-badge">How It Works</span>
+  </div>
+
+  <div class="analogy-box">
+    <div class="analogy-emoji">🔄</div>
+    <div>
+      <h3>מה זה Inference? (הרצת מודל)</h3>
+      <p>שלב ה-<strong>Inference</strong> הוא הרצת מודל AI שכבר אומן — לדוגמה, זיהוי פרצוף בתמונה. בשונה מאימון (Training), Inference מבצע <strong>רק Forward Pass</strong> — נתונים עוברים שכבה אחר שכבה, כל שכבה חישוב MAC, ובסוף — תשובה!</p>
+    </div>
+  </div>
+
+  <div class="pipeline-flow">
+    <div class="pipe-step npu-step">
+      <div class="pipe-icon">📸</div>
+      <div class="pipe-label">INPUT</div>
+      <div class="pipe-sub">טעינת נתוני קלט (תמונה, קול, טקסט)</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step npu-step">
+      <div class="pipe-icon">🗜️</div>
+      <div class="pipe-label">QUANTIZE</div>
+      <div class="pipe-sub">המרה ל-INT8 / FP16</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step npu-step">
+      <div class="pipe-icon">🧮</div>
+      <div class="pipe-label">MAC LAYER</div>
+      <div class="pipe-sub">כפל מטריצות בכל שכבה</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step npu-step">
+      <div class="pipe-icon">📊</div>
+      <div class="pipe-label">ACTIVATION</div>
+      <div class="pipe-sub">ReLU / Softmax — סינון תוצאות</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step npu-step">
+      <div class="pipe-icon">✅</div>
+      <div class="pipe-label">OUTPUT</div>
+      <div class="pipe-sub">תשובה סופית (label / סקור)</div>
+    </div>
+  </div>
+
+  <div class="steps-container">
+    <div class="step-row">
+      <div class="step-num step-num-npu">1</div>
+      <div class="step-content">
+        <h4>📸 קלט — טעינת הנתונים</h4>
+        <p>לדוגמה — תמונה של 224×224 פיקסלים (= <strong>150,528 ערכים</strong>). ה-NPU מקבל אותה מהמצלמה או מ-RAM. ב-Apple Neural Engine — הנתונים זורמים ישירות מ-ISP (Image Signal Processor) ל-NPU דרך <strong>זיכרון משותף</strong>, ללא מעבר CPU!</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-npu">2</div>
+      <div class="step-content">
+        <h4>🗜️ Quantization — דחיסה לחישוב יעיל</h4>
+        <p>ה-NPU ממיר את הנתונים ל-<strong>INT8 או FP16</strong> — פורמטים שה-MAC Arrays שלו מייעלים. חישוב FP32 צורך 4 בתים, INT8 צורך 1 בית — <strong>4x יותר ערכים</strong> נכנסים בכל מחזור! זה לב ה-יעילות.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-npu">3</div>
+      <div class="step-content">
+        <h4>🧮 MAC Layer — חישוב שכבה (Convolution / MatMul)</h4>
+        <p>ה-<strong>Systolic Array</strong> של ה-NPU מבצע כפל מטריצות בצורה שוטפת. בשכבת Convolution: כל נוירון מחשב <code>Σ(input × weight)</code>. ה-MAC Arrays מסודרים כך שנתונים זורמים מ-MAC ל-MAC — <strong>ללא גישה חוזרת לזיכרון</strong>! חיסכון עצום.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-npu">4</div>
+      <div class="step-content">
+        <h4>📊 Activation Function — "בחירת" הנוירונים</h4>
+        <p>אחרי כל שכבה, מחושבת <strong>Activation Function</strong>: ReLU מסנן ערכים שליליים, Softmax הופך מספרים להסתברויות. ב-NPU, פונקציות אלו מחושבות בחומרה ייעודית — <strong>Lookup Tables</strong> — ולא בפעולות חישוב איטיות.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num step-num-npu">5</div>
+      <div class="step-content">
+        <h4>✅ תוצאה — ב-1–10 מילישניות!</h4>
+        <p>מודל לזיהוי פנים (MobileNet) ב-NPU: <strong>&lt; 5ms</strong>. אותו מודל על CPU: <strong>~150ms</strong>. אותו מודל על GPU: <strong>~20ms</strong> (אך צורך פי 50 חשמל!). ה-NPU הוא המנצח הברור לזיהוי על-סף (Edge AI).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NPU SPECS -->
+  <div style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">⚡ ביצועי NPU — יחסי</div>
+  <div class="spec-bars" id="npu-specs">
+    <div class="spec-row"><div class="spec-name">Single-Core Speed</div><div class="spec-track"><div class="spec-fill npu-fill" data-val="20"></div></div><div class="spec-val" style="color:var(--npu)">20%</div></div>
+    <div class="spec-row"><div class="spec-name">Parallel Power</div><div class="spec-track"><div class="spec-fill npu-fill" data-val="70"></div></div><div class="spec-val" style="color:var(--npu)">70%</div></div>
+    <div class="spec-row"><div class="spec-name">AI Inference</div><div class="spec-track"><div class="spec-fill npu-fill" data-val="99"></div></div><div class="spec-val" style="color:var(--npu)">99%</div></div>
+    <div class="spec-row"><div class="spec-name">Power Efficiency</div><div class="spec-track"><div class="spec-fill npu-fill" data-val="98"></div></div><div class="spec-val" style="color:var(--npu)">98%</div></div>
+    <div class="spec-row"><div class="spec-name">Flexibility</div><div class="spec-track"><div class="spec-fill npu-fill" data-val="15"></div></div><div class="spec-val" style="color:var(--npu)">15%</div></div>
+  </div>
+
+  <div class="examples-section">
+    <h2>🌍 דוגמאות שימוש אמיתיות</h2>
+    <div class="examples-grid">
+      <div class="example-card">
+        <div class="example-icon">📱</div>
+        <h4>Siri / Bixby</h4>
+        <p>זיהוי קול מקומי בלי שרת</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">📷</div>
+        <h4>Night Mode</h4>
+        <p>AI של מצלמה — HDR, פורטרט, שיפור תמונה</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">👤</div>
+        <h4>Face ID</h4>
+        <p>זיהוי פנים בפחות מ-0.1 שניה</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🌐</div>
+        <h4>תרגום מקומי</h4>
+        <p>תרגום בלי אינטרנט — on-device</p>
+      </div>
+      <div class="example-card">
+        <div class="example-icon">🚗</div>
+        <h4>רכב אוטונומי</h4>
+        <p>זיהוי תמרורים ועצמים בזמן אמת</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ COMPARE SECTION ══════════════════════════════ -->
+<section class="section" id="section-compare">
+  <div class="sec-header">
+    <div class="sec-icon" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)">⚖️</div>
+    <div>
+      <div class="sec-title">השוואה מלאה</div>
+      <div class="sec-sub">כל מה שצריך לדעת על ההבדלים</div>
+    </div>
+  </div>
+
+  <!-- COMPARISON TABLE -->
+  <div class="compare-table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="text-align:right">קריטריון</th>
+          <th class="th-cpu">🧠 CPU</th>
+          <th class="th-gpu">🎮 GPU</th>
+          <th class="th-npu">🤖 NPU</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>מספר ליבות</td>
+          <td>4–128</td>
+          <td>1K–16K+</td>
+          <td>מיוחד (MACs)</td>
+        </tr>
+        <tr>
+          <td>עיבוד מקבילי</td>
+          <td><span class="pill pill-lo">נמוך</span></td>
+          <td><span class="pill pill-hi">גבוה מאוד</span></td>
+          <td><span class="pill pill-mid">בינוני</span></td>
+        </tr>
+        <tr>
+          <td>מהירות פקודה בודדת</td>
+          <td><span class="pill pill-hi">מהיר מאוד</span></td>
+          <td><span class="pill pill-mid">בינוני</span></td>
+          <td><span class="pill pill-lo">איטי</span></td>
+        </tr>
+        <tr>
+          <td>צריכת חשמל</td>
+          <td>65W–250W</td>
+          <td>150W–500W</td>
+          <td>0.5W–5W</td>
+        </tr>
+        <tr>
+          <td>AI Inference</td>
+          <td><span class="pill pill-lo">חלש</span></td>
+          <td><span class="pill pill-mid">טוב</span></td>
+          <td><span class="pill pill-hi">מעולה</span></td>
+        </tr>
+        <tr>
+          <td>AI Training</td>
+          <td><span class="pill pill-lo">לא מתאים</span></td>
+          <td><span class="pill pill-hi">מושלם</span></td>
+          <td><span class="pill pill-lo">לא מתאים</span></td>
+        </tr>
+        <tr>
+          <td>גמישות</td>
+          <td><span class="pill pill-hi">כללי לחלוטין</span></td>
+          <td><span class="pill pill-mid">גמיש יחסית</span></td>
+          <td><span class="pill pill-lo">מיוחד בלבד</span></td>
+        </tr>
+        <tr>
+          <td>מחיר (ייצרן)</td>
+          <td>$200–$2,000</td>
+          <td>$300–$3,000</td>
+          <td>שולב בשבב</td>
+        </tr>
+        <tr>
+          <td>דוגמאות מוצרים</td>
+          <td>Intel Core i9<br>AMD Ryzen 9</td>
+          <td>NVIDIA RTX 4090<br>AMD RX 7900</td>
+          <td>Apple Neural Engine<br>Qualcomm Hexagon</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- INTERACTIVE TASK MATCHER -->
+  <div class="demo-section">
+    <h2>🎯 אינטראקטיבי — איזה מעבד מתאים למשימה?</h2>
+    <p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem">בחר משימה ולמד איזה מעבד הכי יעיל לה:</p>
+    <div class="task-cards">
+      <div class="task-item" onclick="showTask('web')">
+        <div class="task-icon">🌐</div>
+        <h4>הרצת שרת Web</h4>
+        <p>Node.js API server</p>
+      </div>
+      <div class="task-item" onclick="showTask('game')">
+        <div class="task-icon">🎮</div>
+        <h4>משחק 3D</h4>
+        <p>60 FPS, Ultra Settings</p>
+      </div>
+      <div class="task-item" onclick="showTask('ai-train')">
+        <div class="task-icon">🧬</div>
+        <h4>אימון AI</h4>
+        <p>LLM Training</p>
+      </div>
+      <div class="task-item" onclick="showTask('face')">
+        <div class="task-icon">👤</div>
+        <h4>זיהוי פנים</h4>
+        <p>On-device, realtime</p>
+      </div>
+      <div class="task-item" onclick="showTask('crypto')">
+        <div class="task-icon">₿</div>
+        <h4>Bitcoin Mining</h4>
+        <p>SHA-256 Hashing</p>
+      </div>
+      <div class="task-item" onclick="showTask('excel')">
+        <div class="task-icon">📊</div>
+        <h4>גיליון אקסל</h4>
+        <p>100,000 שורות</p>
+      </div>
+    </div>
+    <div class="task-result" id="task-result"></div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="quiz-section">
+    <h2>📝 בחן את עצמך</h2>
+    <div class="quiz-card" id="q1">
+      <div class="quiz-q">1. לאיזה מעבד הכי מתאים לאמן מודל בינה מלאכותית גדול?</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q1',false,'CPU חזק, אבל לא מקבילי מספיק לאימון AI. GPU הוא המלך כאן.')">CPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q1',true,'✅ נכון! GPU עם אלפי ליבות מקביל מושלם לאימון — זה בדיוק מה שמשמש את NVIDIA H100 ב-ChatGPT.')">GPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q1',false,'NPU מעולה ל-Inference אבל לא לאימון — הוא לא מספיק גמיש.')">NPU</button>
+      </div>
+      <div class="quiz-feedback" id="q1-fb"></div>
+    </div>
+
+    <div class="quiz-card" id="q2">
+      <div class="quiz-q">2. iPhone שלך מזהה את פניך כדי לפתוח את המסך — איזה מעבד עושה את העבודה?</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q2',false,'CPU לא מספיק יעיל לזה — יצרוך יותר זמן וסוללה.')">CPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q2',false,'GPU במובייל לא מיועד לזיהוי פנים.')">GPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q2',true,'✅ נכון! Apple Neural Engine (NPU) מריץ את Face ID — מהיר ויעיל בצריכת חשמל.')">NPU (Neural Engine)</button>
+      </div>
+      <div class="quiz-feedback" id="q2-fb"></div>
+    </div>
+
+    <div class="quiz-card" id="q3">
+      <div class="quiz-q">3. מה ההבדל העיקרי בין CPU ל-GPU מבחינת מבנה?</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q3',false,'לא נכון — ה-CPU הוא כללי יותר, לא מהיר יותר בהכרח.')">CPU מהיר יותר מ-GPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q3',true,'✅ נכון! CPU — מעט ליבות חזקות. GPU — אלפי ליבות חלשות יותר. זה ההבדל המרכזי.')">CPU מעט ליבות חזקות, GPU אלפי ליבות קטנות</button>
+        <button class="quiz-opt" onclick="answer(this,'q3',false,'GPU לא מוגבל לגרפיקה — הוא משמש גם לבינה מלאכותית, מדע ועוד.')">GPU מיועד רק לגרפיקה</button>
+      </div>
+      <div class="quiz-feedback" id="q3-fb"></div>
+    </div>
+
+    <div class="quiz-card" id="q4">
+      <div class="quiz-q">4. לאיזה מעבד יש את צריכת החשמל הנמוכה ביותר עבור AI?</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q4',false,'CPU צורך 65-250W לאותה משימה.')">CPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q4',false,'GPU צורך 150-500W — ממש לא יעיל לסמארטפון.')">GPU</button>
+        <button class="quiz-opt" onclick="answer(this,'q4',true,'✅ נכון! NPU צורך 0.5W–5W לאותה משימת AI שגוררת עשרות ואת GPU צורכים הרבה יותר.')">NPU</button>
+      </div>
+      <div class="quiz-feedback" id="q4-fb"></div>
+    </div>
+  </div>
+</section>
+
+<footer class="page-footer">
+  <div>מדריך אינטראקטיבי — <span>CPU · GPU · NPU</span></div>
+  <div style="margin-top:0.4rem;">מגמת הנדסת תוכנה | בית ספר <span>בליך</span></div>
+</footer>
+
+<!-- ══════════════════════ MEMORY COMPARE SECTION ══════════════════════ -->
+<section class="section" id="section-memory" style="display:none">
+  <div class="sec-header">
+    <div class="sec-icon" style="background:rgba(100,200,255,0.05);border:1px solid var(--border);font-size:1.8rem">🗄️</div>
+    <div>
+      <div class="sec-title">השוואת זיכרון</div>
+      <div class="sec-sub">CPU vs GPU vs NPU — מי זוכר מה, איפה ואיך?</div>
+    </div>
+  </div>
+
+  <!-- MASTER MEMORY TABLE -->
+  <div class="compare-table-wrap" style="margin-bottom:3rem">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="text-align:right">סוג זיכרון</th>
+          <th class="th-cpu">🧠 CPU</th>
+          <th class="th-gpu">🎮 GPU</th>
+          <th class="th-npu">🤖 NPU</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>זיכרון ראשי</td>
+          <td>DDR5 RAM<br><small style="color:var(--text-muted)">8–192 GB</small></td>
+          <td>GDDR6X VRAM<br><small style="color:var(--text-muted)">8–80 GB</small></td>
+          <td>LPDDR5 / Unified<br><small style="color:var(--text-muted)">8–32 GB</small></td>
+        </tr>
+        <tr>
+          <td>רוחב פס (Bandwidth)</td>
+          <td><span class="pill pill-lo">~100 GB/s</span></td>
+          <td><span class="pill pill-hi">~1,000 GB/s 🔥</span></td>
+          <td><span class="pill pill-mid">~200 GB/s</span></td>
+        </tr>
+        <tr>
+          <td>Cache פנימי</td>
+          <td>L1+L2+L3<br><small style="color:var(--text-muted)">512KB–64MB</small></td>
+          <td>L1 Shared + L2<br><small style="color:var(--text-muted)">128KB/SM + 72MB</small></td>
+          <td>On-Chip SRAM<br><small style="color:var(--text-muted)">0.5–8 MB</small></td>
+        </tr>
+        <tr>
+          <td>פורמט נתונים</td>
+          <td>FP64 / FP32 / INT</td>
+          <td>FP32 / FP16 / BF16</td>
+          <td><span class="pill pill-hi">INT8 / INT4 🎯</span></td>
+        </tr>
+        <tr>
+          <td>Cache Miss עלות</td>
+          <td><span class="pill pill-lo">~200 cycles — כואב!</span></td>
+          <td>מוסתר ע"י Warp Switch</td>
+          <td><span class="pill pill-hi">מינימלי — SRAM קרוב</span></td>
+        </tr>
+        <tr>
+          <td>שיתוף זיכרון עם CPU</td>
+          <td>–– (הוא המקור)</td>
+          <td><span class="pill pill-lo">דרך PCIe — איטי</span></td>
+          <td><span class="pill pill-hi">Unified (Apple M-series)</span></td>
+        </tr>
+        <tr>
+          <td>ניהול זיכרון</td>
+          <td>OS / Virtual Memory</td>
+          <td>CUDA / Driver</td>
+          <td>אוטומטי ע"י CoreML / TFLite</td>
+        </tr>
+        <tr>
+          <td>צריכת חשמל לזיכרון</td>
+          <td>~10–30W</td>
+          <td><span class="pill pill-lo">~50–150W</span></td>
+          <td><span class="pill pill-hi">&lt; 1W ✅</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MEMORY SPEED RACE INTERACTIVE -->
+  <div class="diagram-container" style="margin-bottom:3rem">
+    <div class="diagram-title">🏎️ מרוץ מהירות — כמה מהר מגיעים נתונים לכל מעבד?</div>
+    <div style="margin-bottom:1.5rem">
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem">המשימה: לחץ "הזנק!" וצפה כמה מהר נתון מגיע לכל מעבד מהזיכרון הראשי:</p>
+      <button id="race-btn" onclick="runMemoryRace()" style="background:linear-gradient(135deg,var(--cpu),var(--npu));color:white;border:none;padding:0.7rem 2rem;border-radius:100px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:700;font-size:1rem;">🏁 הזנק!</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1.2rem" id="race-lanes">
+      <!-- CPU Lane -->
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+          <span style="font-size:0.85rem;font-weight:700;color:var(--cpu)">🧠 CPU — L1 Cache Hit</span>
+          <span id="cpu-time" style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--cpu)">0 ns</span>
+        </div>
+        <div style="height:20px;background:var(--surface2);border-radius:10px;overflow:hidden;position:relative">
+          <div id="cpu-racer" style="height:100%;width:0%;background:linear-gradient(90deg,var(--cpu),rgba(0,212,255,0.4));border-radius:10px;transition:none;position:relative">
+            <div style="position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:0.9rem">🧠</div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">~4 ננו-שניות (L1 Cache)</div>
+      </div>
+      <!-- CPU RAM Lane -->
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+          <span style="font-size:0.85rem;font-weight:700;color:#64748b">🧠 CPU — RAM Miss</span>
+          <span id="cpuram-time" style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:#64748b">0 ns</span>
+        </div>
+        <div style="height:20px;background:var(--surface2);border-radius:10px;overflow:hidden;position:relative">
+          <div id="cpuram-racer" style="height:100%;width:0%;background:linear-gradient(90deg,#475569,#334155);border-radius:10px;transition:none">
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">~100 ננו-שניות (RAM) — המעבד מחכה!</div>
+      </div>
+      <!-- GPU Lane -->
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+          <span style="font-size:0.85rem;font-weight:700;color:var(--gpu)">🎮 GPU — VRAM</span>
+          <span id="gpu-time" style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--gpu)">0 ns</span>
+        </div>
+        <div style="height:20px;background:var(--surface2);border-radius:10px;overflow:hidden;position:relative">
+          <div id="gpu-racer" style="height:100%;width:0%;background:linear-gradient(90deg,var(--gpu),rgba(255,107,53,0.4));border-radius:10px;transition:none">
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">~200 ננו-שניות, אבל Bandwidth פי 10! (1TB/s)</div>
+      </div>
+      <!-- NPU Lane -->
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+          <span style="font-size:0.85rem;font-weight:700;color:var(--npu)">🤖 NPU — On-Chip SRAM</span>
+          <span id="npu-time" style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--npu)">0 ns</span>
+        </div>
+        <div style="height:20px;background:var(--surface2);border-radius:10px;overflow:hidden;position:relative">
+          <div id="npu-racer" style="height:100%;width:0%;background:linear-gradient(90deg,var(--npu),rgba(168,85,247,0.4));border-radius:10px;transition:none">
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">~1 ננו-שנייה — SRAM ממש לצד ה-MAC! 🏆</div>
+      </div>
+    </div>
+    <div id="race-result" style="display:none;margin-top:1.5rem;text-align:center;padding:1rem;background:rgba(168,85,247,0.08);border-radius:12px;border:1px solid rgba(168,85,247,0.2)">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.3rem">🏆 מנצח: NPU On-Chip SRAM</div>
+      <div style="font-size:0.85rem;color:var(--text-muted)">Latency: &lt;1ns · אבל! Bandwidth מוגבל. לכל אחד ניצחון בתחום שלו.</div>
+    </div>
+  </div>
+
+  <!-- MEMORY ANALOGY SUMMARY -->
+  <div class="mem-section-title">🏠 אנלוגיה — בית הזיכרון</div>
+  <div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="card cpu-card">
+      <div class="card-label" style="color:var(--cpu)">CPU — הבית עם הספרייה</div>
+      <h3>🏡 מבנה היררכי</h3>
+      <p>ה-CPU כמו בית עם ארגון קפדני: <strong>כיסים</strong> (Registers) → <strong>שולחן עבודה</strong> (L1) → <strong>ארגז ליד הכיסא</strong> (L2) → <strong>מחסן בבית</strong> (L3) → <strong>מחסן ברחוב</strong> (RAM). ככל שרחוק יותר — לוקח יותר זמן להביא.</p>
+    </div>
+    <div class="card gpu-card">
+      <div class="card-label" style="color:var(--gpu)">GPU — מחסן ענק עם אספרסוניות</div>
+      <h3>🏭 מחסן ענק מקבילי</h3>
+      <p>ה-GPU כמו מחסן ענק עם <strong>אלפי עמדות עבודה</strong> (Threads). המחסן (VRAM) <strong>סמוך לכל העמדות</strong> ויש לו <strong>10 מסועים מקבילים</strong> (Bandwidth). כל עמדה יכולה לגשת למחסן מהר ומקביל — אבל הבאת ממחסן אחר בעיר (RAM) לוקח זמן.</p>
+    </div>
+    <div class="card npu-card">
+      <div class="card-label" style="color:var(--npu)">NPU — מטבח עם מתכון מוכן</div>
+      <h3>🍳 הכל מוכן מראש</h3>
+      <p>ה-NPU כמו שף שמכין <strong>מרכיבים מראש</strong> (Weights ב-SRAM) ממש על הכיריים. כשמתחיל לבשל — הכל בהישג יד. הוא לא גמיש (רק מתכון אחד), אבל <strong>בישול אחד לא ניתן להכות</strong> במהירות וחיסכון חשמל.</p>
+    </div>
+  </div>
+
+  <!-- FINAL QUICK REFERENCE -->
+  <div class="mem-section-title" style="margin-top:3rem">📋 טבלת עזר מהירה — מה לבחור?</div>
+  <div class="compare-table-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="text-align:right">המצב שלך</th>
+          <th>המלצה</th>
+          <th>הסיבה</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>בונה אתר / אפליקציה</td>
+          <td><span class="pill" style="background:rgba(0,212,255,0.1);color:var(--cpu)">🧠 CPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">לוגיקה מורכבת, if/else, I/O — CPU בראש</td>
+        </tr>
+        <tr>
+          <td>מאמן מודל Deep Learning</td>
+          <td><span class="pill" style="background:rgba(255,107,53,0.1);color:var(--gpu)">🎮 GPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">כפל מטריצות מקבילי, Backpropagation</td>
+        </tr>
+        <tr>
+          <td>AI On-Device (סמארטפון)</td>
+          <td><span class="pill" style="background:rgba(168,85,247,0.1);color:var(--npu)">🤖 NPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">Inference מהיר, חיסכון בסוללה</td>
+        </tr>
+        <tr>
+          <td>גיימינג 4K / 3D Rendering</td>
+          <td><span class="pill" style="background:rgba(255,107,53,0.1);color:var(--gpu)">🎮 GPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">VRAM, Shader Pipeline, Bandwidth עצום</td>
+        </tr>
+        <tr>
+          <td>שרת מסד נתונים</td>
+          <td><span class="pill" style="background:rgba(0,212,255,0.1);color:var(--cpu)">🧠 CPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">שאילתות מורכבות, ניהול תהליכים</td>
+        </tr>
+        <tr>
+          <td>רכב אוטונומי (Edge)</td>
+          <td><span class="pill" style="background:rgba(168,85,247,0.1);color:var(--npu)">🤖 NPU</span> + <span class="pill" style="background:rgba(0,212,255,0.1);color:var(--cpu)">🧠 CPU</span></td>
+          <td style="font-size:0.85rem;color:var(--text-muted)">NPU לזיהוי עצמים, CPU לקבלת החלטות</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+// ─── TAB NAVIGATION ───
+function showTab(tab) {
+  // Hide ALL sections — reset both class AND inline style
+  document.querySelectorAll('.section').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.className = 'tab-btn');
+
+  const ids = { cpu:'section-cpu', gpu:'section-gpu', npu:'section-npu', compare:'section-compare', memory:'section-memory' };
+  const cls = { cpu:'active-cpu', gpu:'active-gpu', npu:'active-npu', compare:'active-cmp', memory:'active-cmp' };
+
+  const sec = document.getElementById(ids[tab]);
+  if (sec) { sec.style.display = 'block'; sec.classList.add('active'); }
+  const btn = document.getElementById('tab-' + tab);
+  if (btn) btn.classList.add(cls[tab] || 'active-cmp');
+
+  setTimeout(animateBars, 120);
+  setTimeout(animateBWBars, 220);
+  if (tab === 'npu') { drawNNCanvas(); initQuantBits(); }
+  window.scrollTo({ top: document.querySelector('.tabs-bar').offsetTop, behavior: 'smooth' });
+}
+
+// ─── CPU CORES ───
+const coreInfo = {
+  0: { label:'Core 0', task:'עיבוד בקשת HTTP נכנסת', freq:'3.8 GHz', cache:'512KB L2' },
+  1: { label:'Core 1', task:'ריצת JavaScript Engine', freq:'4.1 GHz', cache:'512KB L2' },
+  2: { label:'Core 2', task:'קומפילציה של קוד', freq:'3.9 GHz', cache:'512KB L2' },
+  3: { label:'Core 3', task:'הצפנת SSL/TLS', freq:'4.2 GHz', cache:'512KB L2' },
+  4: { label:'Core 4', task:'ניהול זיכרון ו-Cache', freq:'3.7 GHz', cache:'512KB L2' },
+  5: { label:'Core 5', task:'בקרת I/O ותהליכים', freq:'4.0 GHz', cache:'512KB L2' },
+  6: { label:'Core 6', task:'עיבוד Audio/Video', freq:'3.8 GHz', cache:'512KB L2' },
+  7: { label:'Core 7', task:'חישובי מסד נתונים', freq:'4.1 GHz', cache:'512KB L2' },
+};
+(function initCPUCores(){
+  const c = document.getElementById('cpu-cores-container');
+  for(let i=0;i<8;i++){
+    const div = document.createElement('div');
+    div.className = 'cpu-core';
+    div.innerHTML = `<div class="core-power"></div><div class="core-num">${i}</div><div class="core-label">Core</div>`;
+    div.onclick = () => {
+      document.querySelectorAll('.cpu-core').forEach(x=>x.classList.remove('active-core'));
+      div.classList.add('active-core');
+      const info = coreInfo[i];
+      document.getElementById('core-info').innerHTML =
+        `<strong style="color:var(--cpu)">${info.label}</strong> — ${info.task} | ${info.freq} | Cache: ${info.cache}`;
+    };
+    c.appendChild(div);
+  }
+})();
+
+// ─── GPU SHADER GRID ───
+(function initGPUShaders(){
+  const g = document.getElementById('shader-grid');
+  for(let i=0;i<256;i++){
+    const d = document.createElement('div');
+    d.className='shader-unit';
+    d.id='s'+i;
+    g.appendChild(d);
+  }
+})();
+
+function runGPUDemo(){
+  const units = document.querySelectorAll('.shader-unit');
+  units.forEach(u=>u.classList.remove('lit'));
+  let i=0;
+  const iv = setInterval(()=>{
+    if(i>=units.length){ clearInterval(iv); return; }
+    for(let j=0;j<8&&i<units.length;j++,i++) units[i].classList.add('lit');
+  },20);
+}
+
+// ─── SPEC BARS ───
+function animateBars(){
+  document.querySelectorAll('.spec-fill').forEach(fill=>{
+    const val = fill.dataset.val;
+    fill.style.width = val+'%';
+  });
+}
+
+// ─── NN CANVAS ───
+function drawNNCanvas(){
+  const canvas = document.getElementById('nn-canvas');
+  if(!canvas) return;
+  const container = canvas.parentElement;
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const layers = [
+    {x:44, nodes:[40,80,120,160]},
+    {x:144, nodes:[20,55,90,130,165]},
+    {x:244, nodes:[20,55,90,130,165]},
+    {x:344, nodes:[55,105,155]},
+  ];
+  const colors = ['rgba(168,85,247,0.3)','rgba(168,85,247,0.2)','rgba(168,85,247,0.2)','rgba(168,85,247,0.5)'];
+  ctx.lineWidth=1;
+  for(let l=0;l<layers.length-1;l++){
+    for(const y1 of layers[l].nodes){
+      for(const y2 of layers[l+1].nodes){
+        ctx.strokeStyle = `rgba(168,85,247,${0.08+Math.random()*0.12})`;
+        ctx.beginPath();
+        ctx.moveTo(layers[l].x,y1);
+        ctx.lineTo(layers[l+1].x,y2);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// ─── TASK DEMO ───
+const tasks = {
+  web: {
+    title:'🌐 הרצת שרת Web',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'92%',best:true},
+      {chip:'GPU',color:'var(--gpu)',w:'25%',best:false},
+      {chip:'NPU',color:'var(--npu)',w:'10%',best:false},
+    ],
+    note:'CPU מנהל תהליכים, שרשורים, ומבנה if/else — בדיוק מה שהוא עושה הכי טוב.'
+  },
+  game: {
+    title:'🎮 משחק 3D בגרפיקה גבוהה',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'35%',best:false},
+      {chip:'GPU',color:'var(--gpu)',w:'99%',best:true},
+      {chip:'NPU',color:'var(--npu)',w:'5%',best:false},
+    ],
+    note:'GPU מצייר מיליוני פיקסלים ופועל על גיאומטריה תלת-ממדית — שום דבר לא קרוב אליו.'
+  },
+  'ai-train': {
+    title:'🧬 אימון מודל AI גדול',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'15%',best:false},
+      {chip:'GPU',color:'var(--gpu)',w:'99%',best:true},
+      {chip:'NPU',color:'var(--npu)',w:'20%',best:false},
+    ],
+    note:'GPU עם אלפי ליבות ו-Tensor Cores מושלם לכפל מטריצות ב-backpropagation.'
+  },
+  face: {
+    title:'👤 זיהוי פנים On-Device',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'40%',best:false},
+      {chip:'GPU',color:'var(--gpu)',w:'55%',best:false},
+      {chip:'NPU',color:'var(--npu)',w:'99%',best:true},
+    ],
+    note:'NPU מריץ Inference תוך מילישניות עם שבריר מהחשמל של CPU/GPU.'
+  },
+  crypto: {
+    title:'₿ Bitcoin Mining (SHA-256)',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'10%',best:false},
+      {chip:'GPU',color:'var(--gpu)',w:'92%',best:true},
+      {chip:'NPU',color:'var(--npu)',w:'5%',best:false},
+    ],
+    note:'GPU מבצע hash מקבילי על מיליוני nonces בו-זמנית — יתרון עצום על CPU.'
+  },
+  excel: {
+    title:'📊 עיבוד גיליון אקסל',
+    data: [
+      {chip:'CPU',color:'var(--cpu)',w:'90%',best:true},
+      {chip:'GPU',color:'var(--gpu)',w:'30%',best:false},
+      {chip:'NPU',color:'var(--npu)',w:'5%',best:false},
+    ],
+    note:'חישובי אקסל הם סדרתיים עם לוגיקה מורכבת — CPU מאוד מתאים.'
+  }
+};
+
+function showTask(key){
+  document.querySelectorAll('.task-item').forEach(t=>t.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const t = tasks[key];
+  const res = document.getElementById('task-result');
+  res.classList.add('show');
+  res.innerHTML = `<div style="font-weight:700;margin-bottom:1rem;">${t.title}</div>` +
+    t.data.map(d=>`
+      <div class="result-row">
+        <div class="result-chip" style="color:${d.color}">${d.chip}</div>
+        <div class="result-bar-track">
+          <div class="result-bar" style="background:${d.color};--w:0%" data-target="${d.w}"></div>
+        </div>
+        ${d.best?'<span class="best-badge">✓ מומלץ</span>':''}
+      </div>`).join('') +
+    `<div class="result-note">💡 ${t.note}</div>`;
+  setTimeout(()=>{
+    document.querySelectorAll('.result-bar').forEach(b=>{
+      b.style.width = b.dataset.target;
+    });
+  },50);
+}
+
+// ─── QUIZ ───
+function answer(btn, qid, correct, msg){
+  const card = document.getElementById(qid);
+  card.querySelectorAll('.quiz-opt').forEach(b=>{b.disabled=true; b.style.cursor='default';});
+  btn.classList.add(correct?'correct':'wrong');
+  const fb = document.getElementById(qid+'-fb');
+  fb.textContent = msg;
+  fb.style.color = correct ? '#4ade80' : '#f87171';
+  fb.classList.add('show');
+}
+
+// ─── QUANTIZATION BITS ───
+function initQuantBits() {
+  const fp32 = document.getElementById('fp32-bits');
+  const int8 = document.getElementById('int8-bits');
+  if(!fp32 || !int8 || fp32.children.length > 0) return;
+  // FP32 = 32 bits: sign(1) + exponent(8) + mantissa(23)
+  const fp32pattern = [0,0,1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,1,0,1,1,1,0,0,1,0,1,1,0,1,0];
+  fp32pattern.forEach(b => {
+    const div = document.createElement('div');
+    div.className = `bit ${b?'bit-1':'bit-0'}`;
+    div.textContent = b;
+    fp32.appendChild(div);
+  });
+  // INT8 = 8 bits
+  const int8pattern = [0,1,0,1,1,1,1,1];
+  int8pattern.forEach(b => {
+    const div = document.createElement('div');
+    div.className = `bit ${b?'bit-npu-1':'bit-npu-0'}`;
+    div.textContent = b;
+    int8.appendChild(div);
+  });
+}
+
+// ─── BANDWIDTH BARS (GPU section) ───
+function animateBWBars() {
+  document.querySelectorAll('.bw-bar').forEach(bar => {
+    const val = bar.dataset.val;
+    if(val) bar.style.width = val + '%';
+  });
+}
+
+// ─── MEMORY RACE ───
+let raceRunning = false;
+function runMemoryRace() {
+  if(raceRunning) return;
+  raceRunning = true;
+  document.getElementById('race-result').style.display = 'none';
+  const racers = [
+    { id:'npu-racer',    timeId:'npu-time',    duration:300,  maxNs:1,    label:'npu'    },
+    { id:'cpu-racer',    timeId:'cpu-time',    duration:600,  maxNs:4,    label:'cpu'    },
+    { id:'gpu-racer',    timeId:'gpu-time',    duration:1400, maxNs:200,  label:'gpu'    },
+    { id:'cpuram-racer', timeId:'cpuram-time', duration:2400, maxNs:100,  label:'cpuram' },
+  ];
+  racers.forEach(r => {
+    const el = document.getElementById(r.id);
+    if(el) { el.style.width='0%'; el.style.transition='none'; }
+    document.getElementById(r.timeId).textContent = '0 ns';
+  });
+
+  setTimeout(() => {
+    racers.forEach(r => {
+      const el = document.getElementById(r.id);
+      if(!el) return;
+      el.style.transition = `width ${r.duration}ms cubic-bezier(0.25,0.1,0.25,1)`;
+      el.style.width = '97%';
+      // Animate ns counter
+      let start = null;
+      function countUp(ts) {
+        if(!start) start = ts;
+        const prog = Math.min((ts-start)/r.duration, 1);
+        const val = Math.round(prog * r.maxNs);
+        document.getElementById(r.timeId).textContent = val + ' ns';
+        if(prog < 1) requestAnimationFrame(countUp);
+      }
+      requestAnimationFrame(countUp);
+    });
+    setTimeout(() => {
+      document.getElementById('race-result').style.display = 'block';
+      raceRunning = false;
+    }, 2600);
+  }, 100);
+}
+
+// Init
+showTab('cpu');
+</script>
+</body>
+</html>

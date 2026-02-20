@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פריצת Simple Substitution Cipher</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+Hebrew:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1629;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #c8d8e8;
+    --dim: #4a6080;
+    --gold: #ffd700;
+    --correct: #39ff14;
+    --wrong: #ff4444;
+    --mono: 'Share Tech Mono', monospace;
+    --heb: 'Noto Sans Hebrew', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--heb);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ─── SLIDE SYSTEM ─── */
+  .slideshow {
+    width: 100vw;
+<!--    height: 100vh;-->
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.5s;
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    display: flex;
+    opacity: 1;
+  }
+
+  /* ─── SLIDE HEADER BAR ─── */
+  .slide-header {
+    background: linear-gradient(90deg, #0f1629 0%, #0a1a35 50%, #0f1629 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 60px,
+      rgba(0,212,255,0.03) 60px,
+      rgba(0,212,255,0.03) 61px
+    );
+  }
+
+  .slide-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    letter-spacing: 0.5px;
+  }
+
+  .slide-num {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--dim);
+    background: rgba(0,212,255,0.08);
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ─── SLIDE CONTENT ─── */
+  .slide-body {
+    flex: 1;
+    padding: 28px 50px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ─── NAV BAR ─── */
+  .nav-bar {
+    background: rgba(15, 22, 41, 0.95);
+    border-top: 1px solid var(--border);
+    padding: 12px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 24px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .nav-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(0,212,255,0.4);
+  }
+
+  .nav-btn:disabled {
+    border-color: var(--border);
+    color: var(--dim);
+    cursor: not-allowed;
+  }
+
+  .progress-dots {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 60%;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.visited { background: var(--dim); }
+
+  /* ─── CONTENT COMPONENTS ─── */
+
+  .intro-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .hero-icon {
+    font-size: 5rem;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { text-shadow: 0 0 20px rgba(0,212,255,0.3); transform: scale(1); }
+    50% { text-shadow: 0 0 50px rgba(0,212,255,0.8); transform: scale(1.05); }
+  }
+
+  .hero-title {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+  }
+
+  .hero-title span {
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem;
+    color: var(--dim);
+    max-width: 600px;
+    line-height: 1.7;
+  }
+
+  .tag-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .tag {
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent);
+    padding: 5px 16px;
+    border-radius: 20px;
+    font-size: 1.2rem;
+    font-family: var(--mono);
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .info-card:hover { border-color: var(--accent); }
+
+  .info-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .info-card.orange::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .info-card.green::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .info-card.gold::before { background: linear-gradient(90deg, var(--gold), transparent); }
+
+  .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+  .card-title { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .card-text { font-size: 1.2rem; color: var(--text); line-height: 1.6; }
+
+  .cipher-box {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--accent3);
+    letter-spacing: 1px;
+    line-height: 1.8;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cipher-box::before {
+    content: 'CIPHER TEXT';
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    font-size: 1.2rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+  }
+
+  .cipher-box.plain {
+    color: var(--accent);
+    direction: ltr;
+  }
+
+  .cipher-box.plain::before { content: 'PLAIN TEXT'; }
+
+  .cipher-box .highlight { color: var(--accent2); font-weight: bold; }
+  .cipher-box .unknown { color: var(--accent2); }
+  .cipher-box .solved { color: var(--accent3); }
+
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  .algo-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .step-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), rgba(0,212,255,0.3));
+    color: var(--bg);
+    font-weight: 800;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--mono);
+    box-shadow: 0 0 15px rgba(0,212,255,0.3);
+  }
+
+  .step-num.orange { background: linear-gradient(135deg, var(--accent2), rgba(255,107,53,0.3)); box-shadow: 0 0 15px rgba(255,107,53,0.3); }
+  .step-num.green { background: linear-gradient(135deg, var(--accent3), rgba(57,255,20,0.3)); box-shadow: 0 0 15px rgba(57,255,20,0.3); color: #000; }
+
+  .step-content { flex: 1; }
+  .step-label { font-weight: 700; color: #fff; margin-bottom: 5px; font-size: 1.2rem; }
+  .step-desc { font-size: 1.2rem; color: var(--text); line-height: 1.6; }
+
+  .mapping-table {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    width: 100%;
+    border-collapse: collapse;
+    direction: ltr;
+  }
+
+  .mapping-table th {
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .mapping-table td {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+    color: var(--text);
+  }
+
+  .mapping-table tr:hover td { background: rgba(0,212,255,0.05); }
+  .mapping-table .many { color: var(--accent2); }
+  .mapping-table .one { color: var(--accent3); font-weight: bold; }
+  .mapping-table .empty { color: var(--wrong); }
+
+  .code-block {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    line-height: 1.7;
+    direction: ltr;
+    overflow-x: auto;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .code-block .kw { color: #ff79c6; }
+  .code-block .fn { color: #50fa7b; }
+  .code-block .str { color: #f1fa8c; }
+  .code-block .cm { color: var(--dim); font-style: italic; }
+  .code-block .num { color: var(--accent2); }
+  .code-block .var { color: var(--accent); }
+
+  .code-label {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 1.2rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    font-family: var(--mono);
+  }
+
+  .example-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .flow-arrow {
+    font-size: 1.5rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .word-attempt {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .word-attempt.success { border-color: var(--accent3); background: rgba(57,255,20,0.05); }
+  .word-attempt.fail { border-color: var(--wrong); background: rgba(255,68,68,0.05); }
+
+  .attempt-word {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    color: #fff;
+    margin-bottom: 6px;
+    direction: ltr;
+  }
+
+  .attempt-label {
+    font-size: 1.2rem;
+    color: var(--dim);
+    margin-bottom: 4px;
+  }
+
+  .attempt-result {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .attempt-result.ok { color: var(--accent3); }
+  .attempt-result.no { color: var(--wrong); }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    right: 17px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent), transparent);
+  }
+
+  .tl-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 10px 0;
+    padding-right: 45px;
+    position: relative;
+  }
+
+  .tl-dot {
+    position: absolute;
+    right: 10px;
+    top: 14px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  .tl-content { flex: 1; }
+  .tl-round {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .tl-text {
+    font-size: 1.2rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .tl-code {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--accent3);
+    background: rgba(57,255,20,0.07);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 4px;
+    direction: ltr;
+  }
+
+  /* ─── QUIZ ─── */
+  .quiz-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .quiz-q {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.5;
+  }
+
+  .quiz-q .q-num {
+    color: var(--accent);
+    font-family: var(--mono);
+    margin-left: 8px;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .option-btn {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: right;
+    cursor: pointer;
+    font-family: var(--heb);
+    font-size: 1.2rem;
+    color: var(--text);
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    color: #fff;
+  }
+
+  .option-btn.correct {
+    border-color: var(--correct);
+    background: rgba(57,255,20,0.1);
+    color: var(--correct);
+    font-weight: 600;
+  }
+
+  .option-btn.wrong {
+    border-color: var(--wrong);
+    background: rgba(255,68,68,0.1);
+    color: var(--wrong);
+  }
+
+  .option-btn:disabled { cursor: not-allowed; }
+
+  .quiz-feedback {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: none;
+  }
+
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: rgba(57,255,20,0.1); color: var(--correct); border: 1px solid rgba(57,255,20,0.3); }
+  .quiz-feedback.fail { background: rgba(255,68,68,0.1); color: var(--wrong); border: 1px solid rgba(255,68,68,0.3); }
+
+  .quiz-nav {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .q-btn {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    padding: 7px 18px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .q-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .q-btn.done-ok {
+    border-color: var(--correct);
+    color: var(--correct);
+  }
+
+  .q-btn.done-fail {
+    border-color: var(--wrong);
+    color: var(--wrong);
+  }
+
+  .score-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--dim);
+  }
+
+  .score-val {
+    color: var(--accent);
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .highlight-box {
+    background: rgba(0,212,255,0.07);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1.2rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .highlight-box strong { color: var(--accent); }
+
+  .bug-box {
+    background: rgba(255,107,53,0.07);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1.2rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .bug-box strong { color: var(--accent2); }
+
+  .fix-box {
+    background: rgba(57,255,20,0.07);
+    border: 1px solid rgba(57,255,20,0.3);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1.2rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .fix-box strong { color: var(--accent3); }
+
+  /* Scrollbar */
+  .slide-body::-webkit-scrollbar { width: 5px; }
+  .slide-body::-webkit-scrollbar-track { background: transparent; }
+  .slide-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Scanlines overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .dict-check {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dict-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    direction: ltr;
+  }
+
+  .dict-word {
+    width: 100px;
+    color: #fff;
+    letter-spacing: 2px;
+  }
+
+  .dict-in {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .dict-in.ok { background: var(--accent3); }
+  .dict-in.no { background: var(--wrong); }
+
+  .dict-result {
+    width: 90px;
+    text-align: left;
+  }
+
+  .dict-result.ok { color: var(--accent3); }
+  .dict-result.no { color: var(--wrong); }
+
+</style>
+</head>
+<body>
+
+<div class="slideshow" id="slides">
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1: TITLE
+══════════════════════════════════════════════ -->
+<div class="slide active" id="slide-1">
+  <div class="slide-header">
+    <div class="slide-title">🔐 Simple Substitution Cipher</div>
+    <div class="slide-num">01 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="intro-hero">
+      <div class="hero-icon">🕵️</div>
+      <div class="hero-title">
+        <span>אלגוריתם השלמת הפריצה</span><br>
+        של Simple Substitution
+      </div>
+      <div class="hero-subtitle">
+        כיצד פורצים הצפנת החלפה פשוטה שלב אחר שלב —
+        מזיהוי אותיות לא ממופות ועד פענוח מלא של הטקסט
+      </div>
+      <div class="tag-row">
+        <span class="tag">Python</span>
+        <span class="tag">Cryptography</span>
+        <span class="tag">Pattern Matching</span>
+        <span class="tag">Dictionary Attack</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 2: WHAT IS SIMPLE SUBSTITUTION
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-2">
+  <div class="slide-header">
+    <div class="slide-title">מה זה Simple Substitution Cipher?</div>
+    <div class="slide-num">02 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="card-icon">🔑</div>
+        <div class="card-title">עיקרון ההצפנה</div>
+        <div class="card-text">כל אות באלפבית ממופה לאות אחרת באופן קבוע. המפתח הוא תמורה (permutation) של 26 האותיות. אותה האות תמיד תוחלף באותה האות בצופן.</div>
+      </div>
+      <div class="info-card orange">
+        <div class="card-icon">🗝️</div>
+        <div class="card-title">דוגמת מפתח</div>
+        <div class="card-text">
+          <div style="font-family:var(--mono); font-size: 1.2rem; direction:ltr; margin-top:6px;">
+            Plain:  A B C D E F G H ...<br>
+            Cipher: N U Y E F J G B ...
+          </div>
+          כלומר: A→N, B→U, C→Y וכן הלאה
+        </div>
+      </div>
+      <div class="info-card green">
+        <div class="card-icon">📊</div>
+        <div class="card-title">מרחב מפתחות</div>
+        <div class="card-text">26! ≈ 4 × 10²⁶ מפתחות אפשריים. כוח גסה בלתי אפשרי — לכן יש צורך באלגוריתם חכם המבוסס על דפוסי מילים ומילון.</div>
+      </div>
+      <div class="info-card gold">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">נקודת תורפה</div>
+        <div class="card-text">כל אות מוחלפת באותה האות תמיד — לכן דפוסי מילים נשמרים! המילה HELLO תמיד תוצפן עם דפוס 0.1.2.2.3</div>
+      </div>
+    </div>
+
+    <div class="section-title">דוגמת הצפנה בפועל</div>
+    <div class="cipher-box" style="direction:ltr; padding-top:28px;">
+      Plain:  "The Hidden Code"<br>
+      Key:    NUYEFJGBAZIRCDQHWLMPKVSTXO<br>
+      Cipher: "Xbd Bkeeda Yqed"
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3: THE BASIC HACK FLOW
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-3">
+  <div class="slide-header">
+    <div class="slide-title">תהליך הפריצה הבסיסי</div>
+    <div class="slide-num">03 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="algo-steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-label">בניית מיפוי אותיות ראשוני</div>
+          <div class="step-desc">עבור כל מילה בצופן — מוצאים את הדפוס שלה (pattern) ובודקים אילו מילים ממילון האנגלי שומרות על אותו דפוס. כל האותיות מכל המועמדים נאספות למיפוי.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-label">חיתוך המיפויים</div>
+          <div class="step-desc">עבור כל אות בצופן — שומרים רק אותיות plain שהופיעו כמועמדות בכל המיפויים. ככל שיש יותר מילים, המיפוי מצטמצם.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-label">ניקוי אותיות שנפתרו</div>
+          <div class="step-desc">כאשר אות ממופה לאות אחת בלבד — האות הזו מוסרת מכל שאר הרשומות. תהליך זה חוזר עד התכנסות.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num orange">4</div>
+        <div class="step-content">
+          <div class="step-label">⚠️ הבעיה: אותיות לא ממופות</div>
+          <div class="step-desc">לעיתים קרובות הפריצה הבסיסית אינה מספיקה — אותיות מסוימות ממופות ליותר מאפשרות אחת או לא ממופות כלל. הטקסט המפוענח מכיל <span style="color:var(--accent2); font-family:var(--mono);">?</span> במקומות אלו.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num green">5</div>
+        <div class="step-content">
+          <div class="step-label">✨ השלמת הפריצה — הנושא שלנו!</div>
+          <div class="step-desc">אלגוריתם חכם המנצל את ה-? הנותרים כדי לצמצם ולמפות את שאר האותיות בשיטת ניסוי-ובדיקת-מילון.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4: THE PROBLEM – UNMAPPED LETTERS
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-4">
+  <div class="slide-header">
+    <div class="slide-title">הבעיה: אותיות לא ממופות</div>
+    <div class="slide-num">04 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="section-title">תוצאת הפריצה הבסיסית</div>
+    <div class="cipher-box plain" style="padding-top:28px; font-size: 1.2rem;">
+      Sarah discovered an o<span class="unknown">?</span>d <span class="unknown">?</span>o<span class="unknown">?</span>rna<span class="unknown">?</span> hidden in her grandmother's attic.<br>
+      The <span class="unknown">?</span>eather cover <span class="unknown">?</span>as <span class="unknown">?</span>orn, <span class="unknown">??</span>t inside, the <span class="unknown">?</span>ages he<span class="unknown">?</span>d a m<span class="unknown">?</span>ster<span class="unknown">?</span>.<br>
+      ...
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-title" style="margin-bottom:10px;">מצב המיפוי הבעייתי</div>
+        <table class="mapping-table">
+          <tr><th>אות צופן</th><th>מועמדים</th><th>מצב</th></tr>
+          <tr><td>A</td><td class="one">N</td><td>✅ פתור</td></tr>
+          <tr><td>E</td><td class="many">K,F,Z,X</td><td>⚠️ רב-ערכי</td></tr>
+          <tr><td>J</td><td class="empty">—</td><td>❌ ריק</td></tr>
+          <tr><td>R</td><td class="many">L,W,Y,K</td><td>⚠️ רב-ערכי</td></tr>
+          <tr><td>U</td><td class="empty">—</td><td>❌ ריק</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="section-title" style="margin-bottom:10px;">הפונקציה get_unmapped_keys</div>
+        <pre class="code-block">
+<span class="kw">def</span> <span class="fn">get_unmapped_keys</span>(original_dict):
+    <span class="cm"># מחזיר אותיות עם מיפוי לא חד-ערכי</span>
+    <span class="kw">return</span> [
+        key
+        <span class="kw">for</span> key, value
+        <span class="kw">in</span> original_dict.items()
+        <span class="kw">if</span> len(value) > <span class="num">1</span>
+        <span class="kw">or</span> len(value) == <span class="num">0</span>
+    ]
+        </pre>
+        <div class="highlight-box" style="margin-top:10px;">
+          הפונקציה מחזירה רשימה של אותיות צופן שעדיין לא ממופות בוודאות לאות plain אחת.
+          <strong>יותר מ-1 מועמד</strong> או <strong>0 מועמדים</strong> — שניהם נחשבים לא ממופים.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5: THE COMPLETION ALGORITHM – OVERVIEW
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-5">
+  <div class="slide-header">
+    <div class="slide-title">אלגוריתם השלמת הפריצה — סקירה כללית</div>
+    <div class="slide-num">05 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="highlight-box" style="margin-bottom:4px;">
+      <strong>הרעיון המרכזי:</strong> מילים שיש בהן ? <em>אחד בלבד</em> הן המפתח — אפשר לנסות כל אות לא ממופה, לבדוק במילון, ואם יש פתרון יחיד — זה המיפוי!
+    </div>
+
+    <div class="algo-steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-label">מצא אותיות לא ממופות</div>
+          <div class="step-desc">קרא ל-<span style="color:var(--accent); font-family:var(--mono);">get_unmapped_keys()</span> — קבל רשימה של אותיות הצריכות מיפוי.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-label">מצא מילים עם ? וממיין לפי כמות</div>
+          <div class="step-desc">קרא ל-<span style="color:var(--accent); font-family:var(--mono);">get_words_with_unknowns()</span> — מחזיר מילים עם ? ממוינות: מילים עם <strong style="color:var(--accent3);">? יחיד קודמות</strong> (הכי קל לפצח).</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-label">נסה להשלים מיפוי למילים עם ? יחיד</div>
+          <div class="step-desc">קרא ל-<span style="color:var(--accent); font-family:var(--mono);">try_complete_mapping()</span> — עבור כל אות לא ממופה: הכנס אותה במקום ה-?, בדוק אם המילה קיימת במילון. אם יש רק מועמד אחד — נמצא מיפוי!</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num orange">4</div>
+        <div class="step-content">
+          <div class="step-label">עדכן מיפוי וניקוי</div>
+          <div class="step-desc">הוסף את המיפוי החדש, קרא ל-<span style="color:var(--accent2); font-family:var(--mono);">remove_solve_letter_from_final_mapping()</span> לניקוי, ועדכן את הטקסט.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num green">5</div>
+        <div class="step-content">
+          <div class="step-label">חזור מהתחלה עד שכל האותיות ממופות</div>
+          <div class="step-desc">כל מיפוי חדש מצמצם את האפשרויות לשאר האותיות. התהליך חוזר עד שאין יותר אותיות לממפות, או עד שאין יותר מה לעשות.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 6: get_words_with_unknowns
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-6">
+  <div class="slide-header">
+    <div class="slide-title">פונקציה: get_words_with_unknowns</div>
+    <div class="slide-num">06 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="two-col">
+      <div>
+        <div class="section-title" style="margin-bottom:12px;">הקוד</div>
+        <pre class="code-block" style="font-size:1.2rem;">
+<span class="kw">def</span> <span class="fn">get_words_with_unknowns</span>(cracked_text):
+    cipher_words = <span class="fn">get_cipher_words</span>(
+        cracked_text[<span class="str">'cipher'</span>]
+    )
+    <span class="cm"># ⚠️ חשוב: נקה פיסוק שומר על ?</span>
+    clean = re.<span class="fn">compile</span>(<span class="str">r'[^A-Z\s?]'</span>)
+    cracked_words = clean.<span class="fn">sub</span>(
+        <span class="str">''</span>,
+        cracked_text[<span class="str">'cracked'</span>].<span class="fn">upper</span>()
+    ).<span class="fn">split</span>()
+
+    words_with_unknowns = []
+    <span class="kw">for</span> c_word, k_word <span class="kw">in</span> <span class="fn">zip</span>(
+            cipher_words, cracked_words):
+        q = k_word.<span class="fn">count</span>(<span class="str">'?'</span>)
+        <span class="kw">if</span> q > <span class="num">0</span>:
+            words_with_unknowns.<span class="fn">append</span>(
+                (c_word, k_word, q)
+            )
+    <span class="kw">return</span> <span class="fn">sorted</span>(
+        words_with_unknowns,
+        key=<span class="kw">lambda</span> x: x[<span class="num">2</span>]
+    )
+        </pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="section-title" style="margin-bottom:4px;">מה הפונקציה עושה</div>
+        <div class="card-text" style="font-size:1.2rem; line-height:1.7;">
+          מקבלת מילון עם שני שדות:<br>
+          <span style="font-family:var(--mono); color:var(--accent);">cipher</span> — הצופן המקורי<br>
+          <span style="font-family:var(--mono); color:var(--accent);">cracked</span> — הטקסט המפוענח חלקית
+        </div>
+
+        <div class="highlight-box">
+          <strong>⚠️ באג קלאסי!</strong><br>
+          אם לא מנקים פיסוק מ-cracked_words, המילה <span style="font-family:var(--mono);">"?ORTIES."</span> לא תמצא במילון כי היא כוללת נקודה. הפתרון: regex שמשמר <span style="font-family:var(--mono);">?</span> אך מסיר את שאר הסמלים.
+        </div>
+
+        <div class="section-title" style="margin-bottom:4px;">פלט לדוגמה</div>
+        <pre class="code-block" style="font-size: 1.2rem; direction:ltr;">
+<span class="cm"># מוחזר ממוין לפי מספר שאלות:</span>
+[
+  (<span class="str">'QIW'</span>, <span class="str">'?AS'</span>, <span class="num">1</span>),   <span class="cm"># ? יחיד</span>
+  (<span class="str">'HBX'</span>, <span class="str">'B?T'</span>, <span class="num">1</span>),   <span class="cm"># ? יחיד</span>
+  (<span class="str">'RINAWR'</span>, <span class="str">'?ETTERS'</span>, <span class="num">1</span>),
+  (<span class="str">'RCAM'</span>, <span class="str">'DAI?'</span>, <span class="num">1</span>),
+  (<span class="str">'FCBLAIR'</span>, <span class="str">'?OURNAL'</span>, <span class="num">1</span>),
+  ...
+  (<span class="str">'ELNA'</span>, <span class="str">'???D'</span>, <span class="num">3</span>),   <span class="cm"># ? מרובים</span>
+]
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 7: try_complete_mapping
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-7">
+  <div class="slide-header">
+    <div class="slide-title">פונקציה: try_complete_mapping</div>
+    <div class="slide-num">07 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="two-col">
+      <div>
+        <pre class="code-block" style="font-size:1.2rem;">
+<span class="kw">def</span> <span class="fn">try_complete_mapping</span>(
+    cipher_word, cracked_word,
+    unmapped_keys, letters_mapping):
+
+  positions = [
+    i <span class="kw">for</span> i,ch <span class="kw">in</span> <span class="fn">enumerate</span>(cracked_word)
+    <span class="kw">if</span> ch == <span class="str">'?'</span>
+  ]
+
+  <span class="cm"># מטפלים רק ב-? יחיד</span>
+  <span class="kw">if</span> len(positions) != <span class="num">1</span>:
+    <span class="kw">return</span> <span class="kw">None</span>
+
+  pos = positions[<span class="num">0</span>]
+  cipher_letter = cipher_word[pos]
+  unused = <span class="fn">get_unused_letters</span>(letters_mapping)
+
+  valid_options = []
+  <span class="kw">for</span> candidate <span class="kw">in</span> unused:
+    test_word = (
+      cracked_word[:pos]
+      + candidate
+      + cracked_word[pos+<span class="num">1</span>:]
+    ).<span class="fn">lower</span>()
+
+    pattern = <span class="fn">get_word_pattern</span>(test_word)
+    <span class="kw">if</span> (pattern <span class="kw">in</span> all_patterns
+        <span class="kw">and</span> test_word.<span class="fn">upper</span>()
+            <span class="kw">in</span> all_patterns[pattern]):
+      valid_options.<span class="fn">append</span>(
+        (cipher_letter, candidate)
+      )
+
+  <span class="kw">if</span> len(valid_options) == <span class="num">1</span>:
+    <span class="kw">return</span> valid_options[<span class="num">0</span>]
+  <span class="kw">return</span> <span class="kw">None</span>
+        </pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="section-title" style="margin-bottom:4px;">הלוגיקה שלב אחר שלב</div>
+        <div class="algo-steps">
+          <div class="step-row">
+            <div class="step-num" style="width:28px;height:28px;font-size: 1.2rem;">1</div>
+            <div class="step-content">
+              <div class="step-desc">מוצא את מיקום ה-? ואת אות הצופן המקבילה לו</div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-num" style="width:28px;height:28px;font-size: 1.2rem;">2</div>
+            <div class="step-content">
+              <div class="step-desc">מביא רשימת אותיות שעדיין לא שובצו למיפוי (<span style="font-family:var(--mono); color:var(--accent);">get_unused_letters</span>)</div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-num" style="width:28px;height:28px;font-size: 1.2rem;">3</div>
+            <div class="step-content">
+              <div class="step-desc">מנסה כל אות לא ממופה במקום ה-? ובודק אם המילה קיימת במילון</div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-num green" style="width:28px;height:28px;font-size: 1.2rem;">4</div>
+            <div class="step-content">
+              <div class="step-desc">אם נמצא <strong>בדיוק מועמד אחד</strong> — מחזיר את הזוג (cipher_letter, plain_letter)</div>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-box">
+          <strong>מדוע בדיוק אחד?</strong><br>
+          אם יש שני מועמדים — אי אפשר לדעת בוודאות איזה נכון. רק מיפוי חד-משמעי נקבע כפתרון.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 8: EXAMPLE – WORD ?AS
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-8">
+  <div class="slide-header">
+    <div class="slide-title">דוגמה מלאה — פריצת המילה "?AS"</div>
+    <div class="slide-num">08 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="section-title">המצב ההתחלתי</div>
+    <div class="two-col" style="margin-bottom:4px;">
+      <div class="cipher-box plain" style="padding-top:26px; font-size: 1.2rem;">
+        cracked_word = "<span class="unknown">?</span>AS"<br>
+        cipher_word  = "QIW"
+      </div>
+      <div class="highlight-box">
+        מיקום ה-?: <strong>0</strong> (תחילת המילה)<br>
+        אות צופן במקום זה: <strong style="color:var(--accent); font-family:var(--mono);">Q</strong><br>
+        מה אות ה-plaintext של Q? — לא יודעים עדיין!
+      </div>
+    </div>
+
+    <div class="section-title">ניסיון כל האותיות הלא ממופות</div>
+    <div class="dict-check">
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">B</span>AS</div>
+        <div class="dict-in ok"></div>
+        <div class="dict-result ok">✅ במילון</div>
+        <div style="color:var(--dim); font-size: 1.2rem;">bass, ban, bad?</div>
+      </div>
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">F</span>AS</div>
+        <div class="dict-in no"></div>
+        <div class="dict-result no">❌ לא במילון</div>
+      </div>
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">J</span>AS</div>
+        <div class="dict-in no"></div>
+        <div class="dict-result no">❌ לא במילון</div>
+      </div>
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">K</span>AS</div>
+        <div class="dict-in no"></div>
+        <div class="dict-result no">❌ לא במילון</div>
+      </div>
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">W</span>AS ⭐</div>
+        <div class="dict-in ok" style="background:var(--accent);"></div>
+        <div class="dict-result ok" style="color:var(--accent);">✅ במילון! "was"</div>
+        <div style="color:var(--accent); font-size: 1.2rem; font-weight:bold;">← המועמד היחיד!</div>
+      </div>
+      <div class="dict-row">
+        <div class="dict-word"><span style="color:var(--accent2);">X</span>AS</div>
+        <div class="dict-in no"></div>
+        <div class="dict-result no">❌ לא במילון</div>
+      </div>
+    </div>
+
+    <div class="section-title">תוצאה</div>
+    <div class="fix-box">
+      <strong>נמצא מיפוי יחיד:</strong>
+      אות צופן <strong>Q</strong> → אות plain <strong>W</strong><br>
+      מעדכנים: <span style="font-family:var(--mono);">letters_mapping['Q'] = ['W']</span><br>
+      מסירים W מכל שאר הרשומות ומתחילים סיבוב חדש.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 9: complete_mapping FUNCTION
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-9">
+  <div class="slide-header">
+    <div class="slide-title">פונקציה: complete_mapping — לולאה הראשית</div>
+    <div class="slide-num">09 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="two-col">
+      <div>
+        <pre class="code-block" style="font-size:1.2rem;">
+<span class="kw">def</span> <span class="fn">complete_mapping</span>(
+    cipher_text, cracked_text, letters_mapping):
+
+  MAX_ROUNDS = <span class="num">26</span>
+  round_num = <span class="num">0</span>
+
+  <span class="kw">while</span> round_num < MAX_ROUNDS:
+    round_num += <span class="num">1</span>
+    unmapped = <span class="fn">get_unmapped_keys</span>(letters_mapping)
+
+    <span class="kw">if not</span> unmapped:
+      print(<span class="str">"✓ כל האותיות מופו!"</span>)
+      <span class="kw">break</span>
+
+    words_info = <span class="fn">get_words_with_unknowns</span>({
+      <span class="str">'cipher'</span>: cipher_text,
+      <span class="str">'cracked'</span>: cracked_text
+    })
+
+    found = <span class="kw">False</span>
+    <span class="kw">for</span> c_word, k_word, q <span class="kw">in</span> words_info:
+      <span class="kw">if</span> q != <span class="num">1</span>:
+        <span class="kw">continue</span>   <span class="cm"># רק ? יחיד!</span>
+
+      result = <span class="fn">try_complete_mapping</span>(
+        c_word, k_word, unmapped, letters_mapping
+      )
+      <span class="kw">if</span> result:
+        c_l, p_l = result
+        letters_mapping[c_l] = [p_l]
+        letters_mapping = <span class="fn">remove_solve_letter</span>(
+          letters_mapping
+        )
+        cracked_text = <span class="fn">translate_cipher</span>(
+          letters_mapping, cipher_text
+        )
+        found = <span class="kw">True</span>
+        <span class="kw">break</span>  <span class="cm"># סיבוב חדש!</span>
+
+    <span class="kw">if not</span> found:
+      <span class="kw">break</span>
+
+  <span class="kw">return</span> cracked_text, letters_mapping
+        </pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="section-title" style="margin-bottom:4px;">נקודות מפתח בלוגיקה</div>
+
+        <div class="info-card" style="margin:0;">
+          <div class="card-title">🔁 break אחרי מיפוי חדש</div>
+          <div class="card-text">כאשר נמצא מיפוי חדש — עוצרים ומתחילים סיבוב חדש. המיפוי החדש עשוי לאפשר פתרון של מילים שלא היה ניתן לפצח קודם.</div>
+        </div>
+
+        <div class="info-card orange" style="margin:0;">
+          <div class="card-title">⛔ MAX_ROUNDS = 26</div>
+          <div class="card-text">האלפבית האנגלי הוא 26 אותיות — לכן לא יכולים להיות יותר מ-26 מיפויים חדשים. מגבלת הסיבובים מונעת לולאה אינסופית.</div>
+        </div>
+
+        <div class="info-card green" style="margin:0;">
+          <div class="card-title">✅ תנאי עצירה</div>
+          <div class="card-text">
+            1. כל האותיות מופו (הצלחה מלאה)<br>
+            2. לא נמצא מיפוי חדש בסיבוב (תקיעות)<br>
+            3. הגענו ל-26 סיבובים
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 10: FULL RUN TIMELINE
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-10">
+  <div class="slide-header">
+    <div class="slide-title">ריצה מלאה — ציר הזמן של הפריצה</div>
+    <div class="slide-num">10 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="two-col">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 1 — 12 אותיות לא ממופות</div>
+            <div class="tl-text">המילה הקצרה ביותר עם ? יחיד: <strong>O?D</strong></div>
+            <div class="tl-code">R → L (old)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 2 — 11 אותיות</div>
+            <div class="tl-text">מילה <strong>?AS</strong> — רק WAS מתאימה</div>
+            <div class="tl-code">Q → W (was)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 3 — 10 אותיות</div>
+            <div class="tl-text">מילה <strong>?AGES</strong> — רק PAGES מתאימה</div>
+            <div class="tl-code">T → P (pages)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 4 — 9 אותיות</div>
+            <div class="tl-text">מילה <strong>DESCRI?ING</strong> — רק DESCRIBING</div>
+            <div class="tl-code">H → B (describing)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 5 — 8 אותיות</div>
+            <div class="tl-text">מילה <strong>B?T</strong> — רק BUT מתאימה</div>
+            <div class="tl-code">B → U (but)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 6 — 7 אותיות</div>
+            <div class="tl-text">מילה <strong>?OURNAL</strong> — רק JOURNAL</div>
+            <div class="tl-code">F → J (journal)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-round">סיבוב 7 — 6 אותיות</div>
+            <div class="tl-text">מילה <strong>DAIL?</strong> — רק DAILY</div>
+            <div class="tl-code">C → Y (daily)</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--wrong);box-shadow:0 0 10px var(--wrong);"></div>
+          <div class="tl-content">
+            <div class="tl-round" style="color:var(--wrong);">סיבוב 8 — תקיעות!</div>
+            <div class="tl-text">5 אותיות נותרות ללא ? יחיד במילה. האלגוריתם עוצר.</div>
+            <div class="tl-code" style="color:var(--wrong);">E, J, O, U, Y — לא נפתרו</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="section-title" style="margin-bottom:4px;">טקסט לפני ואחרי</div>
+        <div class="cipher-box plain" style="font-size: 1.2rem; padding-top:24px;">
+          <span style="color:var(--dim); font-size: 1.2rem;">לפני:</span><br>
+          Sarah discovered an o<span class="unknown">?</span>d <span class="unknown">?</span>ourna<span class="unknown">?</span> hidden...<br>
+          The <span class="unknown">?</span>eather cover <span class="unknown">?</span>as <span class="unknown">?</span>orn, <span class="unknown">??</span>t...
+        </div>
+        <div class="cipher-box plain" style="font-size: 1.2rem; padding-top:24px; border-color: rgba(57,255,20,0.3);">
+          <span style="color:var(--dim); font-size: 1.2rem;">אחרי 7 סיבובים:</span><br>
+          Sarah discovered an old journal hidden...<br>
+          The leather cover was worn, but...<br>
+          describing daily li<span class="unknown">?</span>e in the nineteen<br>
+          <span class="unknown">?</span>orties.
+        </div>
+        <div class="bug-box">
+          <strong>⚠️ נשאר לא פתור:</strong><br>
+          אות E בצופן → F,K,X,Z<br>
+          (מופיעה ב-"life" ו-"forties")<br>
+          המילה ?ORTIES נכשלה בגלל הבאג <strong>עם הנקודה</strong>!
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 11: THE BUG AND THE FIX
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-11">
+  <div class="slide-header">
+    <div class="slide-title">הבאג שעצר את הפריצה — ואיך לתקן אותו</div>
+    <div class="slide-num">11 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="section-title">הבעיה</div>
+    <div class="bug-box" style="margin-bottom:4px;">
+      <strong>קוד בעייתי ב-get_words_with_unknowns:</strong><br>
+      <span style="font-family:var(--mono); direction:ltr; display:block; margin-top:6px; color:var(--accent2);">cracked_words = cracked_text['cracked'].upper().split()</span><br>
+      ה-split() שומר פיסוק! המילה <span style="font-family:var(--mono);">"forties."</span> (עם נקודה) לא תמצא במילון.
+    </div>
+
+    <div class="section-title">מה קורה בפועל</div>
+    <div class="example-flow">
+      <div class="word-attempt fail">
+        <div class="attempt-label">cracked_word (שגוי)</div>
+        <div class="attempt-word">?ORTIES<span style="color:var(--wrong);">.</span></div>
+        <div class="attempt-result no">❌ נקודה בסוף</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="word-attempt fail">
+        <div class="attempt-label">test_word שמתקבל</div>
+        <div class="attempt-word">forties<span style="color:var(--wrong);">.</span></div>
+        <div class="attempt-result no">❌ לא קיים במילון!</div>
+      </div>
+    </div>
+
+    <div class="section-title">התיקון</div>
+    <pre class="code-block" style="direction:ltr;">
+<span class="cm"># ❌ שגוי — לא מנקה פיסוק</span>
+cracked_words = cracked_text[<span class="str">'cracked'</span>].<span class="fn">upper</span>().<span class="fn">split</span>()
+
+<span class="cm"># ✅ נכון — regex שמסיר פיסוק אך שומר '?'</span>
+non_alpha = re.<span class="fn">compile</span>(<span class="str">r'[^A-Z\s?]'</span>)
+cracked_words = non_alpha.<span class="fn">sub</span>(
+    <span class="str">''</span>,
+    cracked_text[<span class="str">'cracked'</span>].<span class="fn">upper</span>()
+).<span class="fn">split</span>()
+    </pre>
+
+    <div class="two-col">
+      <div class="word-attempt fail" style="padding:14px 16px;">
+        <div class="attempt-label">לפני התיקון</div>
+        <div class="attempt-word" style="font-size: 1.2rem;">?ORTIES.</div>
+        <div class="attempt-result no">❌ נקודה חוסמת את החיפוש</div>
+      </div>
+      <div class="word-attempt success" style="padding:14px 16px;">
+        <div class="attempt-label">אחרי התיקון</div>
+        <div class="attempt-word" style="font-size: 1.2rem;">?ORTIES</div>
+        <div class="attempt-result ok">✅ forties — נמצא במילון!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 12: SUMMARY
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-12">
+  <div class="slide-header">
+    <div class="slide-title">סיכום — כל הפונקציות יחד</div>
+    <div class="slide-num">12 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="card-icon" style="font-family:var(--mono); font-size: 1.2rem; color:var(--accent);">get_unmapped_keys()</div>
+        <div class="card-title">זיהוי מה חסר</div>
+        <div class="card-text">מחזיר רשימת אותיות צופן שאין להן מיפוי חד-ערכי. קלט: מילון המיפוי. פלט: רשימת אותיות.</div>
+      </div>
+      <div class="info-card orange">
+        <div class="card-icon" style="font-family:var(--mono); font-size: 1.2rem; color:var(--accent2);">get_words_with_unknowns()</div>
+        <div class="card-title">מציאת מילים עם ?</div>
+        <div class="card-text">מחזיר רשימה ממוינת של מילים לפי מספר סימני שאלה. מילים עם ? אחד — ראשונות. חשוב: לנקות פיסוק!</div>
+      </div>
+      <div class="info-card green">
+        <div class="card-icon" style="font-family:var(--mono); font-size: 1.2rem; color:var(--accent3);">try_complete_mapping()</div>
+        <div class="card-title">ניסיון מיפוי</div>
+        <div class="card-text">מנסה כל אות לא ממופה במקום ה-?. בודק מול המילון. מחזיר מיפוי רק אם יש מועמד יחיד.</div>
+      </div>
+      <div class="info-card gold">
+        <div class="card-icon" style="font-family:var(--mono); font-size: 1.2rem; color:var(--gold);">complete_mapping()</div>
+        <div class="card-title">הלולאה הראשית</div>
+        <div class="card-text">מריץ את כל התהליך. מחכה עד שכל האותיות ממופות או עד שאין יותר התקדמות. מחזיר טקסט מפוענח ומיפוי מעודכן.</div>
+      </div>
+    </div>
+
+    <div class="section-title">תרשים זרימה</div>
+    <pre class="cipher-box" style="direction:ltr; font-size: 1.2rem; padding-top:28px; line-height:2;">
+      hack_simple_substitution()
+          ↓
+      build_cipher_text_letter_mapping()  <span class="cm">← פריצה ראשונית</span>
+          ↓
+      unmapped = get_unmapped_keys()  <span class="cm">← יש אותיות לא ממופות?</span>
+          ↓ YES
+      complete_mapping()
+        ├─ get_words_with_unknowns()   <span class="cm">← מיין מילים</span>
+        ├─ try_complete_mapping()      <span class="cm">← נסה ? יחיד</span>
+        ├─ update mapping + cleanup
+        └─ repeat ──────────────────→ (עד התכנסות)
+    </pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 13: QUIZ
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-13">
+  <div class="slide-header">
+    <div class="slide-title">🎯 שאלות לבדיקת הבנה</div>
+    <div class="slide-num">13 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="quiz-container" id="quiz-container">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="quiz-q" id="quiz-question"></div>
+        <div class="score-display">ניקוד: <span class="score-val" id="score-val">0</span>/<span id="total-q">6</span></div>
+      </div>
+      <div class="options-grid" id="quiz-options"></div>
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <div class="quiz-nav" id="quiz-nav"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 14: FINAL
+══════════════════════════════════════════════ -->
+<div class="slide" id="slide-14">
+  <div class="slide-header">
+    <div class="slide-title">סיכום וסיום</div>
+    <div class="slide-num">14 / 14</div>
+  </div>
+  <div class="slide-body">
+    <div class="intro-hero">
+      <div class="hero-icon">🏆</div>
+      <div class="hero-title">
+        <span>הפריצה הושלמה!</span>
+      </div>
+      <div class="hero-subtitle">
+        למדנו כיצד ניתן להשלים פריצת Simple Substitution באמצעות אלגוריתם חכם המתמקד במילים עם סימן שאלה יחיד.
+      </div>
+      <div class="info-grid" style="width:100%; max-width:700px; margin-top:10px;">
+        <div class="info-card" style="text-align:right;">
+          <div class="card-title">💡 הרעיון המרכזי</div>
+          <div class="card-text">מילים עם ? אחד מצמצמות את מרחב החיפוש — רק אות אחת לנסות, ואם רק פתרון אחד קיים במילון — זה הפתרון.</div>
+        </div>
+        <div class="info-card orange" style="text-align:right;">
+          <div class="card-title">⚠️ הלקח החשוב</div>
+          <div class="card-text">תמיד לנקות פיסוק לפני בדיקת מילים. נקודה בסוף מילה תחסום את החיפוש גם אם המילה עצמה תקינה.</div>
+        </div>
+        <div class="info-card green" style="text-align:right;">
+          <div class="card-title">🔄 עיקרון איטרטיבי</div>
+          <div class="card-text">כל מיפוי חדש פותח דלתות חדשות. האלגוריתם ממשיך לרוץ — כל פתרון חלקי מאפשר פתרונות נוספים.</div>
+        </div>
+        <div class="info-card gold" style="text-align:right;">
+          <div class="card-title">🚧 מגבלות</div>
+          <div class="card-text">כאשר אין מילים עם ? יחיד — האלגוריתם נתקע. פתרון מתקדם: brute force על קומבינציות של האותיות הנותרות.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- NAV BAR (outside slides, fixed position) -->
+<div class="nav-bar" style="position:fixed; bottom:0; left:0; right:0; z-index:100;">
+  <button class="nav-btn" id="btn-prev" onclick="changeSlide(-1)" disabled>▶ הקודם</button>
+  <div class="progress-dots" id="progress-dots"></div>
+  <button class="nav-btn" id="btn-next" onclick="changeSlide(1)">הבא ◀</button>
+</div>
+
+<script>
+const TOTAL = 14;
+let current = 1;
+
+// Build dots
+const dotsEl = document.getElementById('progress-dots');
+for (let i = 1; i <= TOTAL; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 1 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  d.id = `dot-${i}`;
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  const prev = document.getElementById(`slide-${current}`);
+  prev.classList.remove('active');
+  document.getElementById(`dot-${current}`).classList.remove('active');
+  document.getElementById(`dot-${current}`).classList.add('visited');
+  current = n;
+  const next = document.getElementById(`slide-${current}`);
+  next.classList.add('active');
+  document.getElementById(`dot-${current}`).classList.add('active');
+  document.getElementById(`dot-${current}`).classList.remove('visited');
+  document.getElementById('btn-prev').disabled = current === 1;
+  document.getElementById('btn-next').disabled = current === TOTAL;
+  if (n === 13) initQuiz();
+}
+
+function changeSlide(dir) {
+  const n = current + dir;
+  if (n >= 1 && n <= TOTAL) goTo(n);
+}
+
+// ─── QUIZ ───────────────────────────────
+const questions = [
+  {
+    q: "מה מחזירה הפונקציה get_unmapped_keys()?",
+    options: [
+      "רשימת אותיות צופן שאין להן מיפוי חד-ערכי (0 מועמדים או יותר מאחד)",
+      "רשימת כל האותיות הלא מוצפנות בטקסט",
+      "רשימת מילים שלא נמצאו במילון",
+      "רשימת כל אותיות ה-plaintext שנפתרו"
+    ],
+    correct: 0,
+    explain: "הפונקציה מחזירה אותיות שה-value שלהן הוא ריק (0) או מכיל יותר מאות אחת — כלומר לא ממופות בוודאות."
+  },
+  {
+    q: "מדוע האלגוריתם מתמקד קודם כל במילים עם ? יחיד?",
+    options: [
+      "כי הן מהירות יותר לבדיקה",
+      "כי יש להן פחות אפשרויות — ניסוי אות אחת בלבד, סיכוי גבוה לפתרון יחיד",
+      "כי מילים קצרות תמיד קלות יותר לפיצוח",
+      "כי הן מופיעות לעתים קרובות יותר בטקסט"
+    ],
+    correct: 1,
+    explain: "? יחיד = רק פוזיציה אחת לא ידועה. מנסים כל אות לא ממופה — אם רק אחת מובילה למילה קיימת במילון, זה מיפוי חד-משמעי."
+  },
+  {
+    q: "מה הבאג שמנע מיפוי של E→F בטקסט שרצנו?",
+    options: [
+      "המילון לא כלל את המילה 'forties'",
+      "הפונקציה get_unused_letters החזירה תוצאה שגויה",
+      "המילה '?ORTIES.' כללה נקודה — פיסוק שלא נוקה מהטקסט המפוענח",
+      "המילה הופיעה יותר מפעם אחת בטקסט"
+    ],
+    correct: 2,
+    explain: "split() שמר את הנקודה בסוף 'forties.' — כך שהחיפוש במילון נכשל. הפתרון: regex שמסיר פיסוק אך שומר '?'."
+  },
+  {
+    q: "מתי try_complete_mapping() מחזירה None (כלומר לא מוצאת מיפוי)?",
+    options: [
+      "כאשר המילה לא קיימת במילון",
+      "כאשר יש יותר מ-? אחד במילה, או כשנמצאו 0 או יותר מ-1 מועמדים",
+      "כאשר המיפוי כבר קיים",
+      "כאשר רשימת האותיות הלא ממופות ריקה"
+    ],
+    correct: 1,
+    explain: "הפונקציה מחזירה None בשלושה מקרים: יותר מ-? אחד, אפס מועמדים תקינים, או שני מועמדים ויותר (אי אפשר לקבוע בוודאות)."
+  },
+  {
+    q: "למה אחרי מיפוי חדש עושים break ומתחילים סיבוב חדש?",
+    options: [
+      "כדי לחסוך זמן ריצה",
+      "כדי לאפשר למיפוי החדש להשפיע — הוא עשוי לפתור מילים שלא ניתן היה לפצח לפניו",
+      "כי המיפויים הנותרים הופכים לפחות חשובים",
+      "כי remove_solve_letter_from_final_mapping לא יודעת לעבוד בלי זה"
+    ],
+    correct: 1,
+    explain: "כל מיפוי חדש מסיר את האות מרשימת המועמדים בשאר הרשומות — מה שעשוי להפוך רשומות רב-ערכיות לחד-ערכיות, ולאפשר פתרון נוסף."
+  },
+  {
+    q: "מה תוצאת הביטוי re.compile(r'[^A-Z\\s?]').sub('', '?ORTIES.') ?",
+    options: [
+      "?ORTIES.",
+      "ORTIES",
+      "?ORTIES",
+      "?ORTIES?"
+    ],
+    correct: 2,
+    explain: "הביטוי הרגולרי מוחק כל תו שאינו A-Z, רווח, או '?'. הנקודה מוחקת, האות ? נשמרת. התוצאה: '?ORTIES'."
+  }
+];
+
+let quizState = [];
+let initialized = false;
+let currentQ = 0;
+
+function initQuiz() {
+  if (initialized) return;
+  initialized = true;
+  quizState = questions.map(() => ({ answered: false, correct: false }));
+  renderQuestion(0);
+  renderNav();
+}
+
+function renderQuestion(idx) {
+  currentQ = idx;
+  const q = questions[idx];
+  document.getElementById('quiz-question').innerHTML =
+    `<span class="q-num">שאלה ${idx + 1}:</span> ${q.q}`;
+  const opts = document.getElementById('quiz-options');
+  opts.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt;
+    btn.onclick = () => answer(idx, i);
+    if (quizState[idx].answered) {
+      btn.disabled = true;
+      if (i === q.correct) btn.classList.add('correct');
+      else if (i === quizState[idx].chosen) btn.classList.add('wrong');
+    }
+    opts.appendChild(btn);
+  });
+  const fb = document.getElementById('quiz-feedback');
+  if (quizState[idx].answered) {
+    fb.className = 'quiz-feedback show ' + (quizState[idx].correct ? 'ok' : 'fail');
+    fb.textContent = (quizState[idx].correct ? '✅ נכון! ' : '❌ לא נכון. ') + q.explain;
+  } else {
+    fb.className = 'quiz-feedback';
+    fb.textContent = '';
+  }
+  renderNav();
+}
+
+function answer(qIdx, optIdx) {
+  if (quizState[qIdx].answered) return;
+  const q = questions[qIdx];
+  quizState[qIdx].answered = true;
+  quizState[qIdx].chosen = optIdx;
+  quizState[qIdx].correct = optIdx === q.correct;
+  const score = quizState.filter(s => s.correct).length;
+  document.getElementById('score-val').textContent = score;
+  renderQuestion(qIdx);
+}
+
+function renderNav() {
+  const nav = document.getElementById('quiz-nav');
+  nav.innerHTML = '';
+  questions.forEach((_, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'q-btn';
+    btn.textContent = i + 1;
+    if (i === currentQ) btn.classList.add('active');
+    if (quizState[i] && quizState[i].answered) {
+      btn.classList.add(quizState[i].correct ? 'done-ok' : 'done-fail');
+    }
+    btn.onclick = () => renderQuestion(i);
+    nav.appendChild(btn);
+  });
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') changeSlide(-1);
+  if (e.key === 'ArrowLeft') changeSlide(1);
+});
+</script>
+</body>
+</html>

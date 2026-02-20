@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פיצוח צופן Simple Substitution</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1525;
+    --panel2: #141c30;
+    --accent: #00ffc3;
+    --accent2: #ff6b35;
+    --accent3: #a78bfa;
+    --accent4: #38bdf8;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #060a14;
+    --border: rgba(0,255,195,0.15);
+    --glow: 0 0 20px rgba(0,255,195,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,195,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,195,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width .4s ease;
+    z-index: 100;
+    box-shadow: var(--glow);
+  }
+
+  /* ── SLIDE CONTAINER ── */
+  #slides-wrapper {
+    position: relative;
+    width: 100%; height: 100vh;
+    z-index: 1;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s ease, transform .5s ease;
+    transform: translateX(40px);
+    padding: 60px 70px 80px;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  /* ── SLIDE HEADER ── */
+  .slide-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .slide-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    background: rgba(0,255,195,0.08);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 2px;
+  }
+  .slide-title {
+    font-size: 28px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+  .slide-subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    line-height: 1.8;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    position: relative;
+  }
+  .code-block::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 10px; right: 14px;
+    font-size: 16px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .kw { color: #c792ea; }
+  .fn { color: var(--accent4); }
+  .str { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: var(--accent2); }
+  .var { color: #82aaff; }
+  .hl { background: rgba(0,255,195,0.08); display: block; margin: 0 -24px; padding: 0 24px; }
+
+  /* ── INFO CARDS ── */
+  .card-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card.accent2::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .card.accent3::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .card.accent4::before { background: linear-gradient(90deg, var(--accent4), transparent); }
+
+  .card-title {
+   font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .card.accent2 .card-title { color: var(--accent2); }
+  .card.accent3 .card-title { color: var(--accent3); }
+  .card.accent4 .card-title { color: var(--accent4); }
+
+  .card-body {font-size: 16px; line-height: 1.7; color: #cbd5e1; }
+
+  /* ── HIGHLIGHT BADGE ── */
+  .badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: rgba(0,255,195,0.1);
+    border: 1px solid rgba(0,255,195,0.3);
+    color: var(--accent);
+  }
+  .badge.b2 { background: rgba(255,107,53,0.1); border-color: rgba(255,107,53,0.3); color: var(--accent2); }
+  .badge.b3 { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: var(--accent3); }
+  .badge.b4 { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.3); color: var(--accent4); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .flow-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+   font-size: 16px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--muted);
+    font-size: 18px;
+  }
+
+  /* ── TABLE ── */
+  .pattern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    direction: ltr;
+    text-align: left;
+  }
+  .pattern-table th {
+    color: var(--muted);
+    padding: 6px 16px;
+   font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .pattern-table td {
+    background: var(--panel);
+    padding: 10px 16px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .pattern-table tr td:first-child { border-radius: 6px 0 0 6px; }
+  .pattern-table tr td:last-child { border-radius: 0 6px 6px 0; }
+  .pattern-table tr.highlight td { background: rgba(0,255,195,0.07); border-color: rgba(0,255,195,0.2); }
+  .pattern-table .word-col { color: var(--accent4); font-weight: 700; }
+  .pattern-table .pattern-col { color: var(--accent3); }
+  .pattern-table .cipher-col { color: var(--accent2); font-weight: 700; }
+
+  /* ── MAPPING DISPLAY ── */
+  .mapping-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    direction: ltr;
+  }
+  .mapping-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mapping-item .letter { color: var(--accent2); font-weight: 700;font-size: 16px; }
+  .mapping-item .arrow { color: var(--muted);font-size: 16px; }
+  .mapping-item .candidates { color: var(--accent);font-size: 16px; }
+  .mapping-item.solved { border-color: rgba(0,255,195,0.4); background: rgba(0,255,195,0.06); }
+  .mapping-item.solved .candidates { color: var(--accent); font-weight: 700; }
+  .mapping-item.empty .candidates { color: var(--muted); }
+
+  /* ── NAV ── */
+  #nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 50;
+    background: rgba(10,14,26,0.8);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 10px 20px;
+    backdrop-filter: blur(10px);
+  }
+  .nav-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-btn:hover {
+    background: rgba(0,255,195,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  #slide-counter {
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    color: var(--muted);
+    min-width: 60px;
+    text-align: center;
+  }
+  .dot-nav {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+
+  /* ── TITLE SLIDE SPECIAL ── */
+  #slide-0 {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .hero-title {
+    font-size: 58px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .hero-en {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    display: block;
+    letter-spacing: 3px;
+    margin-bottom: 24px;
+  }
+  .hero-desc {
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 500px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+  }
+  .cipher-anim {
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    color: rgba(0,255,195,0.25);
+    letter-spacing: 4px;
+    word-spacing: 10px;
+    max-width: 600px;
+    text-align: center;
+    line-height: 2;
+    animation: flicker 3s infinite;
+  }
+  @keyframes flicker {
+    0%,100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+  }
+  .tag-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── STEP LIST ── */
+  .step-list { display: flex; flex-direction: column; gap: 14px; }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    transition: all .2s;
+  }
+  .step-item:hover { border-color: rgba(0,255,195,0.4); transform: translateX(-4px); }
+  .step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 36px;
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-name {font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .step-desc {font-size: 16px; color: var(--muted); line-height: 1.5; }
+
+  /* ── TWO COLUMNS ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── INTERSECT DEMO ── */
+  .intersect-demo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+  }
+  .imap {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    min-width: 180px;
+  }
+  .imap-title {
+    color: var(--muted);
+   font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .imap-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .imap-row .k { color: var(--accent2); }
+  .imap-row .v { color: var(--accent4); }
+  .imap-row.solved .v { color: var(--accent); font-weight: 700; }
+  .imap-row.empty .v { color: #2d3748; }
+  .intersect-op {
+    font-size: 32px;
+    color: var(--accent3);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ── EXAMPLE BOX ── */
+  .example-box {
+    background: var(--code-bg);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 10px;
+    padding: 16px 20px;
+    direction: ltr;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+   font-size: 16px;
+    line-height: 1.9;
+  }
+  .ex-cipher { color: var(--accent2); }
+  .ex-plain { color: var(--accent); }
+  .ex-unknown { color: var(--muted); }
+  .ex-label { color: #546e7a;font-size: 16px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+
+  /* ── SUMMARY SLIDE ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    height: 100%;
+  }
+  .summary-card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .s-num { font-family: 'Space Mono', monospace; font-size: 32px; font-weight: 700; color: var(--accent); opacity: 0.5; }
+  .s-title { font-size: 16px; font-weight: 700; }
+  .s-desc {font-size: 16px; color: var(--muted); line-height: 1.5; }
+
+  /* SCROLLABLE content */
+  .slide-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .slide-body::-webkit-scrollbar { width: 4px; }
+  .slide-body::-webkit-scrollbar-track { background: transparent; }
+  .slide-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── INFO ROW ── */
+  .info-row {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: rgba(0,255,195,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+  .info-icon { font-size: 20px; }
+  .info-text {font-size: 16px; color: var(--text); line-height: 1.6; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .slide.active .slide-header,
+  .slide.active .slide-body > * {
+    animation: fadeUp 0.5s ease both;
+  }
+  .slide.active .slide-body > *:nth-child(1) { animation-delay: 0.1s; }
+  .slide.active .slide-body > *:nth-child(2) { animation-delay: 0.2s; }
+  .slide.active .slide-body > *:nth-child(3) { animation-delay: 0.3s; }
+  .slide.active .slide-body > *:nth-child(4) { animation-delay: 0.4s; }
+  .slide.active .slide-body > *:nth-child(5) { animation-delay: 0.5s; }
+
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-12 { margin-bottom: 12px; }
+
+  /* KEY VISUALIZATION */
+  .key-vis {
+    display: flex; gap: 0; direction: ltr; justify-content: center;
+    font-family: 'Space Mono', monospace;font-size: 16px;
+  }
+  .key-col { display: flex; flex-direction: column; align-items: center; }
+  .key-cell {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: all .2s;
+  }
+  .key-cell.plain { color: var(--accent4); background: rgba(56,189,248,0.05); }
+  .key-cell.cipher { color: var(--accent2); background: rgba(255,107,53,0.05); }
+  .key-cell:hover { transform: scale(1.1); z-index: 10; border-color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div id="progress-bar" style="width: 0%"></div>
+
+<div id="slides-wrapper">
+
+  <!-- ════════ SLIDE 0 – TITLE ════════ -->
+  <div class="slide active" id="slide-0">
+    <div class="cipher-anim" style="position:absolute;top:20px;left:0;right:0;z-index:0;direction:ltr;">
+      VUCWPRYDEXT P ZUEMHA NYCTJYIO BUOF LORBAM GEWB P IEIEF DAQRBYXA YN VPLL
+    </div>
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:24px;max-width:700px;">
+      <div class="tag-row">
+        <span class="badge">קריפטוגרפיה</span>
+        <span class="badge b3">מגמת סייבר</span>
+        <span class="badge b4">כיתה י"א-י"ב</span>
+      </div>
+      <div class="hero-title">פיצוח צופן</div>
+      <span class="hero-en">SIMPLE SUBSTITUTION</span>
+      <div class="hero-desc">
+        כיצד אפשר לפרוץ צופן החלפה פשוטה בעזרת ניתוח תבניות מילים, מיזוג מיפויים ואלגוריתם חכם?
+      </div>
+      <div style="display:flex;gap:24px;font-family:'Space Mono',monospace;font-size:16px;color:var(--muted);">
+        <span>⌨ 12 שקפים</span>
+        <span>🐍 Python</span>
+        <span>🔐 Pattern Analysis</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 1 – מה זה Simple Substitution ════════ -->
+  <div class="slide" id="slide-1">
+    <div class="slide-header">
+      <span class="slide-num">01</span>
+      <div>
+        <div class="slide-title">מה זה Simple Substitution?</div>
+        <div class="slide-subtitle">הבסיס של הצופן</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="card-grid" style="grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">הרעיון</div>
+          <div class="card-body">כל אות מוחלפת ב<strong>אות אחרת קבועה</strong> לאורך כל ההודעה. המפתח הוא אלפביתי ערבוב מלא של 26 האותיות.</div>
+        </div>
+        <div class="card accent2">
+          <div class="card-title">המפתח</div>
+          <div class="card-body">26! = <strong>403,291,461,126,605,635,584,000,000</strong> מפתחות אפשריים. ברוט-פורס – בלתי אפשרי!</div>
+        </div>
+      </div>
+
+      <div class="mb-12" style="font-size:16px;color:var(--muted);text-align:center;direction:ltr;margin-bottom:8px;">EXAMPLE KEY – hover to explore</div>
+      <div class="key-vis" id="keyVis"></div>
+
+      <div class="mt-16 two-col">
+        <div>
+          <div class="ex-label" style="margin-bottom:6px;">הודעה מקורית</div>
+          <div class="example-box">
+            <span class="ex-plain">HELLO WORLD</span>
+          </div>
+        </div>
+        <div>
+          <div class="ex-label" style="margin-bottom:6px;">הודעה מוצפנת (מפתח: PSKFONTBEV...)</div>
+          <div class="example-box">
+            <span class="ex-cipher">BOJJY GYMJF</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row mt-16">
+        <span class="info-icon">💡</span>
+        <span class="info-text">
+          <strong>נקודת מפתח:</strong> למרות מספר המפתחות האסטרונומי, הצופן ניתן לפריצה כי הוא <strong>שומר על תבניות שפה</strong>! המילה הנפוצה ביותר, מילים עם אותיות כפולות, תבניות ייחודיות – כולן שורדות ההצפנה.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 2 – עקרון תבניות מילים ════════ -->
+  <div class="slide" id="slide-2">
+    <div class="slide-header">
+      <span class="slide-num">02</span>
+      <div>
+        <div class="slide-title">עקרון תבניות מילים – Word Patterns</div>
+        <div class="slide-subtitle">הכלי המרכזי לפריצה</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="info-row" style="margin-bottom:16px;">
+        <span class="info-icon">🎯</span>
+        <span class="info-text">
+          <strong>רעיון גאוני:</strong> צופן החלפה שומר על מבנה המילה. אם מילה מקורית היא HELLO (דפוס 0.1.2.2.3), המילה המוצפנת תהיה <em>גם</em> בדפוס 0.1.2.2.3!
+        </span>
+      </div>
+
+      <div class="two-col" style="margin-bottom:16px;">
+        <div>
+          <table class="pattern-table">
+            <thead><tr><th>מילה</th><th>תבנית</th><th>מוצפנת ל</th></tr></thead>
+            <tbody>
+              <tr class="highlight"><td class="word-col">UNUSUALLY</td><td class="pattern-col">0.1.0.2.0.3.4.4.5</td><td class="cipher-col">MNMKMSYYP</td></tr>
+              <tr><td class="word-col">INITIALLY</td><td class="pattern-col">0.1.0.2.0.3.4.4.5</td><td class="cipher-col">–</td></tr>
+              <tr class="highlight"><td class="word-col">ENDED</td><td class="pattern-col">0.1.2.0.2</td><td class="cipher-col">JYHJH</td></tr>
+              <tr><td class="word-col">EASES</td><td class="pattern-col">0.1.2.0.2</td><td class="cipher-col">–</td></tr>
+              <tr><td class="word-col">TESTS</td><td class="pattern-col">0.1.2.0.2</td><td class="cipher-col">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="card accent3" style="margin-bottom:14px;">
+            <div class="card-title">כיצד מחשבים תבנית?</div>
+            <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;line-height:2;">
+              <span style="color:var(--accent4);">U</span>→0, <span style="color:var(--accent2);">N</span>→1, <span style="color:var(--accent4);">U</span>→0, <span style="color:#c3e88d;">S</span>→2<br>
+              <span style="color:#c792ea;">U</span>→0, <span style="color:#ff6b35;">A</span>→3, <span style="color:#82aaff;">L</span>→4, <span style="color:#82aaff;">L</span>→4, <span style="color:#e2e8f0;">Y</span>→5<br>
+              <span style="color:var(--accent);">→ 0.1.0.2.0.3.4.4.5</span>
+            </div>
+          </div>
+          <div class="card accent4">
+            <div class="card-title">מסקנה חשובה</div>
+            <div class="card-body">MNMKMSYYP ← יכול להיות UNUSUALLY כי יש להם אותה תבנית 0.1.0.2.0.3.4.4.5!</div>
+          </div>
+        </div>
+      </div>
+
+      <pre class="code-block" data-label="PYTHON">
+<span class="kw">def</span> <span class="fn">get_word_pattern</span>(word):
+    word = word.<span class="fn">upper</span>()
+    next_num, letter_map, pattern = <span class="num">0</span>, {}, []
+    <span class="kw">for</span> letter <span class="kw">in</span> word:
+        <span class="kw">if</span> letter <span class="kw">not in</span> letter_map:
+            letter_map[letter] = <span class="fn">str</span>(next_num); next_num += <span class="num">1</span>
+        pattern.<span class="fn">append</span>(letter_map[letter])
+    <span class="kw">return</span> <span class="str">'.'</span>.<span class="fn">join</span>(pattern)  <span class="cm"># "0.1.0.2.0.3.4.4.5"</span></pre>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 3 – בניית מילון תבניות ════════ -->
+  <div class="slide" id="slide-3">
+    <div class="slide-header">
+      <span class="slide-num">03</span>
+      <div>
+        <div class="slide-title">בניית מילון כל התבניות</div>
+        <div class="slide-subtitle">make_all_patterns() – הכנת בסיס הידע</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="info-row" style="margin-bottom:16px;">
+        <span class="info-icon">📚</span>
+        <span class="info-text">פעם אחת, לפני ההרצה: עוברים על <strong>כל המילים במילון האנגלי</strong> (~45,000 מילים) ומחשבים לכל אחת את התבנית שלה. השמירה ב-dict מאפשרת חיפוש מהיר בזמן הפריצה.</span>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <pre class="code-block" data-label="PYTHON" style="font-size:16px;">
+<span class="kw">def</span> <span class="fn">make_all_patterns</span>():
+    all_patterns = {}
+    f = <span class="fn">open</span>(<span class="str">'dictionary.txt'</span>)
+    words = f.<span class="fn">read</span>().<span class="fn">split</span>(<span class="str">'\n'</span>)
+    f.<span class="fn">close</span>()
+    <span class="kw">for</span> word <span class="kw">in</span> words:
+        pattern = <span class="fn">get_word_pattern</span>(word)
+        <span class="kw">if</span> pattern <span class="kw">not in</span> all_patterns:
+            all_patterns[pattern] = [word]
+        <span class="kw">else</span>:
+            all_patterns[pattern].<span class="fn">append</span>(word)
+    <span class="cm"># שמירה לקובץ Python</span>
+    fo = <span class="fn">open</span>(<span class="str">'word_patterns.py'</span>, <span class="str">'w'</span>)
+    fo.<span class="fn">write</span>(<span class="str">'all_patterns = '</span>)
+    fo.<span class="fn">write</span>(pprint.<span class="fn">pformat</span>(all_patterns))
+    fo.<span class="fn">close</span>()</pre>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card" style="flex:1;">
+            <div class="card-title">מבנה הנתונים</div>
+            <pre class="code-block" style="font-size:16px;padding:12px;margin-top:0;">
+<span class="var">all_patterns</span> = {
+  <span class="str">'0.0.1'</span>: [<span class="str">'EEL'</span>],
+  <span class="str">'0.0.1.2'</span>: [<span class="str">'EELS'</span>, <span class="str">'OOZE'</span>],
+  <span class="str">'0.1.0.2.0.3.4.4.5'</span>: [
+    <span class="str">'UNUSUALLY'</span>,
+    <span class="str">'INITIALLY'</span>
+  ],
+  <span class="cm">... # עשרות אלפי רשומות</span>
+}</pre>
+          </div>
+          <div class="card accent2">
+            <div class="card-title">למה זה חכם?</div>
+            <div class="card-body">
+              <strong>חיפוש ב-O(1)!</strong> במקום לעבור על כל המילים בזמן הפריצה, מוצאים את כל המילים המתאימות לתבנית בחיפוש מיידי.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 4 – תהליך הפריצה: סקירה ════════ -->
+  <div class="slide" id="slide-4">
+    <div class="slide-header">
+      <span class="slide-num">04</span>
+      <div>
+        <div class="slide-title">תהליך הפריצה – סקירה כללית</div>
+        <div class="slide-subtitle">4 שלבים לפענוח</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="example-box" style="margin-bottom:20px;font-size:16px;">
+        <div class="ex-label">טקסט מוצפן לדוגמה</div>
+        <span class="ex-cipher">'Duxxa fytd jopr yiom noxkod.'</span>
+      </div>
+
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">01</div>
+          <div class="step-content">
+            <div class="step-name">ניקוי הטקסט + פירוק למילים</div>
+            <div class="step-desc">מסירים פיסוק, ממירים לאותיות גדולות, מפצלים לרשימת מילים: <span class="badge" style="font-size:16px;">['DUXXA', 'FYTD', 'JOPR', 'YIOM', 'NOXKOD']</span></div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">02</div>
+          <div class="step-content">
+            <div class="step-name">לכל מילה – חישוב תבנית + מציאת מועמדות</div>
+            <div class="step-desc">DUXXA → תבנית 0.1.2.2.3 → מציאת כל המילים האנגליות עם אותה תבנית: AFOOT, BAGGY, BALLS, BELLS...</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">03</div>
+          <div class="step-content">
+            <div class="step-name">בניית מיפוי אותיות + מיזוג</div>
+            <div class="step-desc">לכל מילה מוצפנת בונים מיפוי ממועמדות, ממזגים עם Intersection: שומרים רק אותיות שמופיעות בכל המועמדות של כל המילים.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">04</div>
+          <div class="step-content">
+            <div class="step-name">פענוח הטקסט</div>
+            <div class="step-desc">משתמשים במיפוי הסופי כדי להמיר כל אות מוצפנת לאות המקורית. אותיות שלא נפתרו מוצגות כ-?</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 5 – get_cipher_words ════════ -->
+  <div class="slide" id="slide-5">
+    <div class="slide-header">
+      <span class="slide-num">05</span>
+      <div>
+        <div class="slide-title">שלב 1: ניקוי ופירוק</div>
+        <div class="slide-subtitle">get_cipher_words() – Regex לשירות הפריצה</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <pre class="code-block" data-label="PYTHON" style="margin-bottom:20px;">
+<span class="kw">import</span> re
+
+<span class="kw">def</span> <span class="fn">get_cipher_words</span>(cipher_text):
+    <span class="cm">"""
+    מקבל טקסט מוצפן עם פיסוק.
+    מסיר פיסוק ומחזיר רשימת מילים.
+    """</span>
+<span class="hl">    pattern = re.<span class="fn">compile</span>(<span class="str">r'[^A-Z\s]'</span>)  <span class="cm"># מה שלא A-Z ולא רווח</span></span>
+<span class="hl">    words = pattern.<span class="fn">sub</span>(<span class="str">''</span>, cipher_text.<span class="fn">upper</span>()).<span class="fn">split</span>()</span>
+    <span class="kw">return</span> words</pre>
+
+      <div class="card accent4" style="margin-bottom:16px;">
+        <div class="card-title">הסבר ה-Regex [^A-Z\s]</div>
+        <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;line-height:2;">
+          <span style="color:var(--accent2);">[^A-Z\s]</span> = תתאים לכל תו שהוא <strong>לא</strong> A-Z <strong>ולא</strong> רווח<br>
+          <span style="color:var(--accent);">.sub('', text)</span> = מחלף כל התאמה בלא-כלום (מוחק)<br>
+          <span style="color:var(--accent3);">.split()</span> = מפצל לרשימה לפי רווחים
+        </div>
+      </div>
+
+      <div class="three-col">
+        <div class="card">
+          <div class="card-title">קלט</div>
+          <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;color:var(--accent2);">'Duxxa fytd jopr yiom noxkod.'</div>
+        </div>
+        <div class="card accent3">
+          <div class="card-title">אחרי upper() + sub()</div>
+          <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;color:var(--accent3);">'DUXXA FYTD JOPR YIOM NOXKOD'</div>
+        </div>
+        <div class="card accent">
+          <div class="card-title">פלט – split()</div>
+          <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;color:var(--accent);">['DUXXA','FYTD','JOPR','YIOM','NOXKOD']</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 6 – בניית מיפוי ════════ -->
+  <div class="slide" id="slide-6">
+    <div class="slide-header">
+      <span class="slide-num">06</span>
+      <div>
+        <div class="slide-title">שלב 2-3: בניית מיפוי האותיות</div>
+        <div class="slide-subtitle">build_cipher_text_letter_mapping() + add_letter_to_mapping()</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="two-col" style="margin-bottom:16px;">
+        <pre class="code-block" data-label="MAIN FUNCTION" style="font-size:16.5px;">
+<span class="kw">def</span> <span class="fn">build_cipher_text_letter_mapping</span>(cipher_text):
+    intersect_map = <span class="fn">get_blank_mapping</span>()
+    cipher_words = <span class="fn">get_cipher_words</span>(cipher_text)
+
+    <span class="kw">for</span> cipher_word <span class="kw">in</span> cipher_words:
+        candidate_map = <span class="fn">get_blank_mapping</span>()
+        pattern = <span class="fn">get_word_pattern</span>(cipher_word)
+
+        <span class="kw">if</span> pattern <span class="kw">not in</span> all_patterns:
+            <span class="kw">continue</span>  <span class="cm"># תבנית לא ידועה</span>
+
+        <span class="kw">for</span> candidate <span class="kw">in</span> all_patterns[pattern]:
+<span class="hl">            <span class="fn">add_letter_to_mapping</span>(candidate_map,
+                cipher_word, candidate)</span>
+<span class="hl">        intersect_map = <span class="fn">intersect_mapping</span>(
+            intersect_map, candidate_map)</span>
+
+    mapping = <span class="fn">remove_solved_letters</span>(intersect_map)
+    <span class="kw">return</span> mapping</pre>
+        <pre class="code-block" data-label="ADD LETTERS" style="font-size:16px;">
+<span class="kw">def</span> <span class="fn">add_letter_to_mapping</span>(cmap, cipher_word, candidate):
+    <span class="cm"># cipher_word: 'DUXXA'
+    # candidate:  'AFOOT'</span>
+    <span class="cm"># D→A, U→F, X→O, X→O, A→T</span>
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(cipher_word)):
+        c_letter = cipher_word[i]   <span class="cm"># 'D'</span>
+        p_letter = candidate[i]     <span class="cm"># 'A'</span>
+        <span class="kw">if</span> p_letter <span class="kw">not in</span> cmap[c_letter]:
+            cmap[c_letter].<span class="fn">append</span>(p_letter)
+
+<span class="cm"># תוצאה עבור DUXXA ↔ AFOOT:</span>
+<span class="cm"># {'D':['A'], 'U':['F'], 'X':['O'], 'A':['T'], ...}</span></pre>
+      </div>
+
+      <div class="info-row">
+        <span class="info-icon">🔑</span>
+        <span class="info-text">
+          <strong>הלוגיקה:</strong> אם DUXXA יכול להיות AFOOT, אז <strong>D↔A, U↔F, X↔O, A↔T</strong>. אם DUXXA יכול <em>גם</em> להיות ALOOF, אז <strong>D↔A, U↔L, X↔O, A↔F</strong>. לכן U יכול להיות F <em>או</em> L, ו-A יכול להיות T <em>או</em> F.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 7 – מיזוג מילונים ════════ -->
+  <div class="slide" id="slide-7">
+    <div class="slide-header">
+      <span class="slide-num">07</span>
+      <div>
+        <div class="slide-title">מיזוג מילונים – Intersection</div>
+        <div class="slide-subtitle">intersect_mapping() – הצמצום האיטרטיבי</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="info-row" style="margin-bottom:16px;">
+        <span class="info-icon">⚡</span>
+        <span class="info-text">
+          <strong>רעיון המיזוג:</strong> לכל אות מוצפנת, שומרים <em>רק</em> את האותיות המקוריות שמופיעות גם ב-intersect_map <em>וגם</em> ב-candidate_map. כך צמצום מצטבר עם כל מילה שמנתחים.
+        </span>
+      </div>
+
+      <pre class="code-block" data-label="INTERSECTION" style="margin-bottom:16px;font-size:16px;">
+<span class="kw">def</span> <span class="fn">intersect_mapping</span>(map_a, map_b):
+    result = <span class="fn">get_blank_mapping</span>()
+    <span class="kw">for</span> letter <span class="kw">in</span> UPPERCASE_LETTERS:
+        <span class="kw">if</span>   map_a[letter] == []:  result[letter] = <span class="fn">copy</span>(map_b[letter])
+        <span class="kw">elif</span> map_b[letter] == []:  result[letter] = <span class="fn">copy</span>(map_a[letter])
+        <span class="kw">else</span>:  <span class="cm"># שניהם לא ריקים – חיתוך!</span>
+            result[letter] = [l <span class="kw">for</span> l <span class="kw">in</span> map_a[letter] <span class="kw">if</span> l <span class="kw">in</span> map_b[letter]]
+    <span class="kw">return</span> result</pre>
+
+      <div class="intersect-demo">
+        <div class="imap">
+          <div class="imap-title">intersect (קודם)</div>
+          <div class="imap-row"><span class="k">D:</span><span class="v">['A','C','D']</span></div>
+          <div class="imap-row"><span class="k">U:</span><span class="v">['F','L','A']</span></div>
+          <div class="imap-row"><span class="k">X:</span><span class="v">['O','M','B']</span></div>
+          <div class="imap-row empty"><span class="k">A:</span><span class="v">[]</span></div>
+        </div>
+        <div class="intersect-op">∩</div>
+        <div class="imap">
+          <div class="imap-title">candidate (חדש)</div>
+          <div class="imap-row"><span class="k">D:</span><span class="v">['A','B','C']</span></div>
+          <div class="imap-row"><span class="k">U:</span><span class="v">['F','I','O']</span></div>
+          <div class="imap-row"><span class="k">X:</span><span class="v">['O','N']</span></div>
+          <div class="imap-row"><span class="k">A:</span><span class="v">['T','F']</span></div>
+        </div>
+        <div class="intersect-op">=</div>
+        <div class="imap">
+          <div class="imap-title">תוצאה (חיתוך)</div>
+          <div class="imap-row solved"><span class="k">D:</span><span class="v">['A','C']</span></div>
+          <div class="imap-row solved"><span class="k">U:</span><span class="v">['F']</span></div>
+          <div class="imap-row solved"><span class="k">X:</span><span class="v">['O']</span></div>
+          <div class="imap-row"><span class="k">A:</span><span class="v">['T','F']</span></div>
+        </div>
+      </div>
+
+      <div class="info-row" style="margin-top:12px;">
+        <span class="info-icon">📌</span>
+        <span class="info-text"><strong>כלל ריק:</strong> אם אחד הצדדים ריק [] – המשמעות היא "לא בדקנו עדיין", לכן <em>לוקחים</em> את הצד השני. רק כשלשניהם יש ערכים, עושים חיתוך.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 8 – הסרת אותיות פתורות ════════ -->
+  <div class="slide" id="slide-8">
+    <div class="slide-header">
+      <span class="slide-num">08</span>
+      <div>
+        <div class="slide-title">הסרת אותיות פתורות</div>
+        <div class="slide-subtitle">remove_solve_letter_from_final_mapping() – אלגוריתם הקיבוע</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="info-row" style="margin-bottom:16px;">
+        <span class="info-icon">🎯</span>
+        <span class="info-text"><strong>הלוגיקה:</strong> אם אות מוצפנת מצביעה על <em>בדיוק</em> אות אחת (אות פתורה), אפשר להסיר אותה מכל שאר הרשימות – כי כל אות באנגלית מופיעה פעם אחת בלבד במפתח!</span>
+      </div>
+
+      <div class="two-col" style="margin-bottom:16px;">
+        <pre class="code-block" data-label="REMOVE SOLVED" style="font-size:16px;">
+<span class="kw">def</span> <span class="fn">remove_solve_letter_from_final_mapping</span>(imap):
+    continue_flag = <span class="kw">True</span>
+    count = <span class="num">0</span>
+    <span class="kw">while</span> continue_flag <span class="kw">and</span> count < <span class="num">26</span>:
+        <span class="kw">for</span> key <span class="kw">in</span> imap.<span class="fn">keys</span>():
+            <span class="kw">if</span> <span class="fn">len</span>(imap[key]) == <span class="num">1</span>:  <span class="cm"># ← פתור!</span>
+<span class="hl">                imap, continue_flag = <span class="fn">remove_from_dict</span>(
+                    imap[key][<span class="num">0</span>], imap)</span>
+        count += <span class="num">1</span>
+    <span class="kw">return</span> imap
+
+<span class="kw">def</span> <span class="fn">remove_from_dict</span>(remove_letter, imap):
+    removed = <span class="kw">False</span>
+    <span class="kw">for</span> letter <span class="kw">in</span> imap.<span class="fn">keys</span>():
+        <span class="kw">if</span> <span class="fn">len</span>(imap[letter]) > <span class="num">1</span>:
+            <span class="kw">if</span> remove_letter <span class="kw">in</span> imap[letter]:
+                imap[letter].<span class="fn">remove</span>(remove_letter)
+                removed = <span class="kw">True</span>
+    <span class="kw">return</span> imap, removed</pre>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card accent3">
+            <div class="card-title">דוגמה לקיבוע</div>
+            <div class="card-body" style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;line-height:1.9;">
+              U → ['F'] ← <span style="color:var(--accent);">פתור!</span><br>
+              A → ['T', 'F'] ← מסירים F<br>
+              A → ['T'] ← <span style="color:var(--accent);">עכשיו גם פתור!</span><br>
+              ... אפקט domino
+            </div>
+          </div>
+          <div class="card accent2">
+            <div class="card-title">למה לולאה עד 26?</div>
+            <div class="card-body">כל קיבוע עשוי לגרום לקיבוע חדש (אפקט בדומינו). לכל היותר 26 אותיות, לכן מקסימום 26 סיבובים.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 9 – פענוח הטקסט ════════ -->
+  <div class="slide" id="slide-9">
+    <div class="slide-header">
+      <span class="slide-num">09</span>
+      <div>
+        <div class="slide-title">שלב 4: פענוח הטקסט</div>
+        <div class="slide-subtitle">translate_cipher_text_using_letters_mapping()</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <pre class="code-block" data-label="DECRYPTION" style="margin-bottom:16px;font-size:16px;">
+<span class="kw">def</span> <span class="fn">translate_cipher_text_using_letters_mapping</span>(letters_mapping, cipher_text):
+    translated = <span class="str">''</span>
+    <span class="kw">for</span> letter <span class="kw">in</span> cipher_text:
+        <span class="kw">if</span> letter.<span class="fn">upper</span>() <span class="kw">in</span> letters_mapping:
+            options = letters_mapping[letter.<span class="fn">upper</span>()]
+            <span class="kw">if</span> <span class="fn">len</span>(options) == <span class="num">1</span>:          <span class="cm"># ← ידוע!</span>
+                translated += options[<span class="num">0</span>] <span class="kw">if</span> letter.<span class="fn">isupper</span>() <span class="kw">else</span> options[<span class="num">0</span>].<span class="fn">lower</span>()
+            <span class="kw">else</span>:
+                translated += <span class="str">'?'</span>          <span class="cm"># ← לא ידוע</span>
+        <span class="kw">else</span>:
+            translated += letter          <span class="cm"># רווח / פיסוק</span>
+    <span class="kw">return</span> translated</pre>
+
+      <div class="two-col">
+        <div>
+          <div class="ex-label" style="margin-bottom:6px;">מיפוי סופי (חלקי)</div>
+          <div class="mapping-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="mapping-item solved"><span class="letter">P</span><span class="arrow">→</span><span class="candidates">A</span></div>
+            <div class="mapping-item solved"><span class="letter">W</span><span class="arrow">→</span><span class="candidates">T</span></div>
+            <div class="mapping-item solved"><span class="letter">O</span><span class="arrow">→</span><span class="candidates">E</span></div>
+            <div class="mapping-item solved"><span class="letter">Y</span><span class="arrow">→</span><span class="candidates">O</span></div>
+            <div class="mapping-item solved"><span class="letter">X</span><span class="arrow">→</span><span class="candidates">N</span></div>
+            <div class="mapping-item solved"><span class="letter">F</span><span class="arrow">→</span><span class="candidates">D</span></div>
+            <div class="mapping-item solved"><span class="letter">U</span><span class="arrow">→</span><span class="candidates">L</span></div>
+            <div class="mapping-item empty"><span class="letter">H</span><span class="arrow">→</span><span class="candidates">?</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="ex-label" style="margin-bottom:6px;">תוצאת פענוח</div>
+          <div class="example-box" style="font-size:16px;line-height:1.9;">
+            <div class="ex-label">מוצפן</div>
+            <div><span class="ex-cipher">Wbo zuemha, vpll-jyiext gelpmfd...</span></div>
+            <div class="ex-label" style="margin-top:10px;">מפוענח</div>
+            <div>
+              <span class="ex-plain">The </span><span class="ex-unknown">?</span><span class="ex-plain">uir</span><span class="ex-unknown">?</span><span class="ex-plain">y, </span><span class="ex-plain">jazz-loving wizards...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 10 – דוגמה מלאה ════════ -->
+  <div class="slide" id="slide-10">
+    <div class="slide-header">
+      <span class="slide-num">10</span>
+      <div>
+        <div class="slide-title">דוגמה מלאה – הפרוייקט</div>
+        <div class="slide-subtitle">hack_simple_substitution() – הכל ביחד</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <pre class="code-block" data-label="MAIN WRAPPER" style="margin-bottom:16px;font-size:16px;">
+<span class="kw">def</span> <span class="fn">hack_simple_substitution</span>(cipher_text):
+    <span class="fn">print</span>(<span class="str">"="</span>*<span class="num">100</span>, <span class="str">"\nStart hacking..."</span>)
+
+    letters_mapping = <span class="fn">build_cipher_text_letter_mapping</span>(cipher_text)
+    <span class="fn">print</span>(pprint.<span class="fn">pformat</span>(letters_mapping))
+
+    unused = <span class="fn">get_unsed_letters</span>(letters_mapping)
+    <span class="kw">if</span> <span class="fn">len</span>(unused) > <span class="num">0</span>:
+        <span class="fn">print</span>(<span class="str">"unused letters:"</span>, unused)
+
+    detected = <span class="fn">translate_cipher_text_using_letters_mapping</span>(letters_mapping, cipher_text)
+    <span class="kw">return</span> detected, letters_mapping</pre>
+
+      <div class="card-grid" style="grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="card accent4">
+          <div class="card-title">מיפוי סופי (מקוצר)</div>
+          <div style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;line-height:1.8;margin-top:8px;">
+            <span style="color:var(--accent2);">'A'</span>→<span style="color:var(--accent);">['Y']</span>, <span style="color:var(--accent2);">'B'</span>→<span style="color:var(--accent);">['H']</span>,<br>
+            <span style="color:var(--accent2);">'D'</span>→<span style="color:var(--accent);">['S']</span>, <span style="color:var(--accent2);">'O'</span>→<span style="color:var(--accent);">['E']</span>,<br>
+            <span style="color:var(--accent2);">'P'</span>→<span style="color:var(--accent);">['A']</span>, <span style="color:var(--accent2);">'Z'</span>→<span style="color:var(--accent3);">['K','Q','U','Z']</span><br>
+            <span style="color:var(--muted);">unused: ['J','K','Q','U','Z']</span>
+          </div>
+        </div>
+        <div class="card accent">
+          <div class="card-title">פלט סופי</div>
+          <div style="direction:ltr;font-family:'Space Mono',monospace;font-size:16px;line-height:1.7;margin-top:8px;color:#c3e88d;">
+            "Juxtaposing a quirky, foxglove-<br>
+            hued zephyr with a vivid symphony<br>
+            of jazz, the quick brown fox<br>
+            lazily jumps over an enigmatic<br>
+            labyrinth of buzzing beehives..."
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row mt-16">
+        <span class="info-icon">⚠️</span>
+        <span class="info-text"><strong>מגבלה:</strong> אות <span class="badge b3">Z</span> מיפתה ל-4 אפשרויות כי לא הייתה מספיק מידע סטטיסטי בטקסט. פריצה מלאה דורשת טקסט ארוך יותר, אנליזת תדירויות, או ניחוש ידני.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SLIDE 11 – SUMMARY ════════ -->
+  <div class="slide" id="slide-11">
+    <div class="slide-header">
+      <span class="slide-num">11</span>
+      <div>
+        <div class="slide-title">סיכום – מה למדנו?</div>
+        <div class="slide-subtitle">עיקרי האלגוריתם</div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="s-num">01</div>
+          <div class="s-title">תבניות מילים</div>
+          <div class="s-desc">כל מילה מאופיינת בתבנית ייחודית (0.1.0.2...) שנשמרת גם בטקסט המוצפן. זהו הבסיס לפריצה.</div>
+        </div>
+        <div class="summary-card">
+          <div class="s-num" style="color:var(--accent2);">02</div>
+          <div class="s-title">מיפוי מועמדות</div>
+          <div class="s-desc">לכל מילה מוצפנת, מוצאים את כל המילים האנגליות עם אותה תבנית ובונים מיפוי אפשרי של אותיות.</div>
+        </div>
+        <div class="summary-card">
+          <div class="s-num" style="color:var(--accent3);">03</div>
+          <div class="s-title">Intersection איטרטיבי</div>
+          <div class="s-desc">ממזגים את המיפויים של כל המילים בחיתוך (∩) – כך שורדות רק האותיות שעקביות עם <em>כל</em> המילים.</div>
+        </div>
+        <div class="summary-card">
+          <div class="s-num" style="color:var(--accent4);">04</div>
+          <div class="s-title">אפקט דומינו</div>
+          <div class="s-desc">כל אות שנפתרת לאחד (ידועה) מוסרת ממיפויי האחרים, מה שגורם לפתרון אותיות נוספות בשרשרת.</div>
+        </div>
+      </div>
+
+      <div class="card accent" style="margin-top:16px;">
+        <div class="card-title" style="text-align:center;font-size:16px;">🔐 למה Simple Substitution אינו מאובטח?</div>
+        <div class="card-body" style="text-align:center;font-size:16px;margin-top:8px;">
+          למרות <strong>403 ספטיליון</strong> מפתחות אפשריים – ניתוח תבניות + סטטיסטיקת שפה מאפשרים פריצה ב<strong>שניות</strong>.<br>
+          <span style="color:var(--accent);margin-top:8px;display:block;">הלקח: אבטחה אינה מדידה לפי מספר המפתחות, אלא לפי כמות המידע שמדלוף!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /slides-wrapper -->
+
+<!-- ── NAVIGATION ── -->
+<div id="nav">
+  <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>&#8594;</button>
+  <div class="dot-nav" id="dotNav"></div>
+  <span id="slide-counter">1 / 12</span>
+  <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">&#8592;</button>
+</div>
+
+<script>
+const TOTAL = 12;
+let current = 0;
+
+// Build key visualization
+const plain  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const cipher = 'PSKFONTBEVHJQXYRZMDWUIGCAL'.split('');
+const keyVis = document.getElementById('keyVis');
+plain.forEach((p, i) => {
+  const col = document.createElement('div');
+  col.className = 'key-col';
+  const top = document.createElement('div');
+  top.className = 'key-cell plain';
+  top.textContent = p;
+  top.title = `Plain: ${p}`;
+  const bot = document.createElement('div');
+  bot.className = 'key-cell cipher';
+  bot.textContent = cipher[i];
+  bot.title = `Cipher: ${cipher[i]}`;
+  col.appendChild(top);
+  col.appendChild(bot);
+  keyVis.appendChild(col);
+});
+
+// Build dots
+const dotNav = document.getElementById('dotNav');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotNav.appendChild(d);
+}
+
+function updateUI() {
+  // Progress
+  document.getElementById('progress-bar').style.width = ((current / (TOTAL-1)) * 100) + '%';
+  // Counter
+  document.getElementById('slide-counter').textContent = `${current+1} / ${TOTAL}`;
+  // Buttons
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === TOTAL - 1;
+  // Dots
+  document.querySelectorAll('.dot').forEach((d,i) => {
+    d.classList.toggle('active', i === current);
+  });
+}
+
+function goTo(idx) {
+  if (idx < 0 || idx >= TOTAL) return;
+  const slides = document.querySelectorAll('.slide');
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit');
+  setTimeout(() => slides[current > idx ? current : idx - (idx - current) + (idx - current)].classList.remove('exit'), 500);
+
+  // Remove exit from old
+  const old = current;
+  current = idx;
+
+  setTimeout(() => slides[old].classList.remove('exit'), 500);
+  slides[current].classList.add('active');
+  updateUI();
+}
+
+function changeSlide(dir) {
+  goTo(current + dir);
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   changeSlide(-1);
+});
+
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תרגיל MVC — מערכת קנטינה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0d1117;
+  --s1:     #161b22;
+  --s2:     #1c2330;
+  --border: #30363d;
+  --text:   #e6edf3;
+  --dim:    #8b949e;
+  --model:  #3fb950;
+  --view:   #58a6ff;
+  --ctrl:   #f78166;
+  --acc:    #d2a8ff;
+  --yellow: #e3b341;
+  --cyan:   #39c5cf;
+
+  /* roles */
+  --r1: #3fb950;  /* model dev */
+  --r2: #58a6ff;  /* view dev */
+  --r3: #f78166;  /* controller dev */
+  --r4: #d2a8ff;  /* qa */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── TOP NAV ── */
+#topnav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(13,17,23,.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 40px;
+  display:flex;align-items:center;gap:0;
+  height:52px;
+  overflow-x:auto;
+}
+#topnav a{
+  color:var(--dim);font-size:16px;font-weight:600;
+  text-decoration:none;padding:0 16px;height:52px;
+  display:flex;align-items:center;border-bottom:2px solid transparent;
+  white-space:nowrap;transition:color .2s,border-color .2s;
+}
+#topnav a:hover,#topnav a.active{color:var(--text);border-bottom-color:var(--acc)}
+
+/* ── LAYOUT ── */
+.page{max-width:1100px;margin:0 auto;padding:60px 40px}
+section{margin-bottom:80px}
+
+/* ── HERO ── */
+.hero{
+  background:
+    radial-gradient(ellipse at 10% 50%, rgba(63,185,80,.09) 0%,transparent 55%),
+    radial-gradient(ellipse at 90% 20%, rgba(88,166,255,.09) 0%,transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(210,168,255,.07) 0%,transparent 50%),
+    var(--s1);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:56px 56px;
+  margin-bottom:64px;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'🍕';
+  position:absolute;right:60px;top:50%;transform:translateY(-50%);
+  font-size:110px;opacity:.12;
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-size:16px;font-weight:700;letter-spacing:4px;
+  text-transform:uppercase;color:var(--acc);margin-bottom:16px;
+}
+.hero h1{
+  font-size:clamp(32px,4vw,54px);font-weight:900;line-height:1.1;
+  margin-bottom:16px;
+}
+.hero h1 em{font-style:normal;color:var(--model)}
+.hero p{font-size:16px;color:var(--dim);max-width:580px;line-height:1.7;margin-bottom:32px}
+.hero-chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:20px;font-size:16px;font-weight:700;
+  letter-spacing:.5px;border:1.5px solid;
+}
+.chip.green{color:var(--model);border-color:var(--model);background:rgba(63,185,80,.1)}
+.chip.blue {color:var(--view); border-color:var(--view); background:rgba(88,166,255,.1)}
+.chip.red  {color:var(--ctrl); border-color:var(--ctrl); background:rgba(247,129,102,.1)}
+.chip.purple{color:var(--acc);border-color:var(--acc);background:rgba(210,168,255,.1)}
+.chip.yellow{color:var(--yellow);border-color:var(--yellow);background:rgba(227,179,65,.1)}
+
+/* ── SECTION TITLE ── */
+.sec-label{font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.sec-title{font-size:clamp(22px,3vw,34px);font-weight:900;margin-bottom:24px}
+.sec-title .hl{color:var(--acc)}
+
+/* ── SCENARIO CARD ── */
+.scenario{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:36px 40px;
+  display:grid;grid-template-columns:1fr 1fr;gap:32px;
+}
+.scenario h3{font-size:17px;font-weight:700;margin-bottom:12px}
+.scenario p,.scenario li{font-size:16px;color:var(--dim);line-height:1.75}
+.scenario ul{padding-right:18px}
+.scenario ul li{margin-bottom:4px}
+
+/* ── SCREEN MOCKUP ── */
+.mockup{
+  background:#1a1f2a;border:1.5px solid var(--border);border-radius:10px;
+  padding:0;overflow:hidden;font-family:'JetBrains Mono',monospace;
+}
+.mockup-bar{
+  background:var(--s2);padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.mockup-dot{width:10px;height:10px;border-radius:50%}
+.mockup-title{font-size:16px;color:var(--dim);margin-right:12px}
+.mockup-body{padding:16px 18px;font-size:16px;line-height:1.8}
+.mockup-row{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.mockup-row:last-child{border:none}
+.col-name{flex:2;color:var(--text)}
+.col-price{flex:1;color:var(--yellow);text-align:left}
+.col-qty{flex:1;color:var(--cyan);text-align:center}
+.mockup-total{
+  margin-top:12px;padding:10px 0;border-top:1.5px solid var(--border);
+  display:flex;justify-content:space-between;
+  font-weight:700;font-size:16px;
+}
+.mockup-total .label{color:var(--dim)}
+.mockup-total .amount{color:var(--model)}
+.mockup-btns{display:flex;gap:8px;margin-top:10px}
+.mbtn{
+  padding:6px 14px;border-radius:6px;font-size:16px;font-weight:700;
+  border:1px solid;cursor:default;
+}
+.mbtn.green{background:rgba(63,185,80,.15);color:var(--model);border-color:var(--model)}
+.mbtn.blue{background:rgba(88,166,255,.15);color:var(--view);border-color:var(--view)}
+.mbtn.red{background:rgba(247,129,102,.15);color:var(--ctrl);border-color:var(--ctrl)}
+
+/* ── ROLE CARDS ── */
+.roles-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.role-card{
+  border-radius:14px;padding:24px 20px;
+  display:flex;flex-direction:column;gap:10px;
+  transition:transform .2s;cursor:default;
+  position:relative;overflow:hidden;
+}
+.role-card::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.03),transparent);
+  pointer-events:none;
+}
+.role-card:hover{transform:translateY(-4px)}
+.role-card.r1{background:rgba(63,185,80,.07);border:2px solid var(--r1)}
+.role-card.r2{background:rgba(88,166,255,.07);border:2px solid var(--r2)}
+.role-card.r3{background:rgba(247,129,102,.07);border:2px solid var(--r3)}
+.role-card.r4{background:rgba(210,168,255,.07);border:2px solid var(--r4)}
+.role-icon{font-size:32px}
+.role-title{font-size:16px;font-weight:900}
+.role-card.r1 .role-title{color:var(--r1)}
+.role-card.r2 .role-title{color:var(--r2)}
+.role-card.r3 .role-title{color:var(--r3)}
+.role-card.r4 .role-title{color:var(--r4)}
+.role-file{font-family:'JetBrains Mono',monospace;font-size:16px;
+  padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:4px}
+.r1 .role-file{background:rgba(63,185,80,.12);color:var(--r1);border:1px solid var(--r1)}
+.r2 .role-file{background:rgba(88,166,255,.12);color:var(--r2);border:1px solid var(--r2)}
+.r3 .role-file{background:rgba(247,129,102,.12);color:var(--r3);border:1px solid var(--r3)}
+.r4 .role-file{background:rgba(210,168,255,.12);color:var(--r4);border:1px solid var(--r4)}
+.role-tasks{font-size:16px;color:var(--dim);line-height:1.8;list-style:none}
+.role-tasks li::before{content:'→ ';color:var(--dim)}
+
+/* ── CODE TABS ── */
+.code-tabs{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.tab-bar{
+  display:flex;background:var(--s2);border-bottom:1px solid var(--border);
+  padding:0 4px;gap:2px;
+}
+.tab{
+  padding:11px 18px;font-size:16px;font-weight:600;cursor:pointer;
+  color:var(--dim);border-bottom:2px solid transparent;
+  transition:color .2s,border-color .2s;border-radius:0;
+  background:none;border-top:none;border-left:none;border-right:none;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--acc)}
+.tab-panel{display:none;padding:4px}
+.tab-panel.active{display:block}
+
+pre{
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;
+  background:var(--bg);border-radius:8px;padding:22px 24px;
+  overflow-x:auto;direction:ltr;text-align:left;
+}
+.kw{color:#ff7b72} .fn{color:#d2a8ff} .st{color:#a5d6ff}
+.cm{color:#6e7681;font-style:italic} .cl{color:#ffa657}
+.nb{color:#79c0ff} .nm{color:#3fb950} .nv{color:#58a6ff} .nc{color:#f78166}
+.todo{
+  background:rgba(227,179,65,.12);border-right:3px solid var(--yellow);
+  color:var(--yellow);display:block;padding:2px 8px;margin:2px 0;
+  border-radius:0 4px 4px 0;
+}
+.done{color:var(--model)}
+
+/* ── MILESTONES ── */
+.milestones{display:flex;flex-direction:column;gap:0;position:relative}
+.milestones::before{
+  content:'';position:absolute;right:23px;top:0;bottom:0;
+  width:2px;background:linear-gradient(to bottom,var(--model),var(--view),var(--ctrl),var(--acc));
+  opacity:.3;
+}
+.ms-item{
+  display:flex;gap:24px;align-items:flex-start;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:20px 24px;margin-bottom:12px;
+  position:relative;z-index:1;
+}
+.ms-num{
+  width:46px;height:46px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;border:2px solid;
+}
+.ms-item:nth-child(1) .ms-num{color:var(--model);border-color:var(--model);background:rgba(63,185,80,.1)}
+.ms-item:nth-child(2) .ms-num{color:var(--view);border-color:var(--view);background:rgba(88,166,255,.1)}
+.ms-item:nth-child(3) .ms-num{color:var(--ctrl);border-color:var(--ctrl);background:rgba(247,129,102,.1)}
+.ms-item:nth-child(4) .ms-num{color:var(--acc);border-color:var(--acc);background:rgba(210,168,255,.1)}
+.ms-item:nth-child(5) .ms-num{color:var(--yellow);border-color:var(--yellow);background:rgba(227,179,65,.1)}
+.ms-body h4{font-size:16px;font-weight:700;margin-bottom:6px}
+.ms-body p{font-size:16px;color:var(--dim);line-height:1.6}
+.ms-time{
+  margin-right:auto;font-size:16px;font-weight:700;
+  padding:4px 12px;border-radius:20px;
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--dim);white-space:nowrap;align-self:flex-start;margin-top:2px;
+}
+.ms-roles{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.ms-role-tag{
+  font-size:16px;font-weight:700;padding:3px 10px;border-radius:12px;
+  border:1px solid;
+}
+
+/* ── DATA JSON ── */
+.json-preview{
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  line-height:1.8;direction:ltr;text-align:left;
+}
+.jk{color:#79c0ff} .jv{color:#a5d6ff} .jn{color:#ffa657} .jb{color:#ff7b72}
+
+/* ── BONUS ── */
+.bonus-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.bonus-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;transition:border-color .2s;
+}
+.bonus-card:hover{border-color:var(--acc)}
+.bonus-level{
+  font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:8px;
+}
+.bonus-card.easy .bonus-level{color:var(--model)}
+.bonus-card.medium .bonus-level{color:var(--yellow)}
+.bonus-card.hard .bonus-level{color:var(--ctrl)}
+.bonus-card.epic .bonus-level{color:var(--acc)}
+.bonus-card h4{font-size:16px;font-weight:700;margin-bottom:6px}
+.bonus-card p{font-size:16px;color:var(--dim);line-height:1.6}
+.bonus-pts{
+  display:inline-block;margin-top:10px;
+  font-size:16px;font-weight:700;padding:3px 12px;border-radius:20px;
+  background:var(--s2);border:1px solid var(--border);color:var(--dim);
+}
+
+/* ── RUBRIC ── */
+.rubric-table{width:100%;border-collapse:collapse;font-size:16px}
+.rubric-table th{
+  background:var(--s2);padding:12px 16px;text-align:right;
+  font-size:16px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);
+  border:1px solid var(--border);
+}
+.rubric-table td{
+  padding:12px 16px;border:1px solid var(--border);
+  vertical-align:top;line-height:1.5;
+}
+.rubric-table tr:nth-child(even) td{background:var(--s1)}
+.pts{
+  font-weight:700;font-family:'JetBrains Mono',monospace;
+  color:var(--yellow);text-align:center!important;
+}
+
+/* ── TEAM CONTRACT ── */
+.contract{
+  background:var(--s1);border:2px dashed var(--border);
+  border-radius:16px;padding:36px 40px;
+}
+.contract h3{font-size:20px;font-weight:900;margin-bottom:20px}
+.contract-fields{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.field-group{display:flex;flex-direction:column;gap:6px}
+.field-group label{font-size:16px;font-weight:700;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
+.field-line{
+  border:none;border-bottom:1.5px solid var(--border);
+  background:transparent;color:var(--text);font-family:'Heebo',sans-serif;
+  font-size:16px;padding:8px 4px;width:100%;
+  outline:none;transition:border-color .2s;
+}
+.field-line:focus{border-bottom-color:var(--acc)}
+.sign-row{
+  margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+}
+.sign-box{text-align:center}
+.sign-box .role-label{font-size:16px;font-weight:700;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+.sign-box .sign-line{border-bottom:1.5px solid var(--border);height:32px;margin-bottom:8px}
+.sign-box .name-line{border-bottom:1px solid var(--border);height:20px}
+
+/* ── FLOW DIAGRAM ── */
+.flow-diagram{
+  display:flex;align-items:center;justify-content:center;
+  gap:0;padding:24px;flex-wrap:wrap;
+}
+.flow-box{
+  padding:14px 22px;border-radius:10px;text-align:center;
+  min-width:120px;
+}
+.flow-box.m{background:rgba(63,185,80,.1);border:2px solid var(--model)}
+.flow-box.v{background:rgba(88,166,255,.1);border:2px solid var(--view)}
+.flow-box.c{background:rgba(247,129,102,.1);border:2px solid var(--ctrl)}
+.flow-box.u{background:rgba(210,168,255,.1);border:2px solid var(--acc)}
+.flow-box .fb-icon{font-size:22px;margin-bottom:4px}
+.flow-box .fb-name{font-size:16px;font-weight:900}
+.flow-box .fb-file{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--dim);margin-top:3px}
+.flow-arr{
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 8px;color:var(--dim);font-size:16px;gap:2px;
+}
+.flow-arr .arrow{font-size:20px}
+
+/* ── PRINT ── */
+.print-btn{
+  position:fixed;bottom:28px;left:28px;
+  background:var(--acc);color:#0d1117;
+  border:none;border-radius:50px;padding:12px 22px;
+  font-family:'Heebo',sans-serif;font-size:16px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:8px;
+  box-shadow:0 4px 24px rgba(210,168,255,.3);
+  transition:transform .2s,box-shadow .2s;z-index:50;
+}
+.print-btn:hover{transform:translateY(-2px);box-shadow:0 6px 32px rgba(210,168,255,.4)}
+
+@media print {
+  .print-btn{display:none}
+  #topnav{display:none}
+  body{background:white;color:black}
+  .hero{background:none;border:2px solid #333}
+  section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav id="topnav">
+  <a href="#scenario" class="active">📋 תרחיש</a>
+  <a href="#roles">👥 תפקידים</a>
+  <a href="#code">💻 קוד התחלתי</a>
+  <a href="#milestones">🏁 אבני דרך</a>
+  <a href="#bonus">⭐ בונוס</a>
+  <a href="#rubric">📊 רובריקה</a>
+  <a href="#contract">📝 חוזה צוות</a>
+</nav>
+
+<div class="page">
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <div class="hero-eyebrow">תרגיל צוותי · תבנית MVC · PyQt6</div>
+  <h1>מערכת הזמנות<br><em>קנטינה בית ספרית</em></h1>
+  <p>בנו יחד מערכת לניהול הזמנות אוכל — תוך שימוש בתבנית MVC וחלוקת עבודה אמיתית בין חברי הצוות.</p>
+  <div class="hero-chips">
+    <span class="chip green">🗄️ Model — נתוני תפריט</span>
+    <span class="chip blue">🖥️ View — ממשק הזמנה</span>
+    <span class="chip red">⚙️ Controller — לוגיקת הזמנה</span>
+    <span class="chip yellow">⏱️ ~90 דקות</span>
+    <span class="chip purple">👥 קבוצה של 3–4</span>
+  </div>
+</div>
+
+<!-- ═══ SCENARIO ═══ -->
+<section id="scenario">
+  <div class="sec-label">התרחיש</div>
+  <div class="sec-title">מה אתם <span class="hl">בונים</span>?</div>
+
+  <div class="scenario">
+    <div>
+      <h3>🎯 המטרה</h3>
+      <p style="margin-bottom:16px">הקנטינה של בית הספר מבקשת מכם לבנות מערכת ניהול הזמנות פשוטה. תלמידים יבחרו פריטים מהתפריט, יראו סיכום הזמנה ויוכלו לשמור אותה.</p>
+      <h3>📦 פונקציונליות נדרשת</h3>
+      <ul>
+        <li>טעינת תפריט מקובץ JSON</li>
+        <li>הצגת הפריטים בטבלה</li>
+        <li>בחירת כמות לכל פריט</li>
+        <li>חישוב סכום כולל אוטומטי</li>
+        <li>שמירת הזמנה לקובץ JSON</li>
+        <li>ניקוי הזמנה (Reset)</li>
+      </ul>
+      <div style="margin-top:20px;padding:16px;background:var(--s2);border-radius:8px;font-size:16px">
+        <strong style="color:var(--yellow)">💡 כלל הזהב:</strong>
+        <span style="color:var(--dim)"> כל שינוי בממשק לא ישנה את לוגיקת הנתונים. כל שינוי בנתונים לא ישנה את הממשק.</span>
+      </div>
+    </div>
+    <div>
+      <div style="margin-bottom:12px;font-size:16px;color:var(--dim);font-weight:600">📱 תצוגה מוקדמת — כך ייראה הממשק:</div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#ff5f57"></div>
+          <div class="mockup-dot" style="background:#febc2e"></div>
+          <div class="mockup-dot" style="background:#28c840"></div>
+          <div class="mockup-title" style="margin-right:auto">🍕 קנטינה — מערכת הזמנות</div>
+        </div>
+        <div class="mockup-body">
+          <div style="display:flex;gap:12px;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px">
+            <span style="flex:2;font-size:16px;color:var(--dim);font-weight:700">פריט</span>
+            <span style="flex:1;font-size:16px;color:var(--dim);font-weight:700">מחיר ₪</span>
+            <span style="flex:1;font-size:16px;color:var(--dim);font-weight:700;text-align:center">כמות</span>
+          </div>
+          <div class="mockup-row"><span class="col-name">🥪 כריך גבינה</span><span class="col-price">12</span><span class="col-qty">2</span></div>
+          <div class="mockup-row"><span class="col-name">🍕 פיצה שניצל</span><span class="col-price">18</span><span class="col-qty">1</span></div>
+          <div class="mockup-row"><span class="col-name">🥤 מיץ תפוזים</span><span class="col-price">8</span><span class="col-qty">3</span></div>
+          <div class="mockup-row"><span class="col-name">🍫 בורקס גבינה</span><span class="col-price">10</span><span class="col-qty">0</span></div>
+          <div class="mockup-row"><span class="col-name">☕ נס קפה</span><span class="col-price">9</span><span class="col-qty">1</span></div>
+          <div class="mockup-total">
+            <span class="label">סה"כ לתשלום:</span>
+            <span class="amount">₪ 83</span>
+          </div>
+          <div class="mockup-btns">
+            <div class="mbtn green">💾 שמור הזמנה</div>
+            <div class="mbtn blue">📋 היסטוריה</div>
+            <div class="mbtn red">🗑️ נקה</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow diagram -->
+  <div style="margin-top:32px">
+    <div style="font-size:16px;color:var(--dim);font-weight:600;margin-bottom:12px;text-align:center">
+      ארכיטקטורת המערכת — זרימת הנתונים
+    </div>
+    <div class="flow-diagram" style="background:var(--s1);border:1px solid var(--border);border-radius:12px;direction:ltr;">
+      <div class="flow-box u">
+        <div class="fb-icon">🧑‍🎓</div>
+        <div class="fb-name" style="color:var(--acc)">User</div>
+        <div class="fb-file">תלמיד</div>
+      </div>
+      <div class="flow-arr">
+        <div style="font-size:16px">בוחר כמות</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="flow-box v">
+        <div class="fb-icon">🖥️</div>
+        <div class="fb-name" style="color:var(--view)">View</div>
+        <div class="fb-file">canteen_view.py</div>
+      </div>
+      <div class="flow-arr">
+        <div style="font-size:16px">Signal</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="flow-box c">
+        <div class="fb-icon">⚙️</div>
+        <div class="fb-name" style="color:var(--ctrl)">Controller</div>
+        <div class="fb-file">canteen_ctrl.py</div>
+      </div>
+      <div class="flow-arr">
+        <div style="font-size:16px">מעבד</div>
+        <div class="arrow">→</div>
+      </div>
+      <div class="flow-box m">
+        <div class="fb-icon">🗄️</div>
+        <div class="fb-name" style="color:var(--model)">Model</div>
+        <div class="fb-file">canteen_model.py</div>
+      </div>
+      <div class="flow-arr">
+        <div style="font-size:16px">↔ data</div>
+        <div class="arrow">⇔</div>
+      </div>
+      <div class="flow-box" style="background:rgba(227,179,65,.1);border:2px solid var(--yellow)">
+        <div class="fb-icon">📁</div>
+        <div class="fb-name" style="color:var(--yellow)">JSON</div>
+        <div class="fb-file">menu.json</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ROLES ═══ -->
+<section id="roles">
+  <div class="sec-label">חלוקת תפקידים</div>
+  <div class="sec-title">מי עושה <span class="hl">מה</span>?</div>
+  <div class="roles-grid">
+
+    <div class="role-card r1">
+      <div class="role-icon">👩‍💻</div>
+      <div class="role-title">מפתח/ת Model</div>
+      <div><span class="role-file">canteen_model.py</span></div>
+      <div><span class="role-file">menu.json</span></div>
+      <ul class="role-tasks">
+        <li>יצירת קובץ menu.json</li>
+        <li>מחלקת <code>CanteenModel</code></li>
+        <li>טעינת תפריט מ-JSON</li>
+        <li>חישוב סכום הזמנה</li>
+        <li>שמירת הזמנה</li>
+        <li>היסטוריית הזמנות</li>
+      </ul>
+      <div style="margin-top:auto;font-size:16px;color:var(--dim);padding-top:12px;border-top:1px solid rgba(63,185,80,.2)">
+        🔒 <strong style="color:var(--r1)">כלל:</strong> ללא import של PyQt6!
+      </div>
+    </div>
+
+    <div class="role-card r2">
+      <div class="role-icon">🎨</div>
+      <div class="role-title">מפתח/ת View</div>
+      <div><span class="role-file">canteen_view.py</span></div>
+      <ul class="role-tasks">
+        <li>חלון ראשי עם QTableWidget</li>
+        <li>עמודות: פריט, מחיר, כמות</li>
+        <li>תצוגת סכום כולל</li>
+        <li>כפתורי Save / History / Clear</li>
+        <li>עדכון תצוגה מנתונים</li>
+      </ul>
+      <div style="margin-top:auto;font-size:16px;color:var(--dim);padding-top:12px;border-top:1px solid rgba(88,166,255,.2)">
+        🔒 <strong style="color:var(--r2)">כלל:</strong> ללא לוגיקה עסקית!
+      </div>
+    </div>
+
+    <div class="role-card r3">
+      <div class="role-icon">🔗</div>
+      <div class="role-title">מפתח/ת Controller</div>
+      <div><span class="role-file">canteen_ctrl.py</span></div>
+      <div><span class="role-file">main.py</span></div>
+      <ul class="role-tasks">
+        <li>יצירת Model ו-View</li>
+        <li>חיבור Signals ← Slots</li>
+        <li>לוגיקת save / clear</li>
+        <li>עדכון View לאחר שינוי</li>
+        <li>ניהול זרימת הנתונים</li>
+      </ul>
+      <div style="margin-top:auto;font-size:16px;color:var(--dim);padding-top:12px;border-top:1px solid rgba(247,129,102,.2)">
+        🔒 <strong style="color:var(--r3)">כלל:</strong> אל תכיל לוגיקת חישוב!
+      </div>
+    </div>
+
+    <div class="role-card r4">
+      <div class="role-icon">🧪</div>
+      <div class="role-title">QA + Integrator</div>
+      <div><span class="role-file">test_model.py</span></div>
+      <div><span class="role-file">README.md</span></div>
+      <ul class="role-tasks">
+        <li>הגדרת "חוזה" בין שכבות</li>
+        <li>בדיקת Model (ללא GUI)</li>
+        <li>תיעוד הממשק המשותף</li>
+        <li>בדיקות קצה (edge cases)</li>
+        <li>שילוב וריצה של הכל</li>
+      </ul>
+      <div style="margin-top:auto;font-size:16px;color:var(--dim);padding-top:12px;border-top:1px solid rgba(210,168,255,.2)">
+        🔒 <strong style="color:var(--r4)">כלל:</strong> בדיקות עצמאיות בלבד!
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px 24px;font-size:16px">
+    <strong style="color:var(--yellow)">⚠️ הערה לקבוצת 3:</strong>
+    <span style="color:var(--dim)"> אם הקבוצה שלכם היא 3 אנשים — שלב את תפקידי Controller + QA.</span>
+  </div>
+</section>
+
+<!-- ═══ CODE ═══ -->
+<section id="code">
+  <div class="sec-label">קוד התחלתי</div>
+  <div class="sec-title">ה-<span class="hl">Skeleton</span> — מלאו את ה-TODO</div>
+
+  <!-- JSON file -->
+  <div style="margin-bottom:24px">
+    <div style="font-size:16px;font-weight:700;color:var(--yellow);margin-bottom:10px;font-family:'JetBrains Mono',monospace">📄 menu.json — נתחיל מהנתונים</div>
+    <pre class="json-preview">{
+  <span class="jk">"menu"</span>: [
+    { <span class="jk">"id"</span>: <span class="jn">1</span>, <span class="jk">"name"</span>: <span class="jv">"כריך גבינה"</span>,    <span class="jk">"price"</span>: <span class="jn">12</span>, <span class="jk">"emoji"</span>: <span class="jv">"🥪"</span> },
+    { <span class="jk">"id"</span>: <span class="jn">2</span>, <span class="jk">"name"</span>: <span class="jv">"פיצה שניצל"</span>,   <span class="jk">"price"</span>: <span class="jn">18</span>, <span class="jk">"emoji"</span>: <span class="jv">"🍕"</span> },
+    { <span class="jk">"id"</span>: <span class="jn">3</span>, <span class="jk">"name"</span>: <span class="jv">"מיץ תפוזים"</span>,   <span class="jk">"price"</span>: <span class="jn">8</span>,  <span class="jk">"emoji"</span>: <span class="jv">"🥤"</span> },
+    { <span class="jk">"id"</span>: <span class="jn">4</span>, <span class="jk">"name"</span>: <span class="jv">"בורקס גבינה"</span>,  <span class="jk">"price"</span>: <span class="jn">10</span>, <span class="jk">"emoji"</span>: <span class="jv">"🥐"</span> },
+    { <span class="jk">"id"</span>: <span class="jn">5</span>, <span class="jk">"name"</span>: <span class="jv">"נס קפה"</span>,       <span class="jk">"price"</span>: <span class="jn">9</span>,  <span class="jk">"emoji"</span>: <span class="jv">"☕"</span> }
+  ]
+}
+
+<span style="color:#6e7681;font-style:italic">// TODO: הוסיפו עוד פריטים מהקנטינה שלכם!</span></pre>
+  </div>
+
+  <!-- Code tabs -->
+  <div class="code-tabs">
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('model')">🗄️ canteen_model.py</button>
+      <button class="tab" onclick="showTab('view')">🖥️ canteen_view.py</button>
+      <button class="tab" onclick="showTab('ctrl')">⚙️ canteen_ctrl.py</button>
+      <button class="tab" onclick="showTab('main')">▶️ main.py</button>
+      <button class="tab" onclick="showTab('test')">🧪 test_model.py</button>
+    </div>
+
+    <!-- MODEL -->
+    <div id="tab-model" class="tab-panel active">
+      <pre><span class="cm"># canteen_model.py
+# 👩‍💻 תפקיד: מפתח/ת Model
+# ⚠️  אין import של PyQt6 בקובץ זה!</span>
+
+<span class="kw">import</span> json
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="cl nm">CanteenModel</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="nb">self</span>.menu_items = []    <span class="cm"># רשימת פריטי תפריט</span>
+        <span class="nb">self</span>.order = {}        <span class="cm"># {item_id: quantity}</span>
+        <span class="nb">self</span>.order_history = [] <span class="cm"># רשימת הזמנות קודמות</span>
+
+    <span class="kw">def</span> <span class="fn">load_menu</span>(<span class="nb">self</span>, filename: str) -> <span class="nb">bool</span>:
+        <span class="cm">"""טעינת תפריט מקובץ JSON
+        מחזיר True אם הצליח, False אם נכשל"""</span>
+        <span class="kw">try</span>:
+<span class="todo">            # TODO: פתחו את הקובץ ב-try/except
+            # טענו את menu_items מהמפתח "menu"
+            # החזירו True</span>
+            <span class="kw">pass</span>
+        <span class="kw">except</span> (<span class="cl">FileNotFoundError</span>, <span class="cl">KeyError</span>):
+            <span class="kw">return</span> <span class="nb">False</span>
+
+    <span class="kw">def</span> <span class="fn">get_menu</span>(<span class="nb">self</span>) -> <span class="nb">list</span>:
+        <span class="cm">"""מחזיר את רשימת פריטי התפריט"""</span>
+<span class="todo">        # TODO: שורה אחת — החזירו את menu_items</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">set_quantity</span>(<span class="nb">self</span>, item_id: <span class="nb">int</span>, qty: <span class="nb">int</span>):
+        <span class="cm">"""עדכון כמות פריט בהזמנה
+        אם qty == 0, הסר את הפריט מההזמנה"""</span>
+<span class="todo">        # TODO: אם qty > 0 → שמור ב-self.order[item_id] = qty
+        # אם qty == 0 → הסר מהמילון (השתמשו ב-pop עם ברירת מחדל)</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">calculate_total</span>(<span class="nb">self</span>) -> <span class="nb">float</span>:
+        <span class="cm">"""חישוב הסכום הכולל של ההזמנה"""</span>
+<span class="todo">        # TODO: עברו על self.order
+        # לכל (item_id, qty) — מצאו את המחיר ב-menu_items
+        # הכפילו מחיר * כמות וסכמו הכל
+        # רמז: השתמשו ב-next() עם generator</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">get_order_items</span>(<span class="nb">self</span>) -> <span class="nb">list</span>:
+        <span class="cm">"""מחזיר רשימת dict של פריטים שהוזמנו
+        כל dict: {name, price, qty, subtotal}"""</span>
+<span class="todo">        # TODO: בנו רשימה רק עבור פריטים עם qty > 0
+        # כל פריט: {"name": ..., "price": ...,
+        #           "qty": ..., "subtotal": price*qty}</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">save_order</span>(<span class="nb">self</span>, filename: str) -> <span class="nb">bool</span>:
+        <span class="cm">"""שמירת ההזמנה הנוכחית לקובץ JSON"""</span>
+<span class="todo">        # TODO: בנו dict עם:
+        # "timestamp": datetime.now().isoformat()
+        # "items": self.get_order_items()
+        # "total": self.calculate_total()
+        # הוסיפו ל-order_history
+        # שמרו את order_history לקובץ filename</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">clear_order</span>(<span class="nb">self</span>):
+        <span class="cm">"""ניקוי ההזמנה הנוכחית"""</span>
+<span class="todo">        # TODO: שורה אחת — איפוס self.order</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">get_history</span>(<span class="nb">self</span>) -> <span class="nb">list</span>:
+        <span class="cm">"""מחזיר היסטוריית הזמנות"""</span>
+<span class="todo">        # TODO: שורה אחת</span>
+        <span class="kw">pass</span></pre>
+    </div>
+
+    <!-- VIEW -->
+    <div id="tab-view" class="tab-panel">
+      <pre><span class="cm"># canteen_view.py
+# 🎨 תפקיד: מפתח/ת View
+# ⚠️  ללא לוגיקה עסקית! רק תצוגה.</span>
+
+<span class="kw">from</span> PyQt6.QtWidgets <span class="kw">import</span> (
+    QWidget, QVBoxLayout, QHBoxLayout,
+    QTableWidget, QTableWidgetItem,
+    QLabel, QPushButton, QSpinBox,
+    QHeaderView, QMessageBox
+)
+<span class="kw">from</span> PyQt6.QtCore <span class="kw">import</span> Qt
+<span class="kw">from</span> PyQt6.QtGui <span class="kw">import</span> QFont
+
+<span class="kw">class</span> <span class="cl nv">CanteenView</span>(QWidget):
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="nb">super</span>().__init__()
+        <span class="nb">self</span>.setWindowTitle(<span class="st">"🍕 קנטינה — מערכת הזמנות"</span>)
+        <span class="nb">self</span>.setMinimumSize(<span class="st">500</span>, <span class="st">400</span>)
+        <span class="nb">self</span>._build_ui()
+
+    <span class="kw">def</span> <span class="fn">_build_ui</span>(<span class="nb">self</span>):
+        layout = QVBoxLayout(<span class="nb">self</span>)
+
+        <span class="cm"># כותרת</span>
+        title = QLabel(<span class="st">"🍕 תפריט הקנטינה"</span>)
+        title.setFont(QFont(<span class="st">"Arial"</span>, <span class="st">16</span>, QFont.Weight.Bold))
+        layout.addWidget(title)
+
+        <span class="cm"># טבלת תפריט</span>
+<span class="todo">        # TODO: צרו QTableWidget עם 3 עמודות
+        # כותרות: "פריט", "מחיר ₪", "כמות"
+        # אחסנו ב-self.table
+        # הגדירו: setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        # כדי שהטבלה לא תהיה ניתנת לעריכה ישירה</span>
+        layout.addWidget(<span class="nb">self</span>.table)
+
+        <span class="cm"># שורת סכום</span>
+        total_row = QHBoxLayout()
+        total_row.addStretch()
+        total_label = QLabel(<span class="st">'סה"כ:'</span>)
+<span class="todo">        # TODO: צרו self.total_label = QLabel("₪ 0.00")
+        # הגדירו font גדול ומודגש</span>
+        total_row.addWidget(total_label)
+        total_row.addWidget(<span class="nb">self</span>.total_label)
+        layout.addLayout(total_row)
+
+        <span class="cm"># כפתורים</span>
+        btn_row = QHBoxLayout()
+<span class="todo">        # TODO: צרו 3 כפתורים ואחסנו:
+        # self.save_btn    = QPushButton("💾 שמור הזמנה")
+        # self.history_btn = QPushButton("📋 היסטוריה")
+        # self.clear_btn   = QPushButton("🗑️ נקה")
+        # הוסיפו לכל כפתור setStyleSheet עם צבע מתאים</span>
+        layout.addLayout(btn_row)
+
+    <span class="kw">def</span> <span class="fn">load_menu_to_table</span>(<span class="nb">self</span>, menu_items: <span class="nb">list</span>):
+        <span class="cm">"""מאכלסת את הטבלה בפריטי התפריט
+        בכל שורה: שם, מחיר, ו-QSpinBox לכמות"""</span>
+        <span class="nb">self</span>.table.setRowCount(<span class="nb">len</span>(menu_items))
+<span class="todo">        # TODO: עברו על menu_items עם enumerate
+        # שורה 0: QTableWidgetItem(f"{item['emoji']} {item['name']}")
+        # שורה 1: QTableWidgetItem(str(item['price']))
+        # שורה 2: QSpinBox עם setRange(0, 20)
+        #          השתמשו ב: table.setCellWidget(row, 2, spinbox)</span>
+
+    <span class="kw">def</span> <span class="fn">get_quantities</span>(<span class="nb">self</span>) -> <span class="nb">dict</span>:
+        <span class="cm">"""מחזיר {item_id: quantity} מכל ה-SpinBox-ים"""</span>
+<span class="todo">        # TODO: עברו על השורות בטבלה
+        # לכל שורה: spinbox = self.table.cellWidget(row, 2)
+        # אם spinbox.value() > 0 — הוסיפו למילון
+        # המפתח הוא row+1 (item_id)</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">update_total</span>(<span class="nb">self</span>, total: <span class="nb">float</span>):
+        <span class="cm">"""עדכון תצוגת הסכום"""</span>
+<span class="todo">        # TODO: שורה אחת
+        # self.total_label.setText(f"₪ {total:.2f}")</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">reset_quantities</span>(<span class="nb">self</span>):
+        <span class="cm">"""איפוס כל ה-SpinBox-ים לאפס"""</span>
+<span class="todo">        # TODO: עברו על השורות, קבלו cellWidget וקראו setValue(0)</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">show_message</span>(<span class="nb">self</span>, title: str, msg: str):
+        <span class="cm">"""הצגת הודעה קופצת"""</span>
+        QMessageBox.information(<span class="nb">self</span>, title, msg)</pre>
+    </div>
+
+    <!-- CONTROLLER -->
+    <div id="tab-ctrl" class="tab-panel">
+      <pre><span class="cm"># canteen_ctrl.py
+# 🔗 תפקיד: מפתח/ת Controller
+# מחבר בין Model ל-View</span>
+
+<span class="kw">from</span> canteen_model <span class="kw">import</span> CanteenModel
+<span class="kw">from</span> canteen_view  <span class="kw">import</span> CanteenView
+
+MENU_FILE  = <span class="st">"menu.json"</span>
+ORDER_FILE = <span class="st">"orders.json"</span>
+
+<span class="kw">class</span> <span class="cl nc">CanteenController</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="nb">self</span>.model = CanteenModel()
+        <span class="nb">self</span>.view  = CanteenView()
+        <span class="nb">self</span>._connect_signals()
+
+    <span class="kw">def</span> <span class="fn">_connect_signals</span>(<span class="nb">self</span>):
+        <span class="cm">"""חיבור כל ה-Signals של ה-View לפונקציות"""</span>
+<span class="todo">        # TODO: חברו:
+        # self.view.save_btn.clicked    → self.save_order
+        # self.view.clear_btn.clicked   → self.clear_order
+        # self.view.history_btn.clicked → self.show_history</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">run</span>(<span class="nb">self</span>):
+        <span class="cm">"""הפעלת המערכת"""</span>
+<span class="todo">        # TODO:
+        # 1. קראו לmodel.load_menu(MENU_FILE)
+        # 2. קראו ל-view.load_menu_to_table עם menu
+        # 3. חברו את ה-SpinBox-ים לעדכון הסכום (ראו הערה למטה)
+        # 4. הציגו את החלון</span>
+        <span class="nb">self</span>.view.show()
+
+    <span class="kw">def</span> <span class="fn">_connect_spinboxes</span>(<span class="nb">self</span>):
+        <span class="cm">"""חיבור כל SpinBox לעדכון סכום בזמן אמת
+        רמז: עברו על שורות הטבלה, קבלו cellWidget(row,2)
+              חברו: spinbox.valueChanged → self._on_quantity_changed"""</span>
+<span class="todo">        # TODO: ממשו את החיבור</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">_on_quantity_changed</span>(<span class="nb">self</span>):
+        <span class="cm">"""מופעל בכל שינוי כמות — מעדכן Model ו-View"""</span>
+<span class="todo">        # TODO:
+        # 1. קבלו quantities מה-View: view.get_quantities()
+        # 2. לכל (item_id, qty): קראו model.set_quantity()
+        # 3. חשבו total: model.calculate_total()
+        # 4. עדכנו View: view.update_total(total)</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">save_order</span>(<span class="nb">self</span>):
+        <span class="cm">"""שמירת ההזמנה"""</span>
+<span class="todo">        # TODO:
+        # בדקו שיש פריטים בהזמנה (calculate_total > 0)
+        # קראו model.save_order(ORDER_FILE)
+        # הציגו view.show_message עם אישור</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">clear_order</span>(<span class="nb">self</span>):
+        <span class="cm">"""ניקוי הזמנה"""</span>
+<span class="todo">        # TODO: model.clear_order()
+        # view.reset_quantities()
+        # view.update_total(0)</span>
+        <span class="kw">pass</span>
+
+    <span class="kw">def</span> <span class="fn">show_history</span>(<span class="nb">self</span>):
+        <span class="cm">"""הצגת היסטוריית הזמנות"""</span>
+<span class="todo">        # TODO: קבלו history מהמודל
+        # בנו string ובצעו view.show_message()</span>
+        <span class="kw">pass</span></pre>
+    </div>
+
+    <!-- MAIN -->
+    <div id="tab-main" class="tab-panel">
+      <pre><span class="cm"># main.py — נקודת הכניסה
+# ▶️ מי שמריץ: מפתח/ת Controller</span>
+
+<span class="kw">import</span> sys
+<span class="kw">from</span> PyQt6.QtWidgets <span class="kw">import</span> QApplication
+<span class="kw">from</span> canteen_ctrl <span class="kw">import</span> CanteenController
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    app = QApplication(sys.argv)
+
+    controller = CanteenController()
+    controller.run()
+
+    sys.exit(app.exec())
+
+<span class="cm">
+# ── שימו לב! ──────────────────────────
+# ב-PyQt6: app.exec()   ✅
+# ב-PyQt5: app.exec_()  ← (ישן)
+# ─────────────────────────────────────</span></pre>
+    </div>
+
+    <!-- TEST -->
+    <div id="tab-test" class="tab-panel">
+      <pre><span class="cm"># test_model.py
+# 🧪 תפקיד: QA
+# בדיקות ל-CanteenModel — ללא GUI!</span>
+
+<span class="kw">from</span> canteen_model <span class="kw">import</span> CanteenModel
+
+<span class="kw">def</span> <span class="fn">test_load_menu</span>():
+    <span class="cm">"""בודק טעינה תקינה של תפריט"""</span>
+    model = CanteenModel()
+    result = model.load_menu(<span class="st">"menu.json"</span>)
+    <span class="kw">assert</span> result == <span class="nb">True</span>, <span class="st">"טעינה נכשלה"</span>
+    <span class="kw">assert</span> <span class="nb">len</span>(model.get_menu()) > <span class="st">0</span>, <span class="st">"תפריט ריק"</span>
+    <span class="nb">print</span>(<span class="st">"✅ test_load_menu עבר"</span>)
+
+<span class="kw">def</span> <span class="fn">test_calculate_total</span>():
+    <span class="cm">"""בודק חישוב סכום"""</span>
+    model = CanteenModel()
+    model.load_menu(<span class="st">"menu.json"</span>)
+<span class="todo">    # TODO: הזמינו פריט id=1 כמות 2 ו-id=3 כמות 1
+    # חשבו ידנית את הסכום הצפוי
+    # assert model.calculate_total() == <expected>
+    # print("✅ test_calculate_total עבר")</span>
+
+<span class="kw">def</span> <span class="fn">test_clear_order</span>():
+    <span class="cm">"""בודק ניקוי הזמנה"""</span>
+    model = CanteenModel()
+    model.load_menu(<span class="st">"menu.json"</span>)
+    model.set_quantity(<span class="st">1</span>, <span class="st">3</span>)
+    model.clear_order()
+    <span class="kw">assert</span> model.calculate_total() == <span class="st">0</span>
+    <span class="nb">print</span>(<span class="st">"✅ test_clear_order עבר"</span>)
+
+<span class="kw">def</span> <span class="fn">test_file_not_found</span>():
+    <span class="cm">"""בודק טיפול בשגיאה — קובץ לא קיים"""</span>
+<span class="todo">    # TODO: טענו קובץ שלא קיים "fake.json"
+    # ודאו שהפונקציה מחזירה False ולא קורסת</span>
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    test_load_menu()
+    test_calculate_total()
+    test_clear_order()
+    test_file_not_found()
+    <span class="nb">print</span>(<span class="st">"\n🎉 כל הבדיקות עברו!"</span>)</pre>
+    </div>
+  </div><!-- /code-tabs -->
+</section>
+
+<!-- ═══ MILESTONES ═══ -->
+<section id="milestones">
+  <div class="sec-label">תכנון עבודה</div>
+  <div class="sec-title">אבני <span class="hl">דרך</span></div>
+  <div class="milestones">
+
+    <div class="ms-item">
+      <div class="ms-num">1</div>
+      <div class="ms-body">
+        <h4>📋 הגדרת ה"חוזה" — Interface</h4>
+        <p>לפני שמישהו מתחיל לקודד — כולם מסכימים: מה המתודות של Model? מה ה-View מקבל? איך נראה הנתונים? רשמו על הלוח.</p>
+        <div class="ms-roles">
+          <span class="ms-role-tag" style="color:var(--r4);border-color:var(--r4)">👥 כל הצוות</span>
+        </div>
+      </div>
+      <div class="ms-time">⏱️ 10 דק'</div>
+    </div>
+
+    <div class="ms-item">
+      <div class="ms-num">2</div>
+      <div class="ms-body">
+        <h4>🗄️ Model + JSON עובדים</h4>
+        <p>בניית קובץ menu.json ומחלקת CanteenModel. הרצת test_model.py חייבת להעביר את test_load_menu בהצלחה.</p>
+        <div class="ms-roles">
+          <span class="ms-role-tag" style="color:var(--r1);border-color:var(--r1)">👩‍💻 Model Dev</span>
+          <span class="ms-role-tag" style="color:var(--r4);border-color:var(--r4)">🧪 QA</span>
+        </div>
+      </div>
+      <div class="ms-time">⏱️ 20 דק'</div>
+    </div>
+
+    <div class="ms-item">
+      <div class="ms-num">3</div>
+      <div class="ms-body">
+        <h4>🖥️ View מציג תפריט</h4>
+        <p>בניית CanteenView עם QTableWidget ו-SpinBox-ים. הקובץ יריץ חלון עם נתוני דוגמה (hardcoded). לא צריך Controller עדיין!</p>
+        <div class="ms-roles">
+          <span class="ms-role-tag" style="color:var(--r2);border-color:var(--r2)">🎨 View Dev</span>
+        </div>
+      </div>
+      <div class="ms-time">⏱️ 20 דק'</div>
+    </div>
+
+    <div class="ms-item">
+      <div class="ms-num">4</div>
+      <div class="ms-body">
+        <h4>🔗 שילוב — Controller מחבר</h4>
+        <p>Controller יוצר Model ו-View, טוען תפריט אמיתי, ומחבר Signals. ה-SpinBox משנה → הסכום מתעדכן.</p>
+        <div class="ms-roles">
+          <span class="ms-role-tag" style="color:var(--r3);border-color:var(--r3)">🔗 Controller Dev</span>
+          <span class="ms-role-tag" style="color:var(--r4);border-color:var(--r4)">🧪 QA</span>
+        </div>
+      </div>
+      <div class="ms-time">⏱️ 20 דק'</div>
+    </div>
+
+    <div class="ms-item">
+      <div class="ms-num">5</div>
+      <div class="ms-body">
+        <h4>✅ Save + Clear + History עובדים</h4>
+        <p>כל הכפתורים עובדים. קובץ orders.json נשמר. ה-QA מריץ את כל הבדיקות. המערכת מוצגת לכיתה.</p>
+        <div class="ms-roles">
+          <span class="ms-role-tag" style="color:var(--r1);border-color:var(--r1)">👩‍💻 Model</span>
+          <span class="ms-role-tag" style="color:var(--r2);border-color:var(--r2)">🎨 View</span>
+          <span class="ms-role-tag" style="color:var(--r3);border-color:var(--r3)">🔗 Controller</span>
+          <span class="ms-role-tag" style="color:var(--r4);border-color:var(--r4)">🧪 QA</span>
+        </div>
+      </div>
+      <div class="ms-time">⏱️ 20 דק'</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ BONUS ═══ -->
+<section id="bonus">
+  <div class="sec-label">אתגרים נוספים</div>
+  <div class="sec-title">אתגרי <span class="hl">בונוס</span> — לסיימתם מוקדם?</div>
+  <div class="bonus-grid">
+
+    <div class="bonus-card easy">
+      <div class="bonus-level">⭐ קל — Model</div>
+      <h4>ולידציה של הזמנה ריקה</h4>
+      <p>כפתור "שמור" לא יעבוד אם אין פריטים בהזמנה. הוסיפו הודעת שגיאה ב-View.</p>
+      <div class="bonus-pts">+10 נקודות</div>
+    </div>
+
+    <div class="bonus-card easy">
+      <div class="bonus-level">⭐ קל — View</div>
+      <h4>הדגשת פריטים שהוזמנו</h4>
+      <p>שורות עם כמות > 0 יקבלו רקע צבעוני בטבלה. השתמשו ב-setBackground.</p>
+      <div class="bonus-pts">+10 נקודות</div>
+    </div>
+
+    <div class="bonus-card medium">
+      <div class="bonus-level">⭐⭐ בינוני — Model</div>
+      <h4>קטגוריות בתפריט</h4>
+      <p>הוסיפו שדה "category" ל-JSON (אוכל/שתייה/חטיף). הוסיפו מתודה get_by_category() ל-Model.</p>
+      <div class="bonus-pts">+20 נקודות</div>
+    </div>
+
+    <div class="bonus-card medium">
+      <div class="bonus-level">⭐⭐ בינוני — View</div>
+      <h4>עמודת סכום ביניים</h4>
+      <p>הוסיפו עמודה 4 "סה"כ לפריט" שמתעדכנת בזמן אמת עם price × qty.</p>
+      <div class="bonus-pts">+20 נקודות</div>
+    </div>
+
+    <div class="bonus-card hard">
+      <div class="bonus-level">⭐⭐⭐ קשה — Controller</div>
+      <h4>מסך היסטוריה נפרד</h4>
+      <p>כפתור "היסטוריה" יפתח חלון שני (QDialog) עם טבלה של כל ההזמנות הקודמות.</p>
+      <div class="bonus-pts">+30 נקודות</div>
+    </div>
+
+    <div class="bonus-card hard">
+      <div class="bonus-level">⭐⭐⭐ קשה — Model</div>
+      <h4>מנהל הנחות</h4>
+      <p>הוסיפו מתודה apply_discount(percent). Controller יחבר כפתור "קוד קופון" שמפעיל אותה.</p>
+      <div class="bonus-pts">+30 נקודות</div>
+    </div>
+
+    <div class="bonus-card epic">
+      <div class="bonus-level">🔥 אפי — כל הצוות</div>
+      <h4>מעבר ל-SQLite</h4>
+      <p>החליפו את ה-JSON ב-SQLite. ה-Controller ו-View לא ישתנו כלל! רק canteen_model.py. זה Open/Closed Principle בפעולה.</p>
+      <div class="bonus-pts">+50 נקודות · SOLID bonus</div>
+    </div>
+
+    <div class="bonus-card epic">
+      <div class="bonus-level">🔥 אפי — כל הצוות</div>
+      <h4>תפריט עונתי</h4>
+      <p>הוסיפו תפריט שמשתנה לפי היום. Model מחליט מה להגיש, View מציג — בלי לדעת את הלוגיקה.</p>
+      <div class="bonus-pts">+50 נקודות</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ RUBRIC ═══ -->
+<section id="rubric">
+  <div class="sec-label">הערכה</div>
+  <div class="sec-title"><span class="hl">רובריקה</span> להערכת הפרויקט</div>
+  <table class="rubric-table">
+    <thead>
+      <tr>
+        <th>קריטריון</th>
+        <th>מה נבדק</th>
+        <th style="text-align:center">נקודות</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:var(--model)">🗄️ Model — נכונות</strong></td>
+        <td>כל המתודות מממשות לוגיקה נכונה. חישוב סכום מדויק. JSON נשמר ונטען.</td>
+        <td class="pts">25</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--view)">🖥️ View — הפרדה</strong></td>
+        <td>אין לוגיקה עסקית. SpinBox, כפתורים ותצוגה עובדים. אין import שאינו PyQt6.</td>
+        <td class="pts">20</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--ctrl)">⚙️ Controller — חיבור</strong></td>
+        <td>Signals מחוברים. עדכון זמן-אמת. save/clear/history עובדים.</td>
+        <td class="pts">20</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--acc)">🏗️ ארכיטקטורה</strong></td>
+        <td>Model אינו מכיל PyQt6. View אינו קורא ל-JSON. הפרדה ברורה בין שכבות.</td>
+        <td class="pts">20</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--yellow)">🧪 בדיקות</strong></td>
+        <td>test_model.py: לפחות 4 בדיקות עוברות. בדיקת edge case אחת לפחות.</td>
+        <td class="pts">10</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--cyan)">👥 עבודת צוות</strong></td>
+        <td>כל חבר ממש פיתח את החלק שלו (ניכר מה-commits). שאלות תצלובות בהגשה.</td>
+        <td class="pts">5</td>
+      </tr>
+      <tr style="background:var(--s2)">
+        <td colspan="2" style="text-align:left"><strong>סה"כ</strong></td>
+        <td class="pts" style="color:var(--model);font-size:16px">100</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top:16px;padding:14px 20px;background:var(--s1);border:1px solid var(--border);border-radius:8px;font-size:16px;color:var(--dim)">
+    🎁 <strong style="color:var(--text)">בונוס:</strong> עד 50 נקודות נוספות מאתגרי הבונוס. ציון מקסימלי: 150.
+  </div>
+</section>
+
+<!-- ═══ CONTRACT ═══ -->
+<section id="contract">
+  <div class="sec-label">לפני שמתחילים</div>
+  <div class="sec-title">חוזה <span class="hl">הצוות</span> — מלאו לפני הקידוד</div>
+  <div class="contract">
+    <h3>📝 חוזה עבודה — מערכת קנטינה MVC</h3>
+    <div class="contract-fields">
+      <div class="field-group">
+        <label>שם הצוות</label>
+        <input class="field-line" type="text" placeholder="לדוגמה: Team MVC Ninja">
+      </div>
+      <div class="field-group">
+        <label>תאריך</label>
+        <input class="field-line" type="text" id="date-field">
+      </div>
+      <div class="field-group">
+        <label>💡 הממשק המוסכם — Model מחזיר:</label>
+        <input class="field-line" type="text" placeholder='לדוגמה: get_menu() → list של dicts עם "name", "price", "id"'>
+      </div>
+      <div class="field-group">
+        <label>📋 פריטים שתוסיפו לתפריט שלכם</label>
+        <input class="field-line" type="text" placeholder="לדוגמה: שוורמה, פלאפל, לימונדה...">
+      </div>
+    </div>
+    <div class="sign-row">
+      <div class="sign-box">
+        <div class="role-label" style="color:var(--r1)">👩‍💻 Model Dev</div>
+        <div class="sign-line"></div>
+        <input class="field-line name-line" type="text" placeholder="שם">
+      </div>
+      <div class="sign-box">
+        <div class="role-label" style="color:var(--r2)">🎨 View Dev</div>
+        <div class="sign-line"></div>
+        <input class="field-line name-line" type="text" placeholder="שם">
+      </div>
+      <div class="sign-box">
+        <div class="role-label" style="color:var(--r3)">🔗 Controller Dev</div>
+        <div class="sign-line"></div>
+        <input class="field-line name-line" type="text" placeholder="שם">
+      </div>
+      <div class="sign-box">
+        <div class="role-label" style="color:var(--r4)">🧪 QA</div>
+        <div class="sign-line"></div>
+        <input class="field-line name-line" type="text" placeholder="שם">
+      </div>
+    </div>
+    <div style="margin-top:24px;padding:14px 18px;background:var(--s2);border-radius:8px;font-size:16px;color:var(--dim);line-height:1.7">
+      ✊ <strong style="color:var(--text)">הצוות מתחייב:</strong>
+      לכבד את ה"חוזה" — Model לא יגע ב-UI, View לא יגע ב-JSON.
+      כשיש ספק — שואלים את ה-Controller!
+    </div>
+  </div>
+</section>
+
+</div><!-- /page -->
+
+<button class="print-btn" onclick="window.print()">🖨️ הדפס / PDF</button>
+
+<script>
+// ── Tabs ──
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Nav highlight ──
+const sections = document.querySelectorAll('section[id], .hero');
+const navLinks = document.querySelectorAll('#topnav a');
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const id = e.target.id || 'scenario';
+      const link = document.querySelector(`#topnav a[href="#${id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('section[id]').forEach(s => obs.observe(s));
+
+// ── Set today's date ──
+document.getElementById('date-field').value = new Date().toLocaleDateString('he-IL');
+</script>
+</body>
+</html>

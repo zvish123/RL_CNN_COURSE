@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הרחבת MVC + SOLID</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --model:  #3fb950;
+  --view:   #58a6ff;
+  --ctrl:   #f78166;
+  --accent: #d2a8ff;
+  --yellow: #e3b341;
+  --solid-s: #ff6b6b;
+  --solid-o: #ffa657;
+  --solid-l: #e3b341;
+  --solid-i: #3fb950;
+  --solid-d: #58a6ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+
+/* ── progress ── */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--model),var(--accent),var(--ctrl));transition:width .4s;z-index:200}
+#badge{position:fixed;top:18px;left:22px;font-size:16px;color:var(--dim);letter-spacing:1px;z-index:200}
+
+/* ── slides ── */
+.slides{width:100%;height:100vh;position:relative}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  padding:44px 64px;
+  opacity:0;transform:translateX(60px);
+  transition:opacity .45s ease,transform .45s ease;
+  pointer-events:none;overflow:hidden;
+  overflow-y:auto;
+}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.gone{opacity:0;transform:translateX(-60px)}
+.slide.center-content{align-items:center}
+
+/* ── nav ── */
+#nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:48px;padding:9px 18px;z-index:200}
+#nav button{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;padding:3px 10px;border-radius:20px;transition:background .2s,color .2s}
+#nav button:hover{background:var(--surface2);color:var(--text)}
+#counter{color:var(--dim);font-size:16px;min-width:52px;text-align:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .2s,transform .2s}
+.dot.on{background:var(--accent);transform:scale(1.35)}
+
+/* ── type helpers ── */
+.tag{font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.h1{font-size:clamp(28px,4vw,52px);font-weight:900;line-height:1.1;margin-bottom:20px}
+.hl-m{color:var(--model)} .hl-v{color:var(--view)} .hl-c{color:var(--ctrl)} .hl-a{color:var(--accent)} .hl-y{color:var(--yellow)}
+
+/* ── two-col ── */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:28px;width:100%;align-items:start}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;width:100%;align-items:start}
+
+/* ── cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
+.card h4{font-size:16px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.card p,.card li{font-size:16px;color:var(--dim);line-height:1.7}
+.card ul{padding-right:16px}
+
+/* ── code ── */
+pre{font-family:'JetBrains Mono',monospace;font-size:16px;line-height:1.7;
+    background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    padding:18px 20px;overflow-x:auto;direction:ltr;text-align:left;width:100%}
+.kw{color:#ff7b72} .fn{color:#d2a8ff} .st{color:#a5d6ff}
+.cm{color:#6e7681;font-style:italic} .cl{color:#ffa657}
+.nb{color:#79c0ff} .nm{color:#3fb950} .nv{color:#58a6ff} .nc{color:#f78166}
+.new{background:rgba(63,185,80,.12);border-right:3px solid var(--model);padding-right:4px}
+.old{color:#6e7681}
+
+/* ── diff view ── */
+.diff{font-family:'JetBrains Mono',monospace;font-size:16px;line-height:1.8;
+      background:var(--bg);border:1px solid var(--border);border-radius:10px;
+      padding:16px 18px;direction:ltr;text-align:left;width:100%;overflow-x:auto}
+.diff .add{color:var(--model);background:rgba(63,185,80,.08);display:block;padding:0 4px}
+.diff .keep{color:var(--dim);display:block;padding:0 4px}
+.diff .add::before{content:"+ ";color:var(--model);font-weight:700}
+.diff .keep::before{content:"  "}
+
+/* ── timeline / steps ── */
+.timeline{display:flex;flex-direction:column;gap:0;width:100%}
+.tl-item{display:flex;gap:20px;align-items:flex-start;position:relative}
+.tl-item:not(:last-child)::after{
+  content:'';position:absolute;left:auto;right:19px;top:44px;bottom:-12px;
+  width:2px;background:var(--border)}
+.tl-dot{width:40px;height:40px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  border:2px solid var(--border);background:var(--surface2);margin-top:2px}
+.tl-body{flex:1;padding-bottom:20px}
+.tl-body h4{font-size:16px;font-weight:700;margin-bottom:4px}
+.tl-body p{font-size:16px;color:var(--dim);line-height:1.6}
+
+/* ── SOLID pills ── */
+.solid-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;width:100%; direction:ltr;}
+.solid-pill{border-radius:12px;padding:18px 14px;text-align:center;cursor:pointer;transition:transform .2s;direction:rtl;}
+.solid-pill:hover{transform:translateY(-3px)}
+.solid-pill .letter{font-size:36px;font-weight:900;line-height:1}
+.solid-pill .name{font-size:16px;font-weight:700;letter-spacing:1px;margin-top:4px;text-transform:uppercase}
+.solid-pill .desc{font-size:16px;color:var(--dim);margin-top:6px;line-height:1.4}
+
+.sp-s{background:rgba(255,107,107,.1);border:2px solid var(--solid-s)}
+.sp-s .letter{color:var(--solid-s)}
+.sp-o{background:rgba(255,166,87,.1);border:2px solid var(--solid-o)}
+.sp-o .letter{color:var(--solid-o)}
+.sp-l{background:rgba(227,179,65,.1);border:2px solid var(--solid-l)}
+.sp-l .letter{color:var(--solid-l)}
+.sp-i{background:rgba(63,185,80,.1);border:2px solid var(--solid-i)}
+.sp-i .letter{color:var(--solid-i)}
+.sp-d{background:rgba(88,166,255,.1);border:2px solid var(--solid-d)}
+.sp-d .letter{color:var(--solid-d)}
+
+/* ── highlight box ── */
+.hbox{border-radius:10px;padding:16px 20px;margin-top:14px}
+.hbox.ocp{background:rgba(255,166,87,.08);border:1.5px solid var(--solid-o)}
+.hbox.srp{background:rgba(255,107,107,.08);border:1.5px solid var(--solid-s)}
+.hbox.dip{background:rgba(88,166,255,.08);border:1.5px solid var(--solid-d)}
+.hbox h4{font-size:16px;font-weight:700;margin-bottom:6px}
+.hbox p{font-size:16px;color:var(--dim);line-height:1.6}
+
+/* ── team swim-lanes ── */
+.swim{display:flex;flex-direction:column;gap:12px;width:100%}
+.lane{display:flex;align-items:center;gap:16px;background:var(--surface);
+      border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+.lane-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:20px;flex-shrink:0}
+.lane-info{flex:1}
+.lane-info h4{font-size:16px;font-weight:700;margin-bottom:3px}
+.lane-info p{font-size:16px;color:var(--dim)}
+.lane-files{display:flex;gap:8px;flex-wrap:wrap}
+.file-tag{font-size:16px;font-family:'JetBrains Mono',monospace;
+  padding:3px 10px;border-radius:20px;border:1px solid;font-weight:600}
+.ft-m{color:var(--model);border-color:var(--model);background:rgba(63,185,80,.08)}
+.ft-v{color:var(--view);border-color:var(--view);background:rgba(88,166,255,.08)}
+.ft-c{color:var(--ctrl);border-color:var(--ctrl);background:rgba(247,129,102,.08)}
+.ft-d{color:var(--yellow);border-color:var(--yellow);background:rgba(227,179,65,.08)}
+
+/* ── before/after ── */
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%}
+.ba-box{border-radius:10px;padding:16px 18px}
+.ba-box.before{background:rgba(247,129,102,.06);border:1.5px solid rgba(247,129,102,.4)}
+.ba-box.after {background:rgba(63,185,80,.06); border:1.5px solid rgba(63,185,80,.4)}
+.ba-box .ba-title{font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.ba-box.before .ba-title{color:var(--ctrl)}
+.ba-box.after  .ba-title{color:var(--model)}
+
+/* ── flow arrow ── */
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+.fstep{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:16px;font-weight:600}
+.farr{color:var(--dim);font-size:16px}
+
+/* ── title slide bg ── */
+.title-bg{
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(63,185,80,.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(210,168,255,.07) 0%, transparent 55%),
+    var(--bg);
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="badge">01 / 10</div>
+
+<div class="slides" id="slides">
+
+<!-- ═══ 0: Title ═══ -->
+<div class="slide title-bg center-content active" data-i="0">
+  <div class="tag" style="text-align:center">MVC · SOLID · הרחבת קוד</div>
+  <h1 class="h1" style="text-align:center;font-size:clamp(32px,5vw,60px)">
+    הוספת יכולות<br>
+    <span class="hl-m">בלי לשבור</span> את מה שעובד
+  </h1>
+  <p style="color:var(--dim);font-size:18px;text-align:center;max-width:600px;margin-bottom:40px">
+    הרחבת Model · חלוקת עבודה בצוות · עקרונות SOLID
+  </p>
+  <div style="display:flex;gap:16px;">
+    <div style="padding:10px 22px;border-radius:8px;background:rgba(63,185,80,.12);border:1.5px solid var(--model);font-weight:700;color:var(--model);font-size:16px">Open/Closed</div>
+    <div style="padding:10px 22px;border-radius:8px;background:rgba(255,107,107,.12);border:1.5px solid var(--solid-s);font-weight:700;color:var(--solid-s);font-size:16px">Single Responsibility</div>
+    <div style="padding:10px 22px;border-radius:8px;background:rgba(88,166,255,.12);border:1.5px solid var(--solid-d);font-weight:700;color:var(--solid-d);font-size:16px">Dependency Inversion</div>
+  </div>
+</div>
+
+<!-- ═══ 1: The problem ═══ -->
+<div class="slide" data-i="1">
+  <div class="tag">הבעיה</div>
+  <h2 class="h1">מה קורה כש<span class="hl-c">לא</span> עובדים עם MVC?</h2>
+  <div class="two" style="align-items:start">
+    <div>
+      <div style="font-size:16px;color:var(--ctrl);font-weight:700;letter-spacing:2px;margin-bottom:8px">❌ ספגטי קוד — ללא הפרדה</div>
+      <pre><span class="cm"># main_bad.py — הכל ביחד 😱</span>
+<span class="kw">import</span> json
+<span class="kw">from</span> PyQt6.QtWidgets <span class="kw">import</span> *
+
+<span class="kw">class</span> <span class="cl">App</span>(QWidget):
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="cm"># UI + נתונים + לוגיקה — יחד!</span>
+        <span class="nb">self</span>.users = []
+        <span class="nb">self</span>.table = QTableWidget()
+        <span class="nb">self</span>.btn = QPushButton(<span class="st">"Save"</span>)
+        <span class="nb">self</span>.btn.clicked.connect(<span class="nb">self</span>.save)
+
+    <span class="kw">def</span> <span class="fn">save</span>(<span class="nb">self</span>):
+        <span class="cm"># לוגיקה עסקית בתוך ה-UI 😬</span>
+        users = []
+        <span class="kw">for</span> r <span class="kw">in</span> <span class="nb">range</span>(<span class="nb">self</span>.table.rowCount()):
+            users.append({...})
+        <span class="kw">with</span> <span class="nb">open</span>(<span class="st">"data.json"</span>, <span class="st">"w"</span>) <span class="kw">as</span> f:
+            json.dump(users, f)
+    <span class="cm">
+    # עכשיו רוצים להוסיף: שליחת email?
+    # גיבוי ל-cloud? ולידציה?
+    # → הכל נכנס לאותה מחלקה!
+    # → הכל שבור כשמשנים משהו!</span></pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;padding-top:32px">
+      <div class="card">
+        <h4 style="color:var(--ctrl)">🔥 הבעיות</h4>
+        <ul>
+          <li>שינוי UI → שובר לוגיקה</li>
+          <li>הוספת פיצ'ר → עלול לשבור הכל</li>
+          <li>בדיקות בלתי אפשריות</li>
+          <li>אי אפשר לחלק עבודה</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--model)">✅ הפתרון — MVC</h4>
+        <p>כל שינוי מבודד לשכבה אחת. הוספת יכולת חדשה ל-Model <strong>אינה נוגעת</strong> ב-View.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 2: Model V1 ═══ -->
+<div class="slide" data-i="2">
+  <div class="tag">שלב 1 — בנייה ראשונית</div>
+  <h2 class="h1">ה-<span class="hl-m">Model</span> הבסיסי — גרסה 1.0</h2>
+  <div class="two">
+    <div>
+      <pre><span class="cm"># mvc_model.py — Version 1.0</span>
+<span class="kw">import</span> json
+
+<span class="kw">class</span> <span class="cl nm">UserModel</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="nb">self</span>.users = []
+
+    <span class="kw">def</span> <span class="fn">load_users</span>(<span class="nb">self</span>, filename):
+        <span class="kw">with</span> <span class="nb">open</span>(filename, <span class="st">'r'</span>) <span class="kw">as</span> f:
+            <span class="nb">self</span>.users = json.load(f)
+
+    <span class="kw">def</span> <span class="fn">get_users</span>(<span class="nb">self</span>):
+        <span class="kw">return</span> <span class="nb">self</span>.users
+
+    <span class="kw">def</span> <span class="fn">greet_user</span>(<span class="nb">self</span>, row):
+        <span class="kw">try</span>:
+            u = <span class="nb">self</span>.users[row]
+            <span class="kw">return</span> <span class="st">f"Hello {u['username']}!"</span>
+        <span class="kw">except</span> <span class="cl">IndexError</span>:
+            <span class="kw">return</span> <span class="st">"No user selected"</span></pre>
+      <div class="hbox srp" style="margin-top:14px">
+        <h4 style="color:var(--solid-s)">S — Single Responsibility</h4>
+        <p>המחלקה <code>UserModel</code> אחראית על דבר אחד בלבד: ניהול נתוני משתמשים. לא UI, לא כפתורים.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h4 style="color:var(--model)">📋 יכולות קיימות (v1)</h4>
+        <ul>
+          <li>✅ טעינה מ-JSON</li>
+          <li>✅ קבלת רשימת משתמשים</li>
+          <li>✅ ברכת משתמש</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--yellow)">🗺️ מה עוד נרצה להוסיף?</h4>
+        <ul>
+          <li>💾 שמירה חזרה ל-JSON</li>
+          <li>🔍 חיפוש משתמש לפי שם</li>
+          <li>✅ ולידציה של אימייל</li>
+          <li>📊 סטטיסטיקות</li>
+        </ul>
+      </div>
+      <div style="margin-top:14px;background:var(--surface2);border-radius:8px;padding:12px 16px;font-size:16px;color:var(--dim)">
+        💡 כל הרחבה תתווסף <strong style="color:var(--text)">רק</strong> ל-<code style="color:var(--model)">mvc_model.py</code> — ה-View וה-Controller לא ישתנו!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 3: Extending model ═══ -->
+<div class="slide" data-i="3">
+  <div class="tag">שלב 2 — הרחבה</div>
+  <h2 class="h1">הוספת יכולות ל-<span class="hl-m">Model</span> — גרסה 2.0</h2>
+  <div class="two">
+    <div>
+      <div style="font-size:16px;color:var(--model);font-weight:700;letter-spacing:2px;margin-bottom:8px">✅ קוד חדש מסומן בירוק</div>
+      <div class="diff">
+<span class="keep">class UserModel:</span>
+<span class="keep">    def __init__(self):</span>
+<span class="keep">        self.users = []</span>
+<span class="keep"> </span>
+<span class="keep">    def load_users(self, filename):</span>
+<span class="keep">        ...</span>
+<span class="keep"> </span>
+<span class="keep">    def get_users(self):</span>
+<span class="keep">        return self.users</span>
+<span class="keep"> </span>
+<span class="keep">    def greet_user(self, row):</span>
+<span class="keep">        ...</span>
+<span class="keep"> </span>
+<span class="add">    def save_users(self, filename, users):</span>
+<span class="add">        with open(filename, 'w') as f:</span>
+<span class="add">            json.dump(users, f, indent=2)</span>
+<span class="keep"> </span>
+<span class="add">    def search_user(self, name):</span>
+<span class="add">        return [u for u in self.users</span>
+<span class="add">                if name.lower() in</span>
+<span class="add">                   u['username'].lower()]</span>
+<span class="keep"> </span>
+<span class="add">    def validate_email(self, email):</span>
+<span class="add">        return '@' in email and '.' in email</span>
+<span class="keep"> </span>
+<span class="add">    def get_stats(self):</span>
+<span class="add">        return {</span>
+<span class="add">            "total": len(self.users),</span>
+<span class="add">            "domains": list(set(</span>
+<span class="add">                u['email'].split('@')[1]</span>
+<span class="add">                for u in self.users))</span>
+<span class="add">        }</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="hbox ocp">
+        <h4 style="color:var(--solid-o)">O — Open/Closed Principle</h4>
+        <p>הקוד <strong>פתוח להרחבה</strong> (הוספנו 4 מתודות) אך <strong>סגור לשינוי</strong> — לא נגענו בשורה אחת מ-v1!</p>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--model)">🆕 יכולות חדשות (v2)</h4>
+        <ul>
+          <li>✅ שמירה ל-JSON</li>
+          <li>✅ חיפוש לפי שם</li>
+          <li>✅ ולידציה של אימייל</li>
+          <li>✅ סטטיסטיקות</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:var(--model)">
+        <h4 style="color:var(--model)">🎯 מה <em>לא</em> השתנה?</h4>
+        <ul>
+          <li>ה-View זהה לחלוטין</li>
+          <li>ה-Controller קיבל connections בלבד</li>
+          <li>ה-JSON נשאר תואם</li>
+          <li>קוד ישן ממשיך לעבוד</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 4: Controller update ═══ -->
+<div class="slide" data-i="4">
+  <div class="tag">שלב 3 — חיבור</div>
+  <h2 class="h1">ה-<span class="hl-c">Controller</span> מחבר את היכולות החדשות</h2>
+  <div class="two">
+    <pre style="font-size:16px"><span class="kw">class</span> <span class="cl nc">UserController</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="nb">self</span>):
+        <span class="nb">self</span>.model = UserModel()
+        <span class="nb">self</span>.view  = UserView()
+        <span class="cm"># --- חיבורים קיימים ---</span>
+        <span class="nb">self</span>.view.selectBtn.clicked.connect(
+            <span class="nb">self</span>.select)
+        <span class="nb">self</span>.view.saveBtn.clicked.connect(
+            <span class="nb">self</span>.save)
+        <span class="cm"># --- חיבורים חדשים (v2) ---</span>
+<span class="new">        <span class="nb">self</span>.view.searchBox.textChanged.connect(</span>
+<span class="new">            <span class="nb">self</span>.search)</span>
+<span class="new">        <span class="nb">self</span>.view.statsBtn.clicked.connect(</span>
+<span class="new">            <span class="nb">self</span>.show_stats)</span>
+
+    <span class="kw">def</span> <span class="fn">save</span>(<span class="nb">self</span>):  <span class="cm"># קיים</span>
+        users = <span class="nb">self</span>._collect_from_view()
+        <span class="kw">if</span> <span class="nb">all</span>(<span class="nb">self</span>.model.validate_email(
+                u[<span class="st">'email'</span>]) <span class="kw">for</span> u <span class="kw">in</span> users):
+            <span class="nb">self</span>.model.save_users(
+                USERS_FILE, users)
+        <span class="kw">else</span>:
+            <span class="nb">self</span>.view.show_error(
+                <span class="st">"אימייל לא תקין!"</span>)
+<span class="new">
+    def search(self, text):  # חדש</span>
+<span class="new">        results = self.model.search_user(text)</span>
+<span class="new">        self.view.update_view(results)</span>
+<span class="new">
+    def show_stats(self):  # חדש</span>
+<span class="new">        stats = self.model.get_stats()</span>
+<span class="new">        self.view.show_stats_dialog(stats)</span></pre>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="hbox srp">
+        <h4 style="color:var(--solid-s)">S — Controller נשאר Controller</h4>
+        <p>הוספנו רק <em>חיבורים</em> — לא לוגיקה. הלוגיקה נשארת ב-Model.</p>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--ctrl)">⚙️ תבנית העבודה</h4>
+        <ul>
+          <li>View → Signal → Controller</li>
+          <li>Controller → Model (לוגיקה)</li>
+          <li>Model → מחזיר תוצאה</li>
+          <li>Controller → View.update()</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:var(--accent)">
+        <h4 style="color:var(--accent)">💡 הבחנה חשובה</h4>
+        <p><code>validate_email()</code> נמצאת ב-Model — לא ב-Controller. לוגיקה עסקית שייכת למודל!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 5: Team division ═══ -->
+<div class="slide" data-i="5">
+  <div class="tag">עבודת צוות</div>
+  <h2 class="h1">איך מחלקים עבודה <span class="hl-a">בין אנשי הצוות</span>?</h2>
+  <div class="swim">
+    <div class="lane">
+      <div class="lane-avatar" style="background:rgba(63,185,80,.15);border:2px solid var(--model)">👩‍💻</div>
+      <div class="lane-info">
+        <h4>דנה — מפתחת Backend / Data</h4>
+        <p>אחראית על נתונים, לוגיקה עסקית, וחיבור ל-DB. עובדת <em>באופן עצמאי</em> — לא תלויה ב-UI.</p>
+      </div>
+      <div class="lane-files">
+        <span class="file-tag ft-m">mvc_model.py</span>
+        <span class="file-tag ft-d">users.json / DB</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-avatar" style="background:rgba(88,166,255,.15);border:2px solid var(--view)">🎨</div>
+      <div class="lane-info">
+        <h4>יוסי — מעצב UI / Frontend</h4>
+        <p>אחראי על מסכים, פקדים ועיצוב. לא צריך לדעת <em>כלום</em> על JSON או DB.</p>
+      </div>
+      <div class="lane-files">
+        <span class="file-tag ft-v">mvc_view.py</span>
+        <span class="file-tag ft-v">style.qss</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-avatar" style="background:rgba(247,129,102,.15);border:2px solid var(--ctrl)">🔗</div>
+      <div class="lane-info">
+        <h4>רון — מפתח Full-Stack / Lead</h4>
+        <p>מחבר את כולם. יודע מה ה-Model מציע ומה ה-View צריך. כותב את ה-Controller.</p>
+      </div>
+      <div class="lane-files">
+        <span class="file-tag ft-c">mvc_controller.py</span>
+        <span class="file-tag ft-d">main.py</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;margin-top:18px">
+    <div class="card" style="border-color:var(--model)">
+      <h4 style="color:var(--model)">✅ יתרון: Parallel Work</h4>
+      <p>דנה ויוסי עובדים <strong>בו זמנית</strong> ללא קונפליקטים ב-Git. מתנגשים רק בקובץ אחד — <code>mvc_controller.py</code>.</p>
+    </div>
+    <div class="card" style="border-color:var(--accent)">
+      <h4 style="color:var(--accent)">🤝 ה"חוזה" בין השכבות</h4>
+      <p>דנה ויוסי מסכימים מראש: "ה-Model יחזיר רשימת dict עם <code>username</code> ו-<code>email</code>." — זה מספיק!</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 6: Git workflow ═══ -->
+<div class="slide" data-i="6">
+  <div class="tag">עבודת צוות — בפועל</div>
+  <h2 class="h1">כיצד זה עובד ב-<span class="hl-a">Git</span>?</h2>
+  <div class="two">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--yellow)">📋</div>
+        <div class="tl-body">
+          <h4>הגדרת ה"חוזה" — Interface</h4>
+          <p>הצוות מסכים: מה ה-Model מחזיר? מה ה-View מציג? מה הפונקציות? <em>לפני</em> שמישהו מתחיל לקודד.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--model)">🌿</div>
+        <div class="tl-body">
+          <h4>branch: feature/add-search (דנה)</h4>
+          <p>דנה מוסיפה <code>search_user()</code> ל-Model. יוסי לא יודע ולא צריך לדעת.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--view)">🌿</div>
+        <div class="tl-body">
+          <h4>branch: feature/search-ui (יוסי)</h4>
+          <p>יוסי מוסיף <code>QLineEdit</code> לחיפוש ב-View. שניהם עובדים <strong>במקביל</strong>.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--ctrl)">🔀</div>
+        <div class="tl-body">
+          <h4>Merge → רון מחבר</h4>
+          <p>רון מוסיף ל-Controller: <code>searchBox.textChanged.connect(self.search)</code>. זהו!</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--accent)">✅</div>
+        <div class="tl-body">
+          <h4>Pull Request → Main</h4>
+          <p>הפיצ'ר עובד. הקוד הישן לא נשבר. כולם מרוצים.</p>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <pre style="font-size:16px"><span class="cm"># git log --oneline</span>
+<span class="nm">a1b2c3d</span> feat: add search_user() to Model  <span class="cm"># דנה</span>
+<span class="nv">d4e5f6a</span> feat: add search UI to View       <span class="cm"># יוסי</span>
+<span class="nc">b7c8d9e</span> feat: connect search in Controller <span class="cm"># רון</span>
+<span class="old">1234567</span> <span class="old">initial MVC structure</span>
+
+<span class="cm"># git diff mvc_model.py (גרסה 1→2)</span>
+<span class="nm">+   def search_user(self, name):</span>
+<span class="nm">+       return [u for u in self.users</span>
+<span class="nm">+               if name.lower() in</span>
+<span class="nm">+                  u['username'].lower()]</span>
+<span class="nm">+</span>
+<span class="nm">+   def validate_email(self, email):</span>
+<span class="nm">+       return '@' in email and '.' in email</span></pre>
+      <div class="card" style="border-color:var(--model)">
+        <h4 style="color:var(--model)">🎯 תוצאה</h4>
+        <p>אפס קונפליקטים. כל אחד עבד בקובץ שלו. ה-merge היה פשוט.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 7: SOLID overview ═══ -->
+<div class="slide center-content" data-i="7">
+  <div class="tag" style="text-align:center">עקרונות SOLID</div>
+  <h2 class="h1" style="text-align:center">ה-<span class="hl-a">5 עקרונות</span> שמנחים אותנו</h2>
+  <div class="solid-grid">
+    <div class="solid-pill sp-s">
+      <div class="letter">S</div>
+      <div class="name">Single<br>Responsibility</div>
+      <div class="desc">מחלקה = אחריות אחת בלבד</div>
+    </div>
+    <div class="solid-pill sp-o">
+      <div class="letter">O</div>
+      <div class="name">Open/<br>Closed</div>
+      <div class="desc">פתוח להרחבה, סגור לשינוי</div>
+    </div>
+    <div class="solid-pill sp-l">
+      <div class="letter">L</div>
+      <div class="name">Liskov<br>Substitution</div>
+      <div class="desc">מחלקת בן תחליף אב</div>
+    </div>
+    <div class="solid-pill sp-i">
+      <div class="letter">I</div>
+      <div class="name">Interface<br>Segregation</div>
+      <div class="desc">ממשקים קטנים וממוקדים</div>
+    </div>
+    <div class="solid-pill sp-d">
+      <div class="letter">D</div>
+      <div class="name">Dependency<br>Inversion</div>
+      <div class="desc">תלות בהפשטות, לא בפרטים</div>
+    </div>
+  </div>
+  <pre style="margin-top:24px;padding:16px 24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:16px;color:var(--dim);max-width:780px;text-align:center; direction:rtl;">
+    ב-MVC אנו מיישמים בעיקר: 
+    <strong style="color:var(--solid-s)">S</strong> (כל שכבה = אחריות אחת)
+    <strong style="color:var(--solid-o)">O</strong> (מוסיפים מתודות, לא משנים קיים)
+    <strong style="color:var(--solid-d)">D</strong> (Controller תלוי בממשק, לא ב-DB הספציפי)
+  </pre>
+</div>
+
+<!-- ═══ 8: SOLID in MVC ═══ -->
+<div class="slide" data-i="8">
+  <div class="tag">SOLID ב-MVC — בפועל</div>
+  <h2 class="h1">כיצד MVC מממש <span class="hl-a">SOLID</span>?</h2>
+  <div class="three" style="align-items:start">
+    <div>
+      <div style="background:rgba(255,107,107,.08);border:2px solid var(--solid-s);border-radius:10px;padding:16px">
+        <div style="font-size:24px;font-weight:900;color:var(--solid-s)">S</div>
+        <div style="font-size:16px;font-weight:700;color:var(--solid-s);margin-bottom:8px">SINGLE RESPONSIBILITY</div>
+        <p style="font-size:16px;color:var(--dim);line-height:1.6">
+          <strong style="color:var(--text)">Model</strong> — נתונים בלבד<br>
+          <strong style="color:var(--text)">View</strong> — תצוגה בלבד<br>
+          <strong style="color:var(--text)">Controller</strong> — תיאום בלבד
+        </p>
+        <pre style="font-size:16px;margin-top:10px;padding:10px"><span class="cm"># ❌ אסור:</span>
+<span class="kw">class</span> <span class="cl">UserModel</span>:
+    <span class="kw">def</span> <span class="fn">save_and_show</span>(<span class="nb">self</span>):
+        json.dump(...)  <span class="cm"># Model</span>
+        self.table.update()  <span class="cm"># View!</span>
+
+<span class="cm"># ✅ מותר:</span>
+<span class="kw">class</span> <span class="cl nm">UserModel</span>:
+    <span class="kw">def</span> <span class="fn">save</span>(<span class="nb">self</span>):
+        json.dump(...)</pre>
+      </div>
+    </div>
+    <div>
+      <div style="background:rgba(255,166,87,.08);border:2px solid var(--solid-o);border-radius:10px;padding:16px">
+        <div style="font-size:24px;font-weight:900;color:var(--solid-o)">O</div>
+        <div style="font-size:16px;font-weight:700;color:var(--solid-o);margin-bottom:8px">OPEN / CLOSED</div>
+        <p style="font-size:16px;color:var(--dim);line-height:1.6">
+          מוסיפים מתודות חדשות ל-Model — <strong style="color:var(--model)">לא משנים</strong> מתודות קיימות.
+        </p>
+        <pre style="font-size:16px;margin-top:10px;padding:10px"><span class="cm"># v1 — לא נוגעים</span>
+<span class="kw">def</span> <span class="fn">load_users</span>(<span class="nb">self</span>, f): ...
+<span class="kw">def</span> <span class="fn">get_users</span>(<span class="nb">self</span>): ...
+<span class="kw">def</span> <span class="fn">greet_user</span>(<span class="nb">self</span>, r): ...
+
+<span class="cm"># v2 — רק מוסיפים ↓</span>
+<span class="new"><span class="kw">def</span> <span class="fn">save_users</span>(<span class="nb">self</span>, f, u): ...</span>
+<span class="new"><span class="kw">def</span> <span class="fn">search_user</span>(<span class="nb">self</span>, n): ...</span>
+<span class="new"><span class="kw">def</span> <span class="fn">validate_email</span>(<span class="nb">self</span>, e): ...</span></pre>
+      </div>
+    </div>
+    <div>
+      <div style="background:rgba(88,166,255,.08);border:2px solid var(--solid-d);border-radius:10px;padding:16px">
+        <div style="font-size:24px;font-weight:900;color:var(--solid-d)">D</div>
+        <div style="font-size:16px;font-weight:700;color:var(--solid-d);margin-bottom:8px">DEPENDENCY INVERSION</div>
+        <p style="font-size:16px;color:var(--dim);line-height:1.6">
+          ה-Controller לא תלוי ב-JSON ספציפי — רק בממשק של ה-Model.
+        </p>
+        <pre style="font-size:16px;margin-top:10px;padding:10px"><span class="cm"># Controller לא יודע</span>
+<span class="cm"># איך Model שומר!</span>
+<span class="kw">class</span> <span class="cl nc">Controller</span>:
+    <span class="kw">def</span> <span class="fn">save</span>(<span class="nb">self</span>):
+        <span class="cm"># רק קורא למתודה</span>
+        <span class="nb">self</span>.model.save_users(
+            FILE, users)
+<span class="cm">
+# Model יכול לשמור ל:
+# JSON / SQLite / CSV</span>
+<span class="cm"># בלי לשנות Controller!</span></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 9: Summary ═══ -->
+<div class="slide center-content" data-i="9">
+  <div class="tag" style="text-align:center">סיכום</div>
+  <h2 class="h1" style="text-align:center">הרחבת MVC — <span class="hl-m">בטוח</span> ו<span class="hl-a">מהיר</span></h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;width:100%;margin-bottom:24px">
+    <div class="card" style="text-align:center;border-color:var(--model)">
+      <div style="font-size:36px;margin-bottom:8px">➕</div>
+      <h4 style="color:var(--model);font-size:16px">הוסף מתודה</h4>
+      <p style="font-size:16px">ב-Model בלבד. אל תשנה קיים.</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:var(--ctrl)">
+      <div style="font-size:36px;margin-bottom:8px">🔗</div>
+      <h4 style="color:var(--ctrl);font-size:16px">חבר ב-Controller</h4>
+      <p style="font-size:16px">Signal חדש ← Method חדשה</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:var(--view)">
+      <div style="font-size:36px;margin-bottom:8px">🎨</div>
+      <h4 style="color:var(--view);font-size:16px">הוסף UI ב-View</h4>
+      <p style="font-size:16px">כפתור / שדה חדש. בלי לוגיקה.</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:var(--accent)">
+      <div style="font-size:36px;margin-bottom:8px">✅</div>
+      <h4 style="color:var(--accent);font-size:16px">בדוק בנפרד</h4>
+      <p style="font-size:16px">Unit Test ל-Model ללא GUI</p>
+    </div>
+  </div>
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:20px 28px;width:100%;max-width:860px">
+    <div style="font-size:16px;font-weight:700;letter-spacing:2px;color:var(--dim);margin-bottom:12px">SOLID + MVC = קוד שמחזיק לאורך זמן</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <span><strong style="color:var(--solid-s)">S</strong> <span style="font-size:16px;color:var(--dim)">שכבה = אחריות</span></span>
+      <span style="color:var(--border)">|</span>
+      <span><strong style="color:var(--solid-o)">O</strong> <span style="font-size:16px;color:var(--dim)">פתוח להרחבה, סגור לשינוי</span></span>
+      <span style="color:var(--border)">|</span>
+      <span><strong style="color:var(--solid-d)">D</strong> <span style="font-size:16px;color:var(--dim)">תלות בממשק, לא במימוש</span></span>
+    </div>
+    <div class="flow" style="margin-top:16px">
+      <div class="fstep" style="border-color:var(--model)">👩‍💻 דנה<br><span style="font-size:16px;color:var(--dim)">Model</span></div>
+      <div class="farr">+</div>
+      <div class="fstep" style="border-color:var(--view)">🎨 יוסי<br><span style="font-size:16px;color:var(--dim)">View</span></div>
+      <div class="farr">+</div>
+      <div class="fstep" style="border-color:var(--ctrl)">🔗 רון<br><span style="font-size:16px;color:var(--dim)">Controller</span></div>
+      <div class="farr">=</div>
+      <div class="fstep" style="border-color:var(--accent);background:rgba(210,168,255,.08)">🚀 פרויקט<br><span style="font-size:16px;color:var(--dim)">עובד!</span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /slides -->
+
+<div id="nav">
+  <button onclick="go(-1)">→</button>
+  <div id="dots-wrap" style="display:flex;gap:6px"></div>
+  <span id="counter">1 / 10</span>
+  <button onclick="go(1)">←</button>
+</div>
+
+<script>
+const TOTAL = 10;
+let cur = 0;
+const slides = document.querySelectorAll('.slide');
+const dotsWrap = document.getElementById('dots-wrap');
+const counter = document.getElementById('counter');
+const badge = document.getElementById('badge');
+const progress = document.getElementById('progress');
+
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' on':'');
+  d.onclick=()=>goTo(i);
+  dotsWrap.appendChild(d);
+}
+
+function update(){
+  slides.forEach((s,i)=>{
+    s.classList.remove('active','gone');
+    if(i===cur)s.classList.add('active');
+    else if(i<cur)s.classList.add('gone');
+  });
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+  progress.style.width=((cur+1)/TOTAL*100)+'%';
+  const n=String(cur+1).padStart(2,'0'), t=String(TOTAL).padStart(2,'0');
+  badge.textContent=`${n} / ${t}`;
+  counter.textContent=`${cur+1} / ${TOTAL}`;
+}
+
+function go(d){const n=cur+d;if(n>=0&&n<TOTAL){cur=n;update();}}
+function goTo(i){cur=i;update();}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowUp')go(-1);
+});
+update();
+</script>
+</body>
+</html>

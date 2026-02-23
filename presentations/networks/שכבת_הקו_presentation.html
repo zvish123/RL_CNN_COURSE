@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שכבת הקו – Data Link Layer</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&family=Share+Tech+Mono&family=Heebo:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070d1a;
+    --panel: #0d1829;
+    --panel2: #111f35;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #00ff88;
+    --accent4: #ffd700;
+    --text: #e8f4f8;
+    --muted: #7a9bb5;
+    --border: rgba(0,212,255,0.2);
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rubik', 'Heebo', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,212,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 20% 80%, rgba(0,255,136,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(7,13,26,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .topbar-title {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent);
+    font-size:16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .slide-counter {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    font-size:16px;
+  }
+  .slide-counter span { color: var(--accent); }
+
+  /* NAV DOTS */
+  .nav-dots {
+    position: fixed;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .nav-dot.active { background: var(--accent); width: 6px; height: 20px; border-radius: 3px; box-shadow: var(--glow); }
+  .nav-dot:hover { background: var(--accent); opacity: 0.7; }
+
+  /* SLIDES */
+  .slides-container {
+    padding-top: 56px;
+  }
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px 60px 110px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .slide.visible { opacity: 1; transform: translateY(0); }
+
+  .slide-num {
+    position: absolute;
+    top: 24px;
+    left: 80px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  /* TITLE SLIDE */
+  .slide-hero {
+    align-items: center;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,212,255,0.05) 0%, transparent 70%);
+  }
+  .hero-badge {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 6px 16px;
+    margin-bottom: 28px;
+    text-transform: uppercase;
+  }
+  .hero-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 1;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .hero-sub {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent);
+    font-size: 1.4rem;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+  }
+  .osi-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .osi-layer {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size:16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+  }
+  .osi-layer.highlight {
+    background: linear-gradient(90deg, var(--accent), rgba(0,212,255,0.3));
+    color: #000;
+    font-weight: 700;
+    box-shadow: var(--glow);
+    transform: scaleX(1.05);
+  }
+  .osi-layer:not(.highlight) { background: var(--panel2); color: var(--muted); }
+  .osi-layer span:first-child { font-family: 'Share Tech Mono', monospace; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+  .section-title .accent { color: var(--accent); }
+  .section-title .accent2 { color: var(--accent2); }
+  .section-title .accent3 { color: var(--accent3); }
+  .section-line {
+    width: 60px;
+    height: 3px;
+    background: var(--accent);
+    margin-bottom: 32px;
+  }
+  .section-line.orange { background: var(--accent2); }
+  .section-line.green { background: var(--accent3); }
+
+  /* CONTENT BLOCKS */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .three-col { grid-template-columns: 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .card-body { color: var(--muted); font-size: 1.2rem; line-height: 1.6; }
+  .card-body strong { color: var(--text); }
+
+  .info-box {
+    background: rgba(0,212,255,0.05);
+    border-right: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    color: var(--muted);
+    font-size: 1.2rem;
+    line-height: 1.7;
+  }
+  .info-box strong { color: var(--text); }
+  .info-box.orange { border-color: var(--accent2); background: rgba(255,107,53,0.05); }
+  .info-box.green { border-color: var(--accent3); background: rgba(0,255,136,0.05); }
+
+  /* MAC ADDRESS VISUAL */
+  .mac-visual {
+    display: flex;
+    gap: 4px;
+    margin: 20px 0;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .mac-byte {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    min-width: 56px;
+  }
+  .mac-byte.oui { background: rgba(0,212,255,0.15); border: 1px solid var(--accent); color: var(--accent); }
+  .mac-byte.nic { background: rgba(0,255,136,0.15); border: 1px solid var(--accent3); color: var(--accent3); }
+  .mac-sep { color: var(--muted); font-size: 1.2rem; font-family: 'Share Tech Mono', monospace; }
+  .mac-labels {
+    display: flex;
+    gap: 32px;
+    font-size:16px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .mac-labels span:first-child { color: var(--accent); }
+  .mac-labels span:last-child { color: var(--accent3); }
+
+  /* FRAME STRUCTURE */
+  .frame-visual {
+    display: flex;
+    gap: 3px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .frame-field {
+    border-radius: 6px;
+    padding: 12px 8px;
+    text-align: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .frame-field:hover { transform: translateY(-4px); }
+  .frame-field .field-name { font-size:16px; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+  .frame-field .field-size { font-size:16px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .ff-preamble { background: #1a2a4a; border: 1px solid #4a6a9a; color: #9ab; width: 80px; }
+  .ff-dst { background: rgba(255,107,53,0.2); border: 1px solid var(--accent2); color: var(--accent2); width: 90px; }
+  .ff-src { background: rgba(0,212,255,0.2); border: 1px solid var(--accent); color: var(--accent); width: 90px; }
+  .ff-type { background: rgba(255,215,0,0.15); border: 1px solid var(--accent4); color: var(--accent4); width: 70px; }
+  .ff-data { background: rgba(0,255,136,0.15); border: 1px solid var(--accent3); color: var(--accent3); flex: 1; min-width: 140px; }
+  .ff-crc { background: rgba(200,100,200,0.2); border: 1px solid #c8a0e0; color: #c8a0e0; width: 70px; }
+
+  .field-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size:16px;
+    color: var(--text);
+    white-space: nowrap;
+    z-index: 10;
+    text-align: right;
+    min-width: 180px;
+    direction: rtl;
+  }
+  .frame-field:hover .field-tooltip { display: block; }
+
+  /* ARP */
+  .arp-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .arp-step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .arp-step-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size:16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .arp-step-num.orange { background: var(--accent2); }
+  .arp-step-content { flex: 1; }
+  .arp-step-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; }
+  .arp-step-desc { color: var(--muted); font-size: 1.2rem; line-height: 1.5; }
+
+  .broadcast-badge {
+    display: inline-block;
+    background: rgba(255,107,53,0.2);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    margin: 4px 0;
+  }
+
+  /* COMPARISON TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.2rem;
+    margin: 16px 0;
+  }
+  .compare-table th {
+    background: var(--panel2);
+    padding: 12px 16px;
+    text-align: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--accent);
+    color: var(--accent);
+  }
+  .compare-table th:first-child { color: var(--muted); }
+  .compare-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .compare-table td:first-child { color: var(--text); font-weight: 500; }
+  .compare-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .val-eth { color: var(--accent); }
+  .val-wifi { color: var(--accent3); }
+
+  /* QUIZ SECTION */
+  .quiz-section {
+    background: linear-gradient(135deg, #050c18, #0a1525);
+  }
+  .quiz-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .quiz-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .quiz-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.3s;
+  }
+  .quiz-card.answered-correct { border-color: var(--accent3); }
+  .quiz-card.answered-wrong { border-color: var(--accent2); }
+  
+  .quiz-q-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .quiz-question {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .quiz-option {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    text-align: right;
+    transition: all 0.25s;
+    color: var(--text);
+    font-family: 'Rubik', sans-serif;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .quiz-option:hover:not(.disabled) { border-color: var(--accent); background: rgba(0,212,255,0.07); }
+  .quiz-option.correct { border-color: var(--accent3); background: rgba(0,255,136,0.12); color: var(--accent3); }
+  .quiz-option.wrong { border-color: var(--accent2); background: rgba(255,107,53,0.12); color: var(--accent2); }
+  .quiz-option.disabled { cursor: default; }
+  .option-icon { font-size:16px; flex-shrink: 0; }
+  .quiz-explanation {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(0,212,255,0.05);
+    border-radius: 6px;
+    font-size: 1.2rem;
+    color: var(--muted);
+    line-height: 1.5;
+    display: none;
+    border-right: 2px solid var(--accent);
+  }
+  .quiz-explanation.show { display: block; }
+  .quiz-explanation strong { color: var(--accent3); }
+
+  /* SCORE */
+  .score-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    max-width: 500px;
+    margin: 40px auto 0;
+    display: none;
+  }
+  .score-panel.show { display: block; }
+  .score-big {
+    font-size: 4rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .score-label { color: var(--muted); font-size: 1.2rem; }
+
+  /* PROGRESS */
+  .progress-bar-wrap {
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    height: 3px;
+    background: var(--panel2);
+    z-index: 99;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* NAVIGATION ARROWS */
+  .slide-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Rubik', sans-serif;
+    font-size:16px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* HIGHLIGHTS & TAGS */
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .tag-eth { background: rgba(0,212,255,0.15); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .tag-wifi { background: rgba(0,255,136,0.15); color: var(--accent3); border: 1px solid rgba(0,255,136,0.3); }
+  .tag-mac { background: rgba(255,215,0,0.15); color: var(--accent4); border: 1px solid rgba(255,215,0,0.3); }
+  .tag-arp { background: rgba(255,107,53,0.15); color: var(--accent2); border: 1px solid rgba(255,107,53,0.3); }
+
+  .component-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .component-item {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .component-item:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .comp-icon { font-size: 2.2rem; margin-bottom: 10px; }
+  .comp-name { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; color: var(--accent); }
+  .comp-sub { font-size:16px; color: var(--muted); line-height: 1.4; }
+
+  /* SCROLLSPY & ANIMATIONS */
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(0,212,255,0); }
+  }
+  .pulse { animation: pulse-border 2s infinite; }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .anim-stagger > * { opacity: 0; animation: fadeSlideIn 0.5s forwards; }
+  .anim-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+  .anim-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+  .anim-stagger > *:nth-child(3) { animation-delay: 0.3s; }
+  .anim-stagger > *:nth-child(4) { animation-delay: 0.4s; }
+  .anim-stagger > *:nth-child(5) { animation-delay: 0.5s; }
+  .anim-stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+  /* MONO CODE */
+  code {
+    font-family: 'Share Tech Mono', monospace;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 1.2em;
+  }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    .slide { padding: 60px 20px 40px 40px; }
+    .two-col { grid-template-columns: 1fr; }
+    .three-col { grid-template-columns: 1fr; }
+    .quiz-grid { grid-template-columns: 1fr; }
+    .component-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-title">// שכבת הקו — Data Link Layer</div>
+  <div class="slide-counter">שקף <span id="currentSlide">1</span> / <span id="totalSlides">8</span></div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar-wrap">
+  <div class="progress-bar" id="progressBar" style="width:12.5%"></div>
+</div>
+
+<!-- NAV DOTS -->
+<div class="nav-dots" id="navDots"></div>
+
+<!-- SLIDES -->
+<div class="slides-container" id="slidesContainer">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide slide-hero" data-slide="1">
+    <div class="hero-badge">מגמת סייבר | שכבות OSI</div>
+    <h1 class="hero-title">שכבת הקו</h1>
+    <p class="hero-sub">Data Link Layer</p>
+    <div class="osi-visual">
+      <div class="osi-layer"><span>Application</span><span>אפליקציה</span></div>
+      <div class="osi-layer"><span>Transport</span><span>תעבורה</span></div>
+      <div class="osi-layer"><span>Network</span><span>רשת</span></div>
+      <div class="osi-layer highlight pulse"><span>Data Link ⬅</span><span>קו ✦</span></div>
+      <div class="osi-layer"><span>Physical</span><span>פיזית</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: WHAT IS IT -->
+  <div class="slide" data-slide="2">
+    <div class="slide-num">// 02 — תפקיד השכבה</div>
+    <h2 class="section-title">מה תפקיד <span class="accent">שכבת הקו</span>?</h2>
+    <div class="section-line"></div>
+    <div class="two-col">
+      <div>
+        <div class="info-box">
+          שכבת הקו (<strong>Data Link Layer</strong>) אחראית על תקשורת <strong>ישירה בין שתי ישויות סמוכות</strong> ברשת — כלומר, היא "לא רואה" את כל הדרך מהמקור ליעד, אלא רק את ה"קפיצה" הנוכחית.
+        </div>
+        <div class="info-box orange" style="margin-top:12px;">
+          <strong>נקודת מבט חשובה:</strong> בעוד ששכבת הרשת (IP) מתמודדת עם הנתיב המלא, שכבת הקו מתמקדת אך ורק בהעברה אמינה בין שני צמתים סמוכים.
+        </div>
+      </div>
+      <div class="anim-stagger">
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <div class="card-title">Framing</div>
+          <div class="card-body">עטיפת הנתונים במסגרת (<strong>Frame</strong>) עם כתובות מקור ויעד ברמת שכבת הקו.</div>
+        </div>
+        <div class="card" style="margin-top:12px;">
+          <div class="card-icon">✅</div>
+          <div class="card-title">Error Detection</div>
+          <div class="card-body">שימוש ב-<strong>CRC</strong> לגילוי שגיאות שנוצרו במעבר על הפיזי.</div>
+        </div>
+        <div class="card" style="margin-top:12px;">
+          <div class="card-icon">🚦</div>
+          <div class="card-title">Flow & Access Control</div>
+          <div class="card-body">ניהול הגישה לתווך המשותף ומניעת התנגשויות שידור.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: COMPONENTS -->
+  <div class="slide" data-slide="3">
+    <div class="slide-num">// 03 — רכיבים בשכבה</div>
+    <h2 class="section-title">רכיבים הפועלים ב<span class="accent">שכבת הקו</span></h2>
+    <div class="section-line"></div>
+    <p style="color: var(--muted); margin-bottom:24px; font-size:1.2rem;">
+      שכבת הקו ממומשת ב<strong style="color:var(--text)">חומרה</strong> (כרטיסי רשת) ובתוכנה (דרייברים ופרוטוקולים). כרטיסים בפרוטוקולים שונים <strong style="color:var(--accent2)">לא יכולים לתקשר ישירות</strong>.
+    </p>
+    <div class="component-grid anim-stagger">
+      <div class="component-item">
+        <div class="comp-icon">🔌</div>
+        <div class="comp-name">NIC — Ethernet</div>
+        <div class="comp-sub">כרטיס רשת קווי<br>מממש פרוטוקול <span class="tag tag-eth">802.3</span></div>
+      </div>
+      <div class="component-item">
+        <div class="comp-icon">📡</div>
+        <div class="comp-name">NIC — Wi-Fi</div>
+        <div class="comp-sub">כרטיס רשת אלחוטי<br>מממש פרוטוקול <span class="tag tag-wifi">802.11</span></div>
+      </div>
+      <div class="component-item">
+        <div class="comp-icon">🔀</div>
+        <div class="comp-name">Switch</div>
+        <div class="comp-sub">מתג — מפנה לפי <span class="tag tag-mac">MAC</span><br>פועל בשכבה 2 בלבד</div>
+      </div>
+      <div class="component-item">
+        <div class="comp-icon">📶</div>
+        <div class="comp-name">Access Point (AP)</div>
+        <div class="comp-sub">נקודת גישה אלחוטית<br>מגשר בין Wi-Fi לEthernet</div>
+      </div>
+      <div class="component-item">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-name">Bridge</div>
+        <div class="comp-sub">מחבר שני קטעי רשת<br>על בסיס כתובות MAC</div>
+      </div>
+      <div class="component-item">
+        <div class="comp-icon">🔎</div>
+        <div class="comp-name">ARP Protocol</div>
+        <div class="comp-sub">ממפה כתובות <span class="tag tag-arp">IP → MAC</span><br>חיוני לפעולה ברשת</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: MAC ADDRESS -->
+  <div class="slide" data-slide="4">
+    <div class="slide-num">// 04 — כתובת MAC</div>
+    <h2 class="section-title">כתובת <span class="accent">MAC</span></h2>
+    <div class="section-line"></div>
+    <div class="two-col">
+      <div>
+        <p style="color:var(--muted); font-size:1.2rem; line-height:1.7; margin-bottom:20px;">
+          כתובת ה-MAC (<strong style="color:var(--text)">Media Access Control</strong>) היא הכתובת הפיזית של כרטיס הרשת. היא <strong style="color:var(--accent)">צרובה על הכרטיס בעת ייצורו</strong> ואמורה להיות ייחודית בעולם.
+        </p>
+        <div class="mac-labels">
+          <span>◀ OUI (יצרן) — 3 בתים</span>
+          <span>NIC (ייחודי) — 3 בתים ▶</span>
+        </div>
+        <div class="mac-visual">
+          <div class="mac-byte oui">00</div>
+          <div class="mac-sep">:</div>
+          <div class="mac-byte oui">1A</div>
+          <div class="mac-sep">:</div>
+          <div class="mac-byte oui">3F</div>
+          <div class="mac-sep">:</div>
+          <div class="mac-byte nic">F1</div>
+          <div class="mac-sep">:</div>
+          <div class="mac-byte nic">4C</div>
+          <div class="mac-sep">:</div>
+          <div class="mac-byte nic">C6</div>
+        </div>
+        <div class="info-box" style="margin-top:4px; font-size:1.2rem;">
+          📋 <strong>כיצד לראות את ה-MAC שלך?</strong><br>
+          Windows: <code>ipconfig /all</code><br>
+          Linux/Mac: <code>ip link</code> או <code>ifconfig</code><br>
+          ARP cache: <code>arp -a</code>
+        </div>
+      </div>
+      <div>
+        <div class="card anim-stagger">
+          <div class="card-title">🏭 OUI — יצרנים מוכרים</div>
+          <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--panel2); border-radius:4px;">
+              <span style="font-family:'Share Tech Mono',monospace; color:var(--accent)">00:14:22</span>
+              <span style="color:var(--muted)">Dell</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--panel2); border-radius:4px;">
+              <span style="font-family:'Share Tech Mono',monospace; color:var(--accent)">00:04:DC</span>
+              <span style="color:var(--muted)">Nortel</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--panel2); border-radius:4px;">
+              <span style="font-family:'Share Tech Mono',monospace; color:var(--accent)">00:40:96</span>
+              <span style="color:var(--muted)">Cisco</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--panel2); border-radius:4px;">
+              <span style="font-family:'Share Tech Mono',monospace; color:var(--accent)">00:30:BD</span>
+              <span style="color:var(--muted)">Belkin</span>
+            </div>
+          </div>
+          <div class="info-box orange" style="margin-top:12px; font-size:1.2rem;">
+            🔐 <strong>סייבר:</strong> ניתן לזייף (spoof) כתובת MAC בתוכנה — זה לא הופך אותה לאבטחה מהימנה!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: ETHERNET FRAME -->
+  <div class="slide" data-slide="5">
+    <div class="slide-num">// 05 — מסגרת Ethernet</div>
+    <h2 class="section-title">מבנה מסגרת <span class="accent">Ethernet 802.3</span></h2>
+    <div class="section-line"></div>
+    <p style="color:var(--muted); font-size:1.2rem; margin-bottom:20px;">✨ העבר עכבר מעל כל שדה לקבלת פירוט</p>
+    <div class="frame-visual">
+      <div class="frame-field ff-preamble">
+        <div class="field-name">Preamble</div>
+        <div class="field-size">8 bytes</div>
+        <div class="field-tooltip">רצף של 8 בתים המשמש לסנכרון. מאפשר לצדדים לזהות תחילת מסגרת חדשה.</div>
+      </div>
+      <div class="frame-field ff-dst">
+        <div class="field-name">Dst MAC</div>
+        <div class="field-size">6 bytes</div>
+        <div class="field-tooltip">כתובת ה-MAC של היעד. כרטיס הרשת בודק שדה זה ומתעלם ממסגרות שאינן מיועדות אליו.</div>
+      </div>
+      <div class="frame-field ff-src">
+        <div class="field-name">Src MAC</div>
+        <div class="field-size">6 bytes</div>
+        <div class="field-tooltip">כתובת ה-MAC של השולח. מאפשרת לנמען לדעת מי שלח.</div>
+      </div>
+      <div class="frame-field ff-type">
+        <div class="field-name">Type</div>
+        <div class="field-size">2 bytes</div>
+        <div class="field-tooltip">EtherType: מציין את פרוטוקול השכבה הבאה. 0x0800=IPv4, 0x0806=ARP, 0x86DD=IPv6</div>
+      </div>
+      <div class="frame-field ff-data">
+        <div class="field-name">Data (Payload)</div>
+        <div class="field-size">46–1500 bytes</div>
+        <div class="field-tooltip">המידע עצמו — חבילת IP (Packet). אם קטן מ-46 בתים, מוסיפים padding.</div>
+      </div>
+      <div class="frame-field ff-crc">
+        <div class="field-name">CRC32</div>
+        <div class="field-size">4 bytes</div>
+        <div class="field-tooltip">Checksum לגילוי שגיאות. אם CRC לא תואם — המסגרת נזרקת!</div>
+      </div>
+    </div>
+    <div class="two-col" style="margin-top:24px;">
+      <div class="info-box green">
+        <strong>EtherType — ערכים חשובים:</strong><br>
+        <code>0x0800</code> → IPv4 &nbsp;&nbsp; <code>0x0806</code> → ARP<br>
+        <code>0x86DD</code> → IPv6 &nbsp;&nbsp; <code>0x0842</code> → Wake-on-LAN
+      </div>
+      <div class="info-box orange">
+        <strong>MTU — Maximum Transmission Unit</strong><br>
+        גודל מקסימלי של payload: <strong>1500 בתים</strong>. חבילות גדולות יותר יפוצלו (fragmentation) בשכבת הרשת.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: ETH vs WIFI COMPARE -->
+  <div class="slide" data-slide="6">
+    <div class="slide-num">// 06 — Ethernet vs WiFi</div>
+    <h2 class="section-title"><span class="accent">Ethernet</span> לעומת <span class="accent3">Wi-Fi</span></h2>
+    <div class="section-line"></div>
+    <div class="two-col">
+      <div>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>מאפיין</th>
+              <th class="val-eth">Ethernet 802.3</th>
+              <th class="val-wifi">Wi-Fi 802.11</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>מדיה</td>
+              <td class="val-eth">כבל פיזי (Cat5e/6)</td>
+              <td class="val-wifi">אוויר (גלי רדיו)</td>
+            </tr>
+            <tr>
+              <td>כתובות MAC</td>
+              <td class="val-eth">2 (Src + Dst)</td>
+              <td class="val-wifi">4 כתובות MAC!</td>
+            </tr>
+            <tr>
+              <td>MTU</td>
+              <td class="val-eth">1500 bytes</td>
+              <td class="val-wifi">עד 2304 bytes</td>
+            </tr>
+            <tr>
+              <td>גישה לתווך</td>
+              <td class="val-eth">CSMA/CD</td>
+              <td class="val-wifi">CSMA/CA</td>
+            </tr>
+            <tr>
+              <td>אבטחה</td>
+              <td class="val-eth">בסיסית</td>
+              <td class="val-wifi">WPA2/WPA3</td>
+            </tr>
+            <tr>
+              <td>עלות</td>
+              <td class="val-eth">נמוכה יחסית</td>
+              <td class="val-wifi">גבוהה יחסית</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="card" style="border-color: rgba(0,255,136,0.3);">
+          <div class="card-title" style="color: var(--accent3);">📡 מסגרת Wi-Fi — 4 כתובות MAC</div>
+          <div class="card-body" style="margin-top:8px;">
+            בניגוד ל-Ethernet, מסגרת Wi-Fi כוללת עד <strong>4 שדות MAC</strong>:
+            <ul style="margin-top:8px; padding-right:20px; line-height:2;">
+              <li><strong>MAC1:</strong> Destination (יעד סופי)</li>
+              <li><strong>MAC2:</strong> Source (שולח)</li>
+              <li><strong>MAC3:</strong> Router (נתב)</li>
+              <li><strong>MAC4:</strong> Access Point (נקודת גישה)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:12px;">
+          <strong>CSMA/CA vs CSMA/CD:</strong><br>
+          Ethernet: "שידרתי וזיהיתי התנגשות — אנסה שוב" (CD = Collision Detection)<br>
+          Wi-Fi: "ממתין עד שהתווך פנוי — מניעה מראש" (CA = Collision Avoidance)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: ARP -->
+  <div class="slide" data-slide="7">
+    <div class="slide-num">// 07 — פרוטוקול ARP</div>
+    <h2 class="section-title">פרוטוקול <span class="accent2">ARP</span></h2>
+    <div class="section-line orange"></div>
+    <div class="two-col">
+      <div>
+        <div class="info-box orange">
+          <strong>הבעיה:</strong> כרטיס הרשת מבין רק כתובות <strong>MAC</strong>. כדי לשלוח מסגרת, צריך לדעת את כתובת ה-MAC של היעד — אבל אנחנו מכירים רק את כתובת ה-<strong>IP</strong> שלו!
+        </div>
+        <p style="color:var(--muted); font-size:1.2rem; margin:16px 0;">
+          ARP (<strong style="color:var(--text)">Address Resolution Protocol</strong>) פותר בדיוק את הבעיה הזו.
+        </p>
+        <div class="arp-flow anim-stagger">
+          <div class="arp-step">
+            <div class="arp-step-num">1</div>
+            <div class="arp-step-content">
+              <div class="arp-step-title">ARP Request — Broadcast</div>
+              <div class="arp-step-desc">
+                מחשב A שולח שאלה <span class="broadcast-badge">FF:FF:FF:FF:FF:FF</span> לכל הרשת:<br>
+                <em>"מי יש לו את ה-IP 10.0.0.2?"</em>
+              </div>
+            </div>
+          </div>
+          <div class="arp-step">
+            <div class="arp-step-num orange">2</div>
+            <div class="arp-step-content">
+              <div class="arp-step-title">ARP Reply — Unicast</div>
+              <div class="arp-step-desc">
+                מחשב B עונה ישירות לA:<br>
+                <em>"אני הוא — כתובתי הפיזית: 00:09:6B:4F:A1:43"</em>
+              </div>
+            </div>
+          </div>
+          <div class="arp-step">
+            <div class="arp-step-num">3</div>
+            <div class="arp-step-content">
+              <div class="arp-step-title">ARP Cache — שמירת מטמון</div>
+              <div class="arp-step-desc">
+                מחשב A שומר את הכתובת במטמון (<code>arp -a</code>) כדי לא לשאול שוב.<br>
+                רשומות דינמיות: נוצרות ע"י ARP | סטטיות: הוגדרו ידנית.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="border-color: rgba(255,107,53,0.3);">
+          <div class="card-title" style="color:var(--accent2);">⚠️ ARP Spoofing — איום אמיתי!</div>
+          <div class="card-body" style="margin-top:10px; line-height:1.7;">
+            ARP אינו מאומת — כל מחשב ברשת יכול לשלוח תשובת ARP <strong>כוזבת</strong> ולהודיע:
+            <br><br>
+            <em>"כתובת IP של הנתב? זה אני!"</em>
+            <br><br>
+            כך מתקפת <strong>ARP Poisoning / Man-in-the-Middle</strong> מנתבת את כל התנועה דרך תוקף.
+            <div class="info-box orange" style="margin-top:12px; font-size:1.2rem;">
+              🛡️ הגנות: Dynamic ARP Inspection (DAI) בswitches, חלוקה לVLAN, ניטור רשת.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: QUIZ -->
+  <div class="slide quiz-section" data-slide="8">
+    <div class="slide-num">// 08 — שאלות הבנה</div>
+    <div class="quiz-header">
+      <h2 class="section-title" style="text-align:center;">בדיקת <span class="accent">הבנה</span> ויישום</h2>
+      <div class="section-line" style="margin:8px auto 0;"></div>
+      <p style="color:var(--muted); font-size:1.2rem; margin-top:8px;">ענה על כל השאלות — לחץ על התשובה הנכונה</p>
+    </div>
+
+    <div class="quiz-grid" id="quizGrid">
+
+      <!-- Q1 -->
+      <div class="quiz-card" id="qcard-1">
+        <div class="quiz-q-num">// שאלה 01</div>
+        <div class="quiz-question">מחשב A רוצה לשלוח מסגרת Ethernet למחשב B ברשת המקומית. A יודע את כתובת ה-IP של B אבל לא את כתובת ה-MAC שלו. מה יקרה?</div>
+        <div class="quiz-options" id="q1-opts">
+          <button class="quiz-option" onclick="checkAnswer(1, this, false, 'ARP לא פועל בשכבת הרשת — הוא פועל בשכבת הקו. בנוסף, המסגרת לא יכולה להישלח כלל ללא כתובת MAC.')">
+            <span class="option-icon"></span>המחשב ישלח את המסגרת עם כתובת IP כיעד וישכבת הרשת תטפל בהמרה
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(1, this, true, 'נכון! מחשב A ישדר בקשת ARP (Broadcast) לכל הרשת כדי לקבל את כתובת ה-MAC של B, ורק אז יוכל לבנות את מסגרת ה-Ethernet.')">
+            <span class="option-icon"></span>מחשב A יוציא ARP Request לכל הרשת כדי לגלות את כתובת ה-MAC של B
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(1, this, false, 'Switch פועל לפי כתובות MAC — אם אין כתובת MAC, לא ניתן לבנות מסגרת כלל, והסוויץ לא יכול לעזור.')">
+            <span class="option-icon"></span>הסוויץ' ברשת יגלה את כתובת ה-MAC ויוסיף אותה למסגרת
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(1, this, false, 'ה-NIC לא מוסיף כתובות — הוא מצפה לקבל מסגרת שלמה עם כתובת MAC.')">
+            <span class="option-icon"></span>כרטיס הרשת (NIC) יסרוק את הרשת וימצא את הכתובת לבד
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-1"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quiz-card" id="qcard-2">
+        <div class="quiz-q-num">// שאלה 02</div>
+        <div class="quiz-question">מהי כתובת ה-MAC לשליחת ARP Request? למה בחרו בכתובת זו?</div>
+        <div class="quiz-options" id="q2-opts">
+          <button class="quiz-option" onclick="checkAnswer(2, this, false, '00:00:00:00:00:00 היא כתובת NULL — משמשת לעיתים ל-null MAC אבל לא לbroadcast.')">
+            <span class="option-icon"></span><code>00:00:00:00:00:00</code> — כתובת האיפוס הגלובלית
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(2, this, false, 'לא קיים מנגנון כזה — לא ניתן לשלוח מסגרת ל-IP כיעד ברמת שכבת הקו.')">
+            <span class="option-icon"></span>כתובת ה-IP של ה-Gateway — הנתב יפנה את הבקשה
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(2, this, true, 'נכון! FF:FF:FF:FF:FF:FF היא כתובת ה-Broadcast — כל כרטיסי הרשת ברשת המקומית מקבלים ומעבדים מסגרת עם כתובת זו.')">
+            <span class="option-icon"></span><code>FF:FF:FF:FF:FF:FF</code> — כל ה-bits דלוקים, כתובת Broadcast
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(2, this, false, 'Multicast משמש לקבוצות ספציפיות, לא לכולם — זו לא כתובת broadcast.')">
+            <span class="option-icon"></span><code>01:00:5E:00:00:00</code> — כתובת Multicast
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-2"></div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quiz-card" id="qcard-3">
+        <div class="quiz-q-num">// שאלה 03</div>
+        <div class="quiz-question">שדה ה-CRC32 במסגרת Ethernet נמצא בסוף המסגרת. אם מסגרת הגיעה עם CRC שגוי, מה יעשה כרטיס הרשת?</div>
+        <div class="quiz-options" id="q3-opts">
+          <button class="quiz-option" onclick="checkAnswer(3, this, false, 'שכבת הקו לא מבצעת תיקון שגיאות (רק גילוי). תיקון שגיאות הוא תפקיד TCP בשכבת התעבורה.')">
+            <span class="option-icon"></span>יתקן את השגיאה אוטומטית ויעביר את המסגרת למעלה
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(3, this, false, 'ARP לא קשור לשגיאות CRC — זהו פרוטוקול שונה לחלוטין.')">
+            <span class="option-icon"></span>ישלח ARP Request לשולח כדי לבקש תיקון
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(3, this, true, 'נכון! שכבת הקו מסוגלת לגלות שגיאות (בעזרת CRC) אך לא לתקן אותן. המסגרת נזרקת, והשכבות הגבוהות (כמו TCP) אחראיות לשידור חוזר.')">
+            <span class="option-icon"></span>יזרוק (discard) את המסגרת — שכבת הקו מגלה שגיאות אך לא מתקנת
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(3, this, false, 'אם המסגרת לא מיועדת לו, היא נזרקת — אבל כאן הבעיה היא CRC פגום, לא כתובת שגויה.')">
+            <span class="option-icon"></span>יעביר את המסגרת לכל המחשבים ברשת (Broadcast)
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-3"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quiz-card" id="qcard-4">
+        <div class="quiz-q-num">// שאלה 04</div>
+        <div class="quiz-question">מחשב עם כרטיס Ethernet (802.3) ומחשב עם כרטיס Wi-Fi (802.11) רוצים לתקשר. מה נדרש?</div>
+        <div class="quiz-options" id="q4-opts">
+          <button class="quiz-option" onclick="checkAnswer(4, this, false, 'הם לא יכולים לתקשר ישירות כי הפרוטוקולים שונים — נדרש ממיר/גשר ברמת שכבת הקו.')">
+            <span class="option-icon"></span>הם יכולים לתקשר ישירות — כתובות ה-IP מספיקות
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(4, this, true, 'נכון! Access Point (נקודת גישה) או Router הכולל Wi-Fi ו-Ethernet מגשר בין שני הפרוטוקולים השונים ברמת שכבת הקו.')">
+            <span class="option-icon"></span>נדרש Access Point או Router שיגשר בין הפרוטוקולים השונים
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(4, this, false, 'Switch פועל בשכבת הקו אבל בדרך כלל לא מגשר בין Ethernet לWi-Fi — זה תפקיד ה-AP.')">
+            <span class="option-icon"></span>Switch L2 יכול להמיר בין Ethernet לWi-Fi
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(4, this, false, 'כתובת MAC שונה לא פותרת את בעיית הפרוטוקולים השונים — המבנה של המסגרות שונה לחלוטין.')">
+            <span class="option-icon"></span>יש להגדיר כתובת MAC מיוחדת שתתאים לשני הפרוטוקולים
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-4"></div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="quiz-card" id="qcard-5">
+        <div class="quiz-q-num">// שאלה 05</div>
+        <div class="quiz-question">מה ה-EtherType שיופיע במסגרת Ethernet שנושאת חבילת IPv4?</div>
+        <div class="quiz-options" id="q5-opts">
+          <button class="quiz-option" onclick="checkAnswer(5, this, false, '0x0806 הוא EtherType של פרוטוקול ARP, לא IPv4.')">
+            <span class="option-icon"></span><code>0x0806</code> — ARP Protocol
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(5, this, true, 'נכון! 0x0800 הוא ה-EtherType של IPv4. כאשר כרטיס הרשת רואה ערך זה, הוא מעביר את ה-Payload לעיבוד כחבילת IPv4.')">
+            <span class="option-icon"></span><code>0x0800</code> — Internet Protocol v4
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(5, this, false, '0x86DD הוא ה-EtherType של IPv6, לא IPv4.')">
+            <span class="option-icon"></span><code>0x86DD</code> — Internet Protocol v6
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(5, this, false, '0x0842 הוא EtherType של Wake-on-LAN — לא קשור ל-IPv4.')">
+            <span class="option-icon"></span><code>0x0842</code> — Wake-on-LAN
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-5"></div>
+      </div>
+
+      <!-- Q6 -->
+      <div class="quiz-card" id="qcard-6">
+        <div class="quiz-q-num">// שאלה 06</div>
+        <div class="quiz-question">תוקף ברשת המקומית שולח ARP Reply כוזב ומכריז שה-IP של הנתב שייך לכתובת ה-MAC שלו. מה קרה ומה השם של המתקפה?</div>
+        <div class="quiz-options" id="q6-opts">
+          <button class="quiz-option" onclick="checkAnswer(6, this, false, 'SYN Flood היא מתקפת DoS על TCP — לא קשורה ל-ARP ולא גורמת ליירוט תנועה כך.')">
+            <span class="option-icon"></span>מתקפת SYN Flood — מציפה את הנתב בבקשות חיבור
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(6, this, false, 'DNS Spoofing פועל בשכבת האפליקציה ומשנה כתובות DNS — לא מייר תנועה ע"י זיוף ARP.')">
+            <span class="option-icon"></span>מתקפת DNS Spoofing — מזייפת כתובות אתרים
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(6, this, false, 'MAC Flooding מציף את ה-Switch בכתובות MAC מזויפות — שונה ממתקפת ARP Poisoning.')">
+            <span class="option-icon"></span>מתקפת MAC Flooding — מציפה את הסוויץ' בכתובות מזויפות
+          </button>
+          <button class="quiz-option" onclick="checkAnswer(6, this, true, 'נכון! ARP Poisoning (ידועה גם כ-ARP Spoofing) מאפשרת לתוקף להיות Man-in-the-Middle: כל התנועה שאמורה להגיע לנתב עוברת דרכו, ומאפשרת ציתות ומניפולציה.')">
+            <span class="option-icon"></span>מתקפת ARP Poisoning — Man-in-the-Middle ביירוט תנועה
+          </button>
+        </div>
+        <div class="quiz-explanation" id="qexp-6"></div>
+      </div>
+
+    </div>
+
+    <!-- SCORE PANEL -->
+    <div class="score-panel" id="scorePanel">
+      <div style="font-family:'Share Tech Mono',monospace; color:var(--muted); font-size:16px; letter-spacing:2px; margin-bottom:8px;">// תוצאה סופית</div>
+      <div class="score-big" id="scoreBig">0/6</div>
+      <div class="score-label" id="scoreLabel"></div>
+    </div>
+  </div>
+
+</div><!-- end slides-container -->
+
+<script>
+  const TOTAL_SLIDES = 8;
+  let currentSlide = 1;
+
+  // Build nav dots
+  const dotsContainer = document.getElementById('navDots');
+  for (let i = 1; i <= TOTAL_SLIDES; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 1 ? ' active' : '');
+    dot.title = `שקף ${i}`;
+    dot.onclick = () => scrollToSlide(i);
+    dot.id = `dot-${i}`;
+    dotsContainer.appendChild(dot);
+  }
+  document.getElementById('totalSlides').textContent = TOTAL_SLIDES;
+
+  function scrollToSlide(n) {
+    const slides = document.querySelectorAll('.slide');
+    slides[n-1].scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Intersection observer
+  const slides = document.querySelectorAll('.slide');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        const n = parseInt(entry.target.dataset.slide);
+        currentSlide = n;
+        document.getElementById('currentSlide').textContent = n;
+        document.querySelectorAll('.nav-dot').forEach((d, i) => {
+          d.classList.toggle('active', i + 1 === n);
+        });
+        const prog = (n / TOTAL_SLIDES) * 100;
+        document.getElementById('progressBar').style.width = prog + '%';
+      }
+    });
+  }, { threshold: 0.4 });
+
+  slides.forEach(s => observer.observe(s));
+
+  // QUIZ
+  let scores = {};
+  let totalAnswered = 0;
+
+  function checkAnswer(qNum, btn, isCorrect, explanation) {
+    if (scores[qNum] !== undefined) return; // already answered
+    scores[qNum] = isCorrect ? 1 : 0;
+    totalAnswered++;
+
+    const opts = btn.closest('.quiz-options').querySelectorAll('.quiz-option');
+    opts.forEach(o => {
+      o.classList.add('disabled');
+      o.onclick = null;
+    });
+
+    if (isCorrect) {
+      btn.classList.add('correct');
+      btn.querySelector('.option-icon').textContent = '✓';
+      document.getElementById('qcard-' + qNum).classList.add('answered-correct');
+    } else {
+      btn.classList.add('wrong');
+      btn.querySelector('.option-icon').textContent = '✗';
+      document.getElementById('qcard-' + qNum).classList.add('answered-wrong');
+      // highlight correct
+      opts.forEach(o => {
+        if (o.onclick === null && !o.classList.contains('wrong') && !o.classList.contains('correct')) {
+          // find the correct one by re-examining onclick attr — just color wrong ones
+        }
+      });
+    }
+
+    const expEl = document.getElementById('qexp-' + qNum);
+    expEl.innerHTML = '<strong>' + (isCorrect ? '✓ נכון!' : '✗ לא בדיוק...') + '</strong> ' + explanation;
+    expEl.classList.add('show');
+
+    if (totalAnswered === 6) showScore();
+  }
+
+  function showScore() {
+    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+    const panel = document.getElementById('scorePanel');
+    const big = document.getElementById('scoreBig');
+    const label = document.getElementById('scoreLabel');
+    big.textContent = total + '/6';
+    if (total === 6) label.textContent = '🏆 מושלם! שליטה מלאה בשכבת הקו!';
+    else if (total >= 4) label.textContent = '👍 כל הכבוד! עוד קצת ותהיה מומחה.';
+    else if (total >= 2) label.textContent = '📚 כדאי לחזור על החומר ולנסות שוב.';
+    else label.textContent = '💡 חזור על השקפים וקרא שוב — אתה יכול!';
+    panel.classList.add('show');
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }
+</script>
+</body>
+</html>

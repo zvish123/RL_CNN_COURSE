@@ -1,0 +1,2561 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערך מונים וצוברים - יסודות C#</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-code: #0d1117;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --glow-primary: rgba(99, 102, 241, 0.4);
+            --glow-secondary: rgba(16, 185, 129, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background Pattern */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 20%, var(--glow-primary) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, var(--glow-secondary) 0%, transparent 50%),
+                linear-gradient(180deg, transparent 0%, var(--bg-dark) 100%);
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            padding: 1rem 2rem;
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-light);
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-progress {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Slides */
+        .slides-container {
+            padding-top: 80px;
+            min-height: 100vh;
+        }
+
+        .slide {
+            display: none;
+            animation: slideIn 0.5s ease;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Slide Header */
+        .slide-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .slide-number {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .slide-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .slide-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px var(--glow-primary);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .card-icon svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1rem 0;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .code-header {
+            background: rgba(255,255,255,0.05);
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-lang {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .code-copy {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .code-copy:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .code-content {
+            padding: 1.5rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+            line-height: 1.7;
+            overflow-x: auto;
+        }
+
+        .code-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        /* Syntax Highlighting */
+        .keyword { color: #ff79c6; }
+        .type { color: #8be9fd; }
+        .string { color: #f1fa8c; }
+        .number { color: #bd93f9; }
+        .comment { color: #6272a4; font-style: italic; }
+        .method { color: #50fa7b; }
+        .variable { color: #f8f8f2; }
+        .operator { color: #ff79c6; }
+
+        /* Array Visualization */
+        .array-visual {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+            direction: ltr;
+        }
+
+        .array-cell {
+            min-width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--bg-code), var(--bg-card));
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fira Code', monospace;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .array-cell:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px var(--glow-primary);
+        }
+
+        .array-index {
+            position: absolute;
+            top: -25px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .array-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .array-label {
+            position: absolute;
+            bottom: -25px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        /* Info Boxes */
+        .info-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .info-box.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--secondary);
+        }
+
+        .info-box.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: var(--accent);
+        }
+
+        .info-box-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .info-box.success .info-box-icon {
+            background: var(--secondary);
+        }
+
+        .info-box.warning .info-box-icon {
+            background: var(--accent);
+        }
+
+        .info-box-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-box-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Exercise Section */
+        .exercise-container {
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .exercise-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .exercise-badge {
+            background: linear-gradient(135deg, var(--accent), #f97316);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .exercise-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .exercise-question {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .exercise-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .exercise-option {
+            background: rgba(255,255,255,0.03);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .exercise-option:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .exercise-option.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.15);
+        }
+
+        .exercise-option.correct {
+            border-color: var(--secondary);
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .exercise-option.incorrect {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .option-letter {
+            width: 32px;
+            height: 32px;
+            background: var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .exercise-option.selected .option-letter {
+            background: var(--primary);
+        }
+
+        .exercise-option.correct .option-letter {
+            background: var(--secondary);
+        }
+
+        .exercise-option.incorrect .option-letter {
+            background: var(--danger);
+        }
+
+        .check-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .check-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--glow-primary);
+        }
+
+        .check-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .feedback {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .feedback.correct {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--secondary);
+        }
+
+        .feedback.incorrect {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger);
+        }
+
+        .feedback-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feedback-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback.correct .feedback-icon {
+            background: var(--secondary);
+        }
+
+        .feedback.incorrect .feedback-icon {
+            background: var(--danger);
+        }
+
+        .feedback-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .feedback.correct .feedback-title {
+            color: var(--secondary);
+        }
+
+        .feedback.incorrect .feedback-title {
+            color: var(--danger);
+        }
+
+        .feedback-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Input Exercise */
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            background: var(--bg-code);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Fira Code', monospace;
+            flex: 1;
+            min-width: 200px;
+            transition: all 0.2s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--glow-primary);
+        }
+
+        .input-field.correct {
+            border-color: var(--secondary);
+        }
+
+        .input-field.incorrect {
+            border-color: var(--danger);
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .nav-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+        }
+
+        .nav-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--glow-primary);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Steps List */
+        .steps-list {
+            counter-reset: step;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            counter-increment: step;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Table of Contents */
+        .toc {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .toc-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .toc-item:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .toc-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .toc-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .toc-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Score Display */
+        .score-display {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            z-index: 1000;
+        }
+
+        .score-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #f97316);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-text {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: right;
+            border: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: rgba(99, 102, 241, 0.2);
+            font-weight: 600;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* Interactive Demo */
+        .demo-container {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .demo-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .demo-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .demo-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+        }
+
+        .demo-btn.secondary:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .demo-output {
+            font-family: 'Fira Code', monospace;
+            color: var(--secondary);
+            min-height: 100px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem;
+            }
+
+            .slide {
+                padding: 1rem;
+            }
+
+            .slide-title {
+                font-size: 1.75rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .score-display {
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 1rem;
+            }
+        }
+
+        /* Formula Box */
+        .formula-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+
+        .formula-title {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .formula {
+            font-family: 'Fira Code', monospace;
+            font-size: 1.5rem;
+            color: var(--secondary);
+            direction: ltr;
+        }
+
+        /* Highlight */
+        .highlight {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        /* List Styles */
+        .styled-list {
+            list-style: none;
+        }
+
+        .styled-list li {
+            padding: 0.75rem 0;
+            padding-right: 2rem;
+            position: relative;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .styled-list li::before {
+            content: '→';
+            position: absolute;
+            right: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="nav-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                </svg>
+                <span>מערך מונים וצוברים</span>
+            </div>
+            <div class="nav-progress">
+                <span class="progress-text">שקף <span id="currentSlide">1</span> מתוך <span id="totalSlides">12</span></span>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 8.33%"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Score Display -->
+    <div class="score-display">
+        <div class="score-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+        </div>
+        <div>
+            <div class="score-text">ניקוד</div>
+            <div class="score-value" id="totalScore">0</div>
+        </div>
+    </div>
+
+    <!-- Slides Container -->
+    <div class="slides-container">
+        
+        <!-- Slide 1: Introduction -->
+        <div class="slide active" id="slide1">
+            <div class="slide-header">
+                <div class="slide-number">פתיחה</div>
+                <h1 class="slide-title">מערך מונים ומערך צוברים</h1>
+                <p class="slide-subtitle">יסודות C# - פתרון בעיות אלגוריתמיות עם מערכים</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">מה נלמד היום?</h2>
+                </div>
+                
+                <div class="toc">
+                    <div class="toc-item" onclick="goToSlide(2)">
+                        <div class="toc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <path d="M3 9h18M9 21V9"/>
+                            </svg>
+                        </div>
+                        <div class="toc-title">מערכים - תזכורת</div>
+                        <div class="toc-desc">יסודות ושימושים</div>
+                    </div>
+                    <div class="toc-item" onclick="goToSlide(4)">
+                        <div class="toc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M12 20V10"/>
+                                <path d="M18 20V4"/>
+                                <path d="M6 20v-4"/>
+                            </svg>
+                        </div>
+                        <div class="toc-title">מערך מונים</div>
+                        <div class="toc-desc">ספירה וסטטיסטיקה</div>
+                    </div>
+                    <div class="toc-item" onclick="goToSlide(7)">
+                        <div class="toc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <div class="toc-title">מערך צוברים</div>
+                        <div class="toc-desc">סכימה וצבירה</div>
+                    </div>
+                    <div class="toc-item" onclick="goToSlide(10)">
+                        <div class="toc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                        </div>
+                        <div class="toc-title">מושגים סטטיסטיים</div>
+                        <div class="toc-desc">ממוצע, חציון, מקסימום</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="info-box-content">
+                    <h4>מה תוכלו לעשות בסוף השיעור?</h4>
+                    <p>לכתוב תוכניות שמנתחות נתונים, עורכות בחירות, מחשבות סטטיסטיקות ומזהות דפוסים - כל זה בעזרת מערכים חכמים!</p>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 2: Array Basics -->
+        <div class="slide" id="slide2">
+            <div class="slide-header">
+                <div class="slide-number">שקף 2</div>
+                <h1 class="slide-title">מערכים - תזכורת מהירה</h1>
+                <p class="slide-subtitle">מה זה מערך ולמה צריך אותו?</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 16v-4M12 8h.01"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">מהו מערך?</h2>
+                    </div>
+                    <ul class="styled-list">
+                        <li>מבנה נתונים שמאחסן אוסף של ערכים <strong>מאותו טיפוס</strong></li>
+                        <li>כל איבר נמצא ב<strong>אינדקס</strong> (מיקום) מסוים</li>
+                        <li>האינדקס מתחיל מ-<span class="highlight">0</span></li>
+                        <li>גודל המערך נקבע בעת ההגדרה ו<strong>לא משתנה</strong></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">למה מערך?</h2>
+                    </div>
+                    <ul class="styled-list">
+                        <li>ארגון יעיל של מידע רב</li>
+                        <li>גישה מהירה לכל איבר לפי אינדקס</li>
+                        <li>עיבוד נתונים בלולאה</li>
+                        <li>חיסכון בכתיבת קוד חוזר</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">דוגמה ויזואלית - מערך של 6 ציונים:</h3>
+                <div class="array-visual">
+                    <div class="array-cell">
+                        <span class="array-index">[0]</span>
+                        <span class="array-value">85</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[1]</span>
+                        <span class="array-value">92</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[2]</span>
+                        <span class="array-value">78</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[3]</span>
+                        <span class="array-value">95</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[4]</span>
+                        <span class="array-value">88</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[5]</span>
+                        <span class="array-value">91</span>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">C#</span>
+                        <button class="code-copy" onclick="copyCode(this)">העתק</button>
+                    </div>
+                    <div class="code-content">
+<pre><span class="comment">// הגדרת מערך ואתחול</span>
+<span class="type">int</span>[] grades = <span class="keyword">new</span> <span class="type">int</span>[<span class="number">6</span>];
+grades[<span class="number">0</span>] = <span class="number">85</span>;
+grades[<span class="number">1</span>] = <span class="number">92</span>;
+<span class="comment">// ... וכן הלאה</span>
+
+<span class="comment">// או בשורה אחת:</span>
+<span class="type">int</span>[] grades = { <span class="number">85</span>, <span class="number">92</span>, <span class="number">78</span>, <span class="number">95</span>, <span class="number">88</span>, <span class="number">91</span> };
+
+<span class="comment">// גישה לאיבר:</span>
+Console.<span class="method">WriteLine</span>(grades[<span class="number">3</span>]); <span class="comment">// ידפיס: 95</span></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 3: Array Exercise -->
+        <div class="slide" id="slide3">
+            <div class="slide-header">
+                <div class="slide-number">תרגיל 1</div>
+                <h1 class="slide-title">בדיקת הבנה - מערכים</h1>
+                <p class="slide-subtitle">בואו נוודא שזוכרים את הבסיס</p>
+            </div>
+
+            <div class="exercise-container" id="exercise1">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">שאלה על אינדקסים</span>
+                </div>
+                <div class="exercise-question">
+                    נתון הקוד הבא:
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">int</span>[] arr = { <span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>, <span class="number">40</span>, <span class="number">50</span> };
+Console.<span class="method">WriteLine</span>(arr[<span class="number">2</span>] + arr[<span class="number">4</span>]);</pre>
+                        </div>
+                    </div>
+                    <strong>מה יודפס למסך?</strong>
+                </div>
+                <div class="exercise-options" data-correct="2">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise1')">
+                        <span class="option-letter">א</span>
+                        <span>50</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise1')">
+                        <span class="option-letter">ב</span>
+                        <span>60</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise1')">
+                        <span class="option-letter">ג</span>
+                        <span>80</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise1')">
+                        <span class="option-letter">ד</span>
+                        <span>שגיאה - חריגה מגבולות המערך</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise1', 2)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise1">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise2">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">גודל מערך</span>
+                </div>
+                <div class="exercise-question">
+                    נתון מערך <code>int[] numbers = new int[7];</code><br>
+                    <strong>מהו האינדקס של האיבר האחרון במערך?</strong>
+                </div>
+                <div class="exercise-options" data-correct="1">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise2')">
+                        <span class="option-letter">א</span>
+                        <span>7</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise2')">
+                        <span class="option-letter">ב</span>
+                        <span>6</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise2')">
+                        <span class="option-letter">ג</span>
+                        <span>8</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise2')">
+                        <span class="option-letter">ד</span>
+                        <span>0</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise2', 1)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise2">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 4: Counter Array Concept -->
+        <div class="slide" id="slide4">
+            <div class="slide-header">
+                <div class="slide-number">שקף 4</div>
+                <h1 class="slide-title">מערך מונים</h1>
+                <p class="slide-subtitle">Counter Array - לספור בצורה חכמה</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20V10M18 20V4M6 20v-4"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">מהו מערך מונים?</h2>
+                </div>
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                    <strong>מערך מונים</strong> הוא מערך שבו <span class="highlight">כל תא משמש כמונה</span> לספירת כמות ההופעות של ערך מסוים. 
+                    במקום להשתמש במשתנים נפרדים לכל דבר שרוצים לספור, משתמשים במערך אחד.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-box-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                    </div>
+                    <div class="info-box-content">
+                        <h4>דוגמה מהחיים</h4>
+                        <p>חשבו על הצבעה בבחירות - יש 4 מועמדים ואתם רוצים לספור כמה קולות קיבל כל אחד. במקום 4 משתנים נפרדים, תשתמשו במערך אחד עם 4 תאים!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1.5rem;">השלבים לעבודה עם מערך מונים:</h3>
+                <div class="steps-list">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>הגדרת המערך</h4>
+                            <p>יצירת מערך בגודל מספר הדברים שרוצים לספור</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>איפוס המערך</h4>
+                            <p>לוודא שכל התאים מכילים 0 (ב-C# זה קורה אוטומטית)</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>קליטה וספירה</h4>
+                            <p>לקלוט נתונים ולהגדיל ב-1 את התא המתאים</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>עיבוד ופלט</h4>
+                            <p>לבצע לוגיקה על המונים ולהציג תוצאות</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 5: Counter Array Example -->
+        <div class="slide" id="slide5">
+            <div class="slide-header">
+                <div class="slide-number">שקף 5</div>
+                <h1 class="slide-title">דוגמה: בחירות למועצת תלמידים</h1>
+                <p class="slide-subtitle">יישום מעשי של מערך מונים</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, var(--accent), #f97316);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">הבעיה</h2>
+                </div>
+                <p style="line-height: 1.8;">
+                    בבחירות למועצת התלמידים יש <strong>4 מועמדים</strong>. כל תלמיד מצביע למועמד אחד (1-4).
+                    צריך לספור את הקולות ולהכריז על המנצח.
+                </p>
+                
+                <h3 style="margin: 1.5rem 0 1rem;">מערך המונים - לפני ההצבעה:</h3>
+                <div class="array-visual">
+                    <div class="array-cell">
+                        <span class="array-index">[0]</span>
+                        <span class="array-value">0</span>
+                        <span class="array-label">מועמד 1</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[1]</span>
+                        <span class="array-value">0</span>
+                        <span class="array-label">מועמד 2</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[2]</span>
+                        <span class="array-value">0</span>
+                        <span class="array-label">מועמד 3</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[3]</span>
+                        <span class="array-value">0</span>
+                        <span class="array-label">מועמד 4</span>
+                    </div>
+                </div>
+
+                <div class="info-box warning">
+                    <div class="info-box-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                    </div>
+                    <div class="info-box-content">
+                        <h4>שימו לב!</h4>
+                        <p>מועמד 1 נמצא באינדקס 0, מועמד 2 באינדקס 1 וכו'. לכן כשמישהו מצביע למועמד X, נעדכן את התא באינדקס <strong>X-1</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">הקוד המלא:</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">C#</span>
+                        <button class="code-copy" onclick="copyCode(this)">העתק</button>
+                    </div>
+                    <div class="code-content">
+<pre><span class="keyword">const</span> <span class="type">int</span> NUM_OF_CANDIDATES = <span class="number">4</span>; <span class="comment">// מספר המועמדים</span>
+<span class="type">int</span>[] election = <span class="keyword">new</span> <span class="type">int</span>[NUM_OF_CANDIDATES]; <span class="comment">// מערך מונים</span>
+
+Console.<span class="method">WriteLine</span>(<span class="string">"כמה מצביעים?"</span>);
+<span class="type">int</span> voters = <span class="type">int</span>.<span class="method">Parse</span>(Console.<span class="method">ReadLine</span>());
+
+<span class="comment">// קליטת ההצבעות</span>
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i < voters; i++)
+{
+    Console.<span class="method">WriteLine</span>(<span class="string">"הזן בחירה (1-{0}):"</span>, NUM_OF_CANDIDATES);
+    <span class="type">int</span> vote = <span class="type">int</span>.<span class="method">Parse</span>(Console.<span class="method">ReadLine</span>());
+    
+    <span class="keyword">if</span> (vote >= <span class="number">1</span> && vote <= NUM_OF_CANDIDATES)
+        election[vote - <span class="number">1</span>]++; <span class="comment">// עדכון המונה</span>
+}
+
+<span class="comment">// מציאת המנצח</span>
+<span class="type">int</span> maxVotes = <span class="number">0</span>, winner = <span class="number">0</span>;
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i < NUM_OF_CANDIDATES; i++)
+{
+    <span class="keyword">if</span> (election[i] > maxVotes)
+    {
+        maxVotes = election[i];
+        winner = i;
+    }
+}
+
+Console.<span class="method">WriteLine</span>(<span class="string">"המנצח הוא מועמד {0} עם {1} קולות"</span>, winner + <span class="number">1</span>, maxVotes);</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 6: Counter Array Exercise -->
+        <div class="slide" id="slide6">
+            <div class="slide-header">
+                <div class="slide-number">תרגיל 2</div>
+                <h1 class="slide-title">תרגול מערך מונים</h1>
+                <p class="slide-subtitle">בדקו את ההבנה שלכם</p>
+            </div>
+
+            <div class="exercise-container" id="exercise3">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">מעקב אחר מערך מונים</span>
+                </div>
+                <div class="exercise-question">
+                    נתון מערך מונים <code>int[] count = new int[5];</code> (מאותחל ל-0).<br>
+                    לאחר הרצת הקוד הבא:
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">int</span>[] data = { <span class="number">2</span>, <span class="number">4</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="number">3</span> };
+<span class="keyword">foreach</span> (<span class="type">int</span> num <span class="keyword">in</span> data)
+    count[num - <span class="number">1</span>]++;</pre>
+                        </div>
+                    </div>
+                    <strong>מה יהיה הערך של count[3]?</strong>
+                </div>
+                <div class="exercise-options" data-correct="2">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise3')">
+                        <span class="option-letter">א</span>
+                        <span>1</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise3')">
+                        <span class="option-letter">ב</span>
+                        <span>2</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise3')">
+                        <span class="option-letter">ג</span>
+                        <span>3</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise3')">
+                        <span class="option-letter">ד</span>
+                        <span>0</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise3', 2)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise3">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise4">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">שימוש במערך מונים</span>
+                </div>
+                <div class="exercise-question">
+                    רוצים לספור כמה פעמים הופיעה כל ספרה (0-9) במספר. <br>
+                    <strong>מה גודל מערך המונים שנדרש?</strong>
+                </div>
+                <div class="exercise-options" data-correct="1">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise4')">
+                        <span class="option-letter">א</span>
+                        <span>9</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise4')">
+                        <span class="option-letter">ב</span>
+                        <span>10</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise4')">
+                        <span class="option-letter">ג</span>
+                        <span>11</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise4')">
+                        <span class="option-letter">ד</span>
+                        <span>תלוי במספר</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise4', 1)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise4">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 7: Accumulator Array Concept -->
+        <div class="slide" id="slide7">
+            <div class="slide-header">
+                <div class="slide-number">שקף 7</div>
+                <h1 class="slide-title">מערך צוברים</h1>
+                <p class="slide-subtitle">Accumulator Array - לצבור ערכים</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">מהו מערך צוברים?</h2>
+                </div>
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                    <strong>מערך צוברים</strong> הוא מערך שבו <span class="highlight">כל תא צובר סכום</span> של ערכים. 
+                    בניגוד למערך מונים שמוסיף 1 בכל פעם, כאן מוסיפים <strong>ערכים שונים</strong>.
+                </p>
+
+                <table class="comparison-table">
+                    <tr>
+                        <th>מערך מונים</th>
+                        <th>מערך צוברים</th>
+                    </tr>
+                    <tr>
+                        <td>מוסיפים <strong>1</strong> בכל פעם</td>
+                        <td>מוסיפים <strong>ערך משתנה</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>arr[i]++;</code></td>
+                        <td><code>arr[i] += value;</code></td>
+                    </tr>
+                    <tr>
+                        <td>ספירת הופעות</td>
+                        <td>סכימת ערכים</td>
+                    </tr>
+                    <tr>
+                        <td>דוגמה: הצבעות בבחירות</td>
+                        <td>דוגמה: ניקוד בטורניר</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1.5rem;">השלבים לעבודה עם מערך צוברים:</h3>
+                <div class="steps-list">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>הגדרת המערך</h4>
+                            <p>יצירת מערך בגודל מספר הישויות שרוצים לצבור עבורן</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>איפוס המערך</h4>
+                            <p>לוודא שכל התאים מכילים 0</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>קליטה וצבירה</h4>
+                            <p>לקלוט נתונים ו<strong>להוסיף את הערך</strong> לתא המתאים</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>עיבוד ופלט</h4>
+                            <p>לבצע לוגיקה על הצוברים ולהציג תוצאות</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 8: Accumulator Array Example -->
+        <div class="slide" id="slide8">
+            <div class="slide-header">
+                <div class="slide-number">שקף 8</div>
+                <h1 class="slide-title">דוגמה: טורניר כדורגל</h1>
+                <p class="slide-subtitle">יישום מעשי של מערך צוברים</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">הבעיה</h2>
+                </div>
+                <p style="line-height: 1.8; margin-bottom: 1rem;">
+                    בטורניר כדורגל משתתפות <strong>6 קבוצות</strong>. כל קבוצה משחקת נגד כל קבוצה אחרת פעם אחת.
+                </p>
+                <ul class="styled-list">
+                    <li>ניצחון = <strong>3 נקודות</strong></li>
+                    <li>תיקו = <strong>נקודה אחת</strong> לכל קבוצה</li>
+                    <li>הפסד = <strong>0 נקודות</strong></li>
+                </ul>
+
+                <h3 style="margin: 1.5rem 0 1rem;">מערך הצוברים - ניקוד הקבוצות:</h3>
+                <div class="array-visual">
+                    <div class="array-cell">
+                        <span class="array-index">[0]</span>
+                        <span class="array-value">9</span>
+                        <span class="array-label">קבוצה 1</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[1]</span>
+                        <span class="array-value">7</span>
+                        <span class="array-label">קבוצה 2</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[2]</span>
+                        <span class="array-value">12</span>
+                        <span class="array-label">קבוצה 3</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[3]</span>
+                        <span class="array-value">4</span>
+                        <span class="array-label">קבוצה 4</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[4]</span>
+                        <span class="array-value">6</span>
+                        <span class="array-label">קבוצה 5</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[5]</span>
+                        <span class="array-value">2</span>
+                        <span class="array-label">קבוצה 6</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">חלק מהקוד - עדכון הניקוד:</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">C#</span>
+                        <button class="code-copy" onclick="copyCode(this)">העתק</button>
+                    </div>
+                    <div class="code-content">
+<pre><span class="type">int</span>[] teams = <span class="keyword">new</span> <span class="type">int</span>[<span class="number">6</span>]; <span class="comment">// מערך צוברים - ניקוד</span>
+Random r = <span class="keyword">new</span> Random();
+
+<span class="comment">// סבב משחקים - כל קבוצה נגד כל קבוצה</span>
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i < teams.Length - <span class="number">1</span>; i++)
+{
+    <span class="keyword">for</span> (<span class="type">int</span> j = i + <span class="number">1</span>; j < teams.Length; j++)
+    {
+        <span class="type">int</span> result = r.<span class="method">Next</span>(<span class="number">3</span>); <span class="comment">// 0=ניצחון i, 1=תיקו, 2=ניצחון j</span>
+        
+        <span class="keyword">if</span> (result == <span class="number">0</span>)
+            teams[i] += <span class="number">3</span>;      <span class="comment">// קבוצה i ניצחה</span>
+        <span class="keyword">else if</span> (result == <span class="number">2</span>)
+            teams[j] += <span class="number">3</span>;      <span class="comment">// קבוצה j ניצחה</span>
+        <span class="keyword">else</span>
+        {
+            teams[i] += <span class="number">1</span>;      <span class="comment">// תיקו - שתי הקבוצות</span>
+            teams[j] += <span class="number">1</span>;      <span class="comment">// מקבלות נקודה</span>
+        }
+    }
+}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 9: Accumulator Exercise -->
+        <div class="slide" id="slide9">
+            <div class="slide-header">
+                <div class="slide-number">תרגיל 3</div>
+                <h1 class="slide-title">תרגול מערך צוברים</h1>
+                <p class="slide-subtitle">בדקו את ההבנה שלכם</p>
+            </div>
+
+            <div class="exercise-container" id="exercise5">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">זיהוי סוג מערך</span>
+                </div>
+                <div class="exercise-question">
+                    במשחק קלפים, כל שחקן יכול לצבור או לאבד נקודות בכל סיבוב.<br>
+                    <strong>איזה סוג מערך מתאים לשמירת הניקוד של השחקנים?</strong>
+                </div>
+                <div class="exercise-options" data-correct="1">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise5')">
+                        <span class="option-letter">א</span>
+                        <span>מערך מונים</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise5')">
+                        <span class="option-letter">ב</span>
+                        <span>מערך צוברים</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise5')">
+                        <span class="option-letter">ג</span>
+                        <span>שניהם מתאימים</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise5')">
+                        <span class="option-letter">ד</span>
+                        <span>אף אחד לא מתאים</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise5', 1)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise5">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise6">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">ניתוח קוד</span>
+                </div>
+                <div class="exercise-question">
+                    נתון הקוד הבא:
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">int</span>[] sales = <span class="keyword">new</span> <span class="type">int</span>[<span class="number">3</span>]; <span class="comment">// מכירות של 3 חנויות</span>
+sales[<span class="number">0</span>] += <span class="number">100</span>;
+sales[<span class="number">1</span>] += <span class="number">200</span>;
+sales[<span class="number">0</span>] += <span class="number">50</span>;
+sales[<span class="number">2</span>] += <span class="number">75</span>;
+sales[<span class="number">1</span>] += <span class="number">100</span>;</pre>
+                        </div>
+                    </div>
+                    <strong>מה סכום המכירות הכולל של כל החנויות?</strong>
+                </div>
+                <div class="input-group">
+                    <input type="number" class="input-field" id="input-exercise6" placeholder="הכנס תשובה...">
+                </div>
+                <button class="check-btn" onclick="checkInputAnswer('exercise6', 525)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise6">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 10: Statistical Concepts -->
+        <div class="slide" id="slide10">
+            <div class="slide-header">
+                <div class="slide-number">שקף 10</div>
+                <h1 class="slide-title">מושגים סטטיסטיים</h1>
+                <p class="slide-subtitle">ממוצע, חציון, מקסימום ומינימום</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20M2 12h20"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">ממוצע (Average)</h2>
+                    </div>
+                    <p style="margin-bottom: 1rem;">סכום כל הערכים חלקי מספר הערכים</p>
+                    <div class="formula-box">
+                        <div class="formula-title">נוסחה</div>
+                        <div class="formula">ממוצע = סכום / כמות</div>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">double</span> sum = <span class="number">0</span>;
+<span class="keyword">foreach</span> (<span class="type">int</span> val <span class="keyword">in</span> arr)
+    sum += val;
+<span class="type">double</span> avg = sum / arr.Length;</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2l-2 7h-7l6 4-2 7 5-4 5 4-2-7 6-4h-7z"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">חציון (Median)</h2>
+                    </div>
+                    <p style="margin-bottom: 1rem;">הערך האמצעי במערך <strong>ממוין</strong></p>
+                    <div class="formula-box">
+                        <div class="formula-title">כללים</div>
+                        <div class="formula" style="font-size: 1rem;">
+                            n אי-זוגי: האיבר האמצעי<br>
+                            n זוגי: ממוצע 2 האמצעיים
+                        </div>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-content">
+<pre>Array.<span class="method">Sort</span>(arr);
+<span class="type">int</span> mid = arr.Length / <span class="number">2</span>;
+<span class="type">double</span> median = (arr.Length % <span class="number">2</span> == <span class="number">1</span>) 
+    ? arr[mid] 
+    : (arr[mid-<span class="number">1</span>] + arr[mid]) / <span class="number">2.0</span>;</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                <polyline points="17 6 23 6 23 12"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">מקסימום (Maximum)</h2>
+                    </div>
+                    <p style="margin-bottom: 1rem;">הערך הגדול ביותר במערך</p>
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">int</span> max = arr[<span class="number">0</span>];
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">1</span>; i < arr.Length; i++)
+{
+    <span class="keyword">if</span> (arr[i] > max)
+        max = arr[i];
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                                <polyline points="17 18 23 18 23 12"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">מינימום (Minimum)</h2>
+                    </div>
+                    <p style="margin-bottom: 1rem;">הערך הקטן ביותר במערך</p>
+                    <div class="code-block">
+                        <div class="code-content">
+<pre><span class="type">int</span> min = arr[<span class="number">0</span>];
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">1</span>; i < arr.Length; i++)
+{
+    <span class="keyword">if</span> (arr[i] < min)
+        min = arr[i];
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 11: Statistics Exercise -->
+        <div class="slide" id="slide11">
+            <div class="slide-header">
+                <div class="slide-number">תרגיל 4</div>
+                <h1 class="slide-title">תרגול מושגים סטטיסטיים</h1>
+                <p class="slide-subtitle">יישום ממוצע, חציון, מקסימום ומינימום</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3>נתון המערך הבא:</h3>
+                <div class="array-visual">
+                    <div class="array-cell">
+                        <span class="array-index">[0]</span>
+                        <span class="array-value">85</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[1]</span>
+                        <span class="array-value">72</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[2]</span>
+                        <span class="array-value">95</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[3]</span>
+                        <span class="array-value">88</span>
+                    </div>
+                    <div class="array-cell">
+                        <span class="array-index">[4]</span>
+                        <span class="array-value">60</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise7">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">חישוב ממוצע</span>
+                </div>
+                <div class="exercise-question">
+                    <strong>מהו הממוצע של הציונים במערך?</strong>
+                </div>
+                <div class="exercise-options" data-correct="1">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise7')">
+                        <span class="option-letter">א</span>
+                        <span>85</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise7')">
+                        <span class="option-letter">ב</span>
+                        <span>80</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise7')">
+                        <span class="option-letter">ג</span>
+                        <span>78</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise7')">
+                        <span class="option-letter">ד</span>
+                        <span>88</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise7', 1)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise7">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise8">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">חישוב חציון</span>
+                </div>
+                <div class="exercise-question">
+                    <strong>מהו החציון של הציונים במערך?</strong><br>
+                    <small style="color: var(--text-muted);">רמז: קודם צריך למיין את המערך!</small>
+                </div>
+                <div class="exercise-options" data-correct="2">
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise8')">
+                        <span class="option-letter">א</span>
+                        <span>72</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise8')">
+                        <span class="option-letter">ב</span>
+                        <span>88</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise8')">
+                        <span class="option-letter">ג</span>
+                        <span>85</span>
+                    </div>
+                    <div class="exercise-option" onclick="selectOption(this, 'exercise8')">
+                        <span class="option-letter">ד</span>
+                        <span>80</span>
+                    </div>
+                </div>
+                <button class="check-btn" onclick="checkAnswer('exercise8', 2)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise8">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="exercise-container" id="exercise9">
+                <div class="exercise-header">
+                    <span class="exercise-badge">🎯 תרגיל</span>
+                    <span class="exercise-title">טווח (Range)</span>
+                </div>
+                <div class="exercise-question">
+                    <strong>מהו הטווח (ההפרש בין המקסימום למינימום)?</strong>
+                </div>
+                <div class="input-group">
+                    <input type="number" class="input-field" id="input-exercise9" placeholder="הכנס תשובה...">
+                </div>
+                <button class="check-btn" onclick="checkInputAnswer('exercise9', 35)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    בדוק תשובה
+                </button>
+                <div class="feedback" id="feedback-exercise9">
+                    <div class="feedback-header">
+                        <div class="feedback-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feedback-title"></span>
+                    </div>
+                    <p class="feedback-text"></p>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="nextSlide()">
+                    הבא
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slide 12: Summary -->
+        <div class="slide" id="slide12">
+            <div class="slide-header">
+                <div class="slide-number">סיכום</div>
+                <h1 class="slide-title">סיכום והמשך למידה</h1>
+                <p class="slide-subtitle">מה למדנו היום?</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20V10M18 20V4M6 20v-4"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">מערך מונים</h2>
+                    </div>
+                    <ul class="styled-list">
+                        <li>משמש לספירת הופעות</li>
+                        <li>מגדילים ב-1 בכל פעם</li>
+                        <li><code>arr[i]++;</code></li>
+                        <li>דוגמאות: בחירות, סקרים, היסטוגרמות</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <h2 class="card-title">מערך צוברים</h2>
+                    </div>
+                    <ul class="styled-list">
+                        <li>משמש לצבירת ערכים</li>
+                        <li>מוסיפים ערכים משתנים</li>
+                        <li><code>arr[i] += value;</code></li>
+                        <li>דוגמאות: ניקוד, מכירות, הכנסות</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <h2 class="card-title">מושגים סטטיסטיים</h2>
+                </div>
+                <table class="comparison-table">
+                    <tr>
+                        <th>מושג</th>
+                        <th>הסבר</th>
+                        <th>שימוש</th>
+                    </tr>
+                    <tr>
+                        <td><strong>ממוצע</strong></td>
+                        <td>סכום / כמות</td>
+                        <td>ממוצע ציונים, ממוצע הכנסות</td>
+                    </tr>
+                    <tr>
+                        <td><strong>חציון</strong></td>
+                        <td>ערך אמצעי (מערך ממוין)</td>
+                        <td>שכר חציוני, גיל חציוני</td>
+                    </tr>
+                    <tr>
+                        <td><strong>מקסימום</strong></td>
+                        <td>הערך הגבוה ביותר</td>
+                        <td>ציון מקסימלי, שיא מכירות</td>
+                    </tr>
+                    <tr>
+                        <td><strong>מינימום</strong></td>
+                        <td>הערך הנמוך ביותר</td>
+                        <td>ציון מינימלי, טמפרטורה נמוכה</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="info-box-content">
+                    <h4>כל הכבוד! 🎉</h4>
+                    <p>סיימתם את השיעור על מערך מונים וצוברים. עכשיו יש לכם כלים חזקים לניתוח נתונים ופתרון בעיות אלגוריתמיות!</p>
+                </div>
+            </div>
+
+            <div class="card" style="text-align: center; background: linear-gradient(135deg, var(--bg-card), rgba(99, 102, 241, 0.1));">
+                <h3 style="margin-bottom: 1rem;">הציון הסופי שלכם:</h3>
+                <div style="font-size: 4rem; font-weight: 800; color: var(--accent);" id="finalScore">0</div>
+                <p style="color: var(--text-muted);">מתוך 90 נקודות אפשריות</p>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="prevSlide()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    הקודם
+                </button>
+                <button class="nav-btn primary" onclick="goToSlide(1)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 12l6-6M3 12l6 6"/>
+                    </svg>
+                    חזור להתחלה
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentSlide = 1;
+        const totalSlides = 12;
+        let score = 0;
+        const answeredExercises = new Set();
+
+        // Feedback messages
+        const feedbackMessages = {
+            exercise1: {
+                correct: "מעולה! arr[2]=30 ו-arr[4]=50, והסכום הוא 80.",
+                incorrect: "לא נכון. זכרו: אינדקס 2 הוא האיבר השלישי (30) ואינדקס 4 הוא האיבר החמישי (50). 30+50=80."
+            },
+            exercise2: {
+                correct: "נכון! מערך בגודל 7 מכיל אינדקסים 0-6, כלומר האיבר האחרון באינדקס 6.",
+                incorrect: "לא נכון. מערך בגודל n מכיל אינדקסים מ-0 עד n-1. לכן מערך בגודל 7 מסתיים באינדקס 6."
+            },
+            exercise3: {
+                correct: "נכון! count[3] סופר את המספר 4 (כי 4-1=3). המספר 4 מופיע 3 פעמים במערך data.",
+                incorrect: "לא נכון. count[3] שומר את מספר ההופעות של 4 (כי num-1=3 כש-num=4). המספר 4 מופיע 3 פעמים."
+            },
+            exercise4: {
+                correct: "נכון! יש 10 ספרות (0-9), לכן צריך מערך בגודל 10.",
+                incorrect: "לא נכון. הספרות הן 0,1,2,3,4,5,6,7,8,9 - סה\"כ 10 ספרות שונות."
+            },
+            exercise5: {
+                correct: "נכון! מערך צוברים מתאים כי הניקוד יכול להשתנות בערכים שונים (ולא רק +1).",
+                incorrect: "לא נכון. מערך מונים מתאים רק כשמוסיפים 1 בכל פעם. כאן הניקוד משתנה בערכים שונים."
+            },
+            exercise6: {
+                correct: "מעולה! חנות 0: 100+50=150, חנות 1: 200+100=300, חנות 2: 75. סה\"כ: 525.",
+                incorrect: "לא נכון. חשבו שוב: חנות 0 קיבלה 100+50, חנות 1 קיבלה 200+100, חנות 2 קיבלה 75."
+            },
+            exercise7: {
+                correct: "מעולה! (85+72+95+88+60)/5 = 400/5 = 80",
+                incorrect: "לא נכון. סכום הציונים הוא 400. מחלקים ב-5 (מספר האיברים) ומקבלים 80."
+            },
+            exercise8: {
+                correct: "נכון! המערך הממוין: 60,72,85,88,95. האיבר האמצעי (השלישי) הוא 85.",
+                incorrect: "לא נכון. קודם ממיינים: 60,72,85,88,95. החציון הוא האיבר האמצעי = 85."
+            },
+            exercise9: {
+                correct: "מעולה! המקסימום הוא 95, המינימום הוא 60. הטווח: 95-60=35.",
+                incorrect: "לא נכון. מקסימום=95, מינימום=60. הטווח הוא ההפרש: 95-60=35."
+            }
+        };
+
+        // Navigation
+        function updateProgress() {
+            document.getElementById('currentSlide').textContent = currentSlide;
+            document.getElementById('totalSlides').textContent = totalSlides;
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        function showSlide(n) {
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+            });
+            document.getElementById('slide' + n).classList.add('active');
+            currentSlide = n;
+            updateProgress();
+            window.scrollTo(0, 0);
+            
+            if (n === 12) {
+                document.getElementById('finalScore').textContent = score;
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        function goToSlide(n) {
+            showSlide(n);
+        }
+
+        // Exercise handling
+        function selectOption(element, exerciseId) {
+            const container = document.getElementById(exerciseId);
+            const options = container.querySelectorAll('.exercise-option');
+            options.forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            const checkBtn = container.querySelector('.check-btn');
+            checkBtn.disabled = false;
+        }
+
+        function checkAnswer(exerciseId, correctIndex) {
+            if (answeredExercises.has(exerciseId)) return;
+            
+            const container = document.getElementById(exerciseId);
+            const options = container.querySelectorAll('.exercise-option');
+            const selected = container.querySelector('.exercise-option.selected');
+            const feedback = document.getElementById('feedback-' + exerciseId);
+            
+            if (!selected) return;
+            
+            const selectedIndex = Array.from(options).indexOf(selected);
+            const isCorrect = selectedIndex === correctIndex;
+            
+            options.forEach((opt, idx) => {
+                opt.style.pointerEvents = 'none';
+                if (idx === correctIndex) {
+                    opt.classList.add('correct');
+                } else if (idx === selectedIndex && !isCorrect) {
+                    opt.classList.add('incorrect');
+                }
+            });
+            
+            feedback.classList.remove('correct', 'incorrect');
+            feedback.classList.add('show', isCorrect ? 'correct' : 'incorrect');
+            feedback.querySelector('.feedback-title').textContent = isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה';
+            feedback.querySelector('.feedback-text').textContent = feedbackMessages[exerciseId][isCorrect ? 'correct' : 'incorrect'];
+            
+            if (isCorrect) {
+                score += 10;
+                document.getElementById('totalScore').textContent = score;
+            }
+            
+            answeredExercises.add(exerciseId);
+            container.querySelector('.check-btn').disabled = true;
+        }
+
+        function checkInputAnswer(exerciseId, correctAnswer) {
+            if (answeredExercises.has(exerciseId)) return;
+            
+            const input = document.getElementById('input-' + exerciseId);
+            const feedback = document.getElementById('feedback-' + exerciseId);
+            const userAnswer = parseFloat(input.value);
+            const isCorrect = userAnswer === correctAnswer;
+            
+            input.classList.remove('correct', 'incorrect');
+            input.classList.add(isCorrect ? 'correct' : 'incorrect');
+            input.disabled = true;
+            
+            feedback.classList.remove('correct', 'incorrect');
+            feedback.classList.add('show', isCorrect ? 'correct' : 'incorrect');
+            feedback.querySelector('.feedback-title').textContent = isCorrect ? 'תשובה נכונה!' : 'תשובה שגויה';
+            feedback.querySelector('.feedback-text').textContent = feedbackMessages[exerciseId][isCorrect ? 'correct' : 'incorrect'];
+            
+            if (isCorrect) {
+                score += 10;
+                document.getElementById('totalScore').textContent = score;
+            }
+            
+            answeredExercises.add(exerciseId);
+        }
+
+        // Copy code
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block');
+            const code = codeBlock.querySelector('pre').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                button.textContent = 'הועתק!';
+                setTimeout(() => {
+                    button.textContent = 'העתק';
+                }, 2000);
+            });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                prevSlide();
+            } else if (e.key === 'ArrowLeft') {
+                nextSlide();
+            }
+        });
+
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>

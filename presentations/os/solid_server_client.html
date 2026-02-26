@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLID Server-Client | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Heebo:wght@300;400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --panel: #0a1520;
+    --panel2: #0d1e2e;
+    --border: #1a3a5c;
+    --cyan: #00d4ff;
+    --green: #00ff88;
+    --orange: #ff6b35;
+    --yellow: #ffd700;
+    --red: #ff3366;
+    --purple: #a855f7;
+    --text: #c8d8e8;
+    --dim: #5a7a9a;
+    --white: #e8f4ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ── SCANLINES OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,212,255,0.015) 2px,
+      rgba(0,212,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── SLIDE SYSTEM ── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(60px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+    pointer-events: none;
+  }
+
+  /* ── NAV BAR ── */
+  #navbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(5,10,15,0.95);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 1000;
+    backdrop-filter: blur(12px);
+  }
+  #progress-bar {
+    position: fixed;
+    bottom: 56px; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    transition: width 0.4s ease;
+    z-index: 1001;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+  .nav-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    padding: 8px 20px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .nav-btn:hover { background: var(--cyan); color: var(--bg); box-shadow: 0 0 16px var(--cyan); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  #slide-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--dim);
+  }
+  #slide-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .dot.active { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); width: 18px; border-radius: 3px; }
+
+  /* ── LAYOUT HELPERS ── */
+  .slide-content {
+    flex: 1;
+    padding: 32px 60px 20px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .slide-content::-webkit-scrollbar { width: 4px; }
+  .slide-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .slide-header {
+    padding: 20px 60px 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .slide-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--cyan);
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 3px 10px;
+    border-radius: 3px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .slide-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--dim);
+  }
+
+  h1.mega {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(32px, 5vw, 64px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+  h2.slide-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(20px, 3vw, 36px);
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 16px;
+    color: var(--dim);
+    font-weight: 300;
+  }
+
+  .cyan { color: var(--cyan); }
+  .green { color: var(--green); }
+  .orange { color: var(--orange); }
+  .yellow { color: var(--yellow); }
+  .red { color: var(--red); }
+  .purple { color: var(--purple); }
+
+  /* ── GLOW TEXT ── */
+  .glow-cyan { text-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4); }
+  .glow-green { text-shadow: 0 0 20px var(--green), 0 0 40px rgba(0,255,136,0.4); }
+  .glow-orange { text-shadow: 0 0 20px var(--orange); }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: #020d18;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    line-height: 1.8;
+    position: relative;
+    overflow: hidden;
+    direction: ltr;
+  }
+  .code-block::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+  }
+  .code-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--dim);
+    background: #020d18;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .code-header .dot-r { width:10px;height:10px;border-radius:50%;background:#ff5f57;}
+  .code-header .dot-y { width:10px;height:10px;border-radius:50%;background:#febc2e;}
+  .code-header .dot-g { width:10px;height:10px;border-radius:50%;background:#28c840;}
+  .code-header + .code-block { border-radius: 0 0 8px 8px; }
+  .kw { color: #a855f7; }
+  .fn { color: #60cdff; }
+  .st { color: #a8ff60; }
+  .cm { color: #4a6a8a; font-style: italic; }
+  .cls { color: var(--yellow); }
+  .num { color: var(--orange); }
+  .param { color: #f4a460; }
+
+  /* ── PANEL / CARD ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    position: relative;
+  }
+  .panel-accent {
+    border-left: 3px solid var(--cyan);
+  }
+  .panel-green { border-left: 3px solid var(--green); }
+  .panel-orange { border-left: 3px solid var(--orange); }
+  .panel-purple { border-left: 3px solid var(--purple); }
+  .panel-yellow { border-left: 3px solid var(--yellow); }
+  .panel-red { border-left: 3px solid var(--red); }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
+
+  /* ── SOLID CARD ── */
+  .solid-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .solid-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .solid-card:hover { transform: translateY(-4px); }
+  .solid-card .letter {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .solid-card .principle-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    opacity: 0.7;
+  }
+  .solid-card .principle-heb {
+    font-size: 16px;
+    color: var(--white);
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .solid-card .principle-desc {
+    font-size: 16px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+  .solid-card.s { border-color: var(--cyan); }
+  .solid-card.s .letter { color: var(--cyan); text-shadow: 0 0 20px var(--cyan); }
+  .solid-card.o { border-color: var(--green); }
+  .solid-card.o .letter { color: var(--green); text-shadow: 0 0 20px var(--green); }
+  .solid-card.l { border-color: var(--yellow); }
+  .solid-card.l .letter { color: var(--yellow); text-shadow: 0 0 20px var(--yellow); }
+  .solid-card.i { border-color: var(--orange); }
+  .solid-card.i .letter { color: var(--orange); text-shadow: 0 0 20px var(--orange); }
+  .solid-card.d { border-color: var(--purple); }
+  .solid-card.d .letter { color: var(--purple); text-shadow: 0 0 20px var(--purple); }
+
+  /* ── PROTOCOL DIAGRAM ── */
+  .msg-box {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    padding: 12px 20px;
+    border-radius: 6px;
+    display: inline-block;
+    background: #020d18;
+    border: 1px solid var(--border);
+  }
+  .msg-part {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  .msg-len { background: rgba(168,85,247,0.2); border: 1px solid var(--purple); color: var(--purple); }
+  .msg-delim { background: rgba(255,215,0,0.1); border: 1px solid var(--yellow); color: var(--yellow); }
+  .msg-cmd { background: rgba(0,212,255,0.15); border: 1px solid var(--cyan); color: var(--cyan); }
+  .msg-param { background: rgba(0,255,136,0.12); border: 1px solid var(--green); color: var(--green); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-container {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    justify-content: center;
+  }
+  .flow-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    min-width: 140px;
+    direction: ltr;
+  }
+  .flow-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 16px;
+    text-align: center;
+    width: 130px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.3s;
+  }
+  .flow-box:hover { border-color: var(--cyan); color: var(--cyan); }
+  .flow-arrow {
+    font-size: 18px;
+    color: var(--dim);
+    line-height: 28px;
+    height: 28px;
+  }
+  .flow-h-arrow {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--cyan);
+    min-width: 40px;
+  }
+
+  /* ── QUIZ ── */
+  .quiz-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .quiz-q {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .quiz-opt {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .quiz-opt:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.05); }
+  .quiz-opt.correct { border-color: var(--green) !important; background: rgba(0,255,136,0.1) !important; color: var(--green) !important; }
+  .quiz-opt.wrong { border-color: var(--red) !important; background: rgba(255,51,102,0.1) !important; color: var(--red) !important; }
+  .quiz-opt .opt-letter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    background: var(--border);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .quiz-feedback {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    display: none;
+    font-weight: 600;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: rgba(0,255,136,0.1); border: 1px solid var(--green); color: var(--green); }
+  .quiz-feedback.wrong { background: rgba(255,51,102,0.1); border: 1px solid var(--red); color: var(--red); }
+
+  /* ── ARCHITECTURE TABLE ── */
+  .arch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+  }
+  .arch-table th {
+    background: rgba(0,212,255,0.1);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    color: var(--cyan);
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-align: right;
+  }
+  .arch-table td {
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    vertical-align: middle;
+  }
+  .arch-table tr:hover td { background: rgba(0,212,255,0.04); }
+  .file-badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--cyan);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 16px;
+  }
+  .principle-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .pb-s { background: rgba(0,212,255,0.15); color: var(--cyan); border: 1px solid var(--cyan); }
+  .pb-o { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid var(--green); }
+  .pb-l { background: rgba(255,215,0,0.12); color: var(--yellow); border: 1px solid var(--yellow); }
+  .pb-i { background: rgba(255,107,53,0.12); color: var(--orange); border: 1px solid var(--orange); }
+  .pb-d { background: rgba(168,85,247,0.12); color: var(--purple); border: 1px solid var(--purple); }
+
+  /* ── TERMINAL ── */
+  .terminal {
+    background: #020810;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    overflow: hidden;
+  }
+  .terminal-header {
+    background: #0a1520;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 16px;
+    color: var(--dim);
+  }
+  .terminal-body {
+    padding: 16px 20px;
+    line-height: 2;
+    direction: ltr;
+  }
+  .t-prompt { color: var(--green); }
+  .t-cmd { color: var(--white); }
+  .t-out { color: var(--dim); }
+  .t-recv { color: var(--cyan); }
+  .t-err { color: var(--red); }
+  .t-ok { color: var(--green); }
+
+  /* ── PARTICLE BG ── */
+  #particles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    background: var(--cyan);
+    border-radius: 50%;
+    opacity: 0;
+    animation: floatParticle linear infinite;
+  }
+  @keyframes floatParticle {
+    0% { opacity: 0; transform: translateY(100vh) scale(0); }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.2; }
+    100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(20px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  @keyframes glitch {
+    0%,95%,100% { transform:none; text-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,212,255,0.4); }
+    96% { transform: translateX(-3px); text-shadow: 3px 0 var(--red), -3px 0 var(--green); }
+    98% { transform: translateX(3px); text-shadow: -3px 0 var(--red), 3px 0 var(--green); }
+  }
+  @keyframes blink { 0%,50%{ opacity:1; } 51%,100%{ opacity:0; } }
+  @keyframes scanIn {
+    from { opacity:0; clip-path: inset(0 0 100% 0); }
+    to { opacity:1; clip-path: inset(0 0 0% 0); }
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(0,212,255,0); }
+  }
+
+  .anim-fadeup { animation: fadeUp 0.6s ease both; }
+  .anim-fadeup-1 { animation: fadeUp 0.6s 0.1s ease both; }
+  .anim-fadeup-2 { animation: fadeUp 0.6s 0.2s ease both; }
+  .anim-fadeup-3 { animation: fadeUp 0.6s 0.3s ease both; }
+  .anim-fadeup-4 { animation: fadeUp 0.6s 0.4s ease both; }
+  .anim-fadeup-5 { animation: fadeUp 0.6s 0.5s ease both; }
+
+  .glitch { animation: glitch 4s infinite; }
+  .blink { animation: blink 1s infinite; }
+
+  /* ── SLIDE 1: TITLE ── */
+  #slide-1 {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,212,255,0.06) 0%, transparent 70%);
+  }
+  #slide-1 .title-wrap { position: relative; z-index: 1; }
+  #slide-1 .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    animation: fadeUp 0.8s ease both;
+  }
+  #slide-1 h1 { animation: fadeUp 0.8s 0.2s ease both, glitch 5s 2s infinite; }
+  #slide-1 .by-line {
+    font-size: 16px;
+    color: var(--dim);
+    margin-top: 32px;
+    animation: fadeUp 0.8s 0.6s ease both;
+  }
+  .hex-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background-image:
+      radial-gradient(circle at 25% 25%, var(--cyan) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, var(--purple) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* ── MISC ── */
+  .sep { height: 1px; background: var(--border); margin: 16px 0; }
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    vertical-align: middle;
+  }
+  .highlight-line {
+    background: rgba(0,212,255,0.08);
+    border-right: 3px solid var(--cyan);
+    margin: 4px -24px;
+    padding: 4px 24px;
+  }
+
+  /* Keyboard hint */
+  .kb-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .kb { background: var(--panel2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; }
+
+  /* Thread animation */
+  .thread-visual {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin: 16px 0;
+  }
+  .thread-lane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .thread-header {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    padding: 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .th-main { background: rgba(0,212,255,0.15); color: var(--cyan); border: 1px solid var(--cyan); }
+  .th-t1 { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid var(--green); }
+  .th-t2 { background: rgba(255,107,53,0.12); color: var(--orange); border: 1px solid var(--orange); }
+  .th-t3 { background: rgba(168,85,247,0.12); color: var(--purple); border: 1px solid var(--purple); }
+  .thread-step {
+    text-align: center;
+    font-size: 16px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.4s;
+  }
+  .thread-step.show { opacity: 1; transform: none; }
+  .thread-step.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.05); }
+</style>
+</head>
+<body>
+
+<!-- Particles -->
+<div id="particles"></div>
+
+<!-- Progress bar -->
+<div id="progress-bar"></div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 1: TITLE -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide active" id="slide-1">
+  <div class="hex-grid"></div>
+  <div class="title-wrap">
+    <div class="eyebrow">// מגמת סייבר — תכנות רשת</div>
+    <h1 class="mega glow-cyan glitch">
+      <span class="cyan">SOLID</span><br>
+      Server-Client
+    </h1>
+    <div style="margin-top:16px; animation: fadeUp 0.8s 0.4s ease both;">
+      <span style="font-size:22px; color:var(--text);">יישום שרת-לקוח מרובה משתמשים</span><br>
+      <span style="font-size:16px; color:var(--dim); margin-top:8px; display:block;">עם Threads · Sockets · עקרונות תכנות נקי</span>
+    </div>
+    <div class="by-line">
+      <span class="badge" style="background:rgba(0,212,255,0.1);border:1px solid var(--cyan);color:var(--cyan);">Python 3</span>
+      &nbsp;
+      <span class="badge" style="background:rgba(0,255,136,0.1);border:1px solid var(--green);color:var(--green);">Threading</span>
+      &nbsp;
+      <span class="badge" style="background:rgba(168,85,247,0.1);border:1px solid var(--purple);color:var(--purple);">Socket Programming</span>
+      &nbsp;
+      <span class="badge" style="background:rgba(255,215,0,0.1);border:1px solid var(--yellow);color:var(--yellow);">OOP + SOLID</span>
+    </div>
+    <div style="margin-top:36px; animation: fadeUp 0.8s 0.8s ease both;">
+      <span class="blink" style="color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size:14px;">לחצו ← להתחיל_</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 2: WHAT IS SOCKET -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-2">
+  <div class="slide-header">
+    <span class="slide-tag">01</span>
+    <span class="slide-num">// מה זה Socket?</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">Socket = <span class="cyan">ערוץ תקשורת</span> בין שני תהליכים</h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:24px;">Socket מאפשר לשני תהליכים (על אותו מחשב או על מחשבים שונים) לשלוח ולקבל נתונים</p>
+
+    <div class="grid-2 anim-fadeup-2">
+      <div>
+        <!-- Network diagram -->
+        <div class="panel" style="text-align:center; padding:28px 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px;">
+            <div style="text-align:center; flex:1;">
+              <div style="font-size:40px; margin-bottom:8px;">💻</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--cyan);">client PC</div>
+              <div style="font-size: 16px; color:var(--dim);">ip: 10.1.1.15</div>
+              <div style="font-size: 16px; color:var(--dim);">port: 2324</div>
+            </div>
+            <div style="text-align:center; flex:2;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--yellow); margin-bottom:4px;">port 2324 ◄</div>
+              <div style="height:2px; background:linear-gradient(90deg,var(--cyan),var(--purple)); margin:6px 0; box-shadow:0 0 6px var(--cyan)"></div>
+              <div style="font-size:24px; color:var(--purple); font-family:'Orbitron',monospace; font-weight:900; letter-spacing:3px;">SOCKET</div>
+              <div style="height:2px; background:linear-gradient(90deg,var(--orange),var(--cyan)); margin:6px 0;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--yellow);">port 8000 ►</div>
+            </div>
+            <div style="text-align:center; flex:1;">
+              <div style="font-size:40px; margin-bottom:8px;">🖥️</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--green);">server</div>
+              <div style="font-size: 16px; color:var(--dim);">ip: 10.1.1.1</div>
+              <div style="font-size: 16px; color:var(--dim);">port: 8000</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-accent" style="margin-top:12px;">
+          <div style="font-size: 16px; font-weight:700; color:var(--cyan); margin-bottom:8px;">Socket = IP + PORT</div>
+          <div style="font-size: 16px; color:var(--text);">כתובת ייחודית לכל חיבור ברשת. כמו כתובת בית + דלת ספציפית.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="panel panel-green">
+          <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--green); margin-bottom:6px;">TCP SOCKET FLOW</div>
+          <div class="flow-col" style="align-items:flex-start; gap:0; width:100%;">
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--cyan); text-align:center; background:rgba(0,212,255,0.1); padding:4px; border-radius:4px;">socket()</div>
+              <div style="font-size: 16px; color:var(--dim);">יצירת socket</div>
+            </div>
+            <div style="font-size:16px; color:var(--dim); padding-right:32px;">↓</div>
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--purple); text-align:center; background:rgba(168,85,247,0.1); padding:4px; border-radius:4px;">bind()</div>
+              <div style="font-size: 16px; color:var(--dim);">קישור ל-IP:PORT</div>
+            </div>
+            <div style="font-size:16px; color:var(--dim); padding-right:32px;">↓</div>
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--yellow); text-align:center; background:rgba(255,215,0,0.1); padding:4px; border-radius:4px;">listen()</div>
+              <div style="font-size: 16px; color:var(--dim);">האזנה לחיבורים</div>
+            </div>
+            <div style="font-size:16px; color:var(--dim); padding-right:32px;">↓</div>
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--green); text-align:center; background:rgba(0,255,136,0.1); padding:4px; border-radius:4px;">accept()</div>
+              <div style="font-size: 16px; color:var(--dim);">קבלת לקוח חדש</div>
+            </div>
+            <div style="font-size:16px; color:var(--dim); padding-right:32px;">↓</div>
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--orange); text-align:center; background:rgba(255,107,53,0.1); padding:4px; border-radius:4px;">recv/send</div>
+              <div style="font-size: 16px; color:var(--dim);">תקשורת</div>
+            </div>
+            <div style="font-size:16px; color:var(--dim); padding-right:32px;">↓</div>
+            <div style="display:flex; align-items:center; gap:10px; padding:4px 0;">
+              <div style="width:80px; font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--red); text-align:center; background:rgba(255,51,102,0.1); padding:4px; border-radius:4px;">close()</div>
+              <div style="font-size: 16px; color:var(--dim);">סגירת חיבור</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-header anim-fadeup-3" style="margin-top:16px;">
+      <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+      <span>server_basic.py</span>
+    </div>
+    <div class="code-block anim-fadeup-3" style="border-radius:0 0 8px 8px;">
+      <span class="kw">import</span> <span class="fn">socket</span><br>
+      server = socket.<span class="fn">socket</span>(<span class="st">socket.AF_INET</span>, <span class="st">socket.SOCK_STREAM</span>)<br>
+      server.<span class="fn">bind</span>((<span class="st">'127.0.0.1'</span>, <span class="num">7000</span>))<br>
+      server.<span class="fn">listen</span>()<br>
+      client_socket, addr = server.<span class="fn">accept</span>() <span class="cm"># חסום עד שיגיע לקוח</span><br>
+      data = client_socket.<span class="fn">recv</span>(<span class="num">1024</span>).<span class="fn">decode</span>()<br>
+      client_socket.<span class="fn">send</span>(<span class="st">"hello back"</span>.<span class="fn">encode</span>())
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 3: THREADS -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-3">
+  <div class="slide-header">
+    <span class="slide-tag">02</span>
+    <span class="slide-num">// מה זה Thread?</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">Thread = <span class="green">זרם ביצוע מקביל</span></h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:20px;">Process אחד יכול להריץ מספר Threads במקביל — כל אחד עושה דבר אחר בו-זמנית</p>
+
+    <div class="grid-2">
+      <div class="anim-fadeup-2">
+        <div class="panel panel-green" style="margin-bottom:12px;">
+          <div style="font-size:14px; font-weight:700; color:var(--green); margin-bottom:8px;">🔴 ללא Threads — בעיה!</div>
+          <div style="font-size: 16px; color:var(--text); line-height:1.8;">
+            שרת שמטפל ב-<span class="cyan">לקוח אחד בכל פעם</span>.<br>
+            לקוח 2 <span class="red">חייב לחכות</span> עד שלקוח 1 יסיים.<br>
+            כמו קופה אחת בסופר לכל הלקוחות 😩
+          </div>
+        </div>
+        <div class="panel panel-accent">
+          <div style="font-size:14px; font-weight:700; color:var(--cyan); margin-bottom:8px;">🟢 עם Threads — פתרון!</div>
+          <div style="font-size: 16px; color:var(--text); line-height:1.8;">
+            כל לקוח מקבל <span class="green">Thread משלו</span>.<br>
+            מאות לקוחות <span class="green">בו-זמנית</span>.<br>
+            כמו מספר קופאים במקביל 🚀
+          </div>
+        </div>
+
+        <div class="code-header" style="margin-top:12px;">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>thread_demo.py</span>
+        </div>
+        <div class="code-block" style="border-radius:0 0 8px 8px;">
+          <span class="kw">import</span> threading<br><br>
+          <span class="kw">def</span> <span class="fn">handle_client</span>(<span class="param">client_socket</span>):<br>
+          &nbsp;&nbsp;<span class="cm"># מטפל בלקוח — רץ בנפרד!</span><br>
+          &nbsp;&nbsp;<span class="fn">process_requests</span>(client_socket)<br><br>
+          <span class="cm"># כל לקוח = Thread חדש</span><br>
+          client, addr = server.<span class="fn">accept</span>()<br>
+          t = threading.<span class="cls">Thread</span>(<br>
+          &nbsp;&nbsp;<span class="param">target</span>=handle_client,<br>
+          &nbsp;&nbsp;<span class="param">args</span>=(client,),<br>
+          &nbsp;&nbsp;<span class="param">daemon</span>=<span class="kw">True</span><br>
+          )<br>
+          t.<span class="fn">start</span>() <span class="cm"># מתחיל ורץ במקביל!</span>
+        </div>
+      </div>
+
+      <div class="anim-fadeup-3">
+        <div style="font-size: 16px; color:var(--dim); margin-bottom:10px; font-family:'JetBrains Mono',monospace;">// ציר הזמן — לחצו להנפשה</div>
+
+        <div class="thread-visual" id="thread-anim">
+          <div class="thread-lane">
+            <div class="thread-header th-main">Main Thread</div>
+            <div class="thread-step" id="ts-m1">socket()</div>
+            <div class="thread-step" id="ts-m2">bind()</div>
+            <div class="thread-step" id="ts-m3">listen()</div>
+            <div class="thread-step" id="ts-m4">accept() ←C1</div>
+            <div class="thread-step" id="ts-m5">accept() ←C2</div>
+            <div class="thread-step" id="ts-m6">accept() ←C3</div>
+            <div class="thread-step" id="ts-m7">ממשיך להאזין...</div>
+          </div>
+          <div class="thread-lane">
+            <div class="thread-header th-t1">Thread 1 (C1)</div>
+            <div class="thread-step" id="ts-t1-1" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t1-2" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t1-3" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t1-4">recv()</div>
+            <div class="thread-step" id="ts-t1-5">process()</div>
+            <div class="thread-step" id="ts-t1-6">send()</div>
+            <div class="thread-step" id="ts-t1-7">close()</div>
+          </div>
+          <div class="thread-lane">
+            <div class="thread-header th-t2">Thread 2 (C2)</div>
+            <div class="thread-step" id="ts-t2-1" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t2-2" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t2-3" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t2-4" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t2-5">recv()</div>
+            <div class="thread-step" id="ts-t2-6">process()</div>
+            <div class="thread-step" id="ts-t2-7">send()</div>
+          </div>
+          <div class="thread-lane">
+            <div class="thread-header th-t3">Thread 3 (C3)</div>
+            <div class="thread-step" id="ts-t3-1" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t3-2" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t3-3" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t3-4" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t3-5" style="opacity:0; height:28px;"></div>
+            <div class="thread-step" id="ts-t3-6">recv()</div>
+            <div class="thread-step" id="ts-t3-7">process()</div>
+          </div>
+        </div>
+
+        <button onclick="animateThreads()" style="margin-top:10px; width:100%; padding:10px; background:rgba(0,255,136,0.1); border:1px solid var(--green); color:var(--green); font-family:'JetBrains Mono',monospace; font-size: 16px; cursor:pointer; border-radius:6px; transition:all 0.2s;" onmouseover="this.style.background='rgba(0,255,136,0.2)'" onmouseout="this.style.background='rgba(0,255,136,0.1)'">
+          ▶ הפעל אנימציה
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 4: PROTOCOL -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-4">
+  <div class="slide-header">
+    <span class="slide-tag">03</span>
+    <span class="slide-num">// פרוטוקול התקשורת</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">מבנה ההודעה — <span class="purple">Header + Payload</span></h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:20px;">כל הודעה בנויה מ-3 חלקים: אורך (10 ספרות) + מפריד + תוכן</p>
+
+    <!-- Message anatomy -->
+    <div class="panel anim-fadeup-2" style="text-align:center; padding:24px; margin-bottom:16px; direction:ltr;">
+      <div style="font-size: 16px; color:var(--dim); font-family:'JetBrains Mono',monospace; margin-bottom:12px;">מבנה ההודעה:</div>
+      <div style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size: 16px;">
+        <div>
+          <span class="msg-part msg-len">0000000009</span>
+          <div style="font-size: 16px; color:var(--purple); margin-top:4px; text-align:center;direction:rtl;">אורך payload<br>10 ספרות</div>
+        </div>
+        <div>
+          <span class="msg-part msg-delim">||</span>
+          <div style="font-size: 16px; color:var(--yellow); margin-top:4px; text-align:center;">מפריד</div>
+        </div>
+        <div>
+          <span class="msg-part msg-cmd">animal</span>
+          <div style="font-size: 16px; color:var(--cyan); margin-top:4px; text-align:center;">פקודה</div>
+        </div>
+        <div>
+          <span class="msg-part msg-delim">||</span>
+          <div style="font-size: 16px; color:var(--yellow); margin-top:4px; text-align:center;">מפריד</div>
+        </div>
+        <div>
+          <span class="msg-part msg-param">f</span>
+          <div style="font-size: 16px; color:var(--green); margin-top:4px; text-align:center;">פרמטר</div>
+        </div>
+      </div>
+      <div style="margin-top:16px; font-size: 16px; color:var(--dim); font-family:'JetBrains Mono',monospace;">
+        payload = "animal||f" → len = 9 → header = "0000000009"
+      </div>
+    </div>
+
+    <div class="grid-2 anim-fadeup-3">
+      <div>
+        <div style="font-size: 16px; font-weight:700; color:var(--cyan); margin-bottom:8px;">📋 פקודות חוקיות (VALID_COMMANDS)</div>
+        <table class="arch-table">
+          <tr>
+            <th>פקודה</th><th>פרמטרים</th><th>תיאור</th>
+          </tr>
+          <tr>
+            <td><span class="file-badge">hello</span></td>
+            <td style="color:var(--green); text-align:center;">0</td>
+            <td style="font-size: 16px;">הודעת ברכה</td>
+          </tr>
+          <tr>
+            <td><span class="file-badge">animal</span></td>
+            <td style="color:var(--green); text-align:center;">1 (אות)</td>
+            <td style="font-size: 16px;">חיה לפי אות</td>
+          </tr>
+          <tr>
+            <td><span class="file-badge">close</span></td>
+            <td style="color:var(--green); text-align:center;">0</td>
+            <td style="font-size: 16px;">סגירת חיבור</td>
+          </tr>
+          <tr>
+            <td><span class="file-badge">response</span></td>
+            <td style="color:var(--green); text-align:center;">1 (טקסט)</td>
+            <td style="font-size: 16px;">תגובת שרת</td>
+          </tr>
+        </table>
+
+        <div class="panel panel-orange" style="margin-top:12px;">
+          <div style="font-size: 16px; font-weight:700; color:var(--orange); margin-bottom:6px;">🛡️ 3 בדיקות תקינות</div>
+          <div style="font-size: 16px; color:var(--text); line-height:2;">
+            <span class="orange">1.</span> פקודה קיימת ב-VALID_COMMANDS<br>
+            <span class="orange">2.</span> מספר פרמטרים נכון<br>
+            <span class="orange">3.</span> אורך payload תואם ל-Header
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 16px; font-weight:700; color:var(--purple); margin-bottom:8px;">📨 דוגמאות הודעות אמיתיות</div>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+            <span>message examples</span>
+          </div>
+          <div class="terminal-body">
+            <div style="color:var(--dim);"># לקוח → שרת</div>
+            <div><span class="t-recv">0000000005||hello</span></div>
+            <div><span class="t-recv">0000000009||animal||f</span></div>
+            <div><span class="t-recv">0000000005||close</span></div>
+            <div style="margin-top:8px; color:var(--dim);"># שרת → לקוח</div>
+            <div><span class="t-ok">0000000031||response||A big hello to anyone...</span></div>
+            <div><span class="t-ok">0000000015||response||Fox</span></div>
+            <div><span class="t-ok">0000000032||response||Illegal request: bye</span></div>
+          </div>
+        </div>
+
+        <div class="code-header" style="margin-top:12px;">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>build_message example</span>
+        </div>
+        <div class="code-block" style="border-radius:0 0 8px 8px; font-size: 16px;">
+          <span class="kw">def</span> <span class="fn">build_message</span>(<span class="param">command</span>, *<span class="param">params</span>):<br>
+          &nbsp;&nbsp;payload = <span class="st">'||'</span>.<span class="fn">join</span>([command] + <span class="fn">list</span>(params))<br>
+          &nbsp;&nbsp;length = <span class="fn">str</span>(<span class="fn">len</span>(payload)).<span class="fn">zfill</span>(<span class="num">10</span>)<br>
+          &nbsp;&nbsp;<span class="kw">return</span> <span class="st">f"</span>{length}<span class="st">||</span>{payload}<span class="st">"</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 5: SOLID OVERVIEW -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-5">
+  <div class="slide-header">
+    <span class="slide-tag">04</span>
+    <span class="slide-num">// עקרונות SOLID</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup"><span class="cyan">SOLID</span> — 5 עקרונות לקוד נקי ומקצועי</h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:20px;">קוד שמיישם SOLID קל לתחזוקה, בדיקה, והרחבה. לחצו על כל עיקרון לפרטים</p>
+
+    <div class="grid-5 anim-fadeup-2" id="solid-cards">
+      <div class="solid-card s" onclick="showSolidDetail('s')">
+        <div class="letter">S</div>
+        <div class="principle-name">SRP</div>
+        <div class="principle-heb">אחריות בודדת</div>
+        <div class="principle-desc">כל מחלקה — תפקיד אחד בלבד</div>
+      </div>
+      <div class="solid-card o" onclick="showSolidDetail('o')">
+        <div class="letter">O</div>
+        <div class="principle-name">OCP</div>
+        <div class="principle-heb">פתוח/סגור</div>
+        <div class="principle-desc">פתוח להרחבה, סגור לשינוי</div>
+      </div>
+      <div class="solid-card l" onclick="showSolidDetail('l')">
+        <div class="letter">L</div>
+        <div class="principle-name">LSP</div>
+        <div class="principle-heb">החלפת ליסקוב</div>
+        <div class="principle-desc">מחלקות ילד חייבות להחליף הורה</div>
+      </div>
+      <div class="solid-card i" onclick="showSolidDetail('i')">
+        <div class="letter">I</div>
+        <div class="principle-name">ISP</div>
+        <div class="principle-heb">הפרדת ממשקים</div>
+        <div class="principle-desc">ממשקים קטנים וממוקדים</div>
+      </div>
+      <div class="solid-card d" onclick="showSolidDetail('d')">
+        <div class="letter">D</div>
+        <div class="principle-name">DIP</div>
+        <div class="principle-heb">היפוך תלויות</div>
+        <div class="principle-desc">תלות בהפשטות, לא במימושים</div>
+      </div>
+    </div>
+
+    <div id="solid-detail" class="panel" style="margin-top:16px; display:none;">
+      <!-- filled by JS -->
+    </div>
+
+    <div class="panel" style="margin-top:12px; background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(168,85,247,0.05));">
+      <div style="font-size: 16px; font-weight:700; color:var(--white); margin-bottom:10px;">🗂️ מבנה הפרויקט שלנו</div>
+      <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:8px; font-family:'JetBrains Mono',monospace; font-size: 16px;">
+        <div style="padding:8px; background:rgba(0,212,255,0.07); border-radius:4px; border:1px solid rgba(0,212,255,0.2);">
+          <div class="cyan">constants.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">קבועים גלובליים</div>
+        </div>
+        <div style="padding:8px; background:rgba(168,85,247,0.07); border-radius:4px; border:1px solid rgba(168,85,247,0.2);">
+          <div class="purple">communication_protocol.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">SRP: פרוטוקול בלבד</div>
+        </div>
+        <div style="padding:8px; background:rgba(0,255,136,0.07); border-radius:4px; border:1px solid rgba(0,255,136,0.2);">
+          <div class="green">business_logic.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">SRP: לוגיקה בלבד</div>
+        </div>
+        <div style="padding:8px; background:rgba(255,215,0,0.07); border-radius:4px; border:1px solid rgba(255,215,0,0.2);">
+          <div class="yellow">logger_setup.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">SRP: לוגים בלבד</div>
+        </div>
+        <div style="padding:8px; background:rgba(255,107,53,0.07); border-radius:4px; border:1px solid rgba(255,107,53,0.2);">
+          <div class="orange">server.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">DIP: מקבל תלויות</div>
+        </div>
+        <div style="padding:8px; background:rgba(0,212,255,0.07); border-radius:4px; border:1px solid rgba(0,212,255,0.2);">
+          <div class="cyan">client.py</div>
+          <div style="color:var(--dim); font-size: 16px; margin-top:3px;">ISP: רק מה שצריך</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 6: COMMUNICATION PROTOCOL CLASS -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-6">
+  <div class="slide-header">
+    <span class="slide-tag">05</span>
+    <span class="slide-num">// CommunicationProtocol — SRP</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup"><span class="cyan">CommunicationProtocol</span> — אחריות בודדת</h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:16px;">המחלקה הזו <span style="color:var(--cyan)">יודעת רק</span> לבנות, לפענח, ולאמת הודעות. לא יודעת כלום על Sockets, Threads, או לוגיקה עסקית.</p>
+
+    <div class="grid-2">
+      <div class="anim-fadeup-2">
+        <!-- Class diagram -->
+        <div class="panel" style="margin-bottom:12px;">
+          <div style="font-size: 16px; font-weight:700; color:var(--cyan); margin-bottom:12px; font-family:'JetBrains Mono',monospace; border-bottom:1px solid var(--border); padding-bottom:8px;">CommunicationProtocol</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; padding:8px 0; border-bottom:1px solid var(--border);">
+            <span class="dim">_valid_commands</span> <span style="color:var(--dim);">: dict</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; padding-top:8px; line-height:2.2;direction:ltr;">
+            <div><span class="fn">__init__</span>(<span class="param">commands</span>: dict)</div>
+            <div><span class="fn">build_message</span>(<span class="param">command</span>, *<span class="param">params</span>) → str</div>
+            <div><span class="fn">parse_message</span>(<span class="param">message</span>: str) → tuple</div>
+            <div><span class="fn">is_valid</span>(<span class="param">command</span>, <span class="param">params</span>) → tuple</div>
+          </div>
+        </div>
+
+        <div class="panel panel-accent">
+          <div style="font-size: 16px; font-weight:700; color:var(--cyan); margin-bottom:8px;">למה SRP?</div>
+          <div style="font-size: 16px; color:var(--text); line-height:1.9;">
+            ✅ שינוי בפורמט ההודעה → משנים <span class="cyan">רק כאן</span><br>
+            ✅ Server ו-Client משתמשים <span class="cyan">באותו קוד</span><br>
+            ✅ קל לבדוק (unit test) בנפרד<br>
+            ✅ קריא ומובן
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-fadeup-3">
+        <div class="code-header">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>communication_protocol.py</span>
+        </div>
+        <div class="code-block" style="border-radius:0 0 8px 8px; font-size: 16px; line-height:1.9;">
+          <span class="kw">class</span> <span class="cls">CommunicationProtocol</span>:<br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">__init__</span>(<span class="param">self</span>, <span class="param">commands</span>: dict):<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="param">self</span>._valid_commands = commands<br><br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">build_message</span>(<span class="param">self</span>, <span class="param">cmd</span>, *<span class="param">params</span>) → str:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;parts = [cmd] + <span class="fn">list</span>(params)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;payload = <span class="st">'||'</span>.<span class="fn">join</span>(parts)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;length = <span class="fn">str</span>(<span class="fn">len</span>(payload)).<span class="fn">zfill</span>(<span class="num">10</span>)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">f"{length}||{payload}"</span><br><br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">parse_message</span>(<span class="param">self</span>, <span class="param">msg</span>):<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;declared = <span class="fn">int</span>(msg[:<span class="num">10</span>])<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;payload = msg[<span class="num">12</span>:]<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> <span class="fn">len</span>(payload) != declared:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">raise</span> <span class="cls">ValueError</span>(<span class="st">"Length mismatch"</span>)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;parts = payload.<span class="fn">split</span>(<span class="st">'||'</span>)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> parts[<span class="num">0</span>], parts[<span class="num">1</span>:]<br><br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">is_valid</span>(<span class="param">self</span>, <span class="param">cmd</span>, <span class="param">params</span>):<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> cmd <span class="kw">not in</span> <span class="param">self</span>._valid_commands:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">False</span>, <span class="st">f"Unknown: {cmd}"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;expected = <span class="param">self</span>._valid_commands[cmd]<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> <span class="fn">len</span>(params) != expected:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">False</span>, <span class="st">"Wrong param count"</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">True</span>, <span class="st">""</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 7: BUSINESS LOGIC + SERVER DIP -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-7">
+  <div class="slide-header">
+    <span class="slide-tag">06</span>
+    <span class="slide-num">// BusinessLogic + Server — SRP & DIP</span>
+  </div>
+  <div class="slide-content">
+    <div class="grid-2">
+      <div class="anim-fadeup">
+        <h2 class="slide-title" style="font-size:22px;"><span class="green">BusinessLogic</span> — לוגיקה עסקית בלבד</h2>
+        <p class="subtitle" style="margin-bottom:12px;">לא יודעת כלום על Sockets. מחזירה תשובות, זהו.</p>
+        <div class="code-header">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>business_logic.py</span>
+        </div>
+        <div class="code-block" style="border-radius:0 0 8px 8px; font-size: 16px; line-height:1.9;">
+          <span class="kw">class</span> <span class="cls">BusinessLogic</span>:<br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">handle_request</span>(<span class="param">self</span>, <span class="param">cmd</span>, <span class="param">params</span>):<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># מחזיר: (keep_alive, response)</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> cmd == <span class="st">'hello'</span>:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">True</span>, <span class="st">"A big hello..."</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">elif</span> cmd == <span class="st">'animal'</span>:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;letter = params[<span class="num">0</span>].<span class="fn">lower</span>()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;animal = ANIMALS.<span class="fn">get</span>(letter)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">True</span>, animal<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">elif</span> cmd == <span class="st">'close'</span>:<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="kw">False</span>, <span class="st">"Connection closed"</span>
+        </div>
+        <div class="panel panel-green" style="margin-top:10px;">
+          <div style="font-size: 16px; line-height:1.9; color:var(--text);">
+            <span class="green">LSP:</span> ניתן להחליף ב-<code style="color:var(--cyan)">MockBusinessLogic</code> לבדיקות<br>
+            <span class="green">OCP:</span> פקודה חדשה = <span class="green">רק הוספה</span>, לא שינוי
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-fadeup-2">
+        <h2 class="slide-title" style="font-size:22px;"><span class="purple">Server</span> — Dependency Injection (DIP)</h2>
+        <p class="subtitle" style="margin-bottom:12px;">Server לא יוצר תלויות — הוא מקבל אותן מבחוץ</p>
+        <div class="code-header">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>server.py</span>
+        </div>
+        <div class="code-block" style="border-radius:0 0 8px 8px; font-size: 16px; line-height:1.9;">
+          <span class="kw">class</span> <span class="cls">Server</span>:<br>
+          &nbsp;&nbsp;<span class="kw">def</span> <span class="fn">__init__</span>(<span class="param">self</span>, ip, port,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="param">protocol</span>,  <span class="cm"># ← מוזרק!</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="param">logic</span>,     <span class="cm"># ← מוזרק!</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="param">logger</span>):   <span class="cm"># ← מוזרק!</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;...<br><br>
+          <span class="cm"># נקודת כניסה — Dependency Injection</span><br>
+          <span class="kw">if</span> __name__ == <span class="st">'__main__'</span>:<br>
+          &nbsp;&nbsp;logger = <span class="fn">setup_logger</span>(<span class="st">'server'</span>, <span class="st">'server.log'</span>)<br>
+          &nbsp;&nbsp;protocol = <span class="cls">CommunicationProtocol</span>(VALID_COMMANDS)<br>
+          &nbsp;&nbsp;logic = <span class="cls">BusinessLogic</span>()<br>
+          &nbsp;&nbsp;server = <span class="cls">Server</span>(IP, PORT, protocol, logic, logger)<br>
+          &nbsp;&nbsp;server.<span class="fn">run</span>()
+        </div>
+        <div class="panel panel-purple" style="margin-top:10px;">
+          <div style="font-size: 16px; line-height:1.9; color:var(--text);">
+            <span class="purple">DIP:</span> Server תלוי בהפשטות, לא במימושים ספציפיים<br>
+            <span class="purple">בדיקות:</span> מחליפים <code style="color:var(--cyan)">logic=MockLogic()</code> בלי לגעת ב-Server
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anim-fadeup-3">
+      <div style="font-size: 16px; font-weight:700; color:var(--yellow); margin:12px 0 8px;">🔄 זרימת נתונים בשרת (כל לקוח ב-Thread נפרד)</div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size: 16px;">
+        <div style="padding:8px 12px; background:rgba(0,212,255,0.1); border:1px solid var(--cyan); border-radius:6px; color:var(--cyan);">recv()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(168,85,247,0.1); border:1px solid var(--purple); border-radius:6px; color:var(--purple);">parse_message()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(255,215,0,0.1); border:1px solid var(--yellow); border-radius:6px; color:var(--yellow);">is_valid()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(0,255,136,0.1); border:1px solid var(--green); border-radius:6px; color:var(--green);">handle_request()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(255,107,53,0.1); border:1px solid var(--orange); border-radius:6px; color:var(--orange);">build_message()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(0,212,255,0.1); border:1px solid var(--cyan); border-radius:6px; color:var(--cyan);">send()</div>
+        <div style="color:var(--dim);">→</div>
+        <div style="padding:8px 12px; background:rgba(0,212,255,0.06); border:1px solid var(--border); border-radius:6px; color:var(--dim);">logger.info()</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 8: ARCHITECTURE TABLE -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-8">
+  <div class="slide-header">
+    <span class="slide-tag">07</span>
+    <span class="slide-num">// ארכיטקטורה — מיפוי SOLID</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">מיפוי עקרונות SOLID לקוד</h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:16px;">כיצד כל קובץ ומחלקה מיישמים את העקרונות</p>
+
+    <table class="arch-table anim-fadeup-2">
+      <thead>
+        <tr>
+          <th>קובץ</th>
+          <th>מחלקה / פונקציה</th>
+          <th>אחריות</th>
+          <th>SOLID</th>
+          <th>הסבר</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="file-badge">constants.py</span></td>
+          <td style="color:var(--dim);">—</td>
+          <td style="font-size: 16px; color:var(--text);">קבועים גלובליים</td>
+          <td><span class="principle-badge pb-s">S</span> <span class="principle-badge pb-o">O</span></td>
+          <td style="font-size: 16px; color:var(--dim);">פקודה חדשה = שורה במילון בלבד</td>
+        </tr>
+        <tr>
+          <td><span class="file-badge">communication_protocol.py</span></td>
+          <td style="color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size: 16px;">CommunicationProtocol</td>
+          <td style="font-size: 16px; color:var(--text);">בנייה/פענוח/ואלידציה של הודעות</td>
+          <td><span class="principle-badge pb-s">S</span></td>
+          <td style="font-size: 16px; color:var(--dim);">לא יודע על Sockets, Threads, לוגיקה</td>
+        </tr>
+        <tr>
+          <td><span class="file-badge">business_logic.py</span></td>
+          <td style="color:var(--green); font-family:'JetBrains Mono',monospace; font-size: 16px;">BusinessLogic</td>
+          <td style="font-size: 16px; color:var(--text);">לוגיקה עסקית: hello, animal, close</td>
+          <td><span class="principle-badge pb-s">S</span> <span class="principle-badge pb-o">O</span> <span class="principle-badge pb-l">L</span></td>
+          <td style="font-size: 16px; color:var(--dim);">ניתן להחליף (LSP). פקודה חדשה בלי לשנות Server</td>
+        </tr>
+        <tr>
+          <td><span class="file-badge">logger_setup.py</span></td>
+          <td style="color:var(--yellow); font-family:'JetBrains Mono',monospace; font-size: 16px;">setup_logger()</td>
+          <td style="font-size: 16px; color:var(--text);">הגדרת Logger לקובץ server.log</td>
+          <td><span class="principle-badge pb-s">S</span></td>
+          <td style="font-size: 16px; color:var(--dim);">אחריות אחת: הגדרת logging בלבד</td>
+        </tr>
+        <tr>
+          <td><span class="file-badge">server.py</span></td>
+          <td style="color:var(--orange); font-family:'JetBrains Mono',monospace; font-size: 16px;">Server</td>
+          <td style="font-size: 16px; color:var(--text);">ניהול חיבורים + Threads</td>
+          <td><span class="principle-badge pb-s">S</span> <span class="principle-badge pb-d">D</span></td>
+          <td style="font-size: 16px; color:var(--dim);">מקבל protocol, logic, logger כפרמטרים (DI)</td>
+        </tr>
+        <tr>
+          <td><span class="file-badge">client.py</span></td>
+          <td style="color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size: 16px;">Client</td>
+          <td style="font-size: 16px; color:var(--text);">תקשורת צד לקוח</td>
+          <td><span class="principle-badge pb-s">S</span> <span class="principle-badge pb-i">I</span></td>
+          <td style="font-size: 16px; color:var(--dim);">לא יודע על BusinessLogic (ISP)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid-2 anim-fadeup-3" style="margin-top:16px;">
+      <div class="panel" style="background:linear-gradient(135deg,rgba(0,255,136,0.05),rgba(0,212,255,0.05));">
+        <div style="font-size: 16px; font-weight:700; color:var(--green); margin-bottom:8px;">✅ יתרונות הארכיטקטורה</div>
+        <div style="font-size: 16px; color:var(--text); line-height:2;">
+          🔧 שינוי בפורמט? → שנה רק <span class="cyan">CommunicationProtocol</span><br>
+          🎯 לוגיקה חדשה? → שנה רק <span class="green">BusinessLogic</span><br>
+          🧪 בדיקות? → בדוק כל מחלקה <span class="yellow">בנפרד</span><br>
+          ♻️ שימוש חוזר? → <span class="purple">CommunicationProtocol</span> ב-Client וב-Server
+        </div>
+      </div>
+      <div class="terminal">
+        <div class="terminal-header">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span>server.log</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="t-out">2024-01-15 10:09:21 - INFO -</span></div>
+          <div><span class="t-ok"> Server listening on 127.0.0.1:7000</span></div>
+          <div><span class="t-out">2024-01-15 10:09:26 - INFO -</span></div>
+          <div><span class="t-recv"> New connection from 127.0.0.1:58982</span></div>
+          <div><span class="t-out">2024-01-15 10:09:30 - INFO -</span></div>
+          <div><span class="t-recv"> Received: '0000000005||hello'</span></div>
+          <div><span class="t-out">2024-01-15 10:09:30 - INFO -</span></div>
+          <div><span class="t-ok"> Sent: '0000000031||response||A big...'</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 9: LIVE DEMO / TERMINAL -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-9">
+  <div class="slide-header">
+    <span class="slide-tag">08</span>
+    <span class="slide-num">// דמו — הרצת המערכת</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">הרצת <span class="green">שרת + מספר לקוחות</span> במקביל</h2>
+    <p class="subtitle anim-fadeup-1" style="margin-bottom:16px;">פתחו 3 חלונות Terminal: 1 שרת + 2 לקוחות</p>
+
+    <div class="grid-3 anim-fadeup-2">
+      <!-- Server terminal -->
+      <div>
+        <div style="font-size: 16px; color:var(--cyan); margin-bottom:6px; font-family:'JetBrains Mono',monospace; text-align:center;">🖥️ Terminal 1 — Server</div>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+            <span>server.py</span>
+          </div>
+          <div class="terminal-body" style="font-size: 16px; line-height:1.8;">
+            <div><span class="t-prompt">$</span> <span class="t-cmd">python server.py</span></div>
+            <div><span class="t-ok">Server listening on 127.0.0.1:7000</span></div>
+            <div class="t-recv">New connection: 127.0.0.1:52001</div>
+            <div class="t-recv">New connection: 127.0.0.1:52002</div>
+            <div class="t-out">Recv [C1]: '0000000005||hello'</div>
+            <div class="t-ok">Sent [C1]: '...||A big hello...'</div>
+            <div class="t-out">Recv [C2]: '0000000009||animal||m'</div>
+            <div class="t-ok">Sent [C2]: '...||Monkey'</div>
+            <div class="t-out">Recv [C1]: '0000000009||animal||f'</div>
+            <div class="t-ok">Sent [C1]: '...||Fox'</div>
+            <div class="t-err">Recv [C2]: '0000000003||bye'</div>
+            <div class="t-err">Sent [C2]: 'Illegal request: bye'</div>
+            <div class="t-out">Recv [C2]: '0000000005||close'</div>
+            <div class="t-out">Connection C2 closed.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client 1 terminal -->
+      <div>
+        <div style="font-size: 16px; color:var(--green); margin-bottom:6px; font-family:'JetBrains Mono',monospace; text-align:center;">💻 Terminal 2 — Client 1</div>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+            <span>client.py</span>
+          </div>
+          <div class="terminal-body" style="font-size: 16px; line-height:1.8;">
+            <div><span class="t-prompt">$</span> <span class="t-cmd">python client.py</span></div>
+            <div><span class="t-ok">Connected to 127.0.0.1:7000</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--green);">hello</span></div>
+            <div><span class="t-recv">Received: A big hello to anyone</span></div>
+            <div style="color:var(--dim);">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; I was at school with.</div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--green);">animal f</span></div>
+            <div><span class="t-recv">Received: Fox</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--green);">animal z</span></div>
+            <div><span class="t-recv">Received: Zebra</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--green);">close</span></div>
+            <div><span class="t-ok">Connection closed.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client 2 terminal -->
+      <div>
+        <div style="font-size: 16px; color:var(--orange); margin-bottom:6px; font-family:'JetBrains Mono',monospace; text-align:center;">💻 Terminal 3 — Client 2</div>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+            <span>client.py</span>
+          </div>
+          <div class="terminal-body" style="font-size: 16px; line-height:1.8;">
+            <div><span class="t-prompt">$</span> <span class="t-cmd">python client.py</span></div>
+            <div><span class="t-ok">Connected to 127.0.0.1:7000</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--orange);">animal m</span></div>
+            <div><span class="t-recv">Received: Monkey</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--orange);">bye</span></div>
+            <div><span class="t-err">Invalid: Unknown command: bye</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--orange);">animal</span></div>
+            <div><span class="t-err">Invalid: Wrong param count</span></div>
+            <div><span class="t-prompt">&gt;</span> <span class="t-cmd" style="color:var(--orange);">close</span></div>
+            <div><span class="t-ok">Connection closed.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-accent anim-fadeup-3" style="margin-top:14px;">
+      <div style="font-size: 16px; color:var(--text); line-height:1.9;">
+        👆 שימו לב: <span class="cyan">שני הלקוחות עובדים במקביל!</span> כל אחד ב-Thread נפרד בשרת. Client 2 טעה ב-bye וב-animal (ללא אות) — השרת ענה עם הודעת שגיאה <span class="green">ולא קרס</span>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 10: QUIZ -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-10">
+  <div class="slide-header">
+    <span class="slide-tag">09</span>
+    <span class="slide-num">// בוחן — בדיקת הבנה</span>
+  </div>
+  <div class="slide-content" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 140px);">
+    <h2 class="slide-title anim-fadeup" style="text-align:center; margin-bottom:24px;">🧠 <span class="cyan">בדיקת הבנה</span></h2>
+
+    <div id="quiz-wrapper" style="width:100%; max-width:700px;">
+      <div id="quiz-area"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+        <div id="quiz-score" style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--dim);"></div>
+        <button id="quiz-next" onclick="nextQuestion()" style="display:none; padding:10px 24px; background:rgba(0,212,255,0.1); border:1px solid var(--cyan); color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size: 16px; cursor:pointer; border-radius:6px;">
+          שאלה הבאה ◄
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 11: SUMMARY -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-11">
+  <div class="slide-header">
+    <span class="slide-tag">10</span>
+    <span class="slide-num">// סיכום</span>
+  </div>
+  <div class="slide-content">
+    <h2 class="slide-title anim-fadeup">סיכום — מה למדנו?</h2>
+
+    <div class="grid-2 anim-fadeup-2" style="margin-bottom:16px;">
+      <div>
+        <div class="panel panel-accent" style="margin-bottom:10px;">
+          <div style="font-size: 16px; font-weight:700; color:var(--cyan); margin-bottom:10px;">🔌 Socket + Thread</div>
+          <div style="font-size: 16px; color:var(--text); line-height:2;">
+            • Socket = ערוץ תקשורת TCP<br>
+            • כל לקוח → Thread נפרד<br>
+            • שרת מקביל = <span class="green">multithreaded</span>
+          </div>
+        </div>
+        <div class="panel panel-purple">
+          <div style="font-size:14px; font-weight:700; color:var(--purple); margin-bottom:10px;">📡 פרוטוקול</div>
+          <div style="font-size: 16px; color:var(--text); line-height:2;">
+            • Header 10 ספרות + || + payload<br>
+            • 3 בדיקות תקינות<br>
+            • VALID_COMMANDS מילון
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel" style="background:linear-gradient(135deg,rgba(0,212,255,0.05),rgba(0,255,136,0.05)); border:1px solid var(--border);">
+          <div style="font-size:14px; font-weight:700; color:var(--white); margin-bottom:12px;">🏗️ SOLID במימוש שלנו</div>
+          <div style="font-size: 16px; line-height:2.2;">
+            <span class="cyan font-mono">S</span> → כל קובץ = אחריות אחת<br>
+            <span class="green font-mono">O</span> → פקודה חדשה = הוספה, לא שינוי<br>
+            <span class="yellow font-mono">L</span> → BusinessLogic ניתן להחלפה<br>
+            <span class="orange font-mono">I</span> → Client לא רואה BusinessLogic<br>
+            <span class="purple font-mono">D</span> → Server מקבל תלויות מבחוץ
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel anim-fadeup-3" style="background:#020d18; text-align:center; padding:24px;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size: 16px; color:var(--dim); margin-bottom:8px;">// קוד שמיישם SOLID</div>
+      <div style="font-size:22px; color:var(--white); font-weight:700; margin-bottom:6px;">
+        <span class="cyan">קל לקרוא</span> · <span class="green">קל לשנות</span> · <span class="yellow">קל לבדוק</span> · <span class="purple">קל להרחיב</span>
+      </div>
+      <div style="font-size:14px; color:var(--dim);">זה ההבדל בין קוד שעובד לקוד שעובד <em>טוב</em></div>
+    </div>
+
+    <div class="grid-5 anim-fadeup-4" style="margin-top:14px;">
+      <div class="solid-card s" style="padding:14px; cursor:default;">
+        <div class="letter" style="font-size:28px;">S</div>
+        <div class="principle-heb" style="font-size: 16px;">constants.py<br>protocol.py<br>logic.py</div>
+      </div>
+      <div class="solid-card o" style="padding:14px; cursor:default;">
+        <div class="letter" style="font-size:28px;">O</div>
+        <div class="principle-heb" style="font-size: 16px;">VALID_COMMANDS<br>הוסף פקודה<br>בלי לשנות</div>
+      </div>
+      <div class="solid-card l" style="padding:14px; cursor:default;">
+        <div class="letter" style="font-size:28px;">L</div>
+        <div class="principle-heb" style="font-size: 16px;">BusinessLogic<br>ניתן להחלפה<br>ב-Server</div>
+      </div>
+      <div class="solid-card i" style="padding:14px; cursor:default;">
+        <div class="letter" style="font-size:28px;">I</div>
+        <div class="principle-heb" style="font-size: 16px;">Client לא יודע<br>על BusinessLogic<br>רק Protocol</div>
+      </div>
+      <div class="solid-card d" style="padding:14px; cursor:default;">
+        <div class="letter" style="font-size:28px;">D</div>
+        <div class="principle-heb" style="font-size: 16px;">Server.__init__<br>מקבל הכל<br>כ-injection</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- NAV BAR -->
+<!-- ══════════════════════════════════════════════════ -->
+<div id="navbar">
+  <button class="nav-btn" id="btn-prev" onclick="navigate(-1)" disabled>► הקודם</button>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <span id="slide-counter" class="kb-hint">01 / 11</span>
+    <div id="slide-dots"></div>
+  </div>
+  <button class="nav-btn" id="btn-next" onclick="navigate(1)">הבא ◄</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SLIDE NAVIGATION
+// ══════════════════════════════════════════
+const TOTAL = 11;
+let current = 1;
+let transitioning = false;
+
+function navigate(dir) {
+  if (transitioning) return;
+  const next = current + dir;
+  if (next < 1 || next > TOTAL) return;
+  transitioning = true;
+
+  const oldSlide = document.getElementById(`slide-${current}`);
+  const newSlide = document.getElementById(`slide-${next}`);
+
+  oldSlide.classList.add('exit');
+  oldSlide.classList.remove('active');
+
+  setTimeout(() => {
+    oldSlide.classList.remove('exit');
+    newSlide.classList.add('active');
+    current = next;
+    updateNav();
+    if (current === 10) initQuiz();
+    transitioning = false;
+  }, 500);
+}
+
+function updateNav() {
+  document.getElementById('btn-prev').disabled = current === 1;
+  document.getElementById('btn-next').disabled = current === TOTAL;
+  document.getElementById('slide-counter').textContent = `${String(current).padStart(2,'0')} / ${TOTAL}`;
+  document.getElementById('progress-bar').style.width = `${(current / TOTAL) * 100}%`;
+
+  const dots = document.getElementById('slide-dots');
+  dots.innerHTML = '';
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === current ? ' active' : '');
+    d.onclick = () => { if (!transitioning) { const diff = i - current; if (diff !== 0) navigate(diff); } };
+    dots.appendChild(d);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') navigate(e.key === 'ArrowLeft' ? 1 : -1);
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+});
+
+// ══════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════
+function createParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left:${Math.random()*100}%;
+      width:${Math.random()*2+1}px;
+      height:${Math.random()*2+1}px;
+      animation-duration:${8+Math.random()*12}s;
+      animation-delay:-${Math.random()*20}s;
+      background:${['var(--cyan)','var(--green)','var(--purple)'][Math.floor(Math.random()*3)]};
+      opacity:${Math.random()*0.5+0.1};
+    `;
+    container.appendChild(p);
+  }
+}
+createParticles();
+
+// ══════════════════════════════════════════
+// THREAD ANIMATION
+// ══════════════════════════════════════════
+function animateThreads() {
+  const steps = [
+    ['ts-m1'], ['ts-m2'], ['ts-m3'],
+    ['ts-m4', 'ts-t1-4'],
+    ['ts-m5', 'ts-t1-5', 'ts-t2-5'],
+    ['ts-m6', 'ts-t1-6', 'ts-t2-6', 'ts-t3-6'],
+    ['ts-m7', 'ts-t1-7', 'ts-t2-7', 'ts-t3-7'],
+  ];
+  // Reset
+  document.querySelectorAll('.thread-step').forEach(s => { s.classList.remove('show','active'); });
+  steps.forEach((group, i) => {
+    setTimeout(() => {
+      group.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.add('show','active'); }
+      });
+      if (i > 0) {
+        steps[i-1].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.remove('active');
+        });
+      }
+    }, i * 600);
+  });
+}
+
+// ══════════════════════════════════════════
+// SOLID DETAIL
+// ══════════════════════════════════════════
+const solidDetails = {
+  s: {
+    color: 'var(--cyan)', border: 'rgba(0,212,255,0.3)',
+    title: 'S — Single Responsibility Principle',
+    heb: 'עיקרון האחריות הבודדת',
+    body: `כל מחלקה צריכה <strong style="color:var(--cyan)">סיבה אחת בלבד</strong> להשתנות.<br><br>
+           בפרויקט שלנו: <code style="color:var(--cyan)">CommunicationProtocol</code> — פרוטוקול בלבד.
+           <code style="color:var(--green)">BusinessLogic</code> — לוגיקה בלבד.
+           <code style="color:var(--yellow)">setup_logger</code> — לוגים בלבד.<br><br>
+           🎯 <strong>למה זה חשוב?</strong> אם משנים את פורמט ההודעה — שינוי רק ב-CommunicationProtocol. לא נוגעים ב-Server, Client, או BusinessLogic.`
+  },
+  o: {
+    color: 'var(--green)', border: 'rgba(0,255,136,0.3)',
+    title: 'O — Open/Closed Principle',
+    heb: 'עיקרון פתוח/סגור',
+    body: `קוד צריך להיות <strong style="color:var(--green)">פתוח להרחבה</strong> אבל <strong style="color:var(--red)">סגור לשינוי</strong>.<br><br>
+           בפרויקט שלנו: להוסיף פקודה <code style="color:var(--cyan)">weather</code> חדשה?
+           מוסיפים שורה ל-<code style="color:var(--yellow)">VALID_COMMANDS</code> ומתודה ל-<code style="color:var(--green)">BusinessLogic</code>.
+           לא משנים <code style="color:var(--orange)">Server</code>, <code style="color:var(--cyan)">Client</code>, או <code style="color:var(--purple)">CommunicationProtocol</code>.<br><br>
+           🎯 <strong>תרגיל:</strong> הוסיפו פקודה <code style="color:var(--cyan)">"time"</code> שמחזירה את השעה הנוכחית!`
+  },
+  l: {
+    color: 'var(--yellow)', border: 'rgba(255,215,0,0.3)',
+    title: 'L — Liskov Substitution Principle',
+    heb: 'עיקרון ההחלפה של ליסקוב',
+    body: `אפשר להחליף כל מחלקה בתת-מחלקה שלה <strong style="color:var(--yellow)">בלי לשבור את הקוד</strong>.<br><br>
+           בפרויקט שלנו: <code style="color:var(--orange)">Server</code> מקבל כל אובייקט עם מתודת <code style="color:var(--green)">handle_request()</code>.
+           אפשר ליצור <code style="color:var(--cyan)">MockBusinessLogic</code> לבדיקות, <code style="color:var(--purple)">DatabaseBusinessLogic</code> לבסיס נתונים, וכו'.<br><br>
+           🎯 <strong>כוח:</strong> Server לא ישתנה כשמחליפים את BusinessLogic!`
+  },
+  i: {
+    color: 'var(--orange)', border: 'rgba(255,107,53,0.3)',
+    title: 'I — Interface Segregation Principle',
+    heb: 'עיקרון הפרדת הממשקים',
+    body: `מחלקה לא צריכה להכיר <strong style="color:var(--orange)">מתודות שהיא לא משתמשת בהן</strong>.<br><br>
+           בפרויקט שלנו: <code style="color:var(--cyan)">Client</code> מכיר רק את <code style="color:var(--purple)">CommunicationProtocol</code> — לא מכיר את <code style="color:var(--green)">BusinessLogic</code>, לא יודע מה עושה השרת עם הפקודות.
+           Client רק שולח ומקבל הודעות.<br><br>
+           🎯 <strong>תוצאה:</strong> Client יכול לעבוד עם כל שרת שמדבר באותו פרוטוקול!`
+  },
+  d: {
+    color: 'var(--purple)', border: 'rgba(168,85,247,0.3)',
+    title: 'D — Dependency Inversion Principle',
+    heb: 'עיקרון היפוך התלויות',
+    body: `מחלקות ברמה גבוהה לא תלויות במחלקות ברמה נמוכה — <strong style="color:var(--purple)">שתיהן תלויות בהפשטות</strong>.<br><br>
+           בפרויקט שלנו: <code style="color:var(--orange)">Server</code> לא יוצר <code style="color:var(--green)">BusinessLogic</code> בעצמו.
+           הוא <strong style="color:var(--purple)">מקבל</strong> אותו כפרמטר ב-<code>__init__</code> — זה נקרא <strong>Dependency Injection</strong>.<br><br>
+           <code style="font-size: 16px; color:var(--cyan)">Server(ip, port, protocol=..., logic=..., logger=...)</code><br><br>
+           🎯 <strong>יתרון:</strong> לבדיקות אפשר להזריק Mock objects!`
+  }
+};
+
+// showSolidDetail defined below
+
+// ══════════════════════════════════════════
+// QUIZ
+// ══════════════════════════════════════════
+const questions = [
+  {
+    q: 'איזה עיקרון SOLID מיושם כאשר Server מקבל protocol ו-logic כפרמטרים ב-__init__ ולא יוצר אותם בעצמו?',
+    opts: ['Single Responsibility (S)', 'Open/Closed (O)', 'Dependency Inversion (D)', 'Interface Segregation (I)'],
+    correct: 2,
+    explain: '✅ נכון! זהו Dependency Injection — יישום של DIP. Server תלוי בהפשטות, לא במימושים ספציפיים.'
+  },
+  {
+    q: 'מה הפורמט הנכון של הודעת "animal f" בפרוטוקול שלנו?',
+    opts: ['animal||f', '0000000009||animal||f', 'animal f', '09||animal||f'],
+    correct: 1,
+    explain: '✅ נכון! payload = "animal||f" (9 תווים), לכן header = "0000000009". הפורמט: <10 ספרות>||<payload>'
+  },
+  {
+    q: 'מדוע BusinessLogic ו-CommunicationProtocol הם קבצים נפרדים ולא מחלקה אחת?',
+    opts: ['כי Python לא תומך במחלקות גדולות', 'כי זה Single Responsibility — כל מחלקה אחריות אחת', 'כי זה מהיר יותר', 'זה שרירותי'],
+    correct: 1,
+    explain: '✅ נכון! SRP — Single Responsibility Principle. שינוי בפורמט ההודעה לא אמור לגעת בלוגיקה עסקית ולהפך.'
+  },
+  {
+    q: 'שרת מקבל חיבורים מ-3 לקוחות במקביל. כמה Threads פועלים בשרת (לא כולל Main Thread)?',
+    opts: ['1', '2', '3', '6'],
+    correct: 2,
+    explain: '✅ נכון! Thread אחד לכל לקוח. 3 לקוחות = 3 Threads. Main Thread ממשיך להאזין לחיבורים חדשים.'
+  },
+  {
+    q: 'איזה מהבאים מפר את עיקרון ה-OCP?',
+    opts: ['הוספת פקודה חדשה ל-VALID_COMMANDS', 'שינוי קוד בתוך Server כדי להוסיף לוגיקה חדשה', 'יצירת תת-מחלקה של BusinessLogic', 'הוספת מתודה ל-BusinessLogic'],
+    correct: 1,
+    explain: '✅ נכון! שינוי קוד קיים ב-Server כדי להוסיף פקודה חדשה מפר OCP. הפתרון הנכון: להוסיף פקודה ל-VALID_COMMANDS ומתודה ל-BusinessLogic בלבד.'
+  }
+];
+
+let qIdx = 0, score = 0, answered = false;
+
+function initQuiz() {
+  qIdx = 0; score = 0; answered = false;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (qIdx >= questions.length) {
+    document.getElementById('quiz-area').innerHTML = `
+      <div class="quiz-container" style="text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">${score === questions.length ? '🏆' : score >= 3 ? '⭐' : '📚'}</div>
+        <div style="font-size:28px; font-weight:900; color:var(--white); margin-bottom:8px;">${score}/${questions.length}</div>
+        <div style="font-size:16px; color:${score===questions.length?'var(--green)':score>=3?'var(--yellow)':'var(--orange)'}; font-weight:700; margin-bottom:16px;">
+          ${score===questions.length?'מושלם! שליטה מלאה ב-SOLID!':score>=3?'כל הכבוד! הבנה טובה!':'כדאי לחזור על החומר 💪'}
+        </div>
+        <button onclick="initQuiz()" style="padding:12px 32px; background:rgba(0,212,255,0.1); border:1px solid var(--cyan); color:var(--cyan); font-family:'JetBrains Mono',monospace; font-size:14px; cursor:pointer; border-radius:8px;">נסה שוב</button>
+      </div>`;
+    document.getElementById('quiz-next').style.display = 'none';
+    document.getElementById('quiz-score').textContent = '';
+    return;
+  }
+
+  const q = questions[qIdx];
+  answered = false;
+  document.getElementById('quiz-score').textContent = `שאלה ${qIdx+1}/${questions.length} · ניקוד: ${score}`;
+  document.getElementById('quiz-next').style.display = 'none';
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="quiz-container">
+      <div class="quiz-q">${q.q}</div>
+      <div class="quiz-options">
+        ${q.opts.map((opt,i)=>`
+          <div class="quiz-opt" onclick="answer(${i})" id="opt-${i}">
+            <span class="opt-letter">${String.fromCharCode(65+i)}</span>
+            ${opt}
+          </div>`).join('')}
+      </div>
+      <div class="quiz-feedback" id="quiz-fb"></div>
+    </div>`;
+}
+
+function answer(idx) {
+  if (answered) return;
+  answered = true;
+  const q = questions[qIdx];
+  const fb = document.getElementById('quiz-fb');
+  document.querySelectorAll('.quiz-opt').forEach((el, i) => {
+    el.style.pointerEvents = 'none';
+    if (i === q.correct) el.classList.add('correct');
+    else if (i === idx && idx !== q.correct) el.classList.add('wrong');
+  });
+  if (idx === q.correct) {
+    score++;
+    fb.className = 'quiz-feedback show correct';
+    fb.textContent = q.explain;
+  } else {
+    fb.className = 'quiz-feedback show wrong';
+    fb.textContent = `❌ לא נכון. ${q.explain}`;
+  }
+  document.getElementById('quiz-next').style.display = 'block';
+  document.getElementById('quiz-score').textContent = `שאלה ${qIdx+1}/${questions.length} · ניקוד: ${score}`;
+}
+
+function nextQuestion() {
+  qIdx++;
+  renderQuestion();
+}
+
+// Fix the showSolidDetail color bug
+function showSolidDetail(key) {
+  const d = solidDetails[key];
+  const box = document.getElementById('solid-detail');
+  box.style.display = 'block';
+  box.style.border = `1px solid ${d.color}`;
+  box.style.borderLeft = `3px solid ${d.color}`;
+  box.style.background = `rgba(${key==='s'?'0,212,255':key==='o'?'0,255,136':key==='l'?'255,215,0':key==='i'?'255,107,53':'168,85,247'},0.05)`;
+  box.innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+      <div style="font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:${d.color}; text-shadow:0 0 15px ${d.color};">${key.toUpperCase()}</div>
+      <div>
+        <div style="font-size:16px; font-weight:700; color:var(--white);">${d.title}</div>
+        <div style="font-size: 16px; color:${d.color};">${d.heb}</div>
+      </div>
+    </div>
+    <div style="font-size: 16px; color:var(--text); line-height:1.9;">${d.body}</div>
+  `;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Init
+updateNav();
+</script>
+</body>
+</html>

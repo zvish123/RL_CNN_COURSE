@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>סוקטים — שרת-לקוח רב משתמשים</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f1a;
+    --surface: #131627;
+    --surface2: #1a1e35;
+    --border: #252a45;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #a855f7;
+    --green: #00ff9d;
+    --yellow: #ffd166;
+    --text: #e2e8f0;
+    --text-dim: #8892b0;
+    --code-bg: #0a0c17;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ===== SLIDE SYSTEM ===== */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* ===== NAV ===== */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 100;
+    background: rgba(19,22,39,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 20px;
+  }
+  .nav button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .nav button:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav button:disabled:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+  .slide-counter {
+    font-size: 16px;
+    color: var(--text-dim);
+    min-width: 60px;
+    text-align: center;
+    font-family: 'Fira Code', monospace;
+  }
+  .dots {
+    display: flex;
+    gap: 6px;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+
+  /* ===== SLIDE HEADER ===== */
+  .slide-num {
+    font-family: 'Fira Code', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+  h1.title {
+    font-size: clamp(32px, 5vw, 60px);
+    font-weight: 900;
+    line-height: 1.1;
+    text-align: center;
+  }
+  h2.slide-title {
+    font-size: clamp(22px, 3.5vw, 38px);
+    font-weight: 700;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  /* ===== CODE BLOCK ===== */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 860px;
+    font-size: clamp(11px, 1.3vw, 14px);
+    position: relative;
+    direction: ltr;
+  }
+  .code-header {
+    background: var(--surface2);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .code-dot:nth-child(1) { background: #ff5f56; }
+  .code-dot:nth-child(2) { background: #ffbd2e; }
+  .code-dot:nth-child(3) { background: #27c93f; }
+  .code-filename {
+    font-family: 'Fira Code', monospace;
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-right: auto;
+  }
+  pre {
+    padding: 20px;
+    overflow-x: auto;
+    line-height: 1.7;
+    font-family: 'Fira Code', monospace;
+  }
+  .kw { color: #ff79c6; }
+  .fn { color: #50fa7b; }
+  .str { color: #f1fa8c; }
+  .cm { color: #6272a4; font-style: italic; }
+  .num { color: #bd93f9; }
+  .var { color: #8be9fd; }
+  .cls { color: #ffb86c; }
+  .hl { background: rgba(0,229,255,0.08); border-right: 3px solid var(--accent); display: block; margin: 0 -20px; padding: 0 17px; }
+
+  /* ===== CARDS ===== */
+  .cards {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 1000px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+  .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .card-icon { font-size: 28px; margin-bottom: 10px; }
+  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+  .card p { font-size: 16px; color: var(--text-dim); line-height: 1.6; }
+
+  /* ===== DIAGRAM ===== */
+  .diagram-wrap {
+    width: 100%;
+    max-width: 900px;
+  }
+  svg text { font-family: 'Heebo', sans-serif; direction: rtl; }
+
+  /* ===== LABEL ===== */
+  .label {
+    display: inline-block;
+    font-family: 'Fira Code', monospace;
+    font-size: 16px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+  }
+  .label-server { background: rgba(168,85,247,0.2); color: #c084fc; border: 1px solid #a855f7; }
+  .label-client { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid var(--accent); }
+  .label-thread { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid var(--green); }
+  .label-lock { background: rgba(255,107,53,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+
+  /* ===== ANNOTATION ===== */
+  .annotation {
+    background: rgba(0,229,255,0.06);
+    border-right: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 10px 10px 0;
+    margin-top: 12px;
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 860px;
+    width: 100%;
+  }
+  .annotation strong { color: var(--accent); }
+
+  /* ===== TWO COL ===== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  /* ===== STEP LIST ===== */
+  .step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 860px;
+    width: 100%;
+  }
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: var(--accent3); }
+  .step-num {
+    min-width: 32px; height: 32px;
+    background: var(--accent3);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+    font-family: 'Fira Code', monospace;
+  }
+  .step-text h4 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .step-text p { font-size: 16px; color: var(--text-dim); }
+  .step-text code { font-family: 'Fira Code'; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--green); font-size: 16px; }
+
+  /* ===== HERO BG ===== */
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+  }
+
+  /* ===== INTERACTIVE DEMO ===== */
+  .demo-wrap {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+    align-items: flex-start;
+  }
+  .demo-box {
+    flex: 1;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 220px;
+  }
+  .demo-box-header {
+    background: var(--surface2);
+    padding: 8px 14px;
+    font-size: 16px;
+    font-family: 'Fira Code';
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .demo-log {
+    padding: 12px;
+    font-family: 'Fira Code';
+    font-size: 16px;
+    min-height: 160px;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.8;
+    direction: ltr;
+  }
+  .log-server { color: #c084fc; }
+  .log-client { color: var(--accent); }
+  .log-ok { color: var(--green); }
+  .log-err { color: var(--accent2); }
+  .log-info { color: var(--yellow); }
+  .demo-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+  .demo-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    font-family: 'Fira Code';
+    transition: all 0.2s;
+  }
+  .demo-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ===== FLOW DIAGRAM SLIDE ===== */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    max-width: 950px;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-node.server { border-color: #a855f7; }
+  .flow-node.client { border-color: var(--accent); }
+  .flow-node.thread { border-color: var(--green); }
+  .flow-node .fn-label { font-size: 16px; font-family: 'Fira Code'; color: var(--text-dim); }
+  .flow-node .fn-name { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .flow-arrow {
+    font-size: 22px;
+    color: var(--text-dim);
+    padding: 0 8px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 16px;
+    color: var(--text-dim);
+    margin: 4px;
+  }
+  .badge span { color: var(--accent); font-family: 'Fira Code'; font-size: 16px; }
+
+  /* title gradient */
+  .grad { background: linear-gradient(135deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .grad2 { background: linear-gradient(135deg, var(--accent2), var(--yellow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .grad3 { background: linear-gradient(135deg, var(--green), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  /* subtitle */
+  .subtitle { font-size: clamp(14px, 2vw, 20px); color: var(--text-dim); margin-top: 12px; text-align: center; }
+
+  /* info row */
+  .info-row { display: flex; gap: 24px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+  .info-item { text-align: center; }
+  .info-item .val { font-size: 28px; font-weight: 900; font-family: 'Fira Code'; color: var(--accent); }
+  .info-item .lbl { font-size: 16px; color: var(--text-dim); }
+
+  .wide { max-width: 1000px; width: 100%; }
+  .small-code { font-size: clamp(10px, 1.1vw, 12px) !important; }
+</style>
+</head>
+<body>
+
+<!-- ==================== SLIDE 1: TITLE ==================== -->
+<div class="slide active" id="slide-0">
+  <div class="hero-bg">
+    <div class="grid-lines"></div>
+    <div class="glow-orb" style="width:400px;height:400px;background:#00e5ff;top:-100px;right:-100px;"></div>
+    <div class="glow-orb" style="width:300px;height:300px;background:#a855f7;bottom:-80px;left:-80px;"></div>
+  </div>
+  <div class="slide-num">socket programming · multi-user</div>
+  <h1 class="title"><span class="grad">סוקטים</span> ברשת</h1>
+  <h1 class="title" style="font-size:clamp(20px,3vw,40px); color: var(--text-dim); font-weight:300">שרת ↔ לקוח רב-משתמשים</h1>
+  <p class="subtitle">Threading · JSON Protocol · SQLAlchemy · Broadcast</p>
+  <div class="info-row">
+    <div class="info-item"><div class="val">TCP</div><div class="lbl">פרוטוקול</div></div>
+    <div class="info-item"><div class="val">6000</div><div class="lbl">פורט</div></div>
+    <div class="info-item"><div class="val">N</div><div class="lbl">משתמשים במקביל</div></div>
+    <div class="info-item"><div class="val">JSON</div><div class="lbl">שפת תקשורת</div></div>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 2: PROBLEM ==================== -->
+<div class="slide" id="slide-1">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 02 · הבעיה</div>
+  <h2 class="slide-title">למה צריך <span class="grad2">Threads</span>?</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">😴</div>
+      <h3>שרת חסום</h3>
+      <p>שרת רגיל שמחכה ל-<code>recv()</code> של לקוח A — לא יכול לקבל חיבור מלקוח B. הוא פשוט נתקע.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🧵</div>
+      <h3>Thread לכל לקוח</h3>
+      <p>הפתרון: עבור כל לקוח חדש שמתחבר — פותחים thread נפרד שמטפל בו, בעוד ה-thread הראשי ממשיך לקבל חיבורים חדשים.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">👥</div>
+      <h3>מקבילות אמיתית</h3>
+      <p>כך 10 משתמשים יכולים לשלוח הודעות בו-זמנית. כל אחד "חי" ב-thread שלו ולא חוסם את השאר.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔒</div>
+      <h3>Lock — מגן משאב</h3>
+      <p>כאשר threads מרובים ניגשים לאותו מידע (רשימת לקוחות), צריך <strong>Lock</strong> שמבטיח שרק אחד יגש בכל פעם.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 3: ARCHITECTURE ==================== -->
+<div class="slide" id="slide-2">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 03 · ארכיטקטורה</div>
+  <h2 class="slide-title">תרשים <span class="grad">המערכת</span></h2>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 860 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+      <defs>
+        <marker id="arrowB" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#00e5ff" opacity="0.7"/>
+        </marker>
+        <marker id="arrowG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#00ff9d" opacity="0.7"/>
+        </marker>
+        <marker id="arrowP" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#a855f7" opacity="0.7"/>
+        </marker>
+      </defs>
+
+      <!-- SERVER -->
+      <rect x="10" y="100" width="200" height="140" rx="14" fill="#131627" stroke="#a855f7" stroke-width="2"/>
+      <text x="110" y="130" fill="#c084fc" font-size="13" text-anchor="middle" font-family="Heebo,sans-serif" font-weight="700">SERVER</text>
+      <text x="110" y="150" fill="#8892b0" font-size="11" text-anchor="middle" font-family="Fira Code,monospace">0.0.0.0:6000</text>
+      <rect x="30" y="165" width="160" height="28" rx="6" fill="#1a1e35" stroke="#252a45"/>
+      <text x="110" y="183" fill="#00e5ff" font-size="11" text-anchor="middle" font-family="Fira Code,monospace">srv.accept() loop</text>
+      <rect x="30" y="200" width="160" height="28" rx="6" fill="#1a1e35" stroke="#252a45"/>
+      <text x="110" y="218" fill="#50fa7b" font-size="11" text-anchor="middle" font-family="Fira Code,monospace">clients = {}</text>
+
+      <!-- THREADS BOX -->
+      <rect x="270" y="60" width="300" height="220" rx="14" fill="#0d0f1a" stroke="#00ff9d" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="420" y="88" fill="#00ff9d" font-size="12" text-anchor="middle" font-family="Heebo,sans-serif">Threads</text>
+
+      <rect x="290" y="100" width="260" height="44" rx="8" fill="#131627" stroke="#00ff9d" stroke-width="1.5"/>
+      <text x="350" y="118" fill="#8be9fd" font-size="11" font-family="Fira Code,monospace">Thread 1</text>
+      <text x="350" y="134" fill="#8892b0" font-size="10" font-family="Heebo,sans-serif">handle_client(conn₁)</text>
+
+      <rect x="290" y="155" width="260" height="44" rx="8" fill="#131627" stroke="#00ff9d" stroke-width="1.5"/>
+      <text x="350" y="173" fill="#8be9fd" font-size="11" font-family="Fira Code,monospace">Thread 2</text>
+      <text x="350" y="189" fill="#8892b0" font-size="10" font-family="Heebo,sans-serif">handle_client(conn₂)</text>
+
+      <rect x="290" y="210" width="260" height="44" rx="8" fill="#131627" stroke="#00ff9d" stroke-width="1.5"/>
+      <text x="350" y="228" fill="#8be9fd" font-size="11" font-family="Fira Code,monospace">Thread N</text>
+      <text x="350" y="244" fill="#8892b0" font-size="10" font-family="Heebo,sans-serif">handle_client(connₙ)</text>
+
+      <!-- CLIENTS -->
+      <rect x="640" y="80" width="140" height="50" rx="10" fill="#131627" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="710" y="101" fill="#00e5ff" font-size="12" text-anchor="middle" font-family="Heebo,sans-serif" font-weight="700">לקוח 1</text>
+      <text x="710" y="118" fill="#8892b0" font-size="10" text-anchor="middle" font-family="Fira Code,monospace">client.py</text>
+
+      <rect x="640" y="150" width="140" height="50" rx="10" fill="#131627" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="710" y="171" fill="#00e5ff" font-size="12" text-anchor="middle" font-family="Heebo,sans-serif" font-weight="700">לקוח 2</text>
+      <text x="710" y="188" fill="#8892b0" font-size="10" text-anchor="middle" font-family="Fira Code,monospace">client.py</text>
+
+      <rect x="640" y="220" width="140" height="50" rx="10" fill="#131627" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="710" y="241" fill="#00e5ff" font-size="12" text-anchor="middle" font-family="Heebo,sans-serif" font-weight="700">לקוח N</text>
+      <text x="710" y="258" fill="#8892b0" font-size="10" text-anchor="middle" font-family="Fira Code,monospace">client.py</text>
+
+      <!-- Arrows server -> threads -->
+      <line x1="210" y1="170" x2="268" y2="122" stroke="#00ff9d" stroke-width="1.5" marker-end="url(#arrowG)" opacity="0.8"/>
+      <line x1="210" y1="180" x2="268" y2="177" stroke="#00ff9d" stroke-width="1.5" marker-end="url(#arrowG)" opacity="0.8"/>
+      <line x1="210" y1="190" x2="268" y2="232" stroke="#00ff9d" stroke-width="1.5" marker-end="url(#arrowG)" opacity="0.8"/>
+
+      <!-- Arrows threads -> clients -->
+      <line x1="552" y1="122" x2="638" y2="105" stroke="#00e5ff" stroke-width="1.5" marker-end="url(#arrowB)" opacity="0.8"/>
+      <line x1="552" y1="177" x2="638" y2="175" stroke="#00e5ff" stroke-width="1.5" marker-end="url(#arrowB)" opacity="0.8"/>
+      <line x1="552" y1="232" x2="638" y2="245" stroke="#00e5ff" stroke-width="1.5" marker-end="url(#arrowB)" opacity="0.8"/>
+
+      <!-- DB -->
+      <rect x="10" y="270" width="200" height="45" rx="10" fill="#131627" stroke="#ffd166" stroke-width="1.5"/>
+      <text x="110" y="292" fill="#ffd166" font-size="12" text-anchor="middle" font-family="Heebo,sans-serif" font-weight="700">💾 chat.db (SQLite)</text>
+      <text x="110" y="307" fill="#8892b0" font-size="10" text-anchor="middle" font-family="Fira Code,monospace">users · messages</text>
+
+      <line x1="110" y1="240" x2="110" y2="268" stroke="#ffd166" stroke-width="1.5" marker-end="url(#arrowP)" opacity="0.7"/>
+
+      <text x="240" y="300" fill="#6272a4" font-size="10" font-family="Heebo,sans-serif">broadcast()</text>
+      <path d="M270 295 Q420 320 550 295" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.6"/>
+    </svg>
+  </div>
+  <div class="annotation">
+    <strong>broadcast()</strong> — כל פעם שמשתמש שולח הודעה, השרת מעביר אותה <strong>לכל</strong> המחוברים דרך הלולאה ב-clients.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 4: SERVER CORE ==================== -->
+<div class="slide" id="slide-3">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 04 · server.py</div>
+  <h2 class="slide-title">גוף <span class="grad">השרת</span> — הלולאה הראשית</h2>
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">socket_chat_server.py · main()</span>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">main</span>():
+    HOST, PORT = <span class="str">'0.0.0.0'</span>, <span class="num">6000</span>
+    srv = <span class="var">socket</span>.<span class="fn">socket</span>(<span class="var">socket</span>.AF_INET, <span class="var">socket</span>.SOCK_STREAM)
+    srv.<span class="fn">setsockopt</span>(<span class="var">socket</span>.SOL_SOCKET, <span class="var">socket</span>.SO_REUSEADDR, <span class="num">1</span>)  <span class="cm"># אפשר לאתחל מחדש מהר</span>
+    srv.<span class="fn">bind</span>((HOST, PORT))   <span class="cm"># כבוש את הפורט</span>
+    srv.<span class="fn">listen</span>(<span class="num">5</span>)           <span class="cm"># עד 5 בתור</span>
+    <span class="fn">print</span>(<span class="str">f"Server listening on {HOST}:{PORT}"</span>)
+
+    <span class="kw">while True</span>:
+<span class="hl">        conn, addr = srv.<span class="fn">accept</span>()          <span class="cm"># 🔴 ממתין ללקוח חדש</span></span>
+<span class="hl">        <span class="var">threading</span>.<span class="cls">Thread</span>(                   <span class="cm"># 🟢 פותח thread חדש</span></span>
+<span class="hl">            target=<span class="fn">handle_client</span>,</span>
+<span class="hl">            args=(conn, addr),</span>
+<span class="hl">            daemon=<span class="kw">True</span>                       <span class="cm"># נסגר עם השרת</span></span>
+<span class="hl">        ).<span class="fn">start</span>()</span></pre>
+  </div>
+  <div class="annotation">
+    <strong>השלב המרכזי:</strong> כל <code>accept()</code> מחזיר socket ייחודי ללקוח. יוצרים thread חדש ומעבירים לו את ה-socket — כך הלולאה מיד חוזרת לחכות ללקוח הבא.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 5: HANDLE CLIENT ==================== -->
+<div class="slide" id="slide-4">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 05 · server.py</div>
+  <h2 class="slide-title"><span class="grad">handle_client</span> — לב השרת</h2>
+  <div class="code-block small-code">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">socket_chat_server.py · handle_client()</span>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">handle_client</span>(conn, addr):
+    db = <span class="cls">Session</span>()
+    buffer = <span class="str">''</span>
+    <span class="kw">try</span>:
+        <span class="kw">while True</span>:
+            chunk = conn.<span class="fn">recv</span>(<span class="num">4096</span>).<span class="fn">decode</span>()
+            <span class="kw">if not</span> chunk: <span class="kw">break</span>             <span class="cm"># לקוח התנתק</span>
+            buffer += chunk
+<span class="hl">            <span class="kw">while</span> <span class="str">'\n'</span> <span class="kw">in</span> buffer:            <span class="cm"># חתוך הודעות שלמות</span></span>
+<span class="hl">                line, buffer = buffer.<span class="fn">split</span>(<span class="str">'\n'</span>, <span class="num">1</span>)</span>
+<span class="hl">                req = <span class="var">json</span>.<span class="fn">loads</span>(line)        <span class="cm"># parse JSON</span></span>
+                action = req.<span class="fn">get</span>(<span class="str">'action'</span>)
+                <span class="kw">if</span>   action == <span class="str">'register'</span>: ...
+                <span class="kw">elif</span> action == <span class="str">'login'</span>:    ...
+                <span class="kw">elif</span> action == <span class="str">'message'</span>:  ...
+    <span class="kw">finally</span>:
+        u = <span class="var">clients</span>.<span class="fn">pop</span>(conn, <span class="kw">None</span>)
+        <span class="kw">if</span> u: <span class="fn">broadcast</span>({<span class="str">"action"</span>:<span class="str">"status"</span>, <span class="str">"message"</span>: <span class="str">f"*** {u} disconnected ***"</span>})
+        conn.<span class="fn">close</span>(); db.<span class="fn">close</span>()</pre>
+  </div>
+  <div class="annotation">
+    <strong>מדוע buffer + '\n'?</strong> TCP הוא זרם — הודעה אחת יכולה להגיע בשני חלקים, או שתי הודעות ביחד. ה-<code>\n</code> הוא הסימן לגבול הודעה. מצברים ב-buffer עד שיש שורה שלמה.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 6: BROADCAST + LOCK ==================== -->
+<div class="slide" id="slide-5">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 06 · server.py</div>
+  <h2 class="slide-title"><span class="grad2">broadcast</span> ו-<span class="grad3">Lock</span></h2>
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">socket_chat_server.py · broadcast() + Lock</span>
+    </div>
+    <pre><span class="cm"># ---- משאב משותף בין כל ה-threads ----</span>
+clients = {}             <span class="cm"># socket → username</span>
+<span class="var">clients_lock</span> = <span class="var">threading</span>.<span class="cls">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">broadcast</span>(data_dict):
+    <span class="str">"""שולח JSON לכל הלקוחות המחוברים"""</span>
+    payload = (<span class="var">json</span>.<span class="fn">dumps</span>(data_dict) + <span class="str">'\n'</span>).<span class="fn">encode</span>()
+<span class="hl">    <span class="kw">with</span> <span class="var">clients_lock</span>:       <span class="cm"># 🔒 רק thread אחד בכל פעם</span></span>
+        <span class="kw">for</span> sock <span class="kw">in</span> <span class="fn">list</span>(<span class="var">clients</span>):   <span class="cm"># list() - snapshot</span>
+            <span class="kw">try</span>:
+                sock.<span class="fn">sendall</span>(payload)
+            <span class="kw">except</span>:
+                <span class="var">clients</span>.<span class="fn">pop</span>(sock, <span class="kw">None</span>)  <span class="cm"># נקה לקוח שנפל</span></pre>
+  </div>
+  <div style="display:flex; gap:16px; max-width:860px; width:100%; margin-top:12px; flex-wrap:wrap;">
+    <div class="card" style="flex:1; min-width:250px;">
+      <div class="card-icon">🔒</div>
+      <h3>למה Lock?</h3>
+      <p>בלי Lock — Thread 1 עשוי לקרוא מ-<code>clients</code> בזמן ש-Thread 2 מוחק ממנו. תוצאה: קריסה. ה-Lock מבטיח גישה בטוחה.</p>
+    </div>
+    <div class="card" style="flex:1; min-width:250px;">
+      <div class="card-icon">📋</div>
+      <h3>list(clients)</h3>
+      <p>יוצרים עותק של המילון לפני הלולאה — כי אנחנו עשויים למחוק socket תוך כדי ה-<code>for</code>, וזה יגרום לשגיאה.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 7: CLIENT ==================== -->
+<div class="slide" id="slide-6">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 07 · client.py</div>
+  <h2 class="slide-title">הלקוח — גם הוא צריך <span class="grad3">Thread</span></h2>
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">socket_chat_client.py</span>
+    </div>
+    <pre><span class="kw">def</span> <span class="fn">recv_loop</span>(sock):
+    <span class="str">"""Thread נפרד: מאזין להודעות מהשרת"""</span>
+    buf = <span class="str">''</span>
+    <span class="kw">while True</span>:
+        chunk = sock.<span class="fn">recv</span>(<span class="num">4096</span>).<span class="fn">decode</span>()
+        <span class="kw">if not</span> chunk: <span class="kw">break</span>
+        buf += chunk
+        <span class="kw">while</span> <span class="str">'\n'</span> <span class="kw">in</span> buf:
+            line, buf = buf.<span class="fn">split</span>(<span class="str">'\n'</span>, <span class="num">1</span>)
+            data = <span class="var">json</span>.<span class="fn">loads</span>(line)
+            <span class="kw">if</span> data.<span class="fn">get</span>(<span class="str">'action'</span>) == <span class="str">'message'</span>:
+                <span class="fn">print</span>(<span class="str">f"{data['username']}> {data['message']}"</span>)
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    sock = <span class="var">socket</span>.<span class="fn">socket</span>()
+    sock.<span class="fn">connect</span>((<span class="str">'127.0.0.1'</span>, <span class="num">6000</span>))
+<span class="hl">    <span class="var">threading</span>.<span class="cls">Thread</span>(target=<span class="fn">recv_loop</span>, args=(sock,), daemon=<span class="kw">True</span>).<span class="fn">start</span>()</span>
+    <span class="kw">while True</span>:
+        cmd = <span class="fn">input</span>(<span class="str">"> "</span>)       <span class="cm"># Thread ראשי קורא פקודות</span>
+        <span class="kw">if</span> cmd.<span class="fn">startswith</span>(<span class="str">"/login"</span>):
+            _,u,p = cmd.<span class="fn">split</span>(maxsplit=<span class="num">2</span>)
+            sock.<span class="fn">sendall</span>((<span class="var">json</span>.<span class="fn">dumps</span>({<span class="str">"action"</span>:<span class="str">"login"</span>,<span class="str">"username"</span>:u,<span class="str">"password"</span>:p})+<span class="str">"\n"</span>).<span class="fn">encode</span>())</pre>
+  </div>
+  <div class="annotation">
+    <strong>עקרון מפתח:</strong> הלקוח זקוק ל-2 threads — אחד <strong>שולח</strong> (input מהמשתמש) ואחד <strong>מקבל</strong> (הודעות מהשרת). בלי זה, לא ניתן לעשות שניהם בו-זמנית.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 8: JSON PROTOCOL ==================== -->
+<div class="slide" id="slide-7">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 08 · protocol</div>
+  <h2 class="slide-title">פרוטוקול <span class="grad">JSON</span> — שפת התקשורת</h2>
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <h4>הרשמה</h4>
+        <p><code dir="ltr">{"action": "register", "username": "zvi", "password": "1234"}\n</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <h4>התחברות</h4>
+        <p><code dir="ltr">{"action": "login", "username": "zvi", "password": "1234"}\n</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <h4>שליחת הודעה</h4>
+        <p><code dir="ltr">{"action": "message", "message": "שלום לכולם!"}\n</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <h4>תגובת שרת</h4>
+        <p><code dir="ltr">{"status": "ok", "message": "Logged in"}\n</code> — או <code dir="ltr">{"action": "message", "username": "zvi", "message": "..."}\n</code></p>
+      </div>
+    </div>
+  </div>
+  <div class="annotation">
+    <strong>למה מסיימים ב-<code dir="ltr">\n</code>?</strong> TCP הוא זרם ביטים ללא גבולות. ה-<code>\n</code> הוא "הסכם" בין שרת ללקוח — סיום הודעה. בלעדיו, אי אפשר לדעת איפה הודעה אחת נגמרת ואחרת מתחילה.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 9: DATABASE ==================== -->
+<div class="slide" id="slide-8">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 09 · database</div>
+  <h2 class="slide-title"><span class="grad2">SQLAlchemy</span> — שמירת מידע</h2>
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <span class="code-filename">socket_chat_server.py · models</span>
+    </div>
+    <pre><span class="cm"># ---- הגדרת מסד הנתונים ----</span>
+engine = <span class="fn">create_engine</span>(<span class="str">'sqlite:///chat.db'</span>, echo=<span class="kw">False</span>)
+<span class="cls">Session</span> = <span class="fn">sessionmaker</span>(bind=engine)
+
+<span class="kw">class</span> <span class="cls">User</span>(<span class="cls">Base</span>):
+    __tablename__ = <span class="str">'users'</span>
+    id       = <span class="cls">Column</span>(<span class="cls">Integer</span>, primary_key=<span class="kw">True</span>)
+<span class="hl">    username = <span class="cls">Column</span>(<span class="cls">String</span>, unique=<span class="kw">True</span>, nullable=<span class="kw">False</span>)</span>
+<span class="hl">    pw_hash  = <span class="cls">Column</span>(<span class="cls">String</span>, nullable=<span class="kw">False</span>)  <span class="cm"># ⚠️ בפרוד: hash!</span></span>
+
+<span class="kw">class</span> <span class="cls">ChatMessage</span>(<span class="cls">Base</span>):
+    __tablename__ = <span class="str">'messages'</span>
+    id       = <span class="cls">Column</span>(<span class="cls">Integer</span>, primary_key=<span class="kw">True</span>)
+    username = <span class="cls">Column</span>(<span class="cls">String</span>, nullable=<span class="kw">False</span>)
+    message  = <span class="cls">Column</span>(<span class="cls">String</span>, nullable=<span class="kw">False</span>)
+<span class="hl">    ts       = <span class="cls">Column</span>(<span class="cls">DateTime</span>, default=<span class="var">datetime</span>.utcnow)  <span class="cm"># timestamp</span></span></pre>
+  </div>
+  <div class="annotation">
+    <strong>שים לב:</strong> בקוד הנוכחי הסיסמה נשמרת כ-plaintext (<code>pw_hash=p</code>). בפרויקט אמיתי משתמשים ב-<strong>bcrypt</strong> או <strong>hashlib</strong> כדי להצפין סיסמאות לפני שמירה במסד.
+  </div>
+</div>
+
+<!-- ==================== SLIDE 10: INTERACTIVE DEMO ==================== -->
+<div class="slide" id="slide-9">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 10 · demo אינטראקטיבי</div>
+  <h2 class="slide-title">סימולציה — <span class="grad">שלב אחר שלב</span></h2>
+  <div class="demo-wrap">
+    <div style="flex:1">
+      <div class="demo-box">
+        <div class="demo-box-header">
+          <div class="status-dot"></div>
+          SERVER — 0.0.0.0:6000
+        </div>
+        <div class="demo-log" id="server-log"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div class="demo-box" style="flex:1">
+          <div class="demo-box-header" style="color:var(--accent)">👤 לקוח 1 (zvi)</div>
+          <div class="demo-log" id="client1-log"></div>
+        </div>
+        <div class="demo-box" style="flex:1">
+          <div class="demo-box-header" style="color:var(--accent3)">👤 לקוח 2 (dana)</div>
+          <div class="demo-log" id="client2-log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-controls">
+    <button class="demo-btn" onclick="demoStep(1)">1. השרת מאזין</button>
+    <button class="demo-btn" onclick="demoStep(2)">2. zvi מתחבר</button>
+    <button class="demo-btn" onclick="demoStep(3)">3. zvi מתחבר+login</button>
+    <button class="demo-btn" onclick="demoStep(4)">4. dana מתחברת</button>
+    <button class="demo-btn" onclick="demoStep(5)">5. zvi שולח הודעה</button>
+    <button class="demo-btn" onclick="demoStep(6)">6. zvi מתנתק</button>
+    <button class="demo-btn" onclick="demoReset()" style="border-color:var(--accent2);color:var(--accent2)">↺ איפוס</button>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 11: FLOW SUMMARY ==================== -->
+<div class="slide" id="slide-10">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 11 · סיכום</div>
+  <h2 class="slide-title">זרימת <span class="grad">הקוד המלא</span></h2>
+  <div class="step-list" style="max-width:800px">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <h4><span class="label label-server">SERVER</span> bind + listen</h4>
+        <p>השרת כובש פורט ומאזין. <code>SO_REUSEADDR</code> מאפשר להפעיל מחדש מהר.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <h4><span class="label label-server">SERVER</span> accept() → Thread חדש</h4>
+        <p>כל חיבור מקבל thread נפרד שמפעיל <code>handle_client(conn)</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <h4><span class="label label-thread">THREAD</span> recv loop + JSON parse</h4>
+        <p>קורא בייטים, מצבר ב-buffer, חותך לפי <code>\n</code>, מעבד כל JSON.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <h4><span class="label label-lock">LOCK</span> clients + broadcast</h4>
+        <p>גישה ל-<code>clients</code> תמיד בתוך <code>with clients_lock</code>. broadcast מעביר לכולם.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">
+        <h4><span class="label label-client">CLIENT</span> recv_loop Thread</h4>
+        <p>הלקוח מפעיל thread לקבלת הודעות, בעוד ה-main loop מקבל קלט מהמשתמש.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 12: IMPROVEMENTS ==================== -->
+<div class="slide" id="slide-11">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 12 · שיפורים</div>
+  <h2 class="slide-title">מה ניתן <span class="grad2">לשפר?</span></h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🔐</div>
+      <h3>הצפנת סיסמאות</h3>
+      <p>להשתמש ב-<code>bcrypt</code> או <code>hashlib</code> במקום לשמור plaintext. <strong>קריטי</strong> בכל מערכת אמיתית.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📜</div>
+      <h3>היסטוריית הודעות</h3>
+      <p>בעת login — לשלוח ללקוח את ה-N הודעות האחרונות מה-DB כדי להציג הקשר.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏠</div>
+      <h3>חדרים / ערוצים</h3>
+      <p>להוסיף <code>room</code> ל-messages ולאפשר לשלוח הודעות רק לחדר מסוים.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>asyncio במקום Threads</h3>
+      <p>Python <code>asyncio</code> מאפשר עשרות אלפי חיבורים ללא thread לכל לקוח — קל יותר לסקיילינג.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🛡️</div>
+      <h3>TLS / SSL</h3>
+      <p>לעטוף את ה-socket ב-<code>ssl.wrap_socket()</code> כדי להצפין את התקשורת.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🧪</div>
+      <h3>unit tests</h3>
+      <p>לכתוב בדיקות לפונקציות register, login, broadcast — אפשר לבדוק ב-thread נפרד.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 13: CHEATSHEET ==================== -->
+<div class="slide" id="slide-12">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-num">slide 13 · cheat sheet</div>
+  <h2 class="slide-title"><span class="grad3">Cheat Sheet</span> — פקודות מפתח</h2>
+  <div class="two-col wide">
+    <div class="code-block" style="max-width:100%">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <span class="code-filename">שרת — socket setup</span>
+      </div>
+      <pre><span class="cm"># יצירה</span>
+srv = <span class="var">socket</span>.<span class="fn">socket</span>(AF_INET, SOCK_STREAM)
+srv.<span class="fn">setsockopt</span>(SOL_SOCKET, SO_REUSEADDR, <span class="num">1</span>)
+srv.<span class="fn">bind</span>((<span class="str">'0.0.0.0'</span>, <span class="num">6000</span>))
+srv.<span class="fn">listen</span>(<span class="num">5</span>)
+
+<span class="cm"># קבלת לקוח</span>
+conn, addr = srv.<span class="fn">accept</span>()
+
+<span class="cm"># thread חדש לכל לקוח</span>
+<span class="var">threading</span>.<span class="cls">Thread</span>(
+    target=<span class="fn">handle_client</span>,
+    args=(conn,), daemon=<span class="kw">True</span>
+).<span class="fn">start</span>()</pre>
+    </div>
+    <div class="code-block" style="max-width:100%">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <span class="code-filename">לקוח — חיבור + שליחה</span>
+      </div>
+      <pre><span class="cm"># חיבור לשרת</span>
+sock = <span class="var">socket</span>.<span class="fn">socket</span>()
+sock.<span class="fn">connect</span>((<span class="str">'127.0.0.1'</span>, <span class="num">6000</span>))
+
+<span class="cm"># thread להאזנה</span>
+<span class="var">threading</span>.<span class="cls">Thread</span>(
+    target=<span class="fn">recv_loop</span>,
+    args=(sock,), daemon=<span class="kw">True</span>
+).<span class="fn">start</span>()
+
+<span class="cm"># שליחת הודעה</span>
+msg = <span class="var">json</span>.<span class="fn">dumps</span>({<span class="str">"action"</span>:<span class="str">"login"</span>,...})
+sock.<span class="fn">sendall</span>((msg + <span class="str">"\n"</span>).<span class="fn">encode</span>())</pre>
+    </div>
+    <div class="code-block" style="max-width:100%">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <span class="code-filename">שרת — Lock + broadcast</span>
+      </div>
+      <pre>lock = <span class="var">threading</span>.<span class="cls">Lock</span>()
+shared = {}
+
+<span class="cm"># גישה בטוחה</span>
+<span class="kw">with</span> lock:
+    shared[conn] = username
+
+<span class="cm"># broadcast לכולם</span>
+<span class="kw">with</span> lock:
+    <span class="kw">for</span> s <span class="kw">in</span> <span class="fn">list</span>(shared):
+        s.<span class="fn">sendall</span>(payload)</pre>
+    </div>
+    <div class="code-block" style="max-width:100%">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <span class="code-filename">recv loop — buffer + \n</span>
+      </div>
+      <pre>buf = <span class="str">''</span>
+<span class="kw">while True</span>:
+    chunk = sock.<span class="fn">recv</span>(<span class="num">4096</span>).<span class="fn">decode</span>()
+    <span class="kw">if not</span> chunk: <span class="kw">break</span>
+    buf += chunk
+    <span class="kw">while</span> <span class="str">'\n'</span> <span class="kw">in</span> buf:
+        line, buf = buf.<span class="fn">split</span>(<span class="str">'\n'</span>, <span class="num">1</span>)
+        data = <span class="var">json</span>.<span class="fn">loads</span>(line)
+        <span class="cm"># process data...</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav">
+  <button id="btn-prev" onclick="goSlide(-1)" disabled>→ הקודם</button>
+  <div class="dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 13</span>
+  <button id="btn-next" onclick="goSlide(1)">הבא ←</button>
+</div>
+
+<script>
+  const TOTAL = 13;
+  let current = 0;
+
+  function initDots() {
+    const c = document.getElementById('dots');
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => jumpSlide(i);
+      c.appendChild(d);
+    }
+  }
+
+  function updateUI() {
+    document.getElementById('counter').textContent = `${current + 1} / ${TOTAL}`;
+    document.getElementById('btn-prev').disabled = current === 0;
+    document.getElementById('btn-next').disabled = current === TOTAL - 1;
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  }
+
+  function jumpSlide(to) {
+    if (to === current) return;
+    const dir = to > current ? 1 : -1;
+    document.getElementById(`slide-${current}`).classList.add('exit');
+    document.getElementById(`slide-${current}`).classList.remove('active');
+    setTimeout(() => document.getElementById(`slide-${current - dir + (to - current)}`).classList.remove('exit'), 500);
+    current = to;
+    const next = document.getElementById(`slide-${current}`);
+    next.style.transform = dir > 0 ? 'translateX(60px)' : 'translateX(-60px)';
+    next.style.opacity = '0';
+    next.classList.add('active');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        next.style.transform = '';
+        next.style.opacity = '';
+      });
+    });
+    updateUI();
+  }
+
+  function goSlide(dir) {
+    const prev = current;
+    const next = current + dir;
+    if (next < 0 || next >= TOTAL) return;
+
+    const prevEl = document.getElementById(`slide-${prev}`);
+    const nextEl = document.getElementById(`slide-${next}`);
+
+    prevEl.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    prevEl.style.opacity = '0';
+    prevEl.style.transform = dir > 0 ? 'translateX(-60px)' : 'translateX(60px)';
+    prevEl.classList.remove('active');
+
+    nextEl.style.transition = 'none';
+    nextEl.style.opacity = '0';
+    nextEl.style.transform = dir > 0 ? 'translateX(60px)' : 'translateX(-60px)';
+    nextEl.classList.add('active');
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      nextEl.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      nextEl.style.opacity = '1';
+      nextEl.style.transform = 'translateX(0)';
+    }));
+
+    setTimeout(() => {
+      prevEl.style.transition = '';
+      prevEl.style.transform = '';
+      prevEl.style.opacity = '';
+    }, 450);
+
+    current = next;
+    updateUI();
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') goSlide(1);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') goSlide(-1);
+  });
+
+  // ===== DEMO =====
+  let demoState = 0;
+
+  function log(id, cls, text) {
+    const el = document.getElementById(id);
+    const line = document.createElement('div');
+    line.className = cls;
+    line.textContent = text;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function demoReset() {
+    ['server-log','client1-log','client2-log'].forEach(id => document.getElementById(id).innerHTML = '');
+    demoState = 0;
+  }
+
+  function demoStep(step) {
+    if (step <= demoState) return;
+    demoState = step;
+    if (step === 1) {
+      log('server-log', 'log-server', '> server.py started');
+      log('server-log', 'log-ok', 'srv.bind(("0.0.0.0", 6000))');
+      log('server-log', 'log-ok', 'srv.listen(5)');
+      log('server-log', 'log-info', '⏳ waiting for accept()...');
+    }
+    if (step === 2) {
+      log('server-log', 'log-ok', '✅ accept() → conn₁ from 127.0.0.1');
+      log('server-log', 'log-server', '🧵 Thread-1 started → handle_client(conn₁)');
+      log('client1-log', 'log-client', '> sock.connect(("127.0.0.1", 6000))');
+      log('client1-log', 'log-ok', '✅ connected!');
+      log('client1-log', 'log-info', '🧵 recv_loop thread started');
+    }
+    if (step === 3) {
+      log('client1-log', 'log-client', '> /login zvi pass123');
+      log('client1-log', 'log-info', '→ send: {"action":"login","username":"zvi","password":"pass123"}\\n');
+      log('server-log', 'log-server', '[Thread-1] recv: login · zvi');
+      log('server-log', 'log-ok', '[Thread-1] DB query: zvi found ✓');
+      log('server-log', 'log-ok', '[Thread-1] clients[conn₁] = "zvi"');
+      log('server-log', 'log-server', '[Thread-1] broadcast: "*** zvi joined ***"');
+      log('client1-log', 'log-ok', '← {"status":"ok","message":"Logged in"}');
+      log('client1-log', 'log-info', '-- *** zvi joined ***');
+    }
+    if (step === 4) {
+      log('server-log', 'log-ok', '✅ accept() → conn₂ from 127.0.0.1');
+      log('server-log', 'log-server', '🧵 Thread-2 started → handle_client(conn₂)');
+      log('server-log', 'log-server', '[Thread-2] recv: login · dana');
+      log('server-log', 'log-ok', '[Thread-2] clients[conn₂] = "dana"');
+      log('server-log', 'log-server', '[Thread-2] broadcast: "*** dana joined ***"');
+      log('client2-log', 'log-client', '> /login dana pass456');
+      log('client2-log', 'log-ok', '← {"status":"ok","message":"Logged in"}');
+      log('client1-log', 'log-info', '-- *** dana joined ***');
+      log('client2-log', 'log-info', '-- *** dana joined ***');
+    }
+    if (step === 5) {
+      log('client1-log', 'log-client', '> שלום dana!');
+      log('client1-log', 'log-info', '→ send: {"action":"message","message":"שלום dana!"}\\n');
+      log('server-log', 'log-server', '[Thread-1] recv: message from zvi');
+      log('server-log', 'log-ok', '[Thread-1] DB save: messages ✓');
+      log('server-log', 'log-server', '[Thread-1] broadcast to conn₁, conn₂');
+      log('client1-log', 'log-ok', 'zvi> שלום dana!');
+      log('client2-log', 'log-ok', 'zvi> שלום dana!');
+    }
+    if (step === 6) {
+      log('client1-log', 'log-err', '> [disconnect]');
+      log('server-log', 'log-err', '[Thread-1] conn₁ closed');
+      log('server-log', 'log-server', '[Thread-1] clients.pop(conn₁) → "zvi"');
+      log('server-log', 'log-server', '[Thread-1] broadcast: "*** zvi disconnected ***"');
+      log('client2-log', 'log-err', '-- *** zvi disconnected ***');
+      log('server-log', 'log-ok', '[Thread-1] db.close(), conn.close() ✓');
+    }
+  }
+
+  initDots();
+  updateUI();
+</script>
+</body>
+</html>

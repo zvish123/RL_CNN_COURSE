@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>קריאה לפונקציות ב-Python</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #f78166;
+    --accent3: #56d364;
+    --accent4: #e3b341;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --purple: #bc8cff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* SLIDE SYSTEM */
+  .slideshow {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 48px 64px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* NAV */
+  .nav {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 12px 24px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .nav button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-family: 'Heebo', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .nav button:hover { filter: brightness(1.2); transform: scale(1.05); }
+  .nav button:disabled { opacity: 0.3; cursor: default; transform: none; }
+
+  .slide-counter {
+    font-size: 16px;
+    color: var(--text-muted);
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .progress-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .dot.active {
+    background: var(--accent);
+    width: 20px;
+    border-radius: 3px;
+  }
+
+  /* SLIDE HEADERS */
+  .slide-tag {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: clamp(24px, 3vw, 40px);
+    font-weight: 800;
+    margin-bottom: 24px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: var(--text-muted);
+    font-weight: 300;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+    font-family: 'Fira Code', monospace;
+    direction: ltr;
+    text-align: left;
+  }
+
+  .code-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    font-size: 16px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .code-header .dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .code-header .dot-red { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+  .code-header .dot-yellow { width: 10px; height: 10px; border-radius: 50%; background: #febc2e; }
+  .code-header .dot-green { width: 10px; height: 10px; border-radius: 50%; background: #28c840; }
+
+  .code-body {
+    padding: 20px 20px;
+    font-size: 16px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .str { color: #a5d6ff; }
+  .param { color: #ffa657; }
+  .comment { color: #8b949e; font-style: italic; }
+  .num { color: #56d364; }
+  .var { color: #e6edf3; }
+
+  /* CARDS */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    border-radius: 0 16px 0 60px;
+    opacity: 0.15;
+  }
+
+  .card.blue::before { background: var(--accent); }
+  .card.red::before { background: var(--accent2); }
+  .card.green::before { background: var(--accent3); }
+  .card.yellow::before { background: var(--accent4); }
+  .card.purple::before { background: var(--purple); }
+
+  .card-icon { font-size: 28px; margin-bottom: 12px; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .card-text { font-size: 16px; color: var(--text-muted); line-height: 1.6; }
+
+  /* PROS CONS */
+  .pros-cons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .pros { border-right: 3px solid var(--accent3); padding-right: 12px; }
+  .cons { border-right: 3px solid var(--accent2); padding-right: 12px; }
+
+  .pros-cons h4 { font-size: 16px; font-weight: 700; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+  .pros h4 { color: var(--accent3); }
+  .cons h4 { color: var(--accent2); }
+
+  .pros-cons li {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    list-style: none;
+    padding-right: 16px;
+    position: relative;
+  }
+
+  .pros li::before { content: '✓'; position: absolute; right: 0; color: var(--accent3); font-weight: 700; }
+  .cons li::before { content: '✗'; position: absolute; right: 0; color: var(--accent2); font-weight: 700; }
+
+  /* HIGHLIGHT BOX */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(88,166,255,0.1), rgba(88,166,255,0.05));
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  .highlight-box.green {
+    background: linear-gradient(135deg, rgba(86,211,100,0.1), rgba(86,211,100,0.05));
+    border-color: rgba(86,211,100,0.3);
+  }
+
+  .highlight-box.yellow {
+    background: linear-gradient(135deg, rgba(227,179,65,0.1), rgba(227,179,65,0.05));
+    border-color: rgba(227,179,65,0.3);
+  }
+
+  /* TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 16px;
+  }
+
+  .compare-table th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: right;
+    font-weight: 700;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .compare-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  .compare-table tr:hover td { background: var(--surface2); color: var(--text); }
+
+  .badge {
+    display: inline-flex;
+    gap: 2px;
+    font-size: 16px;
+  }
+
+  /* EXERCISE */
+  .exercise-area {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 16px;
+  }
+
+  .exercise-area textarea {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 16px;
+    line-height: 1.8;
+    resize: vertical;
+    min-height: 160px;
+    direction: ltr;
+    text-align: left;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .exercise-area textarea:focus { border-color: var(--accent); }
+
+  .run-btn {
+    background: linear-gradient(135deg, var(--accent3), #3fb950);
+    color: var(--bg);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-family: 'Heebo', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.2s;
+  }
+
+  .run-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  .hint-btn {
+    background: transparent;
+    color: var(--accent4);
+    border: 1px solid var(--accent4);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'Heebo', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 12px;
+    margin-right: 8px;
+    transition: all 0.2s;
+  }
+
+  .hint-btn:hover { background: rgba(227,179,65,0.1); }
+
+  .output-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+    font-family: 'Fira Code', monospace;
+    font-size: 16px;
+    min-height: 60px;
+    direction: ltr;
+    text-align: left;
+    display: none;
+  }
+
+  .output-box.success { border-color: var(--accent3); color: var(--accent3); }
+  .output-box.error { border-color: var(--accent2); color: var(--accent2); }
+  .output-box.hint-display { border-color: var(--accent4); color: var(--accent4); display: block; }
+
+  /* TITLE SLIDE SPECIAL */
+  #slide-0 {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: radial-gradient(ellipse at 20% 50%, rgba(88,166,255,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(188,140,255,0.06) 0%, transparent 50%);
+  }
+
+  #slide-0 h1 {
+    font-size: clamp(40px, 6vw, 80px);
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 50%, var(--purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 24px;
+  }
+
+  .title-badge {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-size: 16px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+  }
+
+  .title-meta {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    margin-top: 40px;
+  }
+
+  .meta-item {
+    text-align: center;
+    padding: 16px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .meta-num {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--accent);
+    display: block;
+  }
+
+  .meta-label {
+    font-size: 16px;
+    color: var(--text-muted);
+  }
+
+  /* SCROLLABLE CONTENT */
+  .scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 80px;
+  }
+
+  .scroll-content::-webkit-scrollbar { width: 4px; }
+  .scroll-content::-webkit-scrollbar-track { background: transparent; }
+  .scroll-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* QUESTION REVEAL */
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 8px 0;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .question-card:hover { border-color: var(--accent); }
+
+  .question-text { font-weight: 600; margin-bottom: 8px; font-size: 16px; }
+  .answer-text {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .question-card.open .answer-text { max-height: 200px; }
+  .question-card .arrow { position: absolute; left: 20px; top: 20px; color: var(--accent); transition: transform 0.3s; }
+  .question-card.open .arrow { transform: rotate(90deg); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 7px;
+    font-family: 'Heebo', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    flex: 1;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="slideshow" id="slideshow">
+
+  <!-- SLIDE 0: TITLE -->
+  <div class="slide active" id="slide-0">
+    <div>
+      <div class="title-badge">🐍 Python — פונקציות מתקדמות</div>
+      <h1>צורות קריאה<br>לפונקציות</h1>
+      <p class="subtitle">ארבע גישות, יתרונות שונים — מתי להשתמש בכל אחת?</p>
+      <div class="title-meta">
+        <div class="meta-item">
+          <span class="meta-num">4</span>
+          <span class="meta-label">שיטות</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-num">3</span>
+          <span class="meta-label">דוגמאות</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-num">1</span>
+          <span class="meta-label">תרגיל</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 1: OVERVIEW -->
+  <div class="slide" id="slide-1">
+    <div class="slide-tag">מבוא</div>
+    <h2>מה הבעיה שאנחנו פותרים?</h2>
+    <div class="scroll-content">
+      <p class="subtitle" style="margin-bottom:20px">יש לנו פונקציה שמקבלת מידע — אבל <strong style="color:var(--accent)">איך</strong> להעביר את המידע הזה?</p>
+
+      <div class="highlight-box">
+        <p style="font-size: 16px; margin-bottom:12px">נניח שיש לנו פונקציה לפענוח קריפטוגרפיה. היא צריכה לעבד טקסט מוצפן וטקסט שכבר פוצח חלקית.</p>
+        <p style="font-size: 16px; color:var(--text-muted)">👇 יש מספר דרכים לקרוא לה — לכל אחת יתרונות שונים</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card blue">
+          <div class="card-icon">1️⃣</div>
+          <div class="card-title">פרמטר יחיד</div>
+          <div class="card-text"><code style="color:var(--purple)">def f(cracked_text)</code><br>הפשוט ביותר</div>
+        </div>
+        <div class="card green">
+          <div class="card-icon">2️⃣</div>
+          <div class="card-title">פרמטרים מפורשים</div>
+          <div class="card-text"><code style="color:var(--purple)">def f(cipher, cracked)</code><br>הנפוץ ביותר ✅</div>
+        </div>
+        <div class="card yellow">
+          <div class="card-icon">3️⃣</div>
+          <div class="card-title">מילון</div>
+          <div class="card-text"><code style="color:var(--purple)">def f(data: dict)</code><br>הגמיש ביותר</div>
+        </div>
+        <div class="card purple">
+          <div class="card-icon">4️⃣</div>
+          <div class="card-title">*args</div>
+          <div class="card-text"><code style="color:var(--purple)">def f(*params)</code><br>הכי גמיש, הכי מורכב</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: METHOD 1 -->
+  <div class="slide" id="slide-2">
+    <div class="slide-tag">שיטה 1 מתוך 4</div>
+    <h2>פרמטר יחיד</h2>
+    <div class="scroll-content">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div></div>
+          <span>cipher_decoder.py</span>
+        </div>
+        <div class="code-body">
+<span class="comment"># הגדרת הפונקציה</span><br>
+<span class="kw">def</span> <span class="fn">get_words_with_unknown</span>(<span class="param">cracked_text</span>):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># מקבלת רק את הטקסט המפוצח חלקית</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> [w <span class="kw">for</span> w <span class="kw">in</span> cracked_text.split() <span class="kw">if</span> <span class="str">'_'</span> <span class="kw">in</span> w]<br><br>
+<span class="comment"># קריאה לפונקציה</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>(cracked_text)
+        </div>
+      </div>
+
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>✅ יתרונות</h4>
+          <ul>
+            <li>פשוט ומהיר לכתוב</li>
+            <li>קל להבין</li>
+            <li>קריאות גבוהה</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>❌ חסרונות</h4>
+          <ul>
+            <li>מוגבל לפרמטר אחד</li>
+            <li>קשה להרחיב בהמשך</li>
+            <li>אין גישה ל-cipher_text</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight-box" style="margin-top:16px">
+        <p style="font-size: 16px;"><strong>מתי נשתמש?</strong> כשהפונקציה באמת צריכה מידע אחד בלבד, וסביר שלא יצטרכו לשנות את זה.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: METHOD 2 -->
+  <div class="slide" id="slide-3">
+    <div class="slide-tag">שיטה 2 מתוך 4</div>
+    <h2>פרמטרים מפורשים ⭐</h2>
+    <div class="scroll-content">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'t2a')">פוזיציוני</button>
+        <button class="tab" onclick="switchTab(this,'t2b')">Keyword</button>
+      </div>
+
+      <div class="tab-content active" id="t2a">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div></div>
+            <span>positional arguments</span>
+          </div>
+          <div class="code-body">
+<span class="kw">def</span> <span class="fn">get_words_with_unknown</span>(<span class="param">cipher_text</span>, <span class="param">cracked_text</span>):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Python מוודא שמעבירים בדיוק 2 פרמטרים!</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> [(c,r) <span class="kw">for</span> c,r <span class="kw">in</span> <span class="fn">zip</span>(cipher_text.split(), cracked_text.split())]<br><br>
+<span class="comment"># הסדר חשוב! cipher קודם, אחר כך cracked</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>(cipher_text, cracked_text)
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="t2b">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div></div>
+            <span>keyword arguments</span>
+          </div>
+          <div class="code-body">
+<span class="kw">def</span> <span class="fn">get_words_with_unknown</span>(<span class="param">cipher_text</span>, <span class="param">cracked_text</span>):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> [(c,r) <span class="kw">for</span> c,r <span class="kw">in</span> <span class="fn">zip</span>(cipher_text.split(), cracked_text.split())]<br><br>
+<span class="comment"># עם keyword arguments — הסדר לא משנה!</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="param">cracked_text</span>=cracked_text,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="param">cipher_text</span>=cipher_text<br>
+)
+          </div>
+        </div>
+      </div>
+
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>✅ יתרונות</h4>
+          <ul>
+            <li>Python בודק מספר פרמטרים</li>
+            <li>ברור מה כל פרמטר עושה</li>
+            <li>IDE מציע השלמה אוטומטית</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>❌ חסרונות</h4>
+          <ul>
+            <li>בפוזיציוני — סדר חשוב מאוד</li>
+            <li>פחות גמיש להוספת פרמטרים</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight-box green">
+        <p style="font-size: 16px;"><strong style="color:var(--accent3)">⭐ המלצה:</strong> זוהי הגישה המומלצת ברוב המקרים! ברורה, בטוחה, ומקובלת.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: METHOD 3 -->
+  <div class="slide" id="slide-4">
+    <div class="slide-tag">שיטה 3 מתוך 4</div>
+    <h2>מילון כפרמטר</h2>
+    <div class="scroll-content">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div></div>
+          <span>dictionary parameter</span>
+        </div>
+        <div class="code-body">
+<span class="kw">def</span> <span class="fn">get_words_with_unknown</span>(<span class="param">data</span>: <span class="fn">dict</span>):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;cipher_text&nbsp;&nbsp;= data[<span class="str">'cipher'</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;cracked_text = data[<span class="str">'cracked'</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># ניתן גם להוסיף שדות נוספים בקלות!</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> [(c,r) <span class="kw">for</span> c,r <span class="kw">in</span> <span class="fn">zip</span>(cipher_text.split(), cracked_text.split())]<br><br>
+<span class="comment"># קריאה</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">'cipher'</span>: cipher_text,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">'cracked'</span>: cracked_text<br>
+})
+        </div>
+      </div>
+
+      <div class="highlight-box yellow">
+        <p style="font-size: 16px; margin-bottom:8px"><strong style="color:var(--accent4)">✨ יתרון מרכזי:</strong> ניתן להוסיף שדות בלי לשנות את ה-signature!</p>
+        <div class="code-block" style="margin:0; background:rgba(0,0,0,0.3)">
+          <div class="code-body" style="font-size: 16px; padding:12px 16px">
+<span class="comment"># עתיד — מוסיפים שדה בלי לשנות כלום בפונקציה</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">'cipher'</span>: cipher_text,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">'cracked'</span>: cracked_text,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">'key'</span>: encryption_key&nbsp;&nbsp;<span class="comment"># ← חדש!</span><br>
+})
+          </div>
+        </div>
+      </div>
+
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>✅ יתרונות</h4>
+          <ul>
+            <li>גמיש — הוספת שדות קלה</li>
+            <li>מתאים להרבה פרמטרים</li>
+            <li>מועיל ב-APIs</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>❌ חסרונות</h4>
+          <ul>
+            <li>שגיאות במפתחות — רק ב-runtime</li>
+            <li>IDE לא מציע השלמה</li>
+            <li>Verbose יותר לקרוא</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: METHOD 4 -->
+  <div class="slide" id="slide-5">
+    <div class="slide-tag">שיטה 4 מתוך 4</div>
+    <h2>*args — פרמטרים משתנים</h2>
+    <div class="scroll-content">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div></div>
+          <span>*args magic</span>
+        </div>
+        <div class="code-body">
+<span class="kw">def</span> <span class="fn">get_words_with_unknown</span>(*<span class="param">params</span>):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># params הוא tuple — Python ארוז הכל שם</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> <span class="fn">len</span>(params) == <span class="num">1</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cracked_text = params[<span class="num">0</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cipher_text = <span class="kw">None</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">elif</span> <span class="fn">len</span>(params) == <span class="num">2</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cipher_text, cracked_text = params[<span class="num">0</span>], params[<span class="num">1</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">else</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"יותר מדי פרמטרים!"</span>)<br><br>
+<span class="comment"># שתי הקריאות האלה עובדות!</span><br>
+words_info = <span class="fn">get_words_with_unknown</span>(cracked_text)<br>
+words_info = <span class="fn">get_words_with_unknown</span>(cipher_text, cracked_text)
+        </div>
+      </div>
+
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>✅ יתרונות</h4>
+          <ul>
+            <li>גמישות מקסימלית</li>
+            <li>פונקציה אחת למקרים שונים</li>
+            <li>שימושי ב-overloading</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>❌ חסרונות</h4>
+          <ul>
+            <li>קשה לקריאה ותחזוקה</li>
+            <li>אין הגנה אוטומטית על מספר הפרמטרים</li>
+            <li>קשה לתעד ולהסביר</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: COMPARISON -->
+  <div class="slide" id="slide-6">
+    <div class="slide-tag">סיכום</div>
+    <h2>השוואה מלאה</h2>
+    <div class="scroll-content">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>שיטה</th>
+            <th>קריאות</th>
+            <th>גמישות</th>
+            <th>בטיחות</th>
+            <th>מתאים ל...</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--accent)">פרמטר יחיד</strong></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td><span class="badge">⭐</span></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td>פונקציות פשוטות</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--accent3)">פרמטרים מפורשים ⭐</strong></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td><span class="badge">⭐⭐</span></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td>רוב המקרים</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--accent4)">מילון</strong></td>
+            <td><span class="badge">⭐⭐</span></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td><span class="badge">⭐</span></td>
+            <td>הרבה אופציות, APIs</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--purple)">*args</strong></td>
+            <td><span class="badge">⭐</span></td>
+            <td><span class="badge">⭐⭐⭐</span></td>
+            <td><span class="badge">⭐</span></td>
+            <td>overloading, כלים כלליים</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="highlight-box green" style="margin-top:20px">
+        <p style="font-size: 16px; font-weight:600; color:var(--accent3); margin-bottom:8px">💡 הכלל הפשוט:</p>
+        <p style="font-size: 16px; line-height:1.7">התחל תמיד עם <strong>פרמטרים מפורשים</strong>. עבור לשיטה אחרת רק כשיש סיבה ספציפית — כשיש הרבה פרמטרים אופציונליים (מילון) או כשאתה בונה כלי כללי (*args).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Q&A -->
+  <div class="slide" id="slide-7">
+    <div class="slide-tag">הבנה</div>
+    <h2>שאלות להבנה</h2>
+    <div class="scroll-content">
+      <p style="color:var(--text-muted); margin-bottom:16px; font-size: 16px;">לחץ על כל שאלה כדי לגלות את התשובה 👇</p>
+
+      <div class="question-card" onclick="toggleQuestion(this)">
+        <div class="arrow">▶</div>
+        <div class="question-text">מה קורה אם קוראים לפונקציה עם פרמטרים מפורשים אבל מעבירים 3 פרמטרים במקום 2?</div>
+        <div class="answer-text">Python יזרוק שגיאה: <code>TypeError: takes 2 positional arguments but 3 were given</code>. זה יתרון! Python מגן עלינו מטעויות.</div>
+      </div>
+
+      <div class="question-card" onclick="toggleQuestion(this)">
+        <div class="arrow">▶</div>
+        <div class="question-text">מה ההבדל בין <code>f(a, b)</code> לבין <code>f(b=b, a=a)</code>?</div>
+        <div class="answer-text">בקריאה הראשונה — פוזיציונלי, הסדר קובע. בקריאה השנייה — keyword arguments, ניתן לשנות סדר בחופשיות. שתיהן עובדות עם אותה הגדרת פונקציה!</div>
+      </div>
+
+      <div class="question-card" onclick="toggleQuestion(this)">
+        <div class="arrow">▶</div>
+        <div class="question-text">למה *args פחות מומלץ אף שהוא הכי גמיש?</div>
+        <div class="answer-text">כי גמישות יתר יוצרת בלבול. כאשר קורא הקוד רואה <code>f(*params)</code> — הוא לא יודע מה מצפים לקבל. גם שגיאות יופיעו רק בריצה, לא בכתיבה. מי שקורא לפונקציה צריך להסתכל בתוך הקוד שלה כדי להבין מה להעביר.</div>
+      </div>
+
+      <div class="question-card" onclick="toggleQuestion(this)">
+        <div class="arrow">▶</div>
+        <div class="question-text">מתי מילון עדיף על פרמטרים מפורשים?</div>
+        <div class="answer-text">כשיש הרבה פרמטרים (5+), כשחלקם אופציונליים, או כאשר בונים API שצד שלישי יקרא לו. לדוגמה: פונקציה שמחבר ל-DB עם host, port, user, password, database, timeout — מילון יהיה הרבה יותר נוח.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: EXERCISE -->
+  <div class="slide" id="slide-8">
+    <div class="slide-tag">תרגיל</div>
+    <h2>🧪 זמן לתרגל!</h2>
+    <div class="scroll-content">
+      <div class="highlight-box" style="margin-bottom:16px">
+        <p style="font-size: 16px; font-weight:600; margin-bottom:8px">המשימה:</p>
+        <p style="font-size: 16px; line-height:1.7">כתוב פונקציה <code style="color:var(--accent)">analyze_cipher</code> שמקבלת <code>cipher_text</code> ו-<code>cracked_text</code>, ומחזירה <strong>tuple</strong> עם: (אחוז מילים שפוצחו, מספר מילים עם _)<br><br>
+        <strong>השתמש בשיטת פרמטרים מפורשים.</strong></p>
+      </div>
+
+      <div class="exercise-area">
+        <p style="font-size: 16px; color:var(--text-muted); margin-bottom:8px">כתוב את הקוד כאן:</p>
+        <textarea id="exercise-code" placeholder="def analyze_cipher(cipher_text, cracked_text):
+    # כתוב כאן...
+    pass
+
+# בדיקה:
+result = analyze_cipher('abc def ghi', 'a__ d_f ___')
+print(result)  # ציפייה: (33.33, 2) בקירוב"></textarea>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+          <button class="run-btn" onclick="checkExercise()">▶ בדוק תשובה</button>
+          <button class="hint-btn" onclick="showHint(1)">💡 רמז 1</button>
+          <button class="hint-btn" onclick="showHint(2)">💡 רמז 2</button>
+          <button class="hint-btn" onclick="showSolution()">👁 פתרון</button>
+        </div>
+        <div class="output-box" id="output-box"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAVIGATION -->
+<nav class="nav">
+  <button id="btn-prev" onclick="changeSlide(-1)" disabled>→ הקודם</button>
+  <div class="progress-dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 9</span>
+  <button id="btn-next" onclick="changeSlide(1)">הבא ←</button>
+</nav>
+
+<script>
+let current = 0;
+const total = 9;
+
+function buildDots() {
+  const c = document.getElementById('dots');
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    c.appendChild(d);
+  }
+}
+
+function goTo(n) {
+  const slides = document.querySelectorAll('.slide');
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit');
+  setTimeout(() => slides[current].classList.remove('exit'), 500);
+  current = n;
+  slides[current].classList.add('active');
+  document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === total - 1;
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+}
+
+function changeSlide(dir) {
+  const n = current + dir;
+  if (n >= 0 && n < total) goTo(n);
+}
+
+function switchTab(btn, id) {
+  const parent = btn.closest('.slide');
+  parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+function toggleQuestion(el) { el.classList.toggle('open'); }
+
+buildDots();
+
+// Exercise
+function checkExercise() {
+  const code = document.getElementById('exercise-code').value;
+  const out = document.getElementById('output-box');
+  out.style.display = 'block';
+
+  if (!code.includes('def analyze_cipher') || (!code.includes('cipher_text') && !code.includes('cracked_text'))) {
+    out.className = 'output-box error';
+    out.textContent = '❌ הפונקציה צריכה להיקרא analyze_cipher ולקבל cipher_text ו-cracked_text';
+    return;
+  }
+  if (!code.includes('def analyze_cipher(cipher_text') && !code.includes('def analyze_cipher(cracked')) {
+    out.className = 'output-box error';
+    out.textContent = '❌ השתמש בפרמטרים מפורשים: def analyze_cipher(cipher_text, cracked_text)';
+    return;
+  }
+  if (code.includes('def analyze_cipher(cipher_text, cracked_text)') && code.includes('return')) {
+    out.className = 'output-box success';
+    out.innerHTML = `✅ מעולה! הפונקציה מוגדרת נכון עם פרמטרים מפורשים.
+
+לוגיקה לבדיקה:
+• cipher_words = cipher_text.split()  → ['abc', 'def', 'ghi']
+• cracked_words = cracked_text.split() → ['a__', 'd_f', '___']  
+• unknown_count = len([w for w in cracked_text.split() if '_' in w])  → 3
+• percent_solved = len([w for w in cracked_text.split() if '_' not in w]) / len(cracked_words) * 100  → ~0%
+• return (percent_solved, unknown_count)`;
+    return;
+  }
+  out.className = 'output-box error';
+  out.textContent = '⚠️ יש בעיה בקוד. נסה שוב או השתמש ברמזים.';
+}
+
+const hints = [
+  `💡 רמז 1: השתמש ב-.split() כדי לפצל את הטקסט למילים.
+לדוגמה: words = cracked_text.split()`,
+  `💡 רמז 2: כדי לספור מילים עם _ השתמש ב:
+unknown = [w for w in cracked_text.split() if '_' in w]
+percent = (1 - len(unknown)/len(cracked_text.split())) * 100`
+];
+
+function showHint(n) {
+  const out = document.getElementById('output-box');
+  out.style.display = 'block';
+  out.className = 'output-box hint-display';
+  out.textContent = hints[n - 1];
+}
+
+function showSolution() {
+  document.getElementById('exercise-code').value = `def analyze_cipher(cipher_text, cracked_text):
+    cracked_words = cracked_text.split()
+    total_words = len(cracked_words)
+    unknown_words = [w for w in cracked_words if '_' in w]
+    unknown_count = len(unknown_words)
+    solved_count = total_words - unknown_count
+    percent_solved = (solved_count / total_words) * 100
+    return (round(percent_solved, 2), unknown_count)
+
+# בדיקה:
+result = analyze_cipher('abc def ghi', 'a__ d_f ___')
+print(result)  # (0.0, 3)`;
+  const out = document.getElementById('output-box');
+  out.style.display = 'block';
+  out.className = 'output-box hint-display';
+  out.textContent = '👁 פתרון מוצג. נסה להבין כל שורה!';
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') changeSlide(-1);
+  if (e.key === 'ArrowLeft') changeSlide(1);
+});
+</script>
+</body>
+</html>

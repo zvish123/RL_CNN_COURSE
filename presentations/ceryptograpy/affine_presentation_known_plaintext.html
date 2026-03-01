@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>צופן Affine — הצפנה ופריצה</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --surface: #0d1b2a;
+    --surface2: #112233;
+    --accent: #00f5c8;
+    --accent2: #ff6b35;
+    --accent3: #7b61ff;
+    --text: #e8f4f8;
+    --text-dim: #8aaabb;
+    --grid: rgba(0,245,200,0.04);
+    --glow: 0 0 30px rgba(0,245,200,0.3);
+    --glow2: 0 0 30px rgba(255,107,53,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    direction: rtl;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Slides */
+  .slides-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 60px;
+    opacity: 0;
+    transform: translateX(-60px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+
+  /* Slide number badge */
+  .slide-badge {
+    position: fixed;
+    top: 24px;
+    left: 30px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;;
+    color: var(--accent);
+    letter-spacing: 3px;
+    z-index: 100;
+  }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 100;
+    background: rgba(13,27,42,0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,245,200,0.2);
+    border-radius: 50px;
+    padding: 10px 24px;
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid rgba(0,245,200,0.3);
+    color: var(--accent);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size:18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: monospace;
+  }
+
+  .nav-btn:hover {
+    background: rgba(0,245,200,0.15);
+    box-shadow: var(--glow);
+  }
+
+  .nav-dots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    width: 20px;
+    border-radius: 3px;
+  }
+
+  /* Typography */
+  .slide-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+
+  h2 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(20px, 2.8vw, 36px);
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  h3 {
+    font-family: 'Heebo', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 10px;
+  }
+
+  p, li {
+    font-size: clamp(14px, 1.4vw, 17px);
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .lead {
+    font-size: clamp(16px, 1.6vw, 20px);
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 700px;
+    line-height: 1.6;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid rgba(0,245,200,0.15);
+    border-radius: 12px;
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .card-orange {
+    border-color: rgba(255,107,53,0.25);
+  }
+  .card-orange::before {
+    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+  }
+
+  .card-purple {
+    border-color: rgba(123,97,255,0.25);
+  }
+  .card-purple::before {
+    background: linear-gradient(90deg, transparent, var(--accent3), transparent);
+  }
+
+  /* Formula box */
+  .formula {
+    background: #000d1a;
+    border: 1px solid rgba(0,245,200,0.3);
+    border-radius: 8px;
+    padding: 16px 24px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(14px, 1.5vw, 20px);
+    color: var(--accent);
+    text-align: center;
+    letter-spacing: 1px;
+    box-shadow: inset 0 0 30px rgba(0,245,200,0.05), var(--glow);
+  }
+
+  .formula span.var { color: var(--accent2); }
+  .formula span.op { color: #fff; opacity: 0.5; }
+  .formula span.num { color: var(--accent3); }
+
+  /* Code block */
+  .code-block {
+    background: #000d1a;
+    border: 1px solid rgba(0,245,200,0.2);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(11px, 1.1vw, 14px);
+    line-height: 1.8;
+    text-align: left;
+    direction: ltr;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  .code-block .kw { color: #7b61ff; }
+  .code-block .fn { color: #00f5c8; }
+  .code-block .st { color: #ff9966; }
+  .code-block .cm { color: #4a7a8a; font-style: italic; }
+  .code-block .num { color: #ff6b35; }
+  .code-block .var { color: #e8f4f8; }
+
+  /* Grid layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* Step boxes */
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .step-num {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size:18px;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  .step-content { flex: 1; }
+
+  /* Math step animation */
+  .math-step {
+    background: var(--surface2);
+    border-right: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;;
+    direction: ltr;
+    text-align: left;
+  }
+
+  .math-step .label {
+    font-family: 'Heebo', sans-serif;
+    font-size:18px;;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    direction: rtl;
+    text-align: right;
+  }
+
+  .math-step.highlight {
+    border-right-color: var(--accent2);
+    background: rgba(255,107,53,0.08);
+  }
+
+  .math-step.result {
+    border-right-color: #44ff88;
+    background: rgba(68,255,136,0.08);
+    color: #44ff88;
+  }
+
+  /* Highlight text */
+  .hl { color: var(--accent); font-weight: 700; }
+  .hl2 { color: var(--accent2); font-weight: 700; }
+  .hl3 { color: var(--accent3); font-weight: 700; }
+  .green { color: #44ff88; font-weight: 700; }
+
+  /* Table */
+  .cipher-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;
+  }
+
+  .cipher-table th {
+    background: rgba(0,245,200,0.1);
+    color: var(--accent);
+    padding: 10px 16px;
+    text-align: center;
+    border: 1px solid rgba(0,245,200,0.15);
+    font-family: 'Heebo', sans-serif;
+    font-weight: 700;
+    font-size:18px;;
+  }
+
+  .cipher-table td {
+    padding: 8px 16px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-dim);
+  }
+
+  .cipher-table tr:hover td { background: rgba(0,245,200,0.04); }
+  .cipher-table .known { background: rgba(0,245,200,0.1); color: var(--accent); }
+
+  /* Flowchart */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid rgba(0,245,200,0.2);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size:18px;
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+    transition: all 0.3s;
+  }
+
+  .flow-box:hover { border-color: var(--accent); box-shadow: var(--glow); }
+  .flow-box.diamond { transform: rotate(0deg); background: rgba(123,97,255,0.1); border-color: rgba(123,97,255,0.3); }
+  .flow-box.success { background: rgba(68,255,136,0.1); border-color: rgba(68,255,136,0.4); color: #44ff88; }
+  .flow-box.fail { background: rgba(255,80,80,0.1); border-color: rgba(255,80,80,0.3); color: #ff8080; }
+
+  .flow-arrow {
+    color: var(--text-dim);
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* Interactive demo */
+  .demo-input {
+    background: #000d1a;
+    border: 1px solid rgba(0,245,200,0.3);
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    width: 100%;
+    text-align: center;
+    letter-spacing: 3px;
+    outline: none;
+    transition: all 0.3s;
+  }
+
+  .demo-input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .demo-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    border: none;
+    color: #000;
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size:18px;;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.3s;
+    margin-top: 10px;
+  }
+
+  .demo-btn:hover { transform: translateY(-2px); box-shadow: var(--glow); }
+
+  .demo-output {
+    background: #000d1a;
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    min-height: 48px;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* Title slide decorations */
+  .deco-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,245,200,0.1);
+    pointer-events: none;
+  }
+
+  /* Keyboard shortcut hint */
+  .key-hint {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size:18px;;
+    color: rgba(138,170,187,0.4);
+    letter-spacing: 2px;
+    z-index: 99;
+  }
+
+  /* Scroll within slide */
+  .scroll-content {
+    overflow-y: auto;
+    max-height: 70vh;
+    width: 100%;
+    max-width: 1100px;
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,245,200,0.3) transparent;
+  }
+
+  .full-width { width: 100%; max-width: 1100px; }
+
+  /* Section divider */
+  .divider {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 2px;
+    margin: 16px auto;
+  }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .slide { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="slide-badge" id="badge">01 / 09</div>
+<div class="key-hint">→ ← לניווט | מקשי חצים במקלדת</div>
+
+<div class="slides-container">
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 1 — TITLE -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide active" id="slide-0">
+    <div class="deco-ring" style="width:500px;height:500px;top:-150px;right:-150px;"></div>
+    <div class="deco-ring" style="width:300px;height:300px;bottom:-100px;left:-100px;border-color:rgba(123,97,255,0.1)"></div>
+
+    <div class="slide-tag">סייבר — כיתות י–יב</div>
+    <h1>צופן AFFINE</h1>
+    <div class="divider"></div>
+    <p class="lead">
+      הצפנה, פענוח, וניתוח Known Plaintext Attack<br>
+      <span style="color:var(--text-dim);font-size:18px;">מהמתמטיקה המודולרית — עד לשבירת הצופן</span>
+    </p>
+
+    <div style="display:flex;gap:16px;margin-top:40px;flex-wrap:wrap;justify-content:center;">
+      <div class="card" style="text-align:center;padding:16px 28px;min-width:160px">
+        <div style="font-family:'Orbitron',monospace;font-size:28px;color:var(--accent)">312</div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-top:4px">מפתחות אפשריים</div>
+      </div>
+      <div class="card card-orange" style="text-align:center;padding:16px 28px;min-width:160px">
+        <div style="font-family:'Orbitron',monospace;font-size:28px;color:var(--accent2)">mod 26</div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-top:4px">חשבון מודולרי</div>
+      </div>
+      <div class="card card-purple" style="text-align:center;padding:16px 28px;min-width:160px">
+        <div style="font-family:'Orbitron',monospace;font-size:28px;color:var(--accent3)">2</div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-top:4px">זוגות לשבירה</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 2 — WHAT IS AFFINE -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-1">
+    <div class="slide-tag">רקע תיאורטי</div>
+    <h2>מה זה צופן Affine?</h2>
+
+    <div class="grid-2" style="max-width:900px">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3>🔐 הצפנה</h3>
+          <div class="formula">
+            E(<span class="var">x</span>) = (<span class="var">a</span> · <span class="var">x</span> <span class="op">+</span> <span class="var">b</span>) <span class="op">mod</span> <span class="num">26</span>
+          </div>
+          <p style="margin-top:12px;font-size:18px;;color:var(--text-dim)">
+            <span class="hl">x</span> = מיקום האות (A=0, B=1, ..., Z=25)<br>
+            <span class="hl2">a</span> = מקדם ההכפלה (מפתח 1)<br>
+            <span class="hl3">b</span> = הזזה (מפתח 2)
+          </p>
+        </div>
+
+        <div class="card card-orange">
+          <h3>🔓 פענוח</h3>
+          <div class="formula">
+            D(<span class="var">y</span>) = <span class="var">a⁻¹</span> · (<span class="var">y</span> <span class="op">−</span> <span class="var">b</span>) <span class="op">mod</span> <span class="num">26</span>
+          </div>
+          <p style="margin-top:12px;font-size:18px;;color:var(--text-dim)">
+            <span class="hl">a⁻¹</span> = הופכי מודולרי של a
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card card-purple" style="margin-bottom:16px">
+          <h3>⚠️ תנאי חובה</h3>
+          <div class="formula" style="font-size:18px">
+            gcd(<span class="var">a</span>, <span class="num">26</span>) = <span class="num">1</span>
+          </div>
+          <p style="margin-top:12px;font-size:18px;;color:var(--text-dim)">
+            a חייב להיות זר ל-26.<br>
+            ערכים תקינים (12 בסה"כ):
+          </p>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:18px;;color:var(--accent3);margin-top:8px;line-height:1.8">
+            1, 3, 5, 7, 9, 11,<br>15, 17, 19, 21, 23, 25
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📊 מרחב מפתחות</h3>
+          <div style="text-align:center;margin:10px 0">
+            <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--accent)">12</span>
+            <span style="color:var(--text-dim);font-size:18px"> × </span>
+            <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--accent2)">26</span>
+            <span style="color:var(--text-dim);font-size:18px"> = </span>
+            <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--accent3)">312</span>
+          </div>
+          <p style="font-size:18px;;color:var(--text-dim);text-align:center">מפתחות ייחודיים בלבד</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 3 — EXAMPLE ENCRYPTION -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-2">
+    <div class="slide-tag">דוגמה מספרית</div>
+    <h2>הצפנה — דוגמה מעשית</h2>
+
+    <div class="full-width">
+      <div style="text-align:center;margin-bottom:20px">
+        <p>נצפין את המילה <span class="hl">"HELLO"</span> עם המפתח <span class="hl2">a=7, b=3</span></p>
+      </div>
+
+      <table class="cipher-table" style="max-width:800px;margin:0 auto">
+        <thead>
+          <tr>
+            <th>אות מקורית</th>
+            <th>x (מיקום)</th>
+            <th>חישוב: (7·x + 3) mod 26</th>
+            <th>תוצאה</th>
+            <th>אות מוצפנת</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="hl">H</td><td>7</td>
+            <td style="direction:ltr;font-family:'Share Tech Mono',monospace">(7·7 + 3) = 52 mod 26 = 0</td>
+            <td>0</td><td class="hl2">A</td>
+          </tr>
+          <tr>
+            <td class="hl">E</td><td>4</td>
+            <td style="direction:ltr;font-family:'Share Tech Mono',monospace">(7·4 + 3) = 31 mod 26 = 5</td>
+            <td>5</td><td class="hl2">F</td>
+          </tr>
+          <tr>
+            <td class="hl">L</td><td>11</td>
+            <td style="direction:ltr;font-family:'Share Tech Mono',monospace">(7·11 + 3) = 80 mod 26 = 2</td>
+            <td>2</td><td class="hl2">C</td>
+          </tr>
+          <tr>
+            <td class="hl">L</td><td>11</td>
+            <td style="direction:ltr;font-family:'Share Tech Mono',monospace">(7·11 + 3) = 80 mod 26 = 2</td>
+            <td>2</td><td class="hl2">C</td>
+          </tr>
+          <tr>
+            <td class="hl">O</td><td>14</td>
+            <td style="direction:ltr;font-family:'Share Tech Mono',monospace">(7·14 + 3) = 101 mod 26 = 23</td>
+            <td>23</td><td class="hl2">X</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="text-align:center;margin-top:24px">
+        <div class="formula" style="max-width:500px;margin:0 auto;font-size:20px">
+          HELLO &nbsp;→&nbsp; <span style="color:var(--accent2)">AFCCX</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 4 — INTERACTIVE DEMO -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-3">
+    <div class="slide-tag">כלי אינטראקטיבי</div>
+    <h2>הצפנה ופענוח — נסו בעצמכם</h2>
+
+    <div class="grid-2" style="max-width:900px">
+      <div class="card">
+        <h3>🔐 הצפנה</h3>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">ערך a</div>
+            <select id="enc-a" style="width:100%;background:#000d1a;border:1px solid rgba(0,245,200,0.3);color:var(--accent);font-family:'Share Tech Mono',monospace;padding:8px;border-radius:6px;font-size:18px">
+              <option value="1">1</option><option value="3">3</option><option value="5">5</option>
+              <option value="7" selected>7</option><option value="9">9</option><option value="11">11</option>
+              <option value="15">15</option><option value="17">17</option><option value="19">19</option>
+              <option value="21">21</option><option value="23">23</option><option value="25">25</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">ערך b (0-25)</div>
+            <input type="number" id="enc-b" value="3" min="0" max="25" style="width:100%;background:#000d1a;border:1px solid rgba(0,245,200,0.3);color:var(--accent);font-family:'Share Tech Mono',monospace;padding:8px;border-radius:6px;font-size:18px;;outline:none">
+          </div>
+        </div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">טקסט לעיבוד</div>
+        <input class="demo-input" id="enc-input" placeholder="HELLO" value="HELLO" oninput="encryptAffine()">
+        <div class="demo-output" id="enc-output">AFCCX</div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-top:8px;text-align:center" id="enc-formula-disp">E(x) = (7·x + 3) mod 26</div>
+      </div>
+
+      <div class="card card-orange">
+        <h3>🔓 פענוח</h3>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">ערך a</div>
+            <select id="dec-a" style="width:100%;background:#000d1a;border:1px solid rgba(255,107,53,0.3);color:var(--accent2);font-family:'Share Tech Mono',monospace;padding:8px;border-radius:6px;font-size:18px;">
+              <option value="1">1</option><option value="3">3</option><option value="5">5</option>
+              <option value="7" selected>7</option><option value="9">9</option><option value="11">11</option>
+              <option value="15">15</option><option value="17">17</option><option value="19">19</option>
+              <option value="21">21</option><option value="23">23</option><option value="25">25</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">ערך b (0-25)</div>
+            <input type="number" id="dec-b" value="3" min="0" max="25" style="width:100%;background:#000d1a;border:1px solid rgba(255,107,53,0.3);color:var(--accent2);font-family:'Share Tech Mono',monospace;padding:8px;border-radius:6px;font-size:18px;;outline:none">
+          </div>
+        </div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-bottom:4px">טקסט מוצפן</div>
+        <input class="demo-input" id="dec-input" placeholder="AFCCX" value="AFCCX" oninput="decryptAffine()" style="border-color:rgba(255,107,53,0.3);color:var(--accent2)">
+        <div class="demo-output" id="dec-output" style="border-color:rgba(0,245,200,0.3);color:var(--accent)">HELLO</div>
+        <div style="font-size:18px;;color:var(--text-dim);margin-top:8px;text-align:center" id="dec-formula-disp">D(y) = 15·(y − 3) mod 26</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 5 — WHY BREAK IT -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-4">
+    <div class="slide-tag">ניתוח אבטחה</div>
+    <h2>למה הצופן ניתן לשבירה?</h2>
+
+    <div class="grid-3" style="max-width:1000px">
+      <div class="card">
+        <div style="font-size:32px;margin-bottom:12px">🔑</div>
+        <h3>מרחב קטן</h3>
+        <p style="font-size:18px;;color:var(--text-dim)">
+          312 מפתחות בלבד. מחשב מודרני בודק את כולם במילישניות.
+        </p>
+        <div style="font-family:'Orbitron',monospace;font-size:24px;color:var(--accent);margin-top:12px;text-align:center">312</div>
+        <div style="font-size:18px;;color:var(--text-dim);text-align:center">מפתחות אפשריים</div>
+      </div>
+
+      <div class="card card-orange">
+        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <h3>תדירות אותיות</h3>
+        <p style="font-size:18px;;color:var(--text-dim)">
+          כל אות מוצפנת תמיד לאותה אות. ניתוח תדירות חושף את המיפוי.
+        </p>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:18px;;color:var(--accent2);margin-top:12px">
+          E → 12% | T → 9%<br>A → 8% | O → 7%
+        </div>
+      </div>
+
+      <div class="card card-purple">
+        <div style="font-size:32px;margin-bottom:12px">🎯</div>
+        <h3>Known Plaintext</h3>
+        <p style="font-size:18px;;color:var(--text-dim)">
+          אם יודעים רק 2 זוגות (אות מוצפנת ↔ אות מקורית) — המפתח חשוף לחלוטין!
+        </p>
+        <div style="font-family:'Orbitron',monospace;font-size:24px;color:var(--accent3);margin-top:12px;text-align:center">2</div>
+        <div style="font-size:18px;;color:var(--text-dim);text-align:center">זוגות בלבד לשבירה</div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:700px;margin-top:20px;text-align:center">
+      <p style="color:var(--text-dim);font-size:15px">
+        <span class="hl">סיכום:</span> צופן Affine הוא <strong>צופן החלפה פשוט</strong> — 
+        לא מתאים לאבטחת מידע מודרנית, אך מצוין ללמידת עקרונות קריפטוגרפיה.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 6 — KPA THEORY -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-5">
+    <div class="slide-tag">Known Plaintext Attack</div>
+    <h2>הרעיון — מהפיסיקה למתמטיקה</h2>
+
+    <div class="grid-2" style="max-width:1000px">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3>💡 המצב</h3>
+          <p style="font-size:18px;;color:var(--text-dim);line-height:1.8">
+            אנחנו יודעים ש-<span class="hl">H</span> (x=7) הוצפנה ל-<span class="hl2">A</span> (c=0)<br>
+            ואנחנו יודעים ש-<span class="hl">E</span> (x=4) הוצפנה ל-<span class="hl2">F</span> (c=5)<br><br>
+            זה מספיק כדי לשחזר את המפתח המלא!
+          </p>
+        </div>
+
+        <div class="card card-orange">
+          <h3>📐 שתי משוואות, שני נעלמים</h3>
+          <div class="math-step">
+            <div class="label">משוואה 1: H→A</div>
+            0 = (a·7 + b) mod 26
+          </div>
+          <div class="math-step">
+            <div class="label">משוואה 2: E→F</div>
+            5 = (a·4 + b) mod 26
+          </div>
+          <p style="font-size:18px;;color:var(--text-dim);margin-top:10px">
+            שתי משוואות → נוכל לפתור ל-a ו-b בדיוק כמו אלגברה רגילה, אבל mod 26
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card card-purple">
+          <h3>🧮 למה צריך בדיוק 2 זוגות?</h3>
+          <table style="width:100%;font-size:18px;;border-collapse:collapse">
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
+              <td style="padding:8px;color:var(--text-dim)">0 זוגות</td>
+              <td style="padding:8px">לא ניתן — ניחוש בלבד</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
+              <td style="padding:8px;color:var(--text-dim)">1 זוג</td>
+              <td style="padding:8px">משוואה אחת, 2 נעלמים — ∞ פתרונות</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
+              <td style="padding:8px;color:var(--accent)"><strong>2 זוגות</strong></td>
+              <td style="padding:8px;color:var(--accent)"><strong>✅ פתרון יחיד מוגדר</strong></td>
+            </tr>
+            <tr>
+              <td style="padding:8px;color:var(--text-dim)">3+ זוגות</td>
+              <td style="padding:8px">Over-determined → לאימות בלבד</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3>🔑 הנשק: הופכי מודולרי</h3>
+          <p style="font-size:18px;;color:var(--text-dim)">
+            כשרוצים לבודד a, לא מחלקים (אין חלוקה mod 26) — 
+            <span class="hl">כופלים בהופכי המודולרי</span>.
+          </p>
+          <div class="formula" style="margin-top:10px;font-size:15px">
+            a · <span class="var">a⁻¹</span> ≡ 1 (mod 26)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 7 — STEP BY STEP SOLUTION -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-6">
+    <div class="slide-tag">פתרון שלב אחר שלב</div>
+    <h2>Known Plaintext — החישוב המלא</h2>
+
+    <div class="grid-2" style="max-width:1000px">
+      <div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">בניית המשוואות</h3>
+            <div class="math-step">0 = (a·7 + b) mod 26 &nbsp;<span style="color:#4a7a8a">← H→A</span></div>
+            <div class="math-step">5 = (a·4 + b) mod 26 &nbsp;<span style="color:#4a7a8a">← E→F</span></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">חיסור המשוואות (ביטול b)</h3>
+            <div class="math-step">0 − 5 = a·(7 − 4) mod 26</div>
+            <div class="math-step highlight">−5 = a·3 mod 26</div>
+            <div class="math-step">21 = a·3 mod 26 &nbsp;<span style="color:#4a7a8a">← כי −5+26=21</span></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">מציאת הופכי מודולרי של 3</h3>
+            <div class="math-step">3 · k ≡ 1 (mod 26)</div>
+            <div class="math-step highlight">k = 9 &nbsp;<span style="color:#4a7a8a">← כי 3·9=27≡1</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">חישוב a</h3>
+            <div class="math-step">a = 21 · 9 mod 26</div>
+            <div class="math-step">a = 189 mod 26</div>
+            <div class="math-step result">a = 7 ✓</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">חישוב b</h3>
+            <div class="math-step">0 = (7·7 + b) mod 26</div>
+            <div class="math-step">0 = (49 + b) mod 26</div>
+            <div class="math-step">0 = (23 + b) mod 26</div>
+            <div class="math-step result">b = 3 ✓</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <h3 style="margin-bottom:8px">המפתח שוחזר!</h3>
+            <div class="formula">a = <span class="var">7</span> &nbsp;,&nbsp; b = <span class="var">3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 8 — THE CODE -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-7">
+    <div class="slide-tag">יישום בפייתון</div>
+    <h2>הקוד — Known Plaintext Attack</h2>
+
+    <div class="full-width scroll-content">
+      <pre class="code-block">
+<span class="kw">def</span> <span class="fn">mod_inverse</span>(<span class="var">a</span>, <span class="var">m</span>):
+    <span class="cm">"""הופכי מודולרי: מוצא k כך ש a·k ≡ 1 (mod m)"""</span>
+    <span class="kw">if</span> math.gcd(<span class="var">a</span>, <span class="var">m</span>) != <span class="num">1</span>:
+        <span class="kw">return</span> <span class="kw">None</span>  <span class="cm"># אין הופכי כשהמספרים לא זרים</span>
+    old_r, r = <span class="var">a</span>, <span class="var">m</span>
+    old_s, s = <span class="num">1</span>, <span class="num">0</span>
+    <span class="kw">while</span> <span class="var">r</span> != <span class="num">0</span>:      <span class="cm"># אלגוריתם אוקלידס מורחב</span>
+        q = old_r // <span class="var">r</span>
+        old_r, r = <span class="var">r</span>, old_r - q * <span class="var">r</span>
+        old_s, s = <span class="var">s</span>, old_s - q * <span class="var">s</span>
+    <span class="kw">return</span> old_s % <span class="var">m</span>
+
+
+<span class="kw">def</span> <span class="fn">known_plaintext_attack</span>(<span class="var">cipher_pairs</span>):
+    <span class="cm">"""
+    cipher_pairs = [('A', 'H'), ('F', 'E')]
+                       ↑ מוצפן  ↑ מקורי
+    """</span>
+    <span class="kw">for</span> i <span class="kw">in</span> range(len(<span class="var">cipher_pairs</span>)):
+        <span class="kw">for</span> j <span class="kw">in</span> range(len(<span class="var">cipher_pairs</span>)):
+            <span class="kw">if</span> i == j: <span class="kw">continue</span>
+
+            c1 = letter_to_num(<span class="var">cipher_pairs</span>[i][<span class="num">0</span>])  <span class="cm"># אות מוצפנת 1</span>
+            p1 = letter_to_num(<span class="var">cipher_pairs</span>[i][<span class="num">1</span>])  <span class="cm"># אות מקורית 1</span>
+            c2 = letter_to_num(<span class="var">cipher_pairs</span>[j][<span class="num">0</span>])  <span class="cm"># אות מוצפנת 2</span>
+            p2 = letter_to_num(<span class="var">cipher_pairs</span>[j][<span class="num">1</span>])  <span class="cm"># אות מקורית 2</span>
+
+            diff_p = (p1 - p2) % <span class="num">26</span>       <span class="cm"># הפרש המקוריות</span>
+            <span class="kw">if</span> diff_p == <span class="num">0</span>: <span class="kw">continue</span>        <span class="cm"># אין מידע אם זהים</span>
+
+            inv = <span class="fn">mod_inverse</span>(diff_p, <span class="num">26</span>)   <span class="cm"># הופכי מודולרי</span>
+            <span class="kw">if</span> inv <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">continue</span>
+
+            a = ((c1 - c2) * inv) % <span class="num">26</span>      <span class="cm"># ← פתרון a</span>
+            <span class="kw">if</span> math.gcd(a, <span class="num">26</span>) != <span class="num">1</span>: <span class="kw">continue</span>
+
+            b = (c1 - a * p1) % <span class="num">26</span>          <span class="cm"># ← פתרון b</span>
+
+            <span class="cm"># אימות עם כל הזוגות הידועים</span>
+            valid = all(
+                (a * letter_to_num(p) + b) % <span class="num">26</span> == letter_to_num(c)
+                <span class="kw">for</span> c, p <span class="kw">in</span> <span class="var">cipher_pairs</span>
+            )
+            <span class="kw">if</span> valid:
+                <span class="kw">return</span> a, b   <span class="cm"># ✅ מפתח נמצא!</span>
+
+    <span class="kw">return</span> <span class="kw">None</span>  <span class="cm"># לא נמצא מפתח עקבי</span>
+      </pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 9 — FLOWCHART + SUMMARY -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div class="slide" id="slide-8">
+    <div class="slide-tag">סיכום</div>
+    <h2>תרשים זרימה וסיכום</h2>
+
+    <div class="grid-2" style="max-width:1000px">
+      <div class="flow">
+        <div class="flow-box">קבל 2+ זוגות (cipher, plain)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">חשב diff_p = p1 − p2 mod 26</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box diamond">diff_p == 0?</div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <div style="text-align:center">
+            <div style="font-size:18px;;color:var(--text-dim)">כן</div>
+            <div class="flow-box fail" style="width:130px;font-size:18px;">דלג לזוג הבא</div>
+          </div>
+          <div class="flow-arrow">לא ↓</div>
+        </div>
+        <div class="flow-box">חשב הופכי מודולרי של diff_p</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">a = (c1−c2) · inv(diff_p) mod 26</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">b = (c1 − a·p1) mod 26</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box diamond">אמת עם כל הזוגות</div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <div style="text-align:center">
+            <div class="flow-box success" style="width:130px;font-size:18px;">✅ החזר (a, b)</div>
+          </div>
+          <div class="flow-arrow">→ כישלון → דלג</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3>📚 מה למדנו</h3>
+          <div class="step" style="margin-bottom:10px">
+            <div class="step-num" style="font-size:18px;;width:28px;height:28px">✓</div>
+            <p style="font-size:18px;">צופן Affine = הצפנה לינארית mod 26</p>
+          </div>
+          <div class="step" style="margin-bottom:10px">
+            <div class="step-num" style="font-size:18px;;width:28px;height:28px">✓</div>
+            <p style="font-size:18px;">מרחב מפתחות: 312 בלבד → קל לשבירה</p>
+          </div>
+          <div class="step" style="margin-bottom:10px">
+            <div class="step-num" style="font-size:18px;;width:28px;height:28px">✓</div>
+            <p style="font-size:18px;">KPA: 2 זוגות → מערכת 2 משוואות → פתרון מלא</p>
+          </div>
+          <div class="step">
+            <div class="step-num" style="font-size:18px;;width:28px;height:28px">✓</div>
+            <p style="font-size:18px;">כלי מפתח: הופכי מודולרי (אלגוריתם אוקלידס)</p>
+          </div>
+        </div>
+
+        <div class="card card-purple">
+          <h3>🎯 לשאלה</h3>
+          <p style="font-size:18px;;color:var(--text-dim);line-height:1.8">
+            אם יודעים ש-<span class="hl2">B</span> הוצפנה ל-<span class="hl">P</span><br>
+            ו-<span class="hl2">C</span> הוצפנה ל-<span class="hl">W</span><br>
+            מה המפתח? 🤔
+          </p>
+          <div class="formula" style="margin-top:12px;font-size:18px;">
+            B=1→P=15 &nbsp;|&nbsp; C=2→W=22
+          </div>
+          <div style="font-size:18px;;color:var(--text-dim);margin-top:8px;text-align:center">
+            נסה לפתור לפי השלבים שלמדנו!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /slides-container -->
+
+<!-- Navigation -->
+<nav class="nav">
+  <button class="nav-btn" onclick="prevSlide()">→</button>
+  <div class="nav-dots" id="dots"></div>
+  <button class="nav-btn" onclick="nextSlide()">←</button>
+</nav>
+
+<script>
+  const TOTAL = 9;
+  let current = 0;
+
+  // Build dots
+  const dotsEl = document.getElementById('dots');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+
+  function goTo(n) {
+    const slides = document.querySelectorAll('.slide');
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current].classList.remove('exit'), 600);
+    current = (n + TOTAL) % TOTAL;
+    slides[current].classList.add('active');
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    document.getElementById('badge').textContent =
+      String(current + 1).padStart(2, '0') + ' / ' + String(TOTAL).padStart(2, '0');
+  }
+
+  function nextSlide() { goTo(current + 1); }
+  function prevSlide() { goTo(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextSlide();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevSlide();
+  });
+
+  // ── Affine crypto logic ──────────────────────────────────────
+  const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  function modInverse(a, m) {
+    let [old_r, r] = [a, m], [old_s, s] = [1, 0];
+    while (r !== 0) {
+      const q = Math.floor(old_r / r);
+      [old_r, r] = [r, old_r - q * r];
+      [old_s, s] = [s, old_s - q * s];
+    }
+    return ((old_s % m) + m) % m;
+  }
+
+  function affineEncrypt(text, a, b) {
+    return text.toUpperCase().split('').map(c => {
+      const x = ALPHA.indexOf(c);
+      if (x === -1) return c;
+      return ALPHA[(a * x + b) % 26];
+    }).join('');
+  }
+
+  function affineDecrypt(text, a, b) {
+    const inv = modInverse(a, 26);
+    return text.toUpperCase().split('').map(c => {
+      const y = ALPHA.indexOf(c);
+      if (y === -1) return c;
+      return ALPHA[((inv * (y - b)) % 26 + 26) % 26];
+    }).join('');
+  }
+
+  function encryptAffine() {
+    const a = parseInt(document.getElementById('enc-a').value);
+    const b = parseInt(document.getElementById('enc-b').value);
+    const txt = document.getElementById('enc-input').value;
+    document.getElementById('enc-output').textContent = affineEncrypt(txt, a, b);
+    document.getElementById('enc-formula-disp').textContent = `E(x) = (${a}·x + ${b}) mod 26`;
+    // sync to decrypt
+    document.getElementById('dec-input').value = affineEncrypt(txt, a, b);
+    decryptAffine();
+  }
+
+  function decryptAffine() {
+    const a = parseInt(document.getElementById('dec-a').value);
+    const b = parseInt(document.getElementById('dec-b').value);
+    const txt = document.getElementById('dec-input').value;
+    const inv = modInverse(a, 26);
+    document.getElementById('dec-output').textContent = affineDecrypt(txt, a, b);
+    document.getElementById('dec-formula-disp').textContent = `D(y) = ${inv}·(y − ${b}) mod 26`;
+  }
+
+  // Init listeners
+  document.getElementById('enc-a').addEventListener('change', encryptAffine);
+  document.getElementById('enc-b').addEventListener('input', encryptAffine);
+  document.getElementById('dec-a').addEventListener('change', decryptAffine);
+  document.getElementById('dec-b').addEventListener('input', decryptAffine);
+  encryptAffine();
+</script>
+</body>
+</html>

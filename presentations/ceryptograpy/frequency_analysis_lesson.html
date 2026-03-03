@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מילון מונים ורשימת זוגות - Python</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --surface: #13132b;
+    --card: #1a1a35;
+    --accent1: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #f59e0b;
+    --accent4: #10b981;
+    --accent5: #f43f5e;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #2d2d5a;
+    --code-bg: #0a0a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rubik', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Stars background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(124,58,237,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(6,182,212,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 20%, rgba(245,158,11,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 75%, rgba(16,185,129,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 40%, white 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 80%, white 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 10%, white 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    transition: width 0.4s ease;
+    z-index: 1000;
+    box-shadow: 0 0 12px var(--accent2);
+  }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    top: 16px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    background: rgba(13,13,26,0.85);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 14px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  .nav-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+  }
+  .nav-dot.active { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); transform: scale(1.3); }
+  .nav-dot:hover:not(.active) { background: var(--accent1); }
+
+  /* Slides */
+  .slides-wrapper {
+    padding-top: 80px;
+  }
+
+  .slide {
+    display: none;
+    animation: slideIn 0.5s ease;
+  }
+  .slide.active { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Title slide */
+  .title-slide {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .title-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.3));
+    border: 1px solid rgba(124,58,237,0.5);
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-size: 1.2rem;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+
+  .title-main {
+    font-size: 3rem;
+    font-weight: 900;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 16px;
+  }
+
+  .title-sub {
+    font-size: 1.2rem;
+    color: var(--muted);
+    margin-bottom: 48px;
+  }
+
+  .title-topics {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .topic-pill {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size:1.2rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topic-pill .icon { font-size: 1.2rem; }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .section-num {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card p {
+    color: var(--muted);
+    line-height: 1.8;
+    font-size:1.2rem;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+    font-family: 'Fira Code', monospace;
+  }
+
+  .code-header {
+    background: rgba(255,255,255,0.05);
+    padding: 10px 16px;
+    font-size:1.2rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .code-header .lang-tag {
+    background: rgba(124,58,237,0.3);
+    color: var(--accent1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size:1.2rem;
+  }
+
+  .code-body {
+    padding: 20px;
+    font-size:1.2rem;
+    line-height: 1.9;
+    direction: ltr;
+    text-align: left;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .num { color: #f78c6c; }
+  .cm { color: #546e7a; font-style: italic; }
+  .op { color: var(--accent2); }
+  .var { color: #ffcb6b; }
+
+  /* Highlighted line */
+  .hl-line {
+    display: block;
+    background: rgba(124,58,237,0.15);
+    border-right: 3px solid var(--accent1);
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+
+  /* Two column grid */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+
+  /* Arrow visual */
+  .transform-visual {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+
+  .dict-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: 'Fira Code', monospace;
+    font-size:1.2rem;
+    direction: ltr;
+    text-align: left;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .dict-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .dict-row:last-child { border-bottom: none; }
+  .dict-key { color: var(--accent3); }
+  .dict-val { color: var(--accent4); }
+
+  .arrow-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent2);
+    font-size: 1.8rem;
+    flex-shrink: 0;
+  }
+  .arrow-label {
+    font-size:1.2rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--muted);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Steps */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size:1.2rem;
+    flex-shrink: 0;
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .step-content h4 {
+    font-size:1.2rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .step-content p {
+    font-size:1.2rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Quiz */
+  .quiz-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin: 20px 0;
+  }
+
+  .quiz-q {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    line-height: 1.6;
+    direction: rtl;
+  }
+
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .quiz-opt {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size:1.2rem;
+    text-align: right;
+    transition: all 0.25s;
+    font-family: 'Rubik', sans-serif;
+    color: var(--text);
+    direction: rtl;
+  }
+
+  .quiz-opt:hover { border-color: var(--accent1); background: rgba(124,58,237,0.1); }
+  .quiz-opt.correct { border-color: var(--accent4); background: rgba(16,185,129,0.15); color: var(--accent4); }
+  .quiz-opt.wrong { border-color: var(--accent5); background: rgba(244,63,94,0.15); color: var(--accent5); }
+  .quiz-opt:disabled { cursor: default; }
+
+  .quiz-feedback {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size:1.2rem;
+    display: none;
+    line-height: 1.6;
+    direction: rtl;
+  }
+
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(16,185,129,0.1); border: 1px solid var(--accent4); color: var(--accent4); }
+  .quiz-feedback.wrong-fb { background: rgba(244,63,94,0.1); border: 1px solid var(--accent5); color: #fca5a5; }
+
+  /* Exercise */
+  .exercise-card {
+    background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(6,182,212,0.05));
+    border: 1px solid rgba(124,58,237,0.4);
+    border-radius: 16px;
+    padding: 28px;
+    margin: 20px 0;
+  }
+
+  .exercise-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124,58,237,0.3);
+    border: 1px solid var(--accent1);
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-size:1.2rem;
+    color: #c4b5fd;
+    margin-bottom: 16px;
+  }
+
+  .exercise-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    direction: rtl;
+  }
+
+  .exercise-text {
+    color: var(--muted);
+    line-height: 1.8;
+    font-size:1.2rem;
+    direction: rtl;
+    margin-bottom: 16px;
+  }
+
+  textarea.code-input {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size:1.2rem;
+    color: var(--text);
+    resize: vertical;
+    min-height: 160px;
+    direction: ltr;
+    text-align: left;
+    outline: none;
+    transition: border-color 0.3s;
+    line-height: 1.7;
+  }
+
+  textarea.code-input:focus { border-color: var(--accent1); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size:1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: 'Rubik', sans-serif;
+    transition: all 0.25s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent1), #5b21b6);
+    color: white;
+    box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(124,58,237,0.5); }
+
+  .btn-secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    justify-content: flex-end;
+  }
+
+  .result-box {
+    margin-top: 14px;
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: 'Fira Code', monospace;
+    font-size:1.2rem;
+    direction: ltr;
+    text-align: left;
+    display: none;
+    color: var(--accent4);
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+  .result-box.show { display: block; }
+  .result-box.error { color: var(--accent5); border-color: rgba(244,63,94,0.3); }
+
+  /* Simulator */
+  .sim-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+
+  .sim-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .sim-input {
+    flex: 1;
+    min-width: 200px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Fira Code', monospace;
+    font-size:1.2rem;
+    direction: ltr;
+    text-align: left;
+    outline: none;
+  }
+  .sim-input:focus { border-color: var(--accent2); }
+
+  .sim-label {
+    font-size:1.2rem;
+    color: var(--muted);
+    direction: rtl;
+    white-space: nowrap;
+  }
+
+  .sim-output {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size:1.2rem;
+    direction: ltr;
+    text-align: left;
+    min-height: 80px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Nav buttons */
+  .nav-btns {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .slide-counter {
+    font-size:1.2rem;
+    color: var(--muted);
+  }
+
+  /* Summary */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .summary-card .icon { font-size: 2rem; margin-bottom: 10px; }
+  .summary-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+  .summary-card p { font-size:1.2rem; color: var(--muted); line-height: 1.6; direction: rtl; }
+
+  /* Highlight box */
+  .highlight-box {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.4);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size:1.2rem;
+    color: #fde68a;
+    direction: rtl;
+    line-height: 1.7;
+  }
+
+  .highlight-box strong { color: var(--accent3); }
+
+  /* Info box */
+  .info-box {
+    background: rgba(6,182,212,0.08);
+    border: 1px solid rgba(6,182,212,0.3);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size:1.2rem;
+    color: #a5f3fc;
+    direction: rtl;
+    line-height: 1.7;
+  }
+
+  /* Score display */
+  .score-display {
+    position: fixed;
+    top: 60px;
+    right: 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size:1.2rem;
+    color: var(--accent3);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    direction: rtl;
+  }
+
+  .score-num {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent4);
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .title-main { font-size: 2rem; }
+    .two-col { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .transform-visual { flex-direction: column; }
+    .arrow-col { transform: rotate(90deg); }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Animated gradient border for highlight slide */
+  .glow-card {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--card), var(--card)) padding-box,
+      linear-gradient(135deg, var(--accent1), var(--accent2), var(--accent4)) border-box;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar" style="width:0%"></div>
+
+<nav class="nav" id="nav-dots"></nav>
+
+<div class="score-display">
+  🏆 ניקוד: <span class="score-num" id="score">0</span>/4
+</div>
+
+<div class="container">
+  <div class="slides-wrapper">
+
+    <!-- SLIDE 0: Title -->
+    <div class="slide active" id="slide-0">
+      <div class="title-slide">
+        <div class="title-badge">🐍 Python · מבני נתונים</div>
+        <h1 class="title-main">מילונים, זוגות ומיון</h1>
+        <p class="title-sub">מסע מניתוח תדרים לפירוק קוד מתקדם</p>
+        <div class="title-topics">
+          <div class="topic-pill"><span class="icon">📖</span> מילון מונים</div>
+          <div class="topic-pill"><span class="icon">🔄</span> המרה לרשימת זוגות</div>
+          <div class="topic-pill"><span class="icon">🗂️</span> מיון לפי מפתח</div>
+          <div class="topic-pill"><span class="icon">⚡</span> שאלות ותרגיל</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎯 מה נלמד היום?</div>
+        <p>
+          בניתוח תדרים לפיצוח צפנים, אנחנו צריכים לאסוף כמה פעמים כל אות מופיעה,
+          לארגן את התוצאות ולמיין אותן בסדר יורד. לשם כך נשתמש בשלושה כלים עוצמתיים של Python:
+          <strong>מילון מונים</strong>, <strong>המרת מילון לרשימת זוגות</strong>, ו<strong>מיון עם key function</strong>.
+        </p>
+      </div>
+
+      <div class="nav-btns">
+        <div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 1 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(1)">מתחילים! ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 1: Counter Dictionary -->
+    <div class="slide" id="slide-1">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(6,182,212,0.2);color:var(--accent2)">01</div>
+        <h2 class="section-title">מילון מונים (Counter Dictionary)</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💡 מה זה מילון מונים?</div>
+        <p>מילון מונים הוא מילון שבו <strong>המפתח</strong> הוא פריט שאנחנו סופרים (למשל אות), והערך הוא <strong>כמה פעמים הוא הופיע</strong>.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="lang-tag">Python</span>
+          שלב 1: יצירת מילון מונים לאותיות
+        </div>
+        <div class="code-body"><span class="kw">def</span> <span class="fn">get_letter_count</span>(message):
+    <span class="cm"># מילון שסופר כמה פעמים כל אות מופיעה</span>
+    <span class="var">letter_count</span> <span class="op">=</span> {}
+
+    <span class="cm"># שלב א׳: אתחול - כל אות מתחילה מ-0</span>
+    <span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+        <span class="var">letter_count</span>[<span class="var">letter</span>] <span class="op">=</span> <span class="num">0</span>
+
+    <span class="cm"># שלב ב׳: ספירה - עוברים על כל אות בהודעה</span>
+    <span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">message</span>.<span class="fn">upper</span>():
+        <span class="kw">if</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+            <span class="var">letter_count</span>[<span class="var">letter</span>] <span class="op">+=</span> <span class="num">1</span>
+
+    <span class="kw">return</span> <span class="var">letter_count</span></div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="card">
+            <div class="card-title">📥 קלט (Input)</div>
+            <div class="code-block">
+              <div class="code-body" style="padding:12px"><span class="str">"Hello World"</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-title">📤 פלט (Output) - חלקי</div>
+            <div class="code-block">
+              <div class="code-body" style="padding:12px">{<span class="str">'H'</span>: <span class="num">1</span>, <span class="str">'E'</span>: <span class="num">1</span>,
+ <span class="str">'L'</span>: <span class="num">3</span>, <span class="str">'O'</span>: <span class="num">2</span>,
+ <span class="str">'W'</span>: <span class="num">1</span>, <span class="str">'R'</span>: <span class="num">1</span>,
+ <span class="str">'D'</span>: <span class="num">1</span>, ...}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="highlight-box">
+        <strong>⚠️ שים לב:</strong> למה אנחנו מאתחלים את כל האותיות ל-0 קודם?
+        כדי שגם אותיות שלא מופיעות בהודעה יהיו במילון עם ערך 0, ולא נקבל <code>KeyError</code>.
+      </div>
+
+      <!-- QUIZ 1 -->
+      <div class="quiz-container">
+        <div class="quiz-q">❓ מה יהיה הערך של <code>letter_count['Z']</code> אחרי הרצת הפונקציה על המחרוזת <code>"HELLO"</code>?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this, false, 1)">לא יהיה ערך (KeyError)</button>
+          <button class="quiz-opt" onclick="answer(this, true, 1)">0</button>
+          <button class="quiz-opt" onclick="answer(this, false, 1)">None</button>
+          <button class="quiz-opt" onclick="answer(this, false, 1)">-1</button>
+        </div>
+        <div class="quiz-feedback" id="qfb-1">
+          ✅ נכון! כי אתחלנו את כל האותיות ל-0 בלולאה הראשונה. Z לא מופיעה ב-"HELLO" אז הערך שלה נשאר 0.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(0)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 2 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(2)">המרה לרשימת זוגות ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: dict.items() -->
+    <div class="slide" id="slide-2">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(245,158,11,0.2);color:var(--accent3)">02</div>
+        <h2 class="section-title">המרת מילון לרשימת זוגות</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔄 <code>dict.items()</code> ו-<code>list()</code></div>
+        <p>בפייתון, כל מילון יכול להפוך לרשימת <strong>זוגות (tuples)</strong> בעזרת <code>.items()</code>.
+        כל זוג מכיל <code>(מפתח, ערך)</code>. אחר כך עוטפים ב-<code>list()</code> כדי לקבל רשימה שאפשר למיין.</p>
+      </div>
+
+      <!-- Visual transform -->
+      <div class="transform-visual">
+        <div class="dict-box">
+          <div style="color:var(--muted);font-size:1.2rem;margin-bottom:8px"># מילון מקורי</div>
+          <div class="dict-row"><span class="dict-key">'A'</span><span class="dict-val">106</span></div>
+          <div class="dict-row"><span class="dict-key">'B'</span><span class="dict-val">45</span></div>
+          <div class="dict-row"><span class="dict-key">'E'</span><span class="dict-val">175</span></div>
+          <div class="dict-row"><span class="dict-key">'T'</span><span class="dict-val">126</span></div>
+          <div style="color:var(--muted);font-size:1.2rem;margin-top:6px">...</div>
+        </div>
+        <div class="arrow-col">
+          <span>→</span>
+          <div class="arrow-label">.items()<br>+ list()</div>
+        </div>
+        <div class="dict-box">
+          <div style="color:var(--muted);font-size:1.2rem;margin-bottom:8px"># רשימת זוגות</div>
+          <div style="color:var(--accent2)">[</div>
+          <div style="padding-right:10px;color:#e2e8f0">(<span style="color:var(--accent3)">'A'</span>, <span style="color:var(--accent4)">106</span>),</div>
+          <div style="padding-right:10px;color:#e2e8f0">(<span style="color:var(--accent3)">'B'</span>, <span style="color:var(--accent4)">45</span>),</div>
+          <div style="padding-right:10px;color:#e2e8f0">(<span style="color:var(--accent3)">'E'</span>, <span style="color:var(--accent4)">175</span>),</div>
+          <div style="padding-right:10px;color:#e2e8f0">(<span style="color:var(--accent3)">'T'</span>, <span style="color:var(--accent4)">126</span>),</div>
+          <div style="color:var(--accent2)">]</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="lang-tag">Python</span> המרת מילון לרשימת זוגות</div>
+        <div class="code-body"><span class="cm"># המילון שלנו</span>
+<span class="var">letter_freq</span> <span class="op">=</span> {<span class="str">'A'</span>: <span class="num">106</span>, <span class="str">'B'</span>: <span class="num">45</span>, <span class="str">'E'</span>: <span class="num">175</span>}
+
+<span class="cm"># .items() מחזיר view object של כל הזוגות</span>
+<span class="var">items_view</span> <span class="op">=</span> <span class="var">letter_freq</span>.<span class="fn">items</span>()
+<span class="cm"># → dict_items([('A', 106), ('B', 45), ('E', 175)])</span>
+
+<span class="cm"># list() הופך אותו לרשימה שאפשר למיין</span>
+<span class="var">pairs_list</span> <span class="op">=</span> <span class="fn">list</span>(<span class="var">letter_freq</span>.<span class="fn">items</span>())
+<span class="cm"># → [('A', 106), ('B', 45), ('E', 175)]</span>
+
+<span class="cm"># גישה לאיברים בזוג</span>
+<span class="var">first_pair</span> <span class="op">=</span> <span class="var">pairs_list</span>[<span class="num">0</span>]   <span class="cm"># → ('A', 106)</span>
+<span class="var">first_pair</span>[<span class="num">0</span>]               <span class="cm"># → 'A'  (המפתח)</span>
+<span class="var">first_pair</span>[<span class="num">1</span>]               <span class="cm"># → 106  (הערך)</span></div>
+      </div>
+
+      <div class="info-box">
+        💡 <strong>Tuple</strong> הוא כמו רשימה אבל <em>בלתי ניתן לשינוי</em>. נכתב בסוגריים עגולים: <code>(key, value)</code>.
+        גישה לאיברים שלו גם בעזרת אינדקס: <code>[0]</code> למפתח, <code>[1]</code> לערך.
+      </div>
+
+      <!-- QUIZ 2 -->
+      <div class="quiz-container">
+        <div class="quiz-q">❓ נתון: <code>d = {'x': 5, 'y': 3}</code><br>מה יחזיר <code>list(d.items())[1][0]</code>?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this, false, 2)">5</button>
+          <button class="quiz-opt" onclick="answer(this, false, 2)">3</button>
+          <button class="quiz-opt" onclick="answer(this, true, 2)">'y'</button>
+          <button class="quiz-opt" onclick="answer(this, false, 2)">'x'</button>
+        </div>
+        <div class="quiz-feedback" id="qfb-2">
+          ✅ נכון! <code>list(d.items())</code> → <code>[('x',5), ('y',3)]</code>. אינדקס [1] → הזוג השני <code>('y',3)</code>. אינדקס [0] מהזוג → המפתח <code>'y'</code>.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(1)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 3 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(3)">מיון לפי מפתח ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Sorting with key -->
+    <div class="slide" id="slide-3">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(16,185,129,0.2);color:var(--accent4)">03</div>
+        <h2 class="section-title">מיון רשימת זוגות לפי מפתח</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗂️ <code>list.sort(key=...)</code></div>
+        <p>המתודה <code>.sort()</code> ממיינת רשימה במקום. הפרמטר <code>key</code> מקבל <strong>פונקציה</strong> שאומרת לפייתון לפי מה למיין. <code>reverse=True</code> ממיין מהגדול לקטן.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="lang-tag">Python</span> מיון רשימת זוגות לפי הערך (המספר)</div>
+        <div class="code-body"><span class="cm"># פונקציית עזר שמחזירה את האיבר הראשון בזוג</span>
+<span class="kw">def</span> <span class="fn">get_item_at_index_zero</span>(x):
+    <span class="kw">return</span> <span class="var">x</span>[<span class="num">0</span>]
+
+<span class="cm"># ---- ---- ---- ---- ----</span>
+<span class="var">freq_pairs</span> <span class="op">=</span> [
+    (<span class="num">106</span>, <span class="str">'A'</span>), (<span class="num">175</span>, <span class="str">'E'</span>), (<span class="num">45</span>, <span class="str">'B'</span>), (<span class="num">126</span>, <span class="str">'T'</span>)
+]
+
+<span class="cm"># מיון יורד לפי המספר (אינדקס 0 בכל זוג)</span>
+<span class="var">freq_pairs</span>.<span class="fn">sort</span>(key<span class="op">=</span><span class="fn">get_item_at_index_zero</span>, reverse<span class="op">=</span><span class="kw">True</span>)
+
+<span class="cm"># תוצאה:</span>
+<span class="cm"># [(175, 'E'), (126, 'T'), (106, 'A'), (45, 'B')]</span>
+
+<span class="cm"># אפשר גם עם lambda (פונקציה אנונימית קצרה):</span>
+<span class="var">freq_pairs</span>.<span class="fn">sort</span>(key<span class="op">=</span><span class="kw">lambda</span> <span class="var">x</span>: <span class="var">x</span>[<span class="num">0</span>], reverse<span class="op">=</span><span class="kw">True</span>)</div>
+      </div>
+
+      <div class="highlight-box">
+        <strong>🔑 הכי חשוב להבין:</strong> הפרמטר <code>key</code> מקבל פונקציה (לא קריאה לפונקציה!).
+        כלומר כותבים <code>key=get_item_at_index_zero</code> ולא <code>key=get_item_at_index_zero()</code>.
+        פייתון יקרא לפונקציה הזו על כל איבר ברשימה כדי להחליט סדר.
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title" style="color:var(--accent5)">❌ שגוי</div>
+          <div class="code-block">
+            <div class="code-body" style="padding:12px"><span class="cm"># קוראים לפונקציה עם ()</span>
+freq_pairs.sort(
+  key=get_item_at_index_zero<span style="color:var(--accent5);font-weight:bold">()</span>
+)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color:var(--accent4)">✅ נכון</div>
+          <div class="code-block">
+            <div class="code-body" style="padding:12px"><span class="cm"># מעבירים את הפונקציה</span>
+freq_pairs.sort(
+  key=get_item_at_index_zero
+)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUIZ 3 -->
+      <div class="quiz-container">
+        <div class="quiz-q">❓ נתון:
+          <div style="direction:ltr;font-family:'Fira Code';font-size:1.2rem;background:var(--code-bg);padding:10px;border-radius:8px;margin:10px 0">
+pairs = [(3, 'c'), (1, 'a'), (2, 'b')]<br>
+pairs.sort(key=lambda x: x[0])<br>
+print(pairs[0])
+          </div>
+          מה יודפס?
+        </div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this, false, 3)">(3, 'c')</button>
+          <button class="quiz-opt" onclick="answer(this, true, 3)">(1, 'a')</button>
+          <button class="quiz-opt" onclick="answer(this, false, 3)">(2, 'b')</button>
+          <button class="quiz-opt" onclick="answer(this, false, 3)">שגיאה</button>
+        </div>
+        <div class="quiz-feedback" id="qfb-3">
+          ✅ נכון! מיון עולה (ברירת מחדל, בלי reverse=True). הקטן ביותר הוא (1, 'a'). אינדקס [0] נותן את הזוג הראשון לאחר המיון.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(2)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 4 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(4)">הכל ביחד ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Full flow -->
+    <div class="slide" id="slide-4">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(244,63,94,0.2);color:var(--accent5)">04</div>
+        <h2 class="section-title">הכל ביחד: get_frequency_order</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-num" style="background:rgba(6,182,212,0.2);color:var(--accent2)">1</div>
+          <div class="step-content">
+            <h4>ספירת אותיות → מילון letter_to_freq</h4>
+            <p>קוראים ל-<code>get_letter_count()</code> ומקבלים מילון מסוג <code>{'A': 106, 'E': 175, ...}</code></p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num" style="background:rgba(245,158,11,0.2);color:var(--accent3)">2</div>
+          <div class="step-content">
+            <h4>היפוך המילון → freq_to_letter</h4>
+            <p>מייצרים מילון הפוך: <code>{175: ['E'], 126: ['T'], ...}</code>. אם שתי אותיות שוות בתדירות, הן ב-list אחד.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num" style="background:rgba(16,185,129,0.2);color:var(--accent4)">3</div>
+          <div class="step-content">
+            <h4>המרה לרשימת זוגות + מיון</h4>
+            <p><code>list(freq_to_letter.items())</code> ואז <code>.sort(key=..., reverse=True)</code> למיון יורד.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num" style="background:rgba(124,58,237,0.2);color:var(--accent1)">4</div>
+          <div class="step-content">
+            <h4>חילוץ האותיות → מחרוזת אחת</h4>
+            <p>עוברים על הרשימה הממוינת ומחברים את האותיות: <code>''.join(freq_order)</code></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="lang-tag">Python</span> get_frequency_order — הפונקציה המלאה</div>
+        <div class="code-body"><span class="kw">def</span> <span class="fn">get_frequency_order</span>(message):
+    <span class="cm"># שלב 1: מילון letter → count</span>
+    <span class="var">letter_to_freq</span> <span class="op">=</span> <span class="fn">get_letter_count</span>(message)
+
+    <span class="cm"># שלב 2: מילון הפוך count → [letters]</span>
+    <span class="var">freq_to_letter</span> <span class="op">=</span> {}
+    <span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+        <span class="var">freq</span> <span class="op">=</span> <span class="var">letter_to_freq</span>[<span class="var">letter</span>]
+        <span class="kw">if</span> <span class="var">freq</span> <span class="kw">not in</span> <span class="var">freq_to_letter</span>:
+            <span class="var">freq_to_letter</span>[<span class="var">freq</span>] <span class="op">=</span> [<span class="var">letter</span>]
+        <span class="kw">else</span>:
+            <span class="var">freq_to_letter</span>[<span class="var">freq</span>].<span class="fn">append</span>(<span class="var">letter</span>)
+
+    <span class="cm"># שלב 3: המרה + מיון יורד</span>
+    <span class="var">freq_pairs</span> <span class="op">=</span> <span class="fn">list</span>(<span class="var">freq_to_letter</span>.<span class="fn">items</span>())
+    <span class="var">freq_pairs</span>.<span class="fn">sort</span>(key<span class="op">=</span><span class="kw">lambda</span> <span class="var">x</span>: <span class="var">x</span>[<span class="num">0</span>], reverse<span class="op">=</span><span class="kw">True</span>)
+
+    <span class="cm"># שלב 4: חילוץ האותיות לרשימה ואיחוד</span>
+    <span class="var">freq_order</span> <span class="op">=</span> []
+    <span class="kw">for</span> <span class="var">pair</span> <span class="kw">in</span> <span class="var">freq_pairs</span>:
+        <span class="var">freq_order</span>.<span class="fn">append</span>(<span class="str">''</span>.<span class="fn">join</span>(<span class="var">pair</span>[<span class="num">1</span>]))
+    <span class="kw">return</span> <span class="str">''</span>.<span class="fn">join</span>(<span class="var">freq_order</span>)
+
+<span class="cm"># דוגמה לתוצאה:</span>
+<span class="cm"># "ETIASRONHLCPBDUYWGFMVKXQJZ"</span></div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(3)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 5 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(5)">סימולטור ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Simulator -->
+    <div class="slide" id="slide-5">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(6,182,212,0.2);color:var(--accent2)">⚡</div>
+        <h2 class="section-title">סימולטור אינטראקטיבי</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🧪 הזן טקסט וראה את המילון בפעולה</div>
+        <p>כתוב כל טקסט באנגלית ותוכל לראות כיצד הפונקציות שלמדנו עובדות עליו בזמן אמת.</p>
+      </div>
+
+      <div class="sim-container">
+        <div class="sim-row">
+          <span class="sim-label">📝 הזן טקסט:</span>
+          <input class="sim-input" type="text" id="sim-text" value="Hello World Python" placeholder="הזן טקסט באנגלית..." oninput="runSim()">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
+          <div>
+            <div style="font-size:1.2rem;color:var(--muted);margin-bottom:6px;direction:rtl">מילון מונים (ממוין לפי אות):</div>
+            <div class="sim-output" id="sim-out1" style="font-size:1.2rem;max-height:180px;overflow-y:auto"></div>
+          </div>
+          <div>
+            <div style="font-size:1.2rem;color:var(--muted);margin-bottom:6px;direction:rtl">רשימת זוגות ממוינת לפי תדירות:</div>
+            <div class="sim-output" id="sim-out2" style="font-size:1.2rem;max-height:180px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div style="font-size:1.2rem;color:var(--muted);margin-bottom:6px;direction:rtl">סדר האותיות לפי תדירות (frequency order):</div>
+          <div class="sim-output" id="sim-out3" style="color:var(--accent2);font-size:1.2rem;letter-spacing:2px;min-height:50px"></div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        💡 נסה להזין שפה עם אות אחת שחוזרת הרבה (למשל <strong>"EEEEE HELLO WORLD"</strong>) וראה כיצד E תהיה ראשונה בסדר התדירות.
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(4)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 6 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(6)">תרגיל ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Exercise -->
+    <div class="slide" id="slide-6">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(124,58,237,0.2);color:var(--accent1)">✏️</div>
+        <h2 class="section-title">תרגיל: ספירת מילים</h2>
+      </div>
+
+      <div class="exercise-card">
+        <div class="exercise-badge">🎯 תרגיל עצמאי</div>
+        <div class="exercise-title">מילון מונה מילים</div>
+        <div class="exercise-text">
+          כתוב פונקציה בשם <code>count_words(text)</code> שמקבלת מחרוזת טקסט ומחזירה <strong>מילון</strong> שבו:
+          <ul style="margin: 10px 0 10px 20px;">
+            <li>המפתח הוא כל <strong>מילה</strong> בטקסט (באותיות קטנות)</li>
+            <li>הערך הוא כמה פעמים המילה הופיעה</li>
+          </ul>
+          לאחר מכן, השתמש ב-<code>list(d.items())</code> ו-<code>.sort()</code> כדי להדפיס את 3 המילים השכיחות ביותר.
+          <br><br>
+          <strong>דוגמה:</strong> עבור <code>"the cat sat on the mat the"</code><br>
+          הפלט הצפוי: <code>[('the', 3), ('cat', 1), ('mat', 1)]</code> (3 ראשונות לפי תדירות)
+        </div>
+
+        <textarea class="code-input" id="ex-code" placeholder="כתוב כאן את הפתרון שלך...">def count_words(text):
+    word_count = {}
+    
+    # פצל את הטקסט למילים
+    words = text.lower().split()
+    
+    # ספור כל מילה
+    for word in words:
+        # כתוב כאן את הלוגיקה
+        pass
+    
+    return word_count
+
+# בדיקה
+text = "the cat sat on the mat the"
+result = count_words(text)
+
+# המר לרשימת זוגות וממיין
+pairs = list(result.items())
+pairs.sort(key=lambda x: x[1], reverse=True)
+print(pairs[:3])</textarea>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="showHint()">💡 רמז</button>
+          <button class="btn btn-primary" onclick="checkExercise()">▶ בדוק פתרון</button>
+        </div>
+
+        <div class="result-box" id="ex-result"></div>
+        <div class="result-box" id="ex-hint" style="color:var(--accent3);border-color:rgba(245,158,11,0.3)"></div>
+      </div>
+
+      <!-- QUIZ 4 -->
+      <div class="quiz-container">
+        <div class="quiz-q">❓ בתוצאה <code>[('the', 3), ('cat', 1), ('mat', 1)]</code>, מה יחזיר <code>result[1][1]</code>?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this, false, 4)">'the'</button>
+          <button class="quiz-opt" onclick="answer(this, false, 4)">'cat'</button>
+          <button class="quiz-opt" onclick="answer(this, true, 4)">1</button>
+          <button class="quiz-opt" onclick="answer(this, false, 4)">3</button>
+        </div>
+        <div class="quiz-feedback" id="qfb-4">
+          ✅ נכון! <code>result[1]</code> → הזוג השני: <code>('cat', 1)</code>. ואז <code>[1]</code> → הערך בתוך הזוג: <code>1</code>.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(5)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 7 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(7)">סיכום ←</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Summary -->
+    <div class="slide" id="slide-7">
+      <div class="section-header">
+        <div class="section-num" style="background:rgba(16,185,129,0.2);color:var(--accent4)">✅</div>
+        <h2 class="section-title">סיכום ומה למדנו</h2>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="icon">📖</div>
+          <h3>מילון מונים</h3>
+          <p>אתחול כל המפתחות ל-0, ואז הגדלת ערך ב-1 לכל מופע. מניע פגיעות KeyError.</p>
+        </div>
+        <div class="summary-card">
+          <div class="icon">🔄</div>
+          <h3><code>.items()</code></h3>
+          <p>מחזיר view של זוגות (key, value). עוטפים ב-list() לקבלת רשימה שאפשר למיין.</p>
+        </div>
+        <div class="summary-card">
+          <div class="icon">🗂️</div>
+          <h3>מיון עם key</h3>
+          <p><code>.sort(key=func)</code> — הפונקציה אומרת לפי מה למיין. <code>reverse=True</code> = מהגדול לקטן.</p>
+        </div>
+      </div>
+
+      <div class="glow-card">
+        <div class="card-title" style="font-size:1.2rem;margin-bottom:16px">🔗 הקוד המחבר הכל יחד</div>
+        <div class="code-block">
+          <div class="code-body"><span class="cm"># 1. מילון מונים</span>
+<span class="var">counter</span> <span class="op">=</span> {}
+<span class="kw">for</span> <span class="var">item</span> <span class="kw">in</span> <span class="var">collection</span>:
+    <span class="var">counter</span>[<span class="var">item</span>] <span class="op">=</span> <span class="var">counter</span>.<span class="fn">get</span>(<span class="var">item</span>, <span class="num">0</span>) <span class="op">+</span> <span class="num">1</span>
+
+<span class="cm"># 2. המרה לרשימת זוגות</span>
+<span class="var">pairs</span> <span class="op">=</span> <span class="fn">list</span>(<span class="var">counter</span>.<span class="fn">items</span>())
+
+<span class="cm"># 3. מיון יורד לפי הערך</span>
+<span class="var">pairs</span>.<span class="fn">sort</span>(key<span class="op">=</span><span class="kw">lambda</span> <span class="var">x</span>: <span class="var">x</span>[<span class="num">1</span>], reverse<span class="op">=</span><span class="kw">True</span>)
+
+<span class="cm"># 4. שימוש בתוצאה</span>
+<span class="kw">print</span>(<span class="str">f"הכי שכיח: {pairs[0][0]} ({pairs[0][1]} פעמים)"</span>)</div>
+        </div>
+      </div>
+
+      <div class="card" style="text-align:center;padding:32px">
+        <div style="font-size:3rem;margin-bottom:12px">🏆</div>
+        <div style="font-size:1.3rem;font-weight:700;margin-bottom:8px">הניקוד שלך: <span id="final-score" style="color:var(--accent4)"></span>/4</div>
+        <p style="color:var(--muted)" id="final-msg"></p>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="goTo(6)">→ חזרה</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="slide-counter">שקף 8 מתוך 8</span>
+          <button class="btn btn-primary" onclick="goTo(0)">🔄 התחל מחדש</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let currentSlide = 0;
+  const totalSlides = 8;
+  let score = 0;
+  let answered = {1:false, 2:false, 3:false, 4:false};
+
+  // Build nav dots
+  const navDots = document.getElementById('nav-dots');
+  for (let i = 0; i < totalSlides; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i===0?' active':'');
+    dot.onclick = () => goTo(i);
+    navDots.appendChild(dot);
+  }
+
+  function goTo(n) {
+    document.getElementById('slide-'+currentSlide).classList.remove('active');
+    document.querySelectorAll('.nav-dot')[currentSlide].classList.remove('active');
+    currentSlide = n;
+    document.getElementById('slide-'+n).classList.add('active');
+    document.querySelectorAll('.nav-dot')[n].classList.add('active');
+    const pct = ((n+1)/totalSlides)*100;
+    document.getElementById('progress-bar').style.width = pct+'%';
+    window.scrollTo({top:0, behavior:'smooth'});
+    if (n === 7) updateFinalScore();
+    if (n === 5) setTimeout(runSim, 100);
+  }
+
+  function answer(btn, correct, qNum) {
+    if (answered[qNum]) return;
+    answered[qNum] = true;
+    const opts = btn.parentElement.querySelectorAll('.quiz-opt');
+    opts.forEach(o => o.disabled = true);
+    const fb = document.getElementById('qfb-'+qNum);
+    if (correct) {
+      btn.classList.add('correct');
+      fb.classList.add('show', 'correct-fb');
+      score++;
+      document.getElementById('score').textContent = score;
+    } else {
+      btn.classList.add('wrong');
+      fb.classList.add('show', 'wrong-fb');
+      fb.textContent = '❌ לא נכון. ' + fb.textContent.replace('✅ ','');
+    }
+  }
+
+  function updateFinalScore() {
+    document.getElementById('final-score').textContent = score;
+    const msgs = ['נסה שוב — כדאי לחזור על החומר 📚', 'התקדמות יפה! 💪', 'כמעט מושלם! 🎯', 'מצוין מאוד! ⭐', 'מושלם! אלוף! 🏆'];
+    document.getElementById('final-msg').textContent = msgs[score] || msgs[4];
+  }
+
+  // Simulator
+  function runSim() {
+    const text = document.getElementById('sim-text').value.toUpperCase();
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    // Letter count
+    const lc = {};
+    for (const l of LETTERS) lc[l] = 0;
+    for (const c of text) if (LETTERS.includes(c)) lc[c]++;
+
+    // Only show non-zero for clarity
+    const nonZero = Object.entries(lc).filter(([,v])=>v>0);
+    let out1 = '';
+    for (const [k,v] of nonZero) {
+      out1 += `'${k}': ${v}\n`;
+    }
+    document.getElementById('sim-out1').textContent = out1 || '(אין אותיות)';
+
+    // Freq to letter
+    const ftl = {};
+    for (const [l,f] of Object.entries(lc)) {
+      if (!ftl[f]) ftl[f] = [];
+      ftl[f].push(l);
+    }
+    const pairs = Object.entries(ftl).map(([f,ls])=>[parseInt(f), ls.join('')]);
+    pairs.sort((a,b)=>b[0]-a[0]);
+    const nonZeroPairs = pairs.filter(([f])=>f>0);
+
+    let out2 = '';
+    for (const [f,ls] of nonZeroPairs) out2 += `(${f}, '${ls}')\n`;
+    document.getElementById('sim-out2').textContent = out2 || '(אין)';
+
+    // Freq order
+    const order = nonZeroPairs.map(([,ls])=>ls).join('');
+    document.getElementById('sim-out3').textContent = order || '—';
+  }
+
+  // Exercise check
+  function checkExercise() {
+    const code = document.getElementById('ex-code').value;
+    const resultBox = document.getElementById('ex-result');
+    resultBox.classList.remove('show', 'error');
+    document.getElementById('ex-hint').classList.remove('show');
+
+    try {
+      // Simple validation
+      if (!code.includes('word_count[word]') && !code.includes('word_count.get') && !code.includes('counter[') ) {
+        resultBox.textContent = '⚠️ נסה שוב — נראה שחסרה הלוגיקה של ספירת המילים בתוך הלולאה.';
+        resultBox.classList.add('show', 'error');
+        return;
+      }
+      if (!code.includes('.items()')) {
+        resultBox.textContent = '⚠️ נסה שוב — אל תשכח להשתמש ב-.items() להמרת המילון לרשימת זוגות!';
+        resultBox.classList.add('show', 'error');
+        return;
+      }
+      if (!code.includes('.sort(') && !code.includes('sorted(')) {
+        resultBox.textContent = '⚠️ נסה שוב — חסר המיון עם .sort() או sorted()';
+        resultBox.classList.add('show', 'error');
+        return;
+      }
+      resultBox.textContent = '✅ מצוין! הקוד נראה נכון. הוא מכיל:\n✓ ספירת מילים במילון\n✓ המרה לרשימת זוגות עם .items()\n✓ מיון לפי תדירות\n✓ הדפסת 3 הראשונות עם [:3]';
+      resultBox.classList.add('show');
+    } catch(e) {
+      resultBox.textContent = 'שגיאה: ' + e.message;
+      resultBox.classList.add('show', 'error');
+    }
+  }
+
+  function showHint() {
+    const hint = document.getElementById('ex-hint');
+    hint.classList.toggle('show');
+    hint.textContent = `💡 רמז:
+בתוך הלולאה "for word in words:", כדי לספור:
+  if word in word_count:
+      word_count[word] += 1
+  else:
+      word_count[word] = 1
+
+או בצורה קצרה יותר:
+  word_count[word] = word_count.get(word, 0) + 1`;
+  }
+
+  // Init sim
+  runSim();
+</script>
+</body>
+</html>

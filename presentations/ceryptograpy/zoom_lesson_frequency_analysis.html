@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ניתוח תדרים — שיעור זום</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Fira+Code:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --card: #1a2235;
+  --card2: #1e2d42;
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+  --amber-border: rgba(245,158,11,0.35);
+  --teal: #14b8a6;
+  --teal-dim: rgba(20,184,166,0.1);
+  --teal-border: rgba(20,184,166,0.3);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.1);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.1);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.1);
+  --purple: #a855f7;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --border2: #263347;
+  --code-bg: #060c18;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Heebo',sans-serif; font-size:1.2rem;
+  min-height:100vh; overflow-x:hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(20,184,166,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(20,184,166,0.03) 1px,transparent 1px);
+  background-size:40px 40px; pointer-events:none; z-index:0;
+}
+
+/* TOP BAR */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:56px;
+  background:rgba(10,14,26,0.96); border-bottom:1px solid var(--border2);
+  backdrop-filter:blur(16px);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; z-index:1000;
+}
+.topbar-title { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:3px; color:var(--teal); }
+.topbar-right { display:flex; align-items:center; gap:14px; }
+.lesson-timer {
+  display:flex; align-items:center; gap:8px;
+  background:var(--card); border:1px solid var(--border2); border-radius:8px;
+  padding:6px 14px; font-family:'Fira Code',monospace; font-size: 1.2rem;
+  color:var(--amber); cursor:pointer; user-select:none;
+}
+.lesson-timer.running { color:var(--green); border-color:rgba(34,197,94,0.3); }
+.lesson-timer.warning { color:var(--red); border-color:rgba(239,68,68,0.4); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.slide-progress { font-size: 1.2rem; color:var(--muted); font-family:'Fira Code',monospace; }
+.btn-nav {
+  background:var(--card); border:1px solid var(--border2); border-radius:8px;
+  padding:6px 14px; color:var(--text); cursor:pointer;
+  font-family:'Heebo',sans-serif; font-size: 1.2rem; transition:all 0.2s;
+}
+.btn-nav:hover { border-color:var(--teal); color:var(--teal); }
+
+/* DOTS */
+.slide-dots {
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  display:flex; gap:8px; align-items:center;
+  background:rgba(10,14,26,0.85); border:1px solid var(--border2);
+  border-radius:30px; padding:8px 16px; z-index:1000; backdrop-filter:blur(10px);
+}
+.dot { width:8px; height:8px; border-radius:50%; background:var(--border2); cursor:pointer; transition:all 0.3s; border:none; }
+.dot.active { background:var(--teal); width:24px; border-radius:4px; }
+.dot.type-poll { background:var(--amber-dim); border:1px solid var(--amber-border); }
+.dot.type-poll.active { background:var(--amber); }
+.dot.type-breakout { background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4); }
+.dot.type-breakout.active { background:var(--purple); }
+
+/* SLIDES */
+.slides-container { padding-top:56px; padding-bottom:58px; position:relative; z-index:1; }
+.slide {
+  display:none; min-height:calc(100vh - 114px);
+  padding:28px 28px 20px; max-width:1100px; margin:0 auto;
+  animation:fadeUp 0.35s ease; flex-direction:column;
+}
+.slide.active { display:flex; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+/* LABELS */
+.slide-label {
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius:6px; padding:4px 12px;
+  font-size: 1.2rem; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+  margin-bottom:12px; width:fit-content;
+}
+.label-theory { background:var(--teal-dim); border:1px solid var(--teal-border); color:var(--teal); }
+.label-breakout { background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3); color:var(--purple); }
+.label-poll { background:var(--blue-dim); border:1px solid rgba(59,130,246,0.3); color:var(--blue); }
+.label-code { background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.25); color:var(--green); }
+
+/* TYPOGRAPHY */
+.slide-title { font-size:2.2rem; font-weight:900; line-height:1.1; margin-bottom:6px; }
+.slide-subtitle { font-size:1.2rem; color:var(--muted); margin-bottom:20px; }
+
+/* CARDS */
+.card { background:var(--card); border:1px solid var(--border2); border-radius:14px; padding:18px 22px; margin-bottom:14px; }
+.card-title { font-size: 1.2rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+.card p { color:#94a3b8; line-height:1.8; font-size:1.2rem; }
+
+/* GRIDS */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+/* CODE */
+.code-wrap { background:var(--code-bg); border:1px solid var(--border2); border-radius:12px; overflow:hidden; margin:10px 0; }
+.code-header {
+  background:rgba(255,255,255,0.04); padding:7px 16px;
+  font-size: 1.2rem; color:var(--muted); border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; gap:8px; direction:ltr;
+}
+.lang-badge { background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:4px; font-family:'Fira Code',monospace; font-size: 1.2rem; }
+.code-body {
+  padding:16px 20px; font-family:'Fira Code',monospace; font-size: 1.2rem;
+  line-height:1.9; direction:ltr; text-align:left; overflow-x:auto; white-space:pre; color:#a8b4c8;
+}
+.kw{color:#c792ea} .fn{color:#82aaff} .str{color:#c3e88d} .num{color:#f78c6c}
+.cm{color:#4a6070;font-style:italic} .op{color:var(--teal)} .var{color:#ffcb6b}
+.hl{background:rgba(245,158,11,0.12);display:block;margin:0 -20px;padding:0 20px;border-right:3px solid var(--amber)}
+
+/* TIP BUTTON & BOX */
+.tip-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--amber-dim); border:1px solid var(--amber-border); color:var(--amber);
+  border-radius:8px; padding:9px 18px; cursor:pointer;
+  font-family:'Heebo',sans-serif; font-size:1.05rem; font-weight:700;
+  transition:all 0.2s; margin-top:10px; margin-left:8px;
+}
+.tip-btn:hover { background:rgba(245,158,11,0.22); }
+.tip-box {
+  display:none; margin-top:10px;
+  background:rgba(245,158,11,0.07); border:1px solid var(--amber-border);
+  border-right:4px solid var(--amber); border-radius:10px;
+  padding:14px 18px; font-size:1.2rem; color:#fde68a; line-height:1.8;
+  animation:fadeUp 0.25s ease;
+}
+.tip-box.show { display:block; }
+
+/* TIMER */
+.activity-timer {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--amber-dim); border:1px solid var(--amber-border);
+  border-radius:12px; padding:16px 20px; margin-bottom:14px;
+}
+.timer-display { font-family:'Bebas Neue',sans-serif; font-size:3.5rem; color:var(--amber); letter-spacing:4px; line-height:1; }
+.timer-label { font-size:1.05rem; color:#fde68a; margin-top:4px; }
+.timer-btns { display:flex; gap:8px; flex-direction:column; }
+.tbtn {
+  border:1px solid var(--amber-border); background:rgba(245,158,11,0.15); color:var(--amber);
+  border-radius:8px; padding:7px 18px; cursor:pointer;
+  font-family:'Heebo',sans-serif; font-size: 1.2rem; font-weight:700; transition:all 0.2s;
+}
+.tbtn:hover { background:rgba(245,158,11,0.3); }
+.tbtn.green-btn { border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.1); color:var(--green); }
+.tbtn.green-btn:hover { background:rgba(34,197,94,0.25); }
+.tbtn.red-btn { border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.1); color:var(--red); }
+.tbtn.red-btn:hover { background:rgba(239,68,68,0.25); }
+
+/* BREAKOUT */
+.breakout-box { background:rgba(168,85,247,0.06); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:22px 26px; margin:10px 0; }
+.breakout-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.breakout-icon { width:48px; height:48px; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.4); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; }
+.breakout-title { font-size:1.3rem; font-weight:700; color:#d8b4fe; }
+.breakout-sub { font-size:1.05rem; color:var(--muted); }
+.rooms-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+.room-card { background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.25); border-radius:10px; padding:14px; text-align:center; }
+.room-num { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; color:var(--purple); letter-spacing:2px; }
+.room-task { font-size: 1.2rem; color:#c4b5fd; margin-top:4px; }
+
+/* POLL */
+.poll-container { background:var(--blue-dim); border:1px solid rgba(59,130,246,0.25); border-radius:16px; padding:22px; margin:10px 0; }
+.poll-q { font-size:1.2rem; font-weight:700; margin-bottom:18px; line-height:1.5; }
+.poll-options { display:flex; flex-direction:column; gap:10px; }
+.poll-opt {
+  display:flex; align-items:center; gap:12px;
+  background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2);
+  border-radius:10px; padding:12px 16px; cursor:pointer; transition:all 0.25s; user-select:none;
+}
+.poll-opt:hover { border-color:var(--blue); background:rgba(59,130,246,0.18); }
+.poll-opt.correct-ans { border-color:var(--green); background:var(--green-dim); pointer-events:none; }
+.poll-opt.wrong-ans { border-color:var(--red); background:var(--red-dim); pointer-events:none; }
+.poll-opt.locked { pointer-events:none; }
+.opt-letter {
+  width:32px; height:32px; border-radius:8px;
+  background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.4);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size: 1.2rem; color:var(--blue); flex-shrink:0; font-family:'Fira Code',monospace;
+}
+.opt-text { font-size:1.2rem; flex:1; direction:rtl; }
+.poll-feedback { margin-top:12px; padding:12px 16px; border-radius:10px; font-size:1.2rem; display:none; line-height:1.6; }
+.poll-feedback.show { display:block; }
+.poll-feedback.ok { background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+.poll-feedback.no { background:var(--red-dim); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+.reveal-btn {
+  margin-top:12px; background:var(--blue-dim); border:1px solid rgba(59,130,246,0.35); color:var(--blue);
+  border-radius:8px; padding:9px 20px; cursor:pointer;
+  font-family:'Heebo',sans-serif; font-weight:700; font-size:1.05rem;
+  transition:all 0.2s; display:none;
+}
+.reveal-btn.show { display:inline-block; }
+.reveal-btn:hover { background:rgba(59,130,246,0.2); }
+
+/* STEP LIST */
+.step-list { display:flex; flex-direction:column; gap:10px; }
+.step-item { display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1px solid var(--border2); border-radius:10px; padding:13px 17px; }
+.step-n { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size: 1.2rem; flex-shrink:0; }
+.step-body h4 { font-size: 1.2rem; font-weight:700; margin-bottom:3px; }
+.step-body p { font-size: 1.2rem; color:var(--muted); line-height:1.6; }
+
+/* AGENDA */
+.agenda-row { display:flex; gap:12px; align-items:stretch; margin-bottom:9px; }
+.agenda-time { width:72px; font-family:'Fira Code',monospace; font-size: 1.2rem; color:var(--amber); background:var(--amber-dim); border:1px solid var(--amber-border); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; text-align:center; padding:8px 4px; font-weight:700; }
+.agenda-body { flex:1; background:var(--card); border:1px solid var(--border2); border-radius:8px; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
+.agenda-name { font-size: 1.2rem; font-weight:600; }
+.agenda-type { font-size: 1.2rem; color:var(--muted); margin-top:2px; }
+.agenda-badge { font-size: 1.2rem; padding:3px 10px; border-radius:20px; font-weight:700; white-space:nowrap; }
+
+/* CHECKLIST */
+.checklist { display:flex; flex-direction:column; gap:8px; }
+.check-item { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border2); border-radius:8px; padding:10px 14px; cursor:pointer; transition:all 0.2s; user-select:none; font-size:1.2rem; }
+.check-item:hover { border-color:var(--teal); }
+.check-item.done { border-color:rgba(34,197,94,0.3); background:var(--green-dim); }
+.check-box { width:22px; height:22px; border-radius:5px; border:2px solid var(--border2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size: 1.2rem; transition:all 0.2s; }
+.check-item.done .check-box { background:var(--green); border-color:var(--green); color:white; }
+
+/* TRANSFORM VIS */
+.transform-vis { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.dict-vis { background:var(--code-bg); border:1px solid var(--border2); border-radius:10px; padding:12px 16px; font-family:'Fira Code',monospace; font-size: 1.2rem; direction:ltr; text-align:left; flex:1; min-width:130px; }
+.dict-row { display:flex; justify-content:space-between; gap:12px; padding:2px 0; }
+.dk{color:var(--amber)} .dv{color:var(--green)}
+.arr-box { display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--teal); flex-shrink:0; }
+.arr-fn { font-family:'Fira Code',monospace; font-size: 1.2rem; color:var(--muted); text-align:center; }
+
+/* HERO */
+.hero-slide { text-align:center; padding:40px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 114px); position:relative; }
+.hero-bg { font-family:'Bebas Neue',sans-serif; font-size:10rem; line-height:1; background:linear-gradient(135deg,var(--teal),#0ea5e9); -webkit-background-clip:text; -webkit-text-fill-color:transparent; opacity:0.1; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); user-select:none; white-space:nowrap; }
+.hero-title { font-size:3.2rem; font-weight:900; line-height:1.1; position:relative; z-index:1; margin-bottom:10px; }
+.hero-en { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:6px; color:var(--teal); margin-bottom:28px; }
+.hero-chips { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; position:relative; z-index:1; margin-bottom:28px; }
+.chip { background:var(--card2); border:1px solid var(--border2); border-radius:8px; padding:8px 16px; font-size: 1.2rem; }
+.info-box { background:var(--teal-dim); border:1px solid var(--teal-border); border-radius:10px; padding:14px 18px; font-size:1.2rem; color:#99f6e4; line-height:1.7; }
+kbd { background:var(--card2); border:1px solid var(--border2); border-radius:5px; padding:2px 7px; font-family:'Fira Code',monospace; font-size: 1.2rem; color:var(--amber); }
+
+@media (max-width:640px) { .grid-2{grid-template-columns:1fr} .rooms-grid{grid-template-columns:1fr 1fr} .slide-title{font-size:1.7rem} }
+::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:var(--bg)} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-title">FREQUENCY ANALYSIS · שיעור זום</div>
+  <div class="topbar-right">
+    <span class="slide-progress" id="slide-counter">01 / 12</span>
+    <div class="lesson-timer" id="global-timer" onclick="toggleGlobalTimer()" title="לחץ להפעיל/לעצור">⏱ <span id="gt-display">00:00</span></div>
+    <button class="btn-nav" onclick="goTo(currentSlide - 1)">→</button>
+    <button class="btn-nav" onclick="goTo(currentSlide + 1)">←</button>
+  </div>
+</header>
+
+<nav class="slide-dots" id="dot-nav"></nav>
+
+<div class="slides-container">
+
+  <!-- 0: COVER -->
+  <div class="slide active" id="slide-0" data-type="theory">
+    <div class="hero-slide">
+      <div class="hero-bg">FA</div>
+      <div class="slide-label label-theory">שיעור זום · קריפטוגרפיה</div>
+      <h1 class="hero-title">ניתוח תדרים</h1>
+      <div class="hero-en">FREQUENCY ANALYSIS</div>
+      <div class="hero-chips">
+        <div class="chip">⏱ 75 דקות</div>
+        <div class="chip">🐍 Python</div>
+        <div class="chip">💬 2 הפעלות</div>
+        <div class="chip">🏠 Breakout Rooms</div>
+        <div class="chip">❓ 3 שאלות</div>
+      </div>
+      <div class="info-box" style="max-width:520px;text-align:right">
+        ניווט: <kbd>←</kbd> <kbd>→</kbd> מקלדת · לחץ על הנקודות למטה לניווט מהיר · לחץ על הטיימר למעלה להתחיל
+      </div>
+    </div>
+  </div>
+
+  <!-- 1: AGENDA -->
+  <div class="slide" id="slide-1" data-type="theory">
+    <div class="slide-label label-theory">📋 תכנית השיעור</div>
+    <h1 class="slide-title">מה נעשה היום?</h1>
+    <p class="slide-subtitle">75 דקות · Python · ניתוח תדרים לפיצוח צפנים</p>
+    <div class="agenda-row">
+      <div class="agenda-time">0:00</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">🔥 פתיחה — שאלת חימום</div><div class="agenda-type">שאלה לצ'אט + הצגת הנושא</div></div>
+        <div class="agenda-badge" style="background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border)">5 דק׳</div>
+      </div>
+    </div>
+    <div class="agenda-row">
+      <div class="agenda-time">0:05</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">📊 תדירות אותיות באנגלית</div><div class="agenda-type">הסבר תיאורטי + גרף</div></div>
+        <div class="agenda-badge" style="background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border)">10 דק׳</div>
+      </div>
+    </div>
+    <div class="agenda-row">
+      <div class="agenda-time">0:15</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">💻 Live coding: get_letter_count</div><div class="agenda-type">הדגמה + שאלה לכיתה</div></div>
+        <div class="agenda-badge" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.3)">15 דק׳</div>
+      </div>
+    </div>
+    <div class="agenda-row">
+      <div class="agenda-time">0:30</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">🏠 Breakout Rooms — כתיבה עצמאית</div><div class="agenda-type">זוגות כותבים get_letter_count מאפס</div></div>
+        <div class="agenda-badge" style="background:rgba(168,85,247,0.12);color:var(--purple);border:1px solid rgba(168,85,247,0.3)">12 דק׳</div>
+      </div>
+    </div>
+    <div class="agenda-row">
+      <div class="agenda-time">0:45</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">🔄 get_frequency_order — פירוק שלבים</div><div class="agenda-type">items(), list(), sort(key=...)</div></div>
+        <div class="agenda-badge" style="background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border)">15 דק׳</div>
+      </div>
+    </div>
+    <div class="agenda-row">
+      <div class="agenda-time">1:00</div>
+      <div class="agenda-body">
+        <div><div class="agenda-name">🎯 english_freq_match_score + סיכום</div><div class="agenda-type">שאלות סיכום + שיעורי בית</div></div>
+        <div class="agenda-badge" style="background:var(--blue-dim);color:var(--blue);border:1px solid rgba(59,130,246,0.3)">15 דק׳</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2: WARMUP -->
+  <div class="slide" id="slide-2" data-type="poll">
+    <div class="slide-label label-poll">💬 שאלת פתיחה</div>
+    <h1 class="slide-title">חימום — שאלו את הכיתה</h1>
+    <p class="slide-subtitle">תלמידים עונים בצ'אט של זום</p>
+    <div class="card" style="border-color:rgba(59,130,246,0.3);background:var(--blue-dim);padding:26px">
+      <div style="font-size:1.45rem;font-weight:900;margin-bottom:14px;line-height:1.4">
+        🔐 אם קיבלת הודעה מוצפנת עם אותיות רנדומליות —<br>
+        <span style="color:var(--teal)">מאיפה תתחיל לפצח אותה?</span>
+      </div>
+      <p style="color:var(--muted)">הקלד את תשובתך בצ'אט כעת 👇</p>
+    </div>
+    <div>
+      <button class="tip-btn" onclick="toggleTip('tip-warmup-answers')">💡 תשובות צפויות</button>
+      <button class="tip-btn" onclick="toggleTip('tip-warmup-connect')">🔗 חיבור לנושא</button>
+    </div>
+    <div class="tip-box" id="tip-warmup-answers">
+      • לנסות כל מפתח אפשרי<br>
+      • לחפש מילים קצרות (a, the, is)<br>
+      • לספור אותיות ולהשוות לשכיחות ידועה<br>
+      • להשתמש בקונטקסט של ההודעה
+    </div>
+    <div class="tip-box" id="tip-warmup-connect">
+      אנגלית היא שפה <strong>צפויה</strong> — האות <strong>E</strong> מופיעה ~12.7% מהזמן בכל טקסט אנגלי.
+      הצפנת substitution שומרת על יחסי התדירות האלה. לכן ניתוח תדרים מאפשר לפצח אותה!
+    </div>
+  </div>
+
+  <!-- 3: THEORY -->
+  <div class="slide" id="slide-3" data-type="theory">
+    <div class="slide-label label-theory">📊 רקע תיאורטי</div>
+    <h1 class="slide-title">תדירות אותיות באנגלית</h1>
+    <p class="slide-subtitle">כל שפה טבעית יש לה "טביעת אצבע" — פיזור קבוע של אותיות</p>
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-title">📈 5 הנפוצות ביותר</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fira Code';font-weight:700;color:var(--amber);font-size:1.2rem;width:22px">E</span><div style="flex:1;height:11px;background:var(--border2);border-radius:5px;overflow:hidden"><div style="width:100%;height:100%;background:var(--amber);border-radius:5px"></div></div><span style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);width:44px">12.7%</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fira Code';font-weight:700;color:var(--teal);font-size:1.2rem;width:22px">T</span><div style="flex:1;height:11px;background:var(--border2);border-radius:5px;overflow:hidden"><div style="width:71%;height:100%;background:var(--teal);border-radius:5px"></div></div><span style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);width:44px">9.1%</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fira Code';font-weight:700;color:#60a5fa;font-size:1.2rem;width:22px">A</span><div style="flex:1;height:11px;background:var(--border2);border-radius:5px;overflow:hidden"><div style="width:64%;height:100%;background:#60a5fa;border-radius:5px"></div></div><span style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);width:44px">8.2%</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fira Code';font-weight:700;color:#34d399;font-size:1.2rem;width:22px">O</span><div style="flex:1;height:11px;background:var(--border2);border-radius:5px;overflow:hidden"><div style="width:59%;height:100%;background:#34d399;border-radius:5px"></div></div><span style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);width:44px">7.5%</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Fira Code';font-weight:700;color:#a78bfa;font-size:1.2rem;width:22px">I</span><div style="flex:1;height:11px;background:var(--border2);border-radius:5px;overflow:hidden"><div style="width:55%;height:100%;background:#a78bfa;border-radius:5px"></div></div><span style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);width:44px">7.0%</span></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0">
+          <div class="card-title">🔡 מחרוזת ETAOIN</div>
+          <div style="font-family:'Fira Code';font-size:1.2rem;letter-spacing:5px;color:var(--teal);margin:8px 0;direction:ltr;text-align:left">ETAOINSHRDLCUMWFGYPBVKJXQZ</div>
+          <p>האותיות מסודרות מהנפוצה לנדירה — כלי עזר בפיצוח</p>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">🧠 הרעיון המרכזי</div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-n" style="background:rgba(245,158,11,0.2);color:var(--amber)">1</div>
+              <div class="step-body"><h4>הצפנה משמרת תדירות</h4><p>Caesar ו-Substitution מחליפות אותיות — אבל לא משנות כמה פעמים הן מופיעות</p></div>
+            </div>
+            <div class="step-item">
+              <div class="step-n" style="background:var(--teal-dim);color:var(--teal)">2</div>
+              <div class="step-body"><h4>ספור את הטקסט המוצפן</h4><p>אות שמופיעה הכי הרבה — כנראה E במקור</p></div>
+            </div>
+            <div class="step-item">
+              <div class="step-n" style="background:var(--blue-dim);color:var(--blue)">3</div>
+              <div class="step-body"><h4>השווה לתדירות האנגלית</h4><p>ניקוד "התאמה" מאפשר לדרג מפתחות אפשריים</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4: LIVE CODING 1 -->
+  <div class="slide" id="slide-4" data-type="code">
+    <div class="slide-label label-code">💻 Live Coding #1</div>
+    <h1 class="slide-title">get_letter_count</h1>
+    <p class="slide-subtitle">הדגמה בזמן אמת — פתח Google Colab לצד המצגת</p>
+    <div class="grid-2">
+      <div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="lang-badge">Python</span> get_letter_count</div>
+          <div class="code-body"><span class="cm"># שלב א׳: אתחול מילון מונים</span>
+<span class="var">letter_count</span> <span class="op">=</span> {}
+<span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+<span class="hl">    <span class="var">letter_count</span>[<span class="var">letter</span>] <span class="op">=</span> <span class="num">0</span>  <span class="cm"># כולם מתחילים מ-0</span></span>
+
+<span class="cm"># שלב ב׳: ספירה</span>
+<span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">message</span>.<span class="fn">upper</span>():
+    <span class="kw">if</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+        <span class="var">letter_count</span>[<span class="var">letter</span>] <span class="op">+=</span> <span class="num">1</span>
+
+<span class="kw">return</span> <span class="var">letter_count</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">📥 נסה עם הכיתה</div>
+          <div class="checklist">
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div><code>"HELLO WORLD"</code> — קלט פשוט</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div><code>"hello world"</code> — האם upper() עובד?</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div><code>"AAAA"</code> — מה הציפייה?</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div><code>letter_count['Z']</code> — כמה?</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0">
+          <div class="card-title">🧠 שאלה לכיתה</div>
+          <p>מה ההבדל בין <code style="font-family:'Fira Code'">=&nbsp;0</code> לאתחול, לבין <code style="font-family:'Fira Code'">+=&nbsp;1</code> בספירה?</p>
+          <button class="tip-btn" onclick="toggleTip('tip-lc-answer')" style="margin-top:10px">💡 תשובה</button>
+          <div class="tip-box" id="tip-lc-answer">
+            <code>=0</code> <strong>קובע</strong> ערך — תמיד מאפס.<br>
+            <code>+=1</code> <strong>מוסיף</strong> על הקיים — כך סופרים מופעים.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5: QUESTION 1 -->
+  <div class="slide" id="slide-5" data-type="poll">
+    <div class="slide-label label-poll">❓ שאלה לכיתה #1</div>
+    <h1 class="slide-title">שאלת בדיקת הבנה</h1>
+    <p class="slide-subtitle">לחץ על התשובה שלך</p>
+    <div class="poll-container">
+      <div class="poll-q">
+        נתון: <span style="font-family:'Fira Code';color:var(--teal)">message = "HELLO"</span><br>
+        מה יחזיר <span style="font-family:'Fira Code';color:var(--amber)">get_letter_count(message)['Z']</span> ?
+      </div>
+      <div class="poll-options" id="q1-opts">
+        <div class="poll-opt" onclick="answerPoll(1,'a',false)"><div class="opt-letter">A</div><div class="opt-text">שגיאת KeyError — Z לא ברשימה</div></div>
+        <div class="poll-opt" onclick="answerPoll(1,'b',false)"><div class="opt-letter">B</div><div class="opt-text">None</div></div>
+        <div class="poll-opt" onclick="answerPoll(1,'c',true)"><div class="opt-letter">C</div><div class="opt-text" style="font-family:'Fira Code'">0</div></div>
+        <div class="poll-opt" onclick="answerPoll(1,'d',false)"><div class="opt-letter">D</div><div class="opt-text">-1</div></div>
+      </div>
+      <div class="poll-feedback" id="q1-fb"></div>
+      <button class="reveal-btn" id="q1-reveal" onclick="revealAnswer(1,'c','בשלב האתחול עברנו על כל 26 אותיות האלפבית ושמנו 0 לכולן. Z קיבלה ערך 0 ולא תגרום KeyError — זה בדיוק למה אנחנו מאתחלים!')">הצג הסבר</button>
+    </div>
+    <button class="tip-btn" onclick="toggleTip('tip-q1-followup')">💡 טיפ להמשך</button>
+    <div class="tip-box" id="tip-q1-followup">
+      זה נקרא <strong>defensive programming</strong> — מכינים את המבנה מראש כדי למנוע שגיאות. בקוד אמיתי זה חוסך קריסות בזמן ריצה.
+    </div>
+  </div>
+
+  <!-- 6: BREAKOUT -->
+  <div class="slide" id="slide-6" data-type="breakout">
+    <div class="slide-label label-breakout">🏠 Breakout Rooms</div>
+    <h1 class="slide-title">עבודה בזוגות — 12 דקות</h1>
+    <p class="slide-subtitle">כתוב את הפונקציה מאפס — בלי לראות את הקוד המקורי</p>
+    <div class="grid-2">
+      <div>
+        <div class="breakout-box">
+          <div class="breakout-header">
+            <div class="breakout-icon">🏠</div>
+            <div><div class="breakout-title">המשימה</div><div class="breakout-sub">לכל זוג: חדר אחד ב-Zoom</div></div>
+          </div>
+          <div class="card" style="background:rgba(168,85,247,0.05);border-color:rgba(168,85,247,0.2)">
+            <div class="card-title" style="color:#d8b4fe">📝 מה לכתוב</div>
+            <div class="code-wrap" style="margin-top:8px">
+              <div class="code-body"><span class="kw">def</span> <span class="fn">get_letter_count</span>(message):
+    <span class="cm"># כתבו כאן את המימוש!</span>
+    <span class="cm"># שני שלבים:</span>
+    <span class="cm"># 1. אתחול לכל האותיות</span>
+    <span class="cm"># 2. ספירה בלולאה</span>
+    <span class="kw">pass</span></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;font-size: 1.2rem;color:#d8b4fe;font-weight:700;margin-bottom:6px">🧪 בדוק על:</div>
+          <div style="font-family:'Fira Code';font-size: 1.2rem;color:var(--muted);direction:ltr;text-align:left;line-height:1.9">
+            print(get_letter_count("HELLO"))<br>
+            <span style="color:#4a6070"># {'H':1,'E':1,'L':2,'O':1,...}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">🏠 חלוקת חדרים</div>
+          <div class="rooms-grid">
+            <div class="room-card"><div class="room-num">01</div><div class="room-task">זוג א</div></div>
+            <div class="room-card"><div class="room-num">02</div><div class="room-task">זוג ב</div></div>
+            <div class="room-card"><div class="room-num">03</div><div class="room-task">זוג ג</div></div>
+            <div class="room-card"><div class="room-num">04</div><div class="room-task">זוג ד</div></div>
+            <div class="room-card"><div class="room-num">05</div><div class="room-task">זוג ה</div></div>
+            <div class="room-card"><div class="room-num">06</div><div class="room-task">זוג ו</div></div>
+          </div>
+        </div>
+        <div class="activity-timer">
+          <div>
+            <div class="timer-display" id="bo-timer">12:00</div>
+            <div class="timer-label">⏱ זמן Breakout</div>
+          </div>
+          <div class="timer-btns">
+            <button class="tbtn green-btn" onclick="startBreakout()">▶ התחל</button>
+            <button class="tbtn" onclick="pauseBreakout()">⏸ עצור</button>
+            <button class="tbtn red-btn" onclick="resetBreakout()">↺ אפס</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7: DICT.ITEMS() -->
+  <div class="slide" id="slide-7" data-type="theory">
+    <div class="slide-label label-theory">📖 נושא חדש</div>
+    <h1 class="slide-title">dict.items() — המרה לזוגות</h1>
+    <p class="slide-subtitle">שלב קריטי: הפיכת מילון לרשימה שאפשר למיין</p>
+    <div class="transform-vis">
+      <div class="dict-vis">
+        <div style="color:var(--muted);font-size: 1.2rem;margin-bottom:6px"># מילון</div>
+        <div class="dict-row"><span class="dk">'A'</span><span class="dv">106</span></div>
+        <div class="dict-row"><span class="dk">'E'</span><span class="dv">175</span></div>
+        <div class="dict-row"><span class="dk">'T'</span><span class="dv">126</span></div>
+        <div style="color:var(--muted);font-size: 1.2rem;margin-top:4px">...</div>
+      </div>
+      <div class="arr-box"><div style="font-size:1.5rem">→</div><div class="arr-fn">.items()<br>+ list()</div></div>
+      <div class="dict-vis">
+        <div style="color:var(--muted);font-size: 1.2rem;margin-bottom:6px"># רשימת זוגות</div>
+        <div style="color:var(--teal)">[</div>
+        <div style="padding-right:8px">(<span class="dk">'A'</span>, <span class="dv">106</span>),</div>
+        <div style="padding-right:8px">(<span class="dk">'E'</span>, <span class="dv">175</span>),</div>
+        <div style="padding-right:8px">(<span class="dk">'T'</span>, <span class="dv">126</span>),</div>
+        <div style="color:var(--teal)">]</div>
+      </div>
+      <div class="arr-box"><div style="font-size:1.5rem">→</div><div class="arr-fn">.sort(<br>reverse=True)</div></div>
+      <div class="dict-vis">
+        <div style="color:var(--muted);font-size: 1.2rem;margin-bottom:6px"># ממוין!</div>
+        <div style="color:var(--teal)">[</div>
+        <div style="padding-right:8px">(<span class="dk">'E'</span>, <span class="dv">175</span>),</div>
+        <div style="padding-right:8px">(<span class="dk">'T'</span>, <span class="dv">126</span>),</div>
+        <div style="padding-right:8px">(<span class="dk">'A'</span>, <span class="dv">106</span>),</div>
+        <div style="color:var(--teal)">]</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="code-wrap">
+        <div class="code-header"><span class="lang-badge">Python</span> המרה + מיון</div>
+        <div class="code-body"><span class="cm"># 1. המרה לרשימת זוגות</span>
+<span class="var">freq_pairs</span> <span class="op">=</span> <span class="fn">list</span>(<span class="var">freq_to_letter</span>.<span class="fn">items</span>())
+
+<span class="cm"># 2. מיון יורד לפי המספר</span>
+<span class="var">freq_pairs</span>.<span class="fn">sort</span>(
+<span class="hl">    key<span class="op">=</span><span class="kw">lambda</span> <span class="var">x</span>: <span class="var">x</span>[<span class="num">0</span>],  <span class="cm"># לפי הספרה</span></span>
+    reverse<span class="op">=</span><span class="kw">True</span>
+)</div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">⚠️ מלכודת נפוצה</div>
+          <div class="code-wrap" style="margin-top:8px">
+            <div class="code-body" style="font-size: 1.2rem"><span class="cm"># ❌ שגוי — קוראים לפונקציה</span>
+.sort(key=<span style="color:var(--red)">get_item_at_index_zero()</span>)
+
+<span class="cm"># ✅ נכון — מעבירים את הפונקציה</span>
+.sort(key=<span style="color:var(--green)">get_item_at_index_zero</span>)</div>
+          </div>
+          <p style="margin-top:10px">Python קורא לפונקציה על <em>כל איבר</em> בעצמו.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8: QUESTION 2 -->
+  <div class="slide" id="slide-8" data-type="poll">
+    <div class="slide-label label-poll">❓ שאלה לכיתה #2</div>
+    <h1 class="slide-title">הבנת items() ו-sort()</h1>
+    <p class="slide-subtitle">לחץ על התשובה שלך</p>
+    <div class="poll-container">
+      <div class="poll-q">
+        נתון:
+        <pre style="font-family:'Fira Code';font-size:0.92rem;background:var(--code-bg);padding:12px;border-radius:8px;direction:ltr;text-align:left;margin:10px 0;color:var(--text);line-height:1.9">d = {'x': 5, 'y': 3, 'z': 9}
+pairs = list(d.items())
+pairs.sort(key=lambda p: p[1], reverse=True)
+print(pairs[0])</pre>
+        מה יודפס?
+      </div>
+      <div class="poll-options" id="q2-opts">
+        <div class="poll-opt" onclick="answerPoll(2,'a',false)"><div class="opt-letter">A</div><div class="opt-text" style="font-family:'Fira Code'">('x', 5)</div></div>
+        <div class="poll-opt" onclick="answerPoll(2,'b',true)"><div class="opt-letter">B</div><div class="opt-text" style="font-family:'Fira Code'">('z', 9)</div></div>
+        <div class="poll-opt" onclick="answerPoll(2,'c',false)"><div class="opt-letter">C</div><div class="opt-text" style="font-family:'Fira Code'">('y', 3)</div></div>
+        <div class="poll-opt" onclick="answerPoll(2,'d',false)"><div class="opt-letter">D</div><div class="opt-text">שגיאה — מיון לא עובד על מילונים</div></div>
+      </div>
+      <div class="poll-feedback" id="q2-fb"></div>
+      <button class="reveal-btn" id="q2-reveal" onclick="revealAnswer(2,'b','lambda p: p[1] ממיין לפי הערך (אינדקס 1). reverse=True — מהגדול לקטן. 9 הגדול ביותר, לכן (\'z\', 9) ראשון.')">הצג הסבר</button>
+    </div>
+    <button class="tip-btn" onclick="toggleTip('tip-q2-followup')">💡 טיפ להמשך</button>
+    <div class="tip-box" id="tip-q2-followup">
+      ממיינים לפי <strong>p[1]</strong> (הערך) ולא p[0] (המפתח). בתדירות אותיות — הערך הוא מספר המופעים, לכן ממיינים לפיו.
+    </div>
+  </div>
+
+  <!-- 9: FULL FLOW -->
+  <div class="slide" id="slide-9" data-type="code">
+    <div class="slide-label label-code">💻 Live Coding #2</div>
+    <h1 class="slide-title">get_frequency_order — הכל ביחד</h1>
+    <p class="slide-subtitle">4 שלבים שהופכים הודעה לסדר תדירות</p>
+    <div class="grid-2">
+      <div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="lang-badge">Python</span> הפונקציה המלאה</div>
+          <div class="code-body" style="font-size: 1.2rem"><span class="kw">def</span> <span class="fn">get_frequency_order</span>(message):
+    <span class="cm"># שלב 1: letter → count</span>
+    <span class="var">letter_to_freq</span> <span class="op">=</span> <span class="fn">get_letter_count</span>(message)
+
+    <span class="cm"># שלב 2: count → [letters]</span>
+    <span class="var">freq_to_letter</span> <span class="op">=</span> {}
+    <span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="str">'ABCDEFGHIJKLMNOPQRSTUVWXYZ'</span>:
+        <span class="var">freq</span> <span class="op">=</span> <span class="var">letter_to_freq</span>[<span class="var">letter</span>]
+        <span class="kw">if</span> <span class="var">freq</span> <span class="kw">not in</span> <span class="var">freq_to_letter</span>:
+            <span class="var">freq_to_letter</span>[<span class="var">freq</span>] <span class="op">=</span> [<span class="var">letter</span>]
+        <span class="kw">else</span>:
+            <span class="var">freq_to_letter</span>[<span class="var">freq</span>].<span class="fn">append</span>(<span class="var">letter</span>)
+
+    <span class="cm"># שלב 3: המרה + מיון יורד</span>
+<span class="hl">    <span class="var">freq_pairs</span> <span class="op">=</span> <span class="fn">list</span>(<span class="var">freq_to_letter</span>.<span class="fn">items</span>())</span>
+<span class="hl">    <span class="var">freq_pairs</span>.<span class="fn">sort</span>(key<span class="op">=</span><span class="kw">lambda</span> <span class="var">x</span>: <span class="var">x</span>[<span class="num">0</span>], reverse<span class="op">=</span><span class="kw">True</span>)</span>
+
+    <span class="cm"># שלב 4: חילוץ + join</span>
+    <span class="var">freq_order</span> <span class="op">=</span> []
+    <span class="kw">for</span> <span class="var">pair</span> <span class="kw">in</span> <span class="var">freq_pairs</span>:
+        <span class="var">freq_order</span>.<span class="fn">append</span>(<span class="str">''</span>.<span class="fn">join</span>(<span class="var">pair</span>[<span class="num">1</span>]))
+    <span class="kw">return</span> <span class="str">''</span>.<span class="fn">join</span>(<span class="var">freq_order</span>)</div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">🔢 4 שלבים</div>
+          <div class="step-list">
+            <div class="step-item"><div class="step-n" style="background:var(--amber-dim);color:var(--amber)">1</div><div class="step-body"><h4>get_letter_count</h4><p>{'A':106, 'E':175, ...}</p></div></div>
+            <div class="step-item"><div class="step-n" style="background:var(--teal-dim);color:var(--teal)">2</div><div class="step-body"><h4>היפוך → count: [letters]</h4><p>{175:['E'], 20:['F','M'], ...}</p></div></div>
+            <div class="step-item"><div class="step-n" style="background:var(--blue-dim);color:var(--blue)">3</div><div class="step-body"><h4>items() + sort() יורד</h4><p>[(175,'E'),(126,'T')...]</p></div></div>
+            <div class="step-item"><div class="step-n" style="background:rgba(168,85,247,0.15);color:var(--purple)">4</div><div class="step-body"><h4>join → מחרוזת</h4><p style="font-family:'Fira Code';color:var(--teal);font-size: 1.2rem">"ETIASRONHLCPBDUYWGFMVKXQJZ"</p></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10: QUESTION 3 -->
+  <div class="slide" id="slide-10" data-type="poll">
+    <div class="slide-label label-poll">❓ שאלה לכיתה #3</div>
+    <h1 class="slide-title">english_freq_match_score</h1>
+    <p class="slide-subtitle">לחץ על התשובה שלך</p>
+    <div class="poll-container">
+      <div class="poll-q">
+        הפונקציה <code style="font-family:'Fira Code';color:var(--teal)">english_freq_match_score</code> בודקת כמה התאמות יש עם ETAOIN.<br>
+        מה <strong>הניקוד המקסימלי</strong> שהיא יכולה להחזיר?
+      </div>
+      <div class="poll-options" id="q3-opts">
+        <div class="poll-opt" onclick="answerPoll(3,'a',false)"><div class="opt-letter">A</div><div class="opt-text">26 — אחד לכל אות באלפבית</div></div>
+        <div class="poll-opt" onclick="answerPoll(3,'b',false)"><div class="opt-letter">B</div><div class="opt-text">6 — רק 6 הנפוצות</div></div>
+        <div class="poll-opt" onclick="answerPoll(3,'c',true)"><div class="opt-letter">C</div><div class="opt-text">12 — 6 נפוצות + 6 נדירות</div></div>
+        <div class="poll-opt" onclick="answerPoll(3,'d',false)"><div class="opt-letter">D</div><div class="opt-text">100 — אחוז התאמה</div></div>
+      </div>
+      <div class="poll-feedback" id="q3-fb"></div>
+      <button class="reveal-btn" id="q3-reveal" onclick="revealAnswer(3,'c','הפונקציה בודקת 6 הנפוצות (ETAOIN) ו-6 הנדירות (VKJXQZ) — סה״כ 12 בדיקות. ניקוד מקסימלי = 12.')">הצג הסבר</button>
+    </div>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="code-wrap">
+        <div class="code-header"><span class="lang-badge">Python</span> הקוד</div>
+        <div class="code-body" style="font-size: 1.2rem"><span class="cm"># 6 הנפוצות: ETAOIN[:6]</span>
+<span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">ETAOIN</span>[:<span class="num">6</span>]:
+    <span class="kw">if</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">freq_order</span>[:<span class="num">6</span>]:
+        <span class="var">match_score</span> <span class="op">+=</span> <span class="num">1</span>
+
+<span class="cm"># 6 הנדירות: ETAOIN[-6:]</span>
+<span class="kw">for</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">ETAOIN</span>[-<span class="num">6</span>:]:
+    <span class="kw">if</span> <span class="var">letter</span> <span class="kw">in</span> <span class="var">freq_order</span>[-<span class="num">6</span>:]:
+        <span class="var">match_score</span> <span class="op">+=</span> <span class="num">1</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 פרשנות ניקוד</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--red-dim);border-radius:7px;border:1px solid rgba(239,68,68,0.2);font-size:1.2rem"><span>0–4</span><span style="color:var(--red)">לא אנגלית</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--amber-dim);border-radius:7px;border:1px solid var(--amber-border);font-size:1.2rem"><span>5–8</span><span style="color:var(--amber)">אולי?</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--green-dim);border-radius:7px;border:1px solid rgba(34,197,94,0.25);font-size:1.2rem"><span>9–12</span><span style="color:var(--green)">כנראה אנגלית!</span></div>
+        </div>
+      </div>
+    </div>
+    <button class="tip-btn" onclick="toggleTip('tip-q3-followup')">💡 טיפ להמשך</button>
+    <div class="tip-box" id="tip-q3-followup">
+      מדוע 6 ולא 10? ממצא <strong>empirical</strong> — 6 הנפוצות ו-6 הנדירות נותנות איזון טוב בין דיוק לפשטות חישוב.
+    </div>
+  </div>
+
+  <!-- 11: SUMMARY -->
+  <div class="slide" id="slide-11" data-type="theory">
+    <div class="slide-label label-theory">✅ סיכום שיעור</div>
+    <h1 class="slide-title">מה למדנו היום?</h1>
+    <p class="slide-subtitle">סמן את כל מה שסיימת</p>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">📚 נושאים שנלמדו</div>
+          <div class="checklist">
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>מילון מונים + אתחול</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>dict.items() → רשימת זוגות</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>.sort(key=func, reverse=True)</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>get_letter_count</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>get_frequency_order</div></div>
+            <div class="check-item" onclick="this.classList.toggle('done')"><div class="check-box">✓</div><div>english_freq_match_score</div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="background:var(--teal-dim);border-color:var(--teal-border);margin-bottom:12px">
+          <div class="card-title" style="color:var(--teal)">🏠 שיעורי בית</div>
+          <div class="step-list">
+            <div class="step-item" style="background:rgba(20,184,166,0.05)"><div class="step-n" style="background:var(--teal-dim);color:var(--teal)">1</div><div class="step-body"><h4>כתוב get_frequency_order מאפס</h4><p>ללא הסתכלות בקוד — 20 דקות</p></div></div>
+            <div class="step-item" style="background:rgba(20,184,166,0.05)"><div class="step-n" style="background:var(--teal-dim);color:var(--teal)">2</div><div class="step-body"><h4>הרץ על טקסט מוצפן</h4><p>פצח Caesar cipher עם key לא ידוע</p></div></div>
+            <div class="step-item" style="background:rgba(20,184,166,0.05)"><div class="step-n" style="background:var(--teal-dim);color:var(--teal)">3</div><div class="step-body"><h4>בונוס: למה Vigenère עמיד יותר?</h4><p>מחקר קצר — כמה פסקאות</p></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔭 שיעור הבא</div>
+          <p>שימוש ב-<code style="font-family:'Fira Code';color:var(--teal)">english_freq_match_score</code> לפיצוח Caesar cipher אוטומטי — 26 מפתחות, בוחרים הגבוה ביותר!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// SLIDES
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+let currentSlide = 0;
+
+const dotNav = document.getElementById('dot-nav');
+slides.forEach((s, i) => {
+  const d = document.createElement('button');
+  const t = s.dataset.type || 'theory';
+  d.className = 'dot' + (i===0?' active':'') +
+    (t==='poll'?' type-poll':'') +
+    (t==='breakout'?' type-breakout':'');
+  d.title = s.querySelector('.slide-title')?.textContent || 'שקף '+(i+1);
+  d.onclick = () => goTo(i);
+  dotNav.appendChild(d);
+});
+
+function goTo(n) {
+  if (n < 0 || n >= totalSlides) return;
+  slides[currentSlide].classList.remove('active');
+  dotNav.children[currentSlide].classList.remove('active');
+  currentSlide = n;
+  slides[n].classList.add('active');
+  dotNav.children[n].classList.add('active');
+  document.getElementById('slide-counter').textContent =
+    String(n+1).padStart(2,'0') + ' / ' + String(totalSlides).padStart(2,'0');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') goTo(currentSlide + 1);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') goTo(currentSlide - 1);
+});
+
+// TIP TOGGLE
+function toggleTip(id) {
+  document.getElementById(id).classList.toggle('show');
+}
+
+// GLOBAL TIMER
+let gtRunning = false, gtSeconds = 0, gtInterval = null;
+function toggleGlobalTimer() {
+  if (gtRunning) {
+    clearInterval(gtInterval); gtRunning = false;
+    document.getElementById('global-timer').classList.remove('running','warning');
+  } else {
+    gtRunning = true;
+    gtInterval = setInterval(() => {
+      gtSeconds++;
+      const m = Math.floor(gtSeconds/60), s = gtSeconds%60;
+      document.getElementById('gt-display').textContent =
+        String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      const el = document.getElementById('global-timer');
+      if (gtSeconds >= 70*60) { el.classList.add('warning'); el.classList.remove('running'); }
+      else el.classList.add('running');
+    }, 1000);
+  }
+}
+
+// BREAKOUT TIMER
+let boSeconds = 12*60, boRunning = false, boInterval = null;
+function updateBoDisplay() {
+  const m = Math.floor(boSeconds/60), s = boSeconds%60;
+  const el = document.getElementById('bo-timer');
+  if (!el) return;
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  el.style.color = boSeconds <= 60 ? '#ef4444' : '#f59e0b';
+}
+function startBreakout() {
+  if (boRunning) return; boRunning = true;
+  boInterval = setInterval(() => {
+    if (boSeconds <= 0) { clearInterval(boInterval); boRunning = false; return; }
+    boSeconds--; updateBoDisplay();
+  }, 1000);
+}
+function pauseBreakout() { clearInterval(boInterval); boRunning = false; }
+function resetBreakout() { clearInterval(boInterval); boRunning = false; boSeconds = 12*60; updateBoDisplay(); }
+
+// POLL
+const pollAnswered = {};
+function answerPoll(qNum, chosen, correct) {
+  if (pollAnswered[qNum]) return;
+  pollAnswered[qNum] = chosen;
+  const opts = document.querySelectorAll(`#q${qNum}-opts .poll-opt`);
+  opts.forEach(o => o.classList.add('locked'));
+  const idx = ['a','b','c','d'].indexOf(chosen);
+  if (idx >= 0) opts[idx].classList.add(correct ? 'correct-ans' : 'wrong-ans');
+  const fb = document.getElementById(`q${qNum}-fb`);
+  if (correct) { fb.textContent = '✅ נכון!'; fb.classList.add('show','ok'); }
+  else { fb.textContent = '❌ לא נכון — לחץ "הצג הסבר" לתשובה הנכונה'; fb.classList.add('show','no'); }
+  const rev = document.getElementById(`q${qNum}-reveal`);
+  if (rev) rev.classList.add('show');
+}
+function revealAnswer(qNum, correctLetter, explanation) {
+  const idx = ['a','b','c','d'].indexOf(correctLetter);
+  const opts = document.querySelectorAll(`#q${qNum}-opts .poll-opt`);
+  opts.forEach((o,i) => { o.classList.add('locked'); if (i===idx) o.classList.add('correct-ans'); });
+  const fb = document.getElementById(`q${qNum}-fb`);
+  fb.innerHTML = '💡 ' + explanation;
+  fb.classList.add('show','ok');
+  document.getElementById(`q${qNum}-reveal`).style.display = 'none';
+}
+</script>
+</body>
+</html>

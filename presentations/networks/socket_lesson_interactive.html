@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>סוקטים — שרת-לקוח רב-משתמשים | שיעור אינטראקטיבי</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f1a;
+  --surface: #131627;
+  --surface2: #1a1e35;
+  --border: #252a45;
+  --accent: #00e5ff;
+  --accent2: #ff6b35;
+  --accent3: #a855f7;
+  --green: #00ff9d;
+  --yellow: #ffd166;
+  --red: #ff4757;
+  --text: #e2e8f0;
+  --text-dim: #8892b0;
+  --code-bg: #0a0c17;
+  --pycharm-bg: #1e1f22;
+  --pycharm-sidebar: #2b2d30;
+  --pycharm-toolbar: #3c3f41;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Heebo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ===== SLIDE SYSTEM ===== */
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 40px 80px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  transform: translateX(60px);
+}
+.slide.active { opacity:1; transform:translateX(0); pointer-events:all; }
+.slide.exit   { opacity:0; transform:translateX(-60px); }
+
+/* ===== BACKGROUND ===== */
+.hero-bg { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.grid-lines {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.glow-orb {
+  position:absolute; border-radius:50%;
+  filter:blur(80px); opacity:0.12;
+}
+.slide-content { position:relative; z-index:1; width:100%; display:flex; flex-direction:column; align-items:center; gap:16px; }
+
+/* ===== NAV ===== */
+.nav {
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  display:flex; gap:10px; align-items:center; z-index:200;
+  background: rgba(19,22,39,0.92);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  border-radius:50px; padding:8px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.nav button {
+  background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  padding:7px 18px; border-radius:30px; cursor:pointer;
+  font-family:'Heebo',sans-serif; font-size:18px; transition:all 0.2s;
+}
+.nav button:hover { background:var(--accent); color:#000; border-color:var(--accent); }
+.nav button:disabled { opacity:0.3; cursor:not-allowed; }
+.nav button:disabled:hover { background:var(--surface2); color:var(--text); border-color:var(--border); }
+.slide-counter { font-size:18px; color:var(--text-dim); min-width:55px; text-align:center; font-family:'Fira Code',monospace; }
+.dots { display:flex; gap:5px; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:all 0.3s; cursor:pointer; }
+.dot.active { background:var(--accent); width:18px; border-radius:3px; }
+
+/* ===== TYPE TAGS ===== */
+.slide-tag {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:'Fira Code',monospace; font-size:18px; letter-spacing:2px; text-transform:uppercase;
+  padding:4px 14px; border-radius:20px; margin-bottom:6px;
+}
+.tag-lesson  { background:rgba(0,229,255,0.1);  color:var(--accent);  border:1px solid rgba(0,229,255,0.3); }
+.tag-poll    { background:rgba(255,107,53,0.15); color:var(--accent2); border:1px solid rgba(255,107,53,0.4); }
+.tag-task    { background:rgba(0,255,157,0.12);  color:var(--green);   border:1px solid rgba(0,255,157,0.3); }
+.tag-code    { background:rgba(168,85,247,0.12); color:var(--accent3); border:1px solid rgba(168,85,247,0.3); }
+.tag-demo    { background:rgba(255,209,102,0.1); color:var(--yellow);  border:1px solid rgba(255,209,102,0.3); }
+
+/* ===== TYPOGRAPHY ===== */
+h1.title { font-size:clamp(32px,5vw,58px); font-weight:900; line-height:1.1; text-align:center; }
+h2.slide-title { font-size:clamp(20px,3vw,34px); font-weight:700; text-align:center; }
+.subtitle { font-size:clamp(13px,1.8vw,18px); color:var(--text-dim); text-align:center; }
+.grad  { background:linear-gradient(135deg,var(--accent),var(--accent3)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.grad2 { background:linear-gradient(135deg,var(--accent2),var(--yellow)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.grad3 { background:linear-gradient(135deg,var(--green),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.info-row { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+.info-item .val { font-size:28px; font-weight:900; font-family:'Fira Code'; color:var(--accent); }
+.info-item .lbl { font-size:18px; color:var(--text-dim); text-align:center; }
+
+/* ===== CODE BLOCK ===== */
+.code-block {
+  background:var(--code-bg); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; width:100%;
+  font-size:clamp(10px,1.2vw,13px); direction:ltr;
+}
+.code-header {
+  background:var(--surface2); padding:9px 14px;
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.code-dots { display:flex; gap:6px; }
+.code-dot { width:11px; height:11px; border-radius:50%; }
+.code-dot:nth-child(1){background:#ff5f56;} .code-dot:nth-child(2){background:#ffbd2e;} .code-dot:nth-child(3){background:#27c93f;}
+.code-filename { font-family:'Fira Code',monospace; font-size:18px; color:var(--text-dim); }
+pre { padding:16px 20px; overflow-x:auto; line-height:1.75; font-family:'Fira Code',monospace; }
+.kw{color:#ff79c6;} .fn{color:#50fa7b;} .str{color:#f1fa8c;} .cm{color:#6272a4;font-style:italic;}
+.num{color:#bd93f9;} .var{color:#8be9fd;} .cls{color:#ffb86c;}
+.hl { background:rgba(0,229,255,0.07); border-right:3px solid var(--accent); display:block; margin:0 -20px; padding:0 17px; }
+
+/* ===== CARDS ===== */
+.cards { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; width:100%; max-width:1000px; }
+.card {
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:18px 20px; flex:1; min-width:180px; max-width:280px;
+  transition:transform 0.2s, border-color 0.2s;
+}
+.card:hover { transform:translateY(-3px); border-color:var(--accent); }
+.card-icon { font-size:26px; margin-bottom:8px; }
+.card h3 { font-size:18px; font-weight:700; margin-bottom:6px; color:var(--accent); }
+.card p { font-size:18px; color:var(--text-dim); line-height:1.6; }
+.card p code { background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--green); font-family:'Fira Code'; font-size:18px; }
+
+/* ===== ANNOTATION ===== */
+.annotation {
+  background:rgba(0,229,255,0.05); border-right:3px solid var(--accent);
+  padding:10px 14px; border-radius:0 10px 10px 0; font-size:18px;
+  color:var(--text-dim); width:100%;
+}
+.annotation strong { color:var(--accent); }
+.annotation code { font-family:'Fira Code'; background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--green); font-size:18px; }
+
+/* ===== STEP LIST ===== */
+.step-list { display:flex; flex-direction:column; gap:10px; width:100%; }
+.step {
+  display:flex; gap:14px; align-items:flex-start;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:12px 16px; transition:border-color 0.2s;
+}
+.step:hover { border-color:var(--accent3); }
+.step-num {
+  min-width:30px; height:30px; background:var(--accent3); color:#fff;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:18px; font-family:'Fira Code'; flex-shrink:0;
+}
+.step-text h4 { font-size:18px; font-weight:700; margin-bottom:3px; }
+.step-text p { font-size:18px; color:var(--text-dim); line-height:1.5; }
+.step-text code { font-family:'Fira Code'; background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--green); font-size:18px; }
+
+/* ===== LABEL BADGES ===== */
+.label { display:inline-block; font-family:'Fira Code'; font-size:18px; padding:2px 9px; border-radius:20px; }
+.label-server { background:rgba(168,85,247,0.2); color:#c084fc; border:1px solid #a855f7; }
+.label-client { background:rgba(0,229,255,0.1); color:var(--accent); border:1px solid var(--accent); }
+.label-thread { background:rgba(0,255,157,0.1); color:var(--green); border:1px solid var(--green); }
+.label-lock   { background:rgba(255,107,53,0.15); color:var(--accent2); border:1px solid var(--accent2); }
+
+/* ===== TWO COL ===== */
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:100%; }
+.wide { max-width:1000px; }
+
+/* ===== PYCHARM WINDOW ===== */
+.pycharm-window {
+  width:100%; border-radius:10px; overflow:hidden;
+  border:1px solid #3c3f41;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  font-family:'Fira Code',monospace;
+  direction:ltr;
+}
+.pycharm-titlebar {
+  background:#3c3f41; padding:8px 14px;
+  display:flex; align-items:center; gap:10px;
+}
+.pc-dots { display:flex; gap:6px; }
+.pc-dot { width:12px; height:12px; border-radius:50%; }
+.pc-dot:nth-child(1){background:#ff5f56;} .pc-dot:nth-child(2){background:#ffbd2e;} .pc-dot:nth-child(3){background:#27c93f;}
+.pycharm-title { font-size:18px; color:#bbb; flex:1; text-align:center; }
+.pycharm-body { display:flex; height:360px; }
+.pycharm-sidebar {
+  width:180px; background:var(--pycharm-sidebar); border-right:1px solid #1e1f22;
+  display:flex; flex-direction:column; overflow:hidden; flex-shrink:0;
+}
+.pc-sidebar-header {
+  padding:8px 10px; font-size:18px; color:#bbb;
+  border-bottom:1px solid #1e1f22; background:#2b2d30;
+}
+.pc-file-tree { padding:6px 0; font-size:18px; overflow-y:auto; }
+.pc-file { padding:4px 14px; color:#bbb; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background 0.15s; }
+.pc-file:hover { background:rgba(255,255,255,0.06); }
+.pc-file.active { background:rgba(0,229,255,0.12); color:var(--accent); }
+.pc-file .icon { font-size:18px; }
+.pc-folder { padding:4px 8px; color:#888; font-size:18px; display:flex; align-items:center; gap:4px; }
+.pycharm-editor { flex:1; background:var(--pycharm-bg); display:flex; flex-direction:column; overflow:hidden; }
+.pc-tabs { display:flex; background:#1e1f22; border-bottom:1px solid #141517; }
+.pc-tab {
+  padding:6px 14px; font-size:18px; color:#888; cursor:pointer;
+  border-left:1px solid #141517; transition:all 0.2s; white-space:nowrap;
+}
+.pc-tab.active { background:var(--pycharm-bg); color:#ddd; border-top:2px solid var(--accent); }
+.pc-editor-content { flex:1; display:flex; overflow:hidden; }
+.pc-line-nums {
+  padding:12px 0; background:#1e1f22; border-right:1px solid #2b2d30;
+  color:#555; font-size:18px; line-height:1.75; text-align:right;
+  min-width:38px; user-select:none; overflow:hidden;
+}
+.pc-line-nums div { padding:0 8px; }
+.pc-code {
+  padding:12px 16px; flex:1; overflow:auto;
+  font-size:18px; line-height:1.75; color:#bbb; white-space:pre;
+}
+.pc-statusbar {
+  background:#3c3f41; padding:3px 12px; font-size:18px; color:#bbb;
+  display:flex; gap:20px; align-items:center;
+}
+.pc-status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; }
+
+/* ===== TERMINAL PANEL ===== */
+.pc-terminal-panel {
+  background:#1e1f22; border-top:1px solid #141517;
+  height:130px; display:flex; flex-direction:column;
+}
+.pc-term-tabs {
+  display:flex; background:#252629; border-bottom:1px solid #141517;
+}
+.pc-term-tab {
+  padding:4px 14px; font-size:18px; color:#888; cursor:pointer;
+}
+.pc-term-tab.active { color:var(--accent); border-bottom:2px solid var(--accent); }
+.pc-term-output {
+  flex:1; padding:8px 12px; font-size:18px;
+  color:#ccc; overflow-y:auto; line-height:1.7;
+}
+.term-out { color:#ccc; }
+.term-ok  { color:var(--green); }
+.term-err { color:var(--red); }
+.term-info{ color:var(--yellow); }
+.term-prompt { color:var(--accent); }
+
+/* ===== POLL ===== */
+.poll-wrap {
+  width:100%; max-width:800px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.poll-q {
+  font-size:clamp(16px,2.2vw,22px); font-weight:700;
+  text-align:center; margin-bottom:4px;
+}
+.poll-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.poll-opt {
+  background:var(--surface); border:2px solid var(--border);
+  border-radius:12px; padding:16px 18px; cursor:pointer;
+  display:flex; align-items:flex-start; gap:12px;
+  transition:all 0.2s; text-align:right;
+}
+.poll-opt:hover { border-color:var(--accent); background:rgba(0,229,255,0.05); transform:translateY(-2px); }
+.poll-opt.correct { border-color:var(--green); background:rgba(0,255,157,0.08); }
+.poll-opt.wrong   { border-color:var(--red); background:rgba(255,71,87,0.08); opacity:0.6; }
+.poll-letter {
+  min-width:34px; height:34px; border-radius:8px;
+  background:#21262d; border:1.5px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:18px; color:var(--text-dim);
+  font-family:'Fira Code'; flex-shrink:0;
+}
+.poll-opt.correct .poll-letter { background:rgba(0,255,157,0.15); border-color:var(--green); color:var(--green); }
+.poll-opt.wrong   .poll-letter { background:rgba(255,71,87,0.15);  border-color:var(--red);   color:var(--red); }
+.poll-text { font-size:18px; color:var(--text-dim); line-height:1.5; padding-top:6px; }
+.poll-text code { background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--accent); font-family:'Fira Code'; font-size:18px; }
+.poll-explain {
+  display:none; background:var(--surface); border:1.5px solid var(--green);
+  border-radius:12px; padding:16px 20px; animation:fadeIn 0.35s ease;
+}
+.poll-explain h4 { color:var(--green); margin-bottom:8px; font-size:18px; }
+.poll-explain p  { color:var(--text-dim); font-size:18px; line-height:1.7; }
+.poll-explain code { background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--accent); font-family:'Fira Code'; font-size:18px; }
+.poll-btn-row { display:flex; gap:10px; justify-content:center; margin-top:6px; }
+.poll-btn {
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--text-dim); border-radius:8px; padding:8px 20px;
+  font-size:18px; cursor:pointer; transition:all 0.2s; font-family:'Heebo';
+}
+.poll-btn:hover { border-color:var(--accent); color:var(--accent); }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===== TASK / TIMER ===== */
+.task-wrap {
+  width:100%; max-width:820px; display:flex; flex-direction:column; gap:14px;
+}
+.task-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+}
+.task-header {
+  background:rgba(0,255,157,0.08); border-bottom:1px solid rgba(0,255,157,0.2);
+  padding:12px 18px; display:flex; align-items:center; gap:12px;
+}
+.task-header h3 { font-size:18px; font-weight:700; color:var(--green); flex:1; }
+.task-body { padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+.task-desc { font-size:18px; color:var(--text-dim); line-height:1.7; }
+.task-desc code { font-family:'Fira Code'; background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--accent); font-size:18px; }
+.task-steps { display:flex; flex-direction:column; gap:6px; margin-top:4px; }
+.task-step {
+  display:flex; gap:10px; align-items:flex-start;
+  background:var(--surface2); border-radius:8px; padding:8px 12px;
+}
+.task-step-num {
+  min-width:22px; height:22px; background:var(--green); color:#000;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:800; flex-shrink:0;
+}
+.task-step-text { font-size:18px; color:var(--text-dim); line-height:1.5; }
+.task-step-text code { font-family:'Fira Code'; background:var(--code-bg); padding:1px 5px; border-radius:3px; color:var(--green); font-size:18px; }
+
+/* TIMER */
+.timer-widget {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:14px; padding:16px 24px; min-width:200px;
+}
+.timer-display {
+  font-family:'Fira Code',monospace; font-size:48px; font-weight:600;
+  color:var(--green); letter-spacing:4px; line-height:1;
+  transition:color 0.3s;
+}
+.timer-display.warning { color:var(--yellow); }
+.timer-display.danger  { color:var(--red); animation:timerPulse 0.5s infinite; }
+@keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.timer-label { font-size:18px; color:var(--text-dim); letter-spacing:1px; }
+.timer-bar-wrap { width:100%; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.timer-bar { height:100%; background:var(--green); border-radius:3px; transition:width 1s linear, background 0.3s; }
+.timer-bar.warning { background:var(--yellow); }
+.timer-bar.danger  { background:var(--red); }
+.timer-controls { display:flex; gap:8px; margin-top:4px; }
+.timer-btn {
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--text-dim); padding:6px 14px; border-radius:8px;
+  font-size:18px; cursor:pointer; transition:all 0.2s; font-family:'Heebo';
+}
+.timer-btn:hover { border-color:var(--green); color:var(--green); }
+.timer-btn.danger-btn:hover { border-color:var(--red); color:var(--red); }
+
+.task-timer-row { display:flex; gap:16px; align-items:flex-start; }
+.task-timer-row .task-box { flex:1; }
+
+/* ===== DEMO BOX ===== */
+.demo-wrap { display:flex; gap:16px; width:100%; max-width:900px; align-items:flex-start; }
+.demo-box {
+  flex:1; background:var(--code-bg); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; min-height:180px;
+}
+.demo-box-header {
+  background:var(--surface2); padding:7px 12px; font-size:18px;
+  font-family:'Fira Code'; color:var(--text-dim); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+}
+.status-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.demo-log { padding:10px; font-family:'Fira Code'; font-size:18px; max-height:160px; overflow-y:auto; line-height:1.8; direction:ltr; }
+.log-server{color:#c084fc;} .log-client{color:var(--accent);} .log-ok{color:var(--green);} .log-err{color:var(--red);} .log-info{color:var(--yellow);}
+.demo-controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
+.demo-btn {
+  background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  padding:5px 12px; border-radius:20px; cursor:pointer; font-size:18px;
+  font-family:'Fira Code'; transition:all 0.2s;
+}
+.demo-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ===== SPLIT LAYOUT (code + pycharm side by side) ===== */
+.split-layout {
+  display:grid; grid-template-columns:1fr 1fr; gap:16px;
+  width:100%; max-width:1100px;
+}
+.split-layout .code-block { max-width:100%; }
+
+/* ===== DIAGRAM ===== */
+.diagram-wrap { width:100%; max-width:860px; }
+
+/* ===== MISC ===== */
+.badge-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.badge {
+  display:inline-flex; align-items:center; gap:5px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; padding:4px 12px; font-size:18px; color:var(--text-dim);
+}
+.badge span { color:var(--accent); font-family:'Fira Code'; font-size:18px; }
+small.note { font-size:18px; color:var(--text-dim); text-align:center; opacity:0.7; }
+
+/* pc-highlight for pycharm */
+.pc-hl { background:rgba(0,229,255,0.1); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 1 — כותרת
+══════════════════════════════════════════════════════════════ -->
+<div class="slide active" id="slide-0">
+  <div class="hero-bg">
+    <div class="grid-lines"></div>
+    <div class="glow-orb" style="width:500px;height:500px;background:#00e5ff;top:-180px;right:-120px;"></div>
+    <div class="glow-orb" style="width:350px;height:350px;background:#a855f7;bottom:-100px;left:-80px;"></div>
+  </div>
+  <div class="slide-content">
+    <div class="slide-tag tag-lesson">🖥️ שיעור אינטראקטיבי · י"א סייבר</div>
+    <h1 class="title"><span class="grad">Sockets</span> ברשת</h1>
+    <h1 class="title" style="font-size:clamp(18px,2.8vw,38px);color:var(--text-dim);font-weight:300;">שרת ↔ לקוח רב-משתמשים עם Threads</h1>
+    <p class="subtitle" style="margin-top:8px;">Threading · JSON Protocol · Broadcast · Logger</p>
+    <div class="info-row" style="margin-top:24px;">
+      <div class="info-item"><div class="val">135</div><div class="lbl">דקות שיעור</div></div>
+      <div class="info-item"><div class="val">4</div><div class="lbl">שאלות פולינג</div></div>
+      <div class="info-item"><div class="val">3</div><div class="lbl">משימות קידוד</div></div>
+      <div class="info-item"><div class="val">TCP</div><div class="lbl">פרוטוקול</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 2 — POLL 1: מה חסר?
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-1">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:300px;height:300px;background:#ff6b35;top:-60px;left:50%;opacity:0.1;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-poll">🗳️ שאלת פתיחה · Poll #1</div>
+    <div class="poll-wrap">
+      <div class="poll-q">למדנו שרת-לקוח עם Sockets.<br>מה היה <span class="grad2">חסר</span> בקוד שמימשנו?</div>
+      <div class="poll-options" id="poll1-opts">
+        <div class="poll-opt" onclick="poll1(this,false)">
+          <div class="poll-letter">א</div>
+          <div class="poll-text">חסר <code>bind()</code> ו-<code>listen()</code> — בלי זה השרת לא יכול לקבל חיבורים</div>
+        </div>
+        <div class="poll-opt" onclick="poll1(this,true)">
+          <div class="poll-letter">ב</div>
+          <div class="poll-text">השרת יכול לשרת רק לקוח <strong>אחד בכל פעם</strong> — חסר <code>threading</code> לטיפול מקבילי</div>
+        </div>
+        <div class="poll-opt" onclick="poll1(this,false)">
+          <div class="poll-letter">ג</div>
+          <div class="poll-text">חסר הצפנה — הנתונים חשופים לכולם ברשת</div>
+        </div>
+        <div class="poll-opt" onclick="poll1(this,false)">
+          <div class="poll-letter">ד</div>
+          <div class="poll-text">חסר <code>try/except</code> — הקוד יתרסק מיד עם כל שגיאה ברשת</div>
+        </div>
+      </div>
+      <div class="poll-explain" id="poll1-explain">
+        <h4>✅ תשובה נכונה — ב</h4>
+        <p>הקוד עבד מעולה — אבל רק ללקוח <strong>אחד</strong>. כשהלקוח הראשון מחובר, השרת <em>חסום</em> ב-<code>recv()</code> ולא יכול לקבל לקוח שני. הפתרון: ליצור <code>Thread</code> חדש לכל לקוח שמתחבר, כך <code>accept()</code> ממשיך לחכות לחיבורים חדשים. ג' ו-ד' הם שיפורים חשובים, אך לא חסרים — הקוד עובד בלעדיהם.</p>
+      </div>
+      <div class="poll-btn-row">
+        <button class="poll-btn" onclick="pollReset('poll1')">↺ איפוס</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 3 — הבעיה + ארכיטקטורה
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-2">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-lesson">📐 ארכיטקטורה</div>
+    <h2 class="slide-title">למה צריך <span class="grad2">Threads</span> בשרת?</h2>
+    <div class="cards" style="max-width:900px;">
+      <div class="card">
+        <div class="card-icon">😴</div>
+        <h3>שרת חסום</h3>
+        <p>שרת רגיל שמחכה ל-<code>recv()</code> של לקוח A — לא יכול לקבל לקוח B. הוא פשוט נתקע.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧵</div>
+        <h3>Thread לכל לקוח</h3>
+        <p>לכל לקוח חדש — פותחים thread נפרד שמטפל בו, בזמן ש-thread הראשי ממשיך לקבל חיבורים.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👥</div>
+        <h3>מקבילות אמיתית</h3>
+        <p>10 משתמשים שולחים בו-זמנית. כל אחד "חי" ב-thread שלו ולא חוסם את השאר.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Lock — מגן משאב</h3>
+        <p>כשThreads מרובים ניגשים לאותו מידע (רשימת לקוחות), צריך <code>Lock</code> שמבטיח גישה בטוחה.</p>
+      </div>
+    </div>
+    <div class="annotation" style="max-width:860px;">
+      <strong>מתכנת המשמרת:</strong> ה-thread הראשי = שוטר על entrance שמחלק מפתחות. כל לקוח מקבל מפתח (thread) ונכנס לחדר שלו — בלי לחסום אחרים.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 4 — PyCharm: שרת main()
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-3">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-code">💻 PyCharm · Live Code</div>
+    <h2 class="slide-title">גוף <span class="grad">השרת</span> — הלולאה הראשית</h2>
+    <div class="pycharm-window" style="max-width:900px;">
+      <div class="pycharm-titlebar">
+        <div class="pc-dots"><div class="pc-dot"></div><div class="pc-dot"></div><div class="pc-dot"></div></div>
+        <div class="pycharm-title">socket_chat – server.py – PyCharm</div>
+      </div>
+      <div class="pycharm-body">
+        <div class="pycharm-sidebar">
+          <div class="pc-sidebar-header">📁 socket_chat</div>
+          <div class="pc-file-tree">
+            <div class="pc-folder">▾ socket_chat</div>
+            <div class="pc-file active"><span class="icon">🐍</span> server.py</div>
+            <div class="pc-file"><span class="icon">🐍</span> client.py</div>
+            <div class="pc-file"><span class="icon">🐍</span> protocol.py</div>
+            <div class="pc-file"><span class="icon">📄</span> constants.py</div>
+            <div class="pc-file"><span class="icon">📄</span> server.log</div>
+          </div>
+        </div>
+        <div class="pycharm-editor">
+          <div class="pc-tabs">
+            <div class="pc-tab active">server.py</div>
+            <div class="pc-tab">client.py</div>
+          </div>
+          <div class="pc-editor-content">
+            <div class="pc-line-nums">
+              <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+              <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+              <div>11</div><div>12</div><div>13</div><div>14</div><div>15</div>
+            </div>
+            <div class="pc-code"><span class="kw">import</span> socket
+<span class="kw">import</span> threading
+
+HOST, PORT = <span class="str">'0.0.0.0'</span>, <span class="num">7000</span>
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    srv = socket.<span class="fn">socket</span>(socket.AF_INET, socket.SOCK_STREAM)
+    srv.<span class="fn">bind</span>((HOST, PORT))
+    srv.<span class="fn">listen</span>()
+    <span class="fn">print</span>(<span class="str">f"Server listening on {HOST}:{PORT}"</span>)
+
+    <span class="kw">while True</span>:
+<span class="pc-hl">        conn, addr = srv.<span class="fn">accept</span>()          <span class="cm"># 🔴 ממתין ללקוח</span></span>
+<span class="pc-hl">        t = threading.<span class="cls">Thread</span>(target=<span class="fn">handle_client</span>, args=(conn, addr), daemon=<span class="kw">True</span>)</span>
+<span class="pc-hl">        t.<span class="fn">start</span>()                           <span class="cm"># 🟢 thread חדש!</span></span></div>
+          </div>
+          <div class="pc-terminal-panel">
+            <div class="pc-term-tabs">
+              <div class="pc-term-tab active">Terminal</div>
+              <div class="pc-term-tab">Run</div>
+            </div>
+            <div class="pc-term-output" id="term-slide3">
+              <div class="term-prompt">$ python server.py</div>
+              <div class="term-ok">Server listening on 0.0.0.0:7000</div>
+              <div class="term-info">⏳ waiting for connections...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pc-statusbar">
+        <span><span class="pc-status-dot"></span> Python 3.11</span>
+        <span>server.py</span>
+        <span>UTF-8</span>
+        <span>Ln 14, Col 8</span>
+      </div>
+    </div>
+    <div class="annotation" style="max-width:900px;">
+      <strong>השלב המרכזי:</strong> כל <code>accept()</code> מחזיר socket ייחודי. יוצרים thread ומעבירים לו את ה-socket — הלולאה מיד חוזרת לחכות ללקוח הבא.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 5 — POLL 2: מה יקרה אם...
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-4">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:300px;height:300px;background:#ff6b35;bottom:-60px;right:10%;opacity:0.1;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-poll">🗳️ Poll #2 · חשבו עמוק</div>
+    <div class="poll-wrap">
+      <div class="poll-q">מה יקרה אם שני threads יכתבו<br>לאותו dict <span class="grad2">בו-זמנית</span> — בלי Lock?</div>
+      <div class="poll-options" id="poll2-opts">
+        <div class="poll-opt" onclick="poll2(this,false)">
+          <div class="poll-letter">א</div>
+          <div class="poll-text">לא יקרה כלום — Python ה-GIL מגן על כל המשתנים אוטומטית</div>
+        </div>
+        <div class="poll-opt" onclick="poll2(this,false)">
+          <div class="poll-letter">ב</div>
+          <div class="poll-text">Python יחכה שה-thread השני יסיים לפני שה-thread הראשון יתחיל</div>
+        </div>
+        <div class="poll-opt" onclick="poll2(this,true)">
+          <div class="poll-letter">ג</div>
+          <div class="poll-text">עלול להתרחש <strong>Race Condition</strong> — נתונים יינזקו, יאבדו, או תהיה קריסה</div>
+        </div>
+        <div class="poll-opt" onclick="poll2(this,false)">
+          <div class="poll-letter">ד</div>
+          <div class="poll-text">Python יזרוק <code>ThreadingError</code> מיד עם הגישה</div>
+        </div>
+      </div>
+      <div class="poll-explain" id="poll2-explain">
+        <h4>✅ תשובה נכונה — ג</h4>
+        <p>זהו <strong>Race Condition</strong> — מצב מסוכן שקשה לאתר כי הוא לא מתרחש תמיד. ה-GIL של Python מגן על bytecode operations בסיסיות, אך לא על רצף של פעולות כמו <code>dict[key] = val</code> בזמן שאחר קורא. הפתרון: <code>with threading.Lock()</code> מסביב לכל גישה למשתנה משותף.</p>
+      </div>
+      <div class="poll-btn-row">
+        <button class="poll-btn" onclick="pollReset('poll2')">↺ איפוס</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 6 — PyCharm: handle_client + broadcast + Lock
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-5">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-code">💻 PyCharm · handle_client + broadcast</div>
+    <h2 class="slide-title"><span class="grad2">broadcast</span> ו-<span class="grad3">Lock</span></h2>
+    <div class="split-layout" style="max-width:1050px;">
+      <div class="pycharm-window" style="max-width:100%;">
+        <div class="pycharm-titlebar">
+          <div class="pc-dots"><div class="pc-dot"></div><div class="pc-dot"></div><div class="pc-dot"></div></div>
+          <div class="pycharm-title">server.py</div>
+        </div>
+        <div class="pycharm-body" style="height:300px;">
+          <div class="pycharm-sidebar" style="width:130px;">
+            <div class="pc-sidebar-header">📁 Project</div>
+            <div class="pc-file-tree">
+              <div class="pc-file active"><span class="icon">🐍</span> server.py</div>
+              <div class="pc-file"><span class="icon">🐍</span> client.py</div>
+              <div class="pc-file"><span class="icon">🐍</span> protocol.py</div>
+            </div>
+          </div>
+          <div class="pycharm-editor">
+            <div class="pc-tabs"><div class="pc-tab active">server.py</div></div>
+            <div class="pc-editor-content">
+              <div class="pc-line-nums">
+                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+                <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+                <div>11</div><div>12</div><div>13</div>
+              </div>
+              <div class="pc-code"><span class="cm"># משתנים גלובליים משותפים</span>
+clients = {}
+clients_lock = threading.<span class="cls">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">broadcast</span>(data):
+    payload = (data + <span class="str">'\n'</span>).<span class="fn">encode</span>()
+<span class="pc-hl">    <span class="kw">with</span> clients_lock:     <span class="cm"># 🔒 גישה בטוחה</span></span>
+        <span class="kw">for</span> sock <span class="kw">in</span> <span class="fn">list</span>(clients):
+            <span class="kw">try</span>:
+                sock.<span class="fn">sendall</span>(payload)
+            <span class="kw">except</span>:
+<span class="pc-hl">                clients.<span class="fn">pop</span>(sock, <span class="kw">None</span>)  <span class="cm"># נקה לקוח שנפל</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="pc-statusbar"><span><span class="pc-status-dot"></span> Python 3.11</span><span>Ln 7</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="card" style="max-width:100%;">
+          <div class="card-icon">🔒</div>
+          <h3>למה Lock?</h3>
+          <p>בלי Lock — Thread 1 עשוי לקרוא מ-<code>clients</code> בזמן ש-Thread 2 מוחק ממנו. תוצאה: קריסה בלתי צפויה. ה-Lock מבטיח גישה בטוחה.</p>
+        </div>
+        <div class="card" style="max-width:100%;">
+          <div class="card-icon">📋</div>
+          <h3>list(clients)</h3>
+          <p>יוצרים עותק של ה-dict לפני הלולאה — כי אנחנו עשויים למחוק socket תוך כדי ה-<code>for</code>, מה שגורם ל-<code>RuntimeError</code>.</p>
+        </div>
+        <div class="card" style="max-width:100%;">
+          <div class="card-icon">📡</div>
+          <h3>sendall vs send</h3>
+          <p><code>send()</code> עלול לשלוח רק חלק מהנתונים. <code>sendall()</code> מבטיח שכל ה-payload נשלח — קריטי בתקשורת רשת.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 7 — TASK 1: מימוש handle_client + טיימר
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-6">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:300px;height:300px;background:#00ff9d;bottom:-80px;left:-60px;opacity:0.08;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-task">⚡ משימה #1 · עבודה עצמאית</div>
+    <div class="task-timer-row" style="max-width:900px;width:100%;">
+      <div class="task-box" style="flex:1;">
+        <div class="task-header">
+          <h3>🎯 ממשו את handle_client()</h3>
+        </div>
+        <div class="task-body">
+          <div class="task-desc">
+            כתבו את הפונקציה <code>handle_client(conn, addr)</code> שמטפלת בלקוח בודד. השתמשו ב-<code>clients_lock</code> ו-<code>broadcast</code> שכבר קיימים.
+          </div>
+          <div class="task-steps">
+            <div class="task-step">
+              <div class="task-step-num">1</div>
+              <div class="task-step-text">קבלו את שם המשתמש: <code>name = conn.recv(1024).decode()</code></div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">2</div>
+              <div class="task-step-text">הוסיפו ל-<code>clients</code> עם Lock: <code>with clients_lock: clients[conn] = name</code></div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">3</div>
+              <div class="task-step-text">שלחו broadcast: <code>f"*** {name} joined ***"</code></div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">4</div>
+              <div class="task-step-text">לולאת <code>recv()</code> — קבלו הודעות ו-broadcast לכולם</div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">5</div>
+              <div class="task-step-text">ב-<code>finally</code>: הסירו מ-clients, שלחו "disconnected", סגרו socket</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-label">⏱️ זמן למשימה</div>
+        <div class="timer-display" id="timer1">12:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer1-bar" style="width:100%"></div></div>
+        <div class="timer-controls">
+          <button class="timer-btn" onclick="startTimer('timer1', 720)">▶ התחל</button>
+          <button class="timer-btn danger-btn" onclick="stopTimer('timer1')">■ עצור</button>
+        </div>
+        <small class="note">12 דקות</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 8 — PyCharm: handle_client — פתרון
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-7">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-code">💻 פתרון · handle_client()</div>
+    <h2 class="slide-title"><span class="grad">handle_client</span> — לב השרת</h2>
+    <div class="pycharm-window" style="max-width:920px;">
+      <div class="pycharm-titlebar">
+        <div class="pc-dots"><div class="pc-dot"></div><div class="pc-dot"></div><div class="pc-dot"></div></div>
+        <div class="pycharm-title">server.py – handle_client</div>
+      </div>
+      <div class="pycharm-body" style="height:310px;">
+        <div class="pycharm-sidebar" style="width:130px;">
+          <div class="pc-sidebar-header">📁 Project</div>
+          <div class="pc-file-tree">
+            <div class="pc-file active"><span class="icon">🐍</span> server.py</div>
+            <div class="pc-file"><span class="icon">🐍</span> client.py</div>
+          </div>
+        </div>
+        <div class="pycharm-editor">
+          <div class="pc-tabs"><div class="pc-tab active">server.py</div></div>
+          <div class="pc-editor-content">
+            <div class="pc-line-nums">
+              <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+              <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+              <div>11</div><div>12</div><div>13</div><div>14</div><div>15</div>
+            </div>
+            <div class="pc-code"><span class="kw">def</span> <span class="fn">handle_client</span>(conn, addr):
+    <span class="kw">try</span>:
+        name = conn.<span class="fn">recv</span>(<span class="num">1024</span>).<span class="fn">decode</span>()
+<span class="pc-hl">        <span class="kw">with</span> clients_lock: clients[conn] = name</span>
+        <span class="fn">broadcast</span>(<span class="str">f"*** {name} joined ***"</span>)
+        <span class="fn">print</span>(<span class="str">f"[+] {name} connected from {addr}"</span>)
+
+        <span class="kw">while True</span>:
+            msg = conn.<span class="fn">recv</span>(<span class="num">1024</span>).<span class="fn">decode</span>()
+            <span class="kw">if not</span> msg: <span class="kw">break</span>
+<span class="pc-hl">            <span class="fn">broadcast</span>(<span class="str">f"{name}: {msg}"</span>)</span>
+
+    <span class="kw">finally</span>:
+<span class="pc-hl">        <span class="kw">with</span> clients_lock: clients.<span class="fn">pop</span>(conn, <span class="kw">None</span>)</span>
+        <span class="fn">broadcast</span>(<span class="str">f"*** {name} disconnected ***"</span>); conn.<span class="fn">close</span>()</div>
+          </div>
+          <div class="pc-terminal-panel">
+            <div class="pc-term-tabs"><div class="pc-term-tab active">Run: server.py</div></div>
+            <div class="pc-term-output">
+              <div class="term-ok">Server listening on 0.0.0.0:7000</div>
+              <div class="term-ok">[+] zvi connected from ('127.0.0.1', 54321)</div>
+              <div class="term-info">broadcast → *** zvi joined ***</div>
+              <div class="term-ok">[+] dana connected from ('127.0.0.1', 54322)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pc-statusbar"><span><span class="pc-status-dot"></span> Python 3.11</span><span>server.py</span><span>Ln 14</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 9 — Demo אינטראקטיבי
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-8">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-demo">🎬 סימולציה · שלב אחר שלב</div>
+    <h2 class="slide-title">מה קורה <span class="grad">מאחורי הקלעים</span>?</h2>
+    <div class="demo-wrap" style="max-width:900px;">
+      <div style="flex:1.2;display:flex;flex-direction:column;gap:10px;">
+        <div class="demo-box">
+          <div class="demo-box-header"><div class="status-dot"></div>SERVER — 0.0.0.0:7000</div>
+          <div class="demo-log" id="demo-server"></div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div class="demo-box" style="flex:1;">
+            <div class="demo-box-header" style="color:var(--accent);">👤 zvi</div>
+            <div class="demo-log" id="demo-c1"></div>
+          </div>
+          <div class="demo-box" style="flex:1;">
+            <div class="demo-box-header" style="color:var(--accent3);">👤 dana</div>
+            <div class="demo-log" id="demo-c2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-controls">
+      <button class="demo-btn" onclick="demoStep(1)">1️⃣ השרת מאזין</button>
+      <button class="demo-btn" onclick="demoStep(2)">2️⃣ zvi מתחבר</button>
+      <button class="demo-btn" onclick="demoStep(3)">3️⃣ dana מתחברת</button>
+      <button class="demo-btn" onclick="demoStep(4)">4️⃣ zvi שולח הודעה</button>
+      <button class="demo-btn" onclick="demoStep(5)">5️⃣ zvi מתנתק</button>
+      <button class="demo-btn" onclick="demoReset()" style="border-color:var(--accent2);color:var(--accent2);">↺ איפוס</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 10 — POLL 3: פרוטוקול
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-9">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:280px;height:280px;background:#a855f7;top:-50px;right:5%;opacity:0.1;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-poll">🗳️ Poll #3 · פרוטוקול תקשורת</div>
+    <div class="poll-wrap">
+      <div class="poll-q">למה מוסיפים <code style="font-family:'Fira Code';background:var(--surface);padding:2px 8px;border-radius:4px;">\n</code> בסוף כל הודעה ב-TCP?</div>
+      <div class="poll-options" id="poll3-opts">
+        <div class="poll-opt" onclick="poll3(this,false)">
+          <div class="poll-letter">א</div>
+          <div class="poll-text">TCP דורש שכל packet יסתיים ב-newline — זהו חלק מהמבנה הפנימי שלו</div>
+        </div>
+        <div class="poll-opt" onclick="poll3(this,true)">
+          <div class="poll-letter">ב</div>
+          <div class="poll-text">TCP הוא <strong>זרם</strong> בלי גבולות — ה-<code>\n</code> הוא הסכם בין שרת ללקוח לסיום הודעה</div>
+        </div>
+        <div class="poll-opt" onclick="poll3(this,false)">
+          <div class="poll-letter">ג</div>
+          <div class="poll-text">כדי לחסוך בזיכרון — <code>\n</code> גורם ל-Python לשחרר את buffer האחסון</div>
+        </div>
+        <div class="poll-opt" onclick="poll3(this,false)">
+          <div class="poll-letter">ד</div>
+          <div class="poll-text">כדי להודיע לשרת שניתן לסגור את החיבור אחרי ההודעה</div>
+        </div>
+      </div>
+      <div class="poll-explain" id="poll3-explain">
+        <h4>✅ תשובה נכונה — ב</h4>
+        <p>TCP הוא <em>stream protocol</em> — הוא לא יודע איפה הודעה אחת נגמרת ואחרת מתחילה. שני packets יכולים להגיע יחד, או packet אחד יחולק לשניים. ה-<code>\n</code> הוא <strong>delimiter</strong> — סימן גבול שמוסכם מראש בין שרת ללקוח. ה-buffer מצבר נתונים עד שמוצא <code>\n</code>, ואז מפרק הודעה שלמה.</p>
+      </div>
+      <div class="poll-btn-row">
+        <button class="poll-btn" onclick="pollReset('poll3')">↺ איפוס</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 11 — PyCharm: client.py
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-10">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-code">💻 PyCharm · client.py</div>
+    <h2 class="slide-title">הלקוח — גם הוא צריך <span class="grad3">Thread</span></h2>
+    <div class="pycharm-window" style="max-width:920px;">
+      <div class="pycharm-titlebar">
+        <div class="pc-dots"><div class="pc-dot"></div><div class="pc-dot"></div><div class="pc-dot"></div></div>
+        <div class="pycharm-title">client.py – PyCharm</div>
+      </div>
+      <div class="pycharm-body" style="height:310px;">
+        <div class="pycharm-sidebar" style="width:130px;">
+          <div class="pc-sidebar-header">📁 Project</div>
+          <div class="pc-file-tree">
+            <div class="pc-file"><span class="icon">🐍</span> server.py</div>
+            <div class="pc-file active"><span class="icon">🐍</span> client.py</div>
+          </div>
+        </div>
+        <div class="pycharm-editor">
+          <div class="pc-tabs"><div class="pc-tab active">client.py</div></div>
+          <div class="pc-editor-content">
+            <div class="pc-line-nums">
+              <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+              <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+              <div>11</div><div>12</div><div>13</div><div>14</div>
+            </div>
+            <div class="pc-code"><span class="kw">def</span> <span class="fn">recv_loop</span>(sock):
+    <span class="str">"""Thread נפרד: מאזין להודעות מהשרת"""</span>
+    <span class="kw">while True</span>:
+        data = sock.<span class="fn">recv</span>(<span class="num">1024</span>).<span class="fn">decode</span>()
+        <span class="kw">if not</span> data: <span class="kw">break</span>
+        <span class="fn">print</span>(<span class="str">f"\r{data}\n> "</span>, end=<span class="str">""</span>)
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    sock = socket.<span class="fn">socket</span>()
+    sock.<span class="fn">connect</span>((<span class="str">'127.0.0.1'</span>, <span class="num">7000</span>))
+    name = <span class="fn">input</span>(<span class="str">"שם משתמש: "</span>); sock.<span class="fn">sendall</span>(name.<span class="fn">encode</span>())
+<span class="pc-hl">    threading.<span class="cls">Thread</span>(target=<span class="fn">recv_loop</span>, args=(sock,), daemon=<span class="kw">True</span>).<span class="fn">start</span>()</span>
+    <span class="kw">while</span> (msg := <span class="fn">input</span>(<span class="str">"> "</span>)):  <span class="cm"># walrus operator</span>
+        sock.<span class="fn">sendall</span>(msg.<span class="fn">encode</span>())</div>
+          </div>
+          <div class="pc-terminal-panel">
+            <div class="pc-term-tabs"><div class="pc-term-tab active">Terminal</div></div>
+            <div class="pc-term-output">
+              <div class="term-prompt">$ python client.py</div>
+              <div class="term-info">שם משתמש: zvi</div>
+              <div class="term-ok">*** zvi joined ***</div>
+              <div class="term-prompt">&gt; שלום dana!</div>
+              <div class="term-ok">zvi: שלום dana!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pc-statusbar"><span><span class="pc-status-dot"></span> Python 3.11</span><span>client.py</span><span>Ln 12</span></div>
+    </div>
+    <div class="annotation" style="max-width:920px;">
+      <strong>עקרון מפתח:</strong> הלקוח צריך 2 threads — אחד <strong>שולח</strong> (input מהמשתמש) ואחד <strong>מקבל</strong> (הודעות מהשרת). בלי זה, לא ניתן לעשות שניהם בו-זמנית.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 12 — TASK 2: הוספת header + CommunicationProtocol
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-11">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:350px;height:350px;background:#00ff9d;top:-100px;right:-80px;opacity:0.07;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-task">⚡ משימה #2 · CommunicationProtocol</div>
+    <div class="task-timer-row" style="max-width:960px;width:100%;">
+      <div class="task-box" style="flex:1;">
+        <div class="task-header">
+          <h3>📨 ממשו את מחלקת CommunicationProtocol</h3>
+        </div>
+        <div class="task-body">
+          <div class="task-desc">
+            המחלקה תוסיף <strong>header</strong> לכל הודעה ותאמת הודעות נכנסות.<br>
+            מבנה ה-header: <code>0000000005||hello</code> (10 ספרות + <code>||</code> + הודעה)
+          </div>
+          <div class="task-steps">
+            <div class="task-step">
+              <div class="task-step-num">1</div>
+              <div class="task-step-text"><code>build_message(command)</code> — בנה string עם header: <code>f"{len(command):010d}||{command}"</code></div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">2</div>
+              <div class="task-step-text"><code>parse_message(msg)</code> — פרק: <code>length = int(msg[:10])</code>, <code>parts = msg[12:].split("||")</code></div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">3</div>
+              <div class="task-step-text"><code>is_valid(command, params)</code> — בדוק: פקודה חוקית? מספר פרמטרים נכון? אורך תואם?</div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num">4</div>
+              <div class="task-step-text">השתמשו ב-<code>VALID_COMMANDS = {'hello': 0, 'animal': 1, 'close': 0}</code> מ-constants.py</div>
+            </div>
+          </div>
+          <div class="annotation">
+            <strong>בונוס:</strong> הוסיפו בדיקה שאורך ה-payload תואם את מה שה-header מצהיר.
+          </div>
+        </div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-label">⏱️ זמן למשימה</div>
+        <div class="timer-display" id="timer2">15:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer2-bar" style="width:100%"></div></div>
+        <div class="timer-controls">
+          <button class="timer-btn" onclick="startTimer('timer2', 900)">▶ התחל</button>
+          <button class="timer-btn danger-btn" onclick="stopTimer('timer2')">■ עצור</button>
+        </div>
+        <small class="note">15 דקות</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 13 — PyCharm: Logger
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-12">
+  <div class="hero-bg"><div class="grid-lines"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-code">💻 PyCharm · Logger</div>
+    <h2 class="slide-title">הוספת <span class="grad2">Logger</span> — כתיבה לקובץ</h2>
+    <div class="split-layout" style="max-width:1050px;">
+      <div class="pycharm-window">
+        <div class="pycharm-titlebar">
+          <div class="pc-dots"><div class="pc-dot"></div><div class="pc-dot"></div><div class="pc-dot"></div></div>
+          <div class="pycharm-title">server.py – Logger setup</div>
+        </div>
+        <div class="pycharm-body" style="height:260px;">
+          <div class="pycharm-sidebar" style="width:120px;">
+            <div class="pc-sidebar-header">📁 Project</div>
+            <div class="pc-file-tree">
+              <div class="pc-file active"><span class="icon">🐍</span> server.py</div>
+              <div class="pc-file"><span class="icon">📄</span> server.log</div>
+            </div>
+          </div>
+          <div class="pycharm-editor">
+            <div class="pc-tabs"><div class="pc-tab active">server.py</div></div>
+            <div class="pc-editor-content">
+              <div class="pc-line-nums">
+                <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+                <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+              </div>
+              <div class="pc-code"><span class="kw">import</span> logging
+
+logging.<span class="fn">basicConfig</span>(
+    filename=<span class="str">'server.log'</span>,
+    level=logging.INFO,
+<span class="pc-hl">    format=<span class="str">'%(asctime)s - %(message)s'</span>,</span>
+    datefmt=<span class="str">'%Y-%m-%d %H:%M:%S,%f'</span>[:-<span class="num">3</span>]
+)
+logger = logging.<span class="fn">getLogger</span>(<span class="str">'server'</span>)
+
+<span class="cm"># שימוש:</span>
+logger.<span class="fn">info</span>(<span class="str">f"Client {addr} connected"</span>)
+logger.<span class="fn">info</span>(<span class="str">f"MSG from {name}: {msg}"</span>)</div>
+            </div>
+          </div>
+        </div>
+        <div class="pc-statusbar"><span><span class="pc-status-dot"></span> Python 3.11</span><span>server.py</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="code-block" style="max-width:100%;">
+          <div class="code-header">
+            <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+            <span class="code-filename">server.log — פלט לדוגמה</span>
+          </div>
+          <pre style="font-size:18px;line-height:1.7;"><span class="cm">2024-03-07 10:09:21,079 - Server started :7000
+2024-03-07 10:09:26,201 - Client ('127.0.0.1', 58982) connected
+2024-03-07 10:09:30,563 - MSG from zvi: שלום לכולם!
+2024-03-07 10:09:45,112 - Client 127.0.0.1:58982 disconnected</span></pre>
+        </div>
+        <div class="cards" style="flex-direction:column;">
+          <div class="card" style="max-width:100%;min-width:auto;">
+            <div class="card-icon">📋</div>
+            <h3>רמות Log</h3>
+            <p><code>DEBUG</code> → <code>INFO</code> → <code>WARNING</code> → <code>ERROR</code>. רק <code>INFO</code> ומעלה יכתב לקובץ עם הגדרה זו.</p>
+          </div>
+          <div class="card" style="max-width:100%;min-width:auto;">
+            <div class="card-icon">🔒</div>
+            <h3>Thread-Safe</h3>
+            <p>ה-<code>logging</code> module של Python הוא thread-safe — לא צריך Lock! מספר threads יכולים לכתוב בו-זמנית.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 14 — POLL 4: סיכום
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-13">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:300px;height:300px;background:#00e5ff;bottom:-80px;left:20%;opacity:0.1;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-poll">🗳️ Poll #4 · בדיקת הבנה</div>
+    <div class="poll-wrap">
+      <div class="poll-q">הלקוח שולח <code style="font-family:'Fira Code';background:var(--surface);padding:2px 8px;border-radius:4px;">animal m</code> לשרת.<br>מה <span class="grad">הסדר הנכון</span> של הפעולות בשרת?</div>
+      <div class="poll-options" id="poll4-opts">
+        <div class="poll-opt" onclick="poll4(this,false)">
+          <div class="poll-letter">א</div>
+          <div class="poll-text">validate → broadcast → parse → business_logic</div>
+        </div>
+        <div class="poll-opt" onclick="poll4(this,true)">
+          <div class="poll-letter">ב</div>
+          <div class="poll-text">recv → parse_message → is_valid → business_logic → send response</div>
+        </div>
+        <div class="poll-opt" onclick="poll4(this,false)">
+          <div class="poll-letter">ג</div>
+          <div class="poll-text">recv → business_logic → parse → send → log</div>
+        </div>
+        <div class="poll-opt" onclick="poll4(this,false)">
+          <div class="poll-letter">ד</div>
+          <div class="poll-text">parse → recv → is_valid → broadcast → log</div>
+        </div>
+      </div>
+      <div class="poll-explain" id="poll4-explain">
+        <h4>✅ תשובה נכונה — ב</h4>
+        <p>הסדר הנכון: <strong>1)</strong> <code>recv()</code> — קבלת bytes מהרשת. <strong>2)</strong> <code>parse_message()</code> — פירוק ה-header והחלק את command ו-params. <strong>3)</strong> <code>is_valid()</code> — האם הפקודה קיימת ומספר הפרמטרים תקין? <strong>4)</strong> <code>business_logic()</code> — חישוב התגובה (במקרה זה: מחזיר "Monkey"). <strong>5)</strong> <code>send()</code> — שליחת התגובה חזרה ללקוח + logging.</p>
+      </div>
+      <div class="poll-btn-row">
+        <button class="poll-btn" onclick="pollReset('poll4')">↺ איפוס</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 15 — TASK 3: מימוש צ'אט מלא
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-14">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:400px;height:400px;background:#00ff9d;bottom:-150px;right:-100px;opacity:0.06;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-task">🚀 משימה #3 · אתגר מסיים</div>
+    <div class="task-timer-row" style="max-width:960px;width:100%;">
+      <div class="task-box" style="flex:1;">
+        <div class="task-header">
+          <h3>💬 בנו צ'אט רב-משתמשים מלא — Breakout Rooms</h3>
+        </div>
+        <div class="task-body">
+          <div class="task-desc">
+            שלבו את כל מה שלמדנו: Threads, Lock, Protocol, Logger. <strong>3 רמות:</strong>
+          </div>
+          <div class="task-steps">
+            <div class="task-step">
+              <div class="task-step-num" style="background:var(--accent);color:#000;">1</div>
+              <div class="task-step-text"><strong>🟢 בסיסי:</strong> שרת מקבל לקוחות, כל הודעה עוברת broadcast לכולם. הריצו 2 לקוחות ממסוף שונה.</div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num" style="background:var(--yellow);color:#000;">2</div>
+              <div class="task-step-text"><strong>🟡 בינוני:</strong> הוסיפו CommunicationProtocol עם header ו-is_valid. הוסיפו logger שכותב לקובץ.</div>
+            </div>
+            <div class="task-step">
+              <div class="task-step-num" style="background:var(--accent2);color:#000;">3</div>
+              <div class="task-step-text"><strong>🔴 מתקדם:</strong> הוסיפו פקודה <code>/whisper &lt;name&gt; &lt;msg&gt;</code> שמשדרת רק למשתמש ספציפי.</div>
+            </div>
+          </div>
+          <div class="annotation">
+            <strong>טיפ:</strong> לרמה 3 — שמרו ב-<code>clients</code> גם את שם המשתמש. חפשו לפי שם כדי למצוא את ה-socket הנכון לשליחה פרטית.
+          </div>
+        </div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-label">⏱️ זמן לאתגר</div>
+        <div class="timer-display" id="timer3">25:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer3-bar" style="width:100%"></div></div>
+        <div class="timer-controls">
+          <button class="timer-btn" onclick="startTimer('timer3', 1500)">▶ התחל</button>
+          <button class="timer-btn danger-btn" onclick="stopTimer('timer3')">■ עצור</button>
+        </div>
+        <small class="note">25 דקות · Breakout Rooms</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 16 — סיכום + Cheat Sheet
+══════════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-15">
+  <div class="hero-bg"><div class="grid-lines"></div><div class="glow-orb" style="width:400px;height:400px;background:#a855f7;top:-150px;left:50%;opacity:0.1;"></div></div>
+  <div class="slide-content">
+    <div class="slide-tag tag-lesson">📚 סיכום · Cheat Sheet</div>
+    <h2 class="slide-title"><span class="grad3">מה בנינו היום</span></h2>
+    <div class="step-list" style="max-width:860px;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <h4><span class="label label-server">SERVER</span> bind + listen → accept() loop</h4>
+          <p>Thread ראשי: מחכה לחיבורים ופותח thread חדש לכל לקוח.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <h4><span class="label label-thread">THREAD</span> handle_client(conn, addr)</h4>
+          <p>recv → פירוק הודעה → business logic → תגובה. בסיום: ניקוי + disconnect.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <h4><span class="label label-lock">LOCK</span> clients_lock + broadcast()</h4>
+          <p>גישה לכל משתנה משותף בתוך <code>with clients_lock</code>. broadcast = לולאה על <code>list(clients)</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <h4><span class="label label-client">CLIENT</span> 2 Threads: send + recv</h4>
+          <p>Thread ראשי: input. Thread שני (daemon): recv_loop שמאזין לשרת.</p>
+        </div>
+      </div>
+    </div>
+    <div class="badge-row" style="margin-top:12px;">
+      <div class="badge">שיעור הבא: <span>CommunicationProtocol מלא + SQLite</span></div>
+      <div class="badge">לאחר מכן: <span>TLS + asyncio</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     NAV
+══════════════════════════════════════════════════════════════ -->
+<div class="nav">
+  <button id="btn-prev" onclick="goSlide(-1)" disabled>→ הקודם</button>
+  <div class="dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 16</span>
+  <button id="btn-next" onclick="goSlide(1)">הבא ←</button>
+</div>
+
+<script>
+// ========================= SLIDE SYSTEM =========================
+const TOTAL = 16;
+let current = 0;
+
+function initDots() {
+  const c = document.getElementById('dots');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => jumpSlide(i);
+    c.appendChild(d);
+  }
+}
+
+function updateUI() {
+  document.getElementById('counter').textContent = `${current + 1} / ${TOTAL}`;
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === TOTAL - 1;
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+}
+
+function goSlide(dir) {
+  const next = current + dir;
+  if (next < 0 || next >= TOTAL) return;
+  const prevEl = document.getElementById(`slide-${current}`);
+  const nextEl = document.getElementById(`slide-${next}`);
+  prevEl.style.cssText += `;opacity:0;transform:translateX(${dir > 0 ? '-60px' : '60px'});transition:opacity 0.38s ease,transform 0.38s ease;`;
+  prevEl.classList.remove('active');
+  nextEl.style.opacity = '0';
+  nextEl.style.transform = `translateX(${dir > 0 ? '60px' : '-60px'})`;
+  nextEl.style.transition = 'none';
+  nextEl.classList.add('active');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    nextEl.style.transition = 'opacity 0.38s ease, transform 0.38s ease';
+    nextEl.style.opacity = '1';
+    nextEl.style.transform = 'translateX(0)';
+  }));
+  setTimeout(() => { prevEl.style.cssText = ''; }, 400);
+  current = next;
+  updateUI();
+}
+
+function jumpSlide(to) {
+  if (to === current) return;
+  goSlide(to - current > 0 ? 1 : -1);
+  if (Math.abs(to - current) > 1) { current = to - (to > current ? 1 : -1); goSlide(to > current ? 1 : -1); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown')  goSlide(1);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp')    goSlide(-1);
+});
+
+// ========================= POLLS =========================
+function answerPoll(id, el, correct) {
+  const opts = document.querySelectorAll(`#${id}-opts .poll-opt`);
+  opts.forEach(o => {
+    const isCorrect = o.getAttribute('onclick').includes('true');
+    o.classList.add(isCorrect ? 'correct' : 'wrong');
+    o.style.cursor = 'default';
+    o.onclick = null;
+  });
+  document.getElementById(`${id}-explain`).style.display = 'block';
+}
+
+function poll1(el, correct) { answerPoll('poll1', el, correct); }
+function poll2(el, correct) { answerPoll('poll2', el, correct); }
+function poll3(el, correct) { answerPoll('poll3', el, correct); }
+function poll4(el, correct) { answerPoll('poll4', el, correct); }
+
+function pollReset(id) {
+  document.querySelectorAll(`#${id}-opts .poll-opt`).forEach(o => {
+    o.classList.remove('correct', 'wrong');
+    o.style.cursor = 'pointer';
+    const match = o.getAttribute('data-handler');
+  });
+  // Re-bind handlers
+  const opts = document.querySelectorAll(`#${id}-opts .poll-opt`);
+  const handlers = { poll1: poll1, poll2: poll2, poll3: poll3, poll4: poll4 };
+  opts.forEach((o, i) => {
+    const isCorrect = ['poll1','poll2','poll3','poll4'].indexOf(id);
+    const correctIdx = { poll1: 1, poll2: 2, poll3: 1, poll4: 1 };
+    const fn = handlers[id];
+    o.onclick = () => fn(o, i === correctIdx[id]);
+  });
+  document.getElementById(`${id}-explain`).style.display = 'none';
+}
+
+// ========================= TIMER =========================
+const timerState = {};
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function startTimer(id, totalSec) {
+  if (timerState[id]) { clearInterval(timerState[id].interval); }
+  const display = document.getElementById(id);
+  const bar = document.getElementById(`${id}-bar`);
+  let remaining = totalSec;
+  display.textContent = formatTime(remaining);
+  display.className = 'timer-display';
+  bar.className = 'timer-bar';
+  bar.style.width = '100%';
+
+  timerState[id] = {
+    interval: setInterval(() => {
+      remaining--;
+      const pct = (remaining / totalSec) * 100;
+      display.textContent = formatTime(remaining);
+      bar.style.width = pct + '%';
+
+      if (remaining <= 60) {
+        display.className = 'timer-display danger';
+        bar.className = 'timer-bar danger';
+      } else if (remaining <= totalSec * 0.3) {
+        display.className = 'timer-display warning';
+        bar.className = 'timer-bar warning';
+      }
+
+      if (remaining <= 0) {
+        clearInterval(timerState[id].interval);
+        display.textContent = '00:00';
+        display.className = 'timer-display danger';
+        // flash
+        let f = 0;
+        const flash = setInterval(() => {
+          display.style.opacity = f++ % 2 === 0 ? '0.3' : '1';
+          if (f > 10) { clearInterval(flash); display.style.opacity = '1'; }
+        }, 300);
+      }
+    }, 1000)
+  };
+}
+
+function stopTimer(id) {
+  if (timerState[id]) { clearInterval(timerState[id].interval); }
+  const display = document.getElementById(id);
+  display.className = 'timer-display';
+}
+
+// ========================= DEMO =========================
+let demoState = 0;
+function dlog(id, cls, text) {
+  const el = document.getElementById(id);
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function demoReset() {
+  ['demo-server','demo-c1','demo-c2'].forEach(id => document.getElementById(id).innerHTML = '');
+  demoState = 0;
+}
+function demoStep(step) {
+  if (step <= demoState) return;
+  demoState = step;
+  if (step === 1) {
+    dlog('demo-server','log-server','> python server.py');
+    dlog('demo-server','log-ok','bind((0.0.0.0, 7000)) ✓');
+    dlog('demo-server','log-ok','listen() ✓');
+    dlog('demo-server','log-info','⏳ accept() — ממתין לחיבורים...');
+  }
+  if (step === 2) {
+    dlog('demo-server','log-ok','accept() → conn₁ (127.0.0.1:54321)');
+    dlog('demo-server','log-server','🧵 Thread-1 → handle_client(conn₁)');
+    dlog('demo-server','log-info','recv: "zvi" → clients[conn₁]="zvi"');
+    dlog('demo-server','log-server','broadcast: "*** zvi joined ***"');
+    dlog('demo-c1','log-client','connect(127.0.0.1, 7000) ✓');
+    dlog('demo-c1','log-info','🧵 recv_loop thread started');
+    dlog('demo-c1','log-ok','*** zvi joined ***');
+  }
+  if (step === 3) {
+    dlog('demo-server','log-ok','accept() → conn₂ (127.0.0.1:54322)');
+    dlog('demo-server','log-server','🧵 Thread-2 → handle_client(conn₂)');
+    dlog('demo-server','log-info','recv: "dana" → clients[conn₂]="dana"');
+    dlog('demo-server','log-server','broadcast: "*** dana joined ***"');
+    dlog('demo-c1','log-ok','*** dana joined ***');
+    dlog('demo-c2','log-client','connect(127.0.0.1, 7000) ✓');
+    dlog('demo-c2','log-ok','*** dana joined ***');
+  }
+  if (step === 4) {
+    dlog('demo-c1','log-client','> שלום לכולם!');
+    dlog('demo-server','log-server','[T1] recv "שלום לכולם!" from zvi');
+    dlog('demo-server','log-info','with clients_lock: broadcast to conn₁, conn₂');
+    dlog('demo-c1','log-ok','zvi: שלום לכולם!');
+    dlog('demo-c2','log-ok','zvi: שלום לכולם!');
+  }
+  if (step === 5) {
+    dlog('demo-c1','log-err','[disconnect]');
+    dlog('demo-server','log-err','[T1] conn₁ closed — recv returned empty');
+    dlog('demo-server','log-info','finally: clients.pop(conn₁) → "zvi"');
+    dlog('demo-server','log-server','broadcast: "*** zvi disconnected ***"');
+    dlog('demo-c2','log-err','*** zvi disconnected ***');
+    dlog('demo-server','log-ok','conn₁.close() ✓ | Thread-1 ended');
+  }
+}
+
+initDots();
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Threads + Broadcast בצ'אט</title>
+  <style>
+    :root {
+      --bg1: #020617;
+      --bg2: #0f172a;
+      --panel: #111827;
+      --panel2: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --blue: #38bdf8;
+      --green: #22c55e;
+      --yellow: #facc15;
+      --red: #ef4444;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    .hero {
+      background: linear-gradient(135deg, rgba(56,189,248,0.14), rgba(34,197,94,0.12));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 30px;
+      margin-bottom: 24px;
+    }
+    h1 { margin: 0 0 10px; font-size: 2.3rem; color: white; }
+    h2 { margin-top: 0; color: var(--blue); }
+    h3 { color: white; }
+    p, li { line-height: 1.7; font-size: 1.05rem; }
+    .lead { color: #dbeafe; font-size: 1.12rem; }
+    .section {
+      background: rgba(17,24,39,0.92);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .pill {
+      display: inline-block;
+      background: rgba(255,255,255,0.08);
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-left: 6px;
+      margin-top: 6px;
+      font-size: 0.92rem;
+    }
+    .note {
+      border-right: 5px solid var(--yellow);
+      background: rgba(250,204,21,0.09);
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-top: 12px;
+    }
+    .success {
+      border-right-color: var(--green);
+      background: rgba(34,197,94,0.08);
+    }
+    .danger {
+      border-right-color: var(--red);
+      background: rgba(239,68,68,0.08);
+    }
+    .inline {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-family: Consolas, monospace;
+      direction: ltr;
+      unicode-bidi: bidi-override;
+    }
+    pre {
+      background: #020617;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px;
+      overflow-x: auto;
+      direction: ltr;
+      text-align: left;
+      font-size: 1.04rem;
+      line-height: 1.6;
+    }
+    .thread-diagram {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+      align-items: start;
+    }
+    .lane {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 420px;
+    }
+    .lane h3 { text-align: center; margin-top: 4px; }
+    .step {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      text-align: center;
+      font-weight: bold;
+      direction: ltr;
+    }
+    .arrow {
+      text-align: center;
+      color: #bae6fd;
+      font-size: 1.4rem;
+      margin: 2px 0;
+    }
+    .sequence {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 16px;
+    }
+    .seq-col {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+      min-height: 560px;
+      position: relative;
+    }
+    .seq-col::after {
+      content: "";
+      position: absolute;
+      top: 58px;
+      bottom: 16px;
+      left: 50%;
+      width: 2px;
+      background: rgba(255,255,255,0.12);
+      transform: translateX(-50%);
+    }
+    .seq-title {
+      position: relative;
+      z-index: 1;
+      background: rgba(56,189,248,0.14);
+      border-radius: 12px;
+      padding: 10px;
+      font-weight: bold;
+    }
+    .msg-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      margin: 18px 0;
+    }
+    .msg-box {
+      position: relative;
+      z-index: 1;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 0.95rem;
+    }
+    .flowline {
+      margin: 8px auto;
+      color: #7dd3fc;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+    .quiz {
+      margin-top: 16px;
+      border: 1px solid rgba(34,197,94,0.22);
+      background: rgba(34,197,94,0.08);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .quiz button, .tabs button {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 8px;
+      margin-left: 8px;
+    }
+    .tabs { margin-bottom: 16px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .answer {
+      display: none;
+      margin-top: 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      padding: 12px;
+    }
+    @media (max-width: 1000px) {
+      .thread-diagram, .sequence { grid-template-columns: 1fr; }
+      .lane, .seq-col { min-height: auto; }
+      .seq-col::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Threads + Broadcast בצ'אט</h1>
+      <p class="lead">דף אינטראקטיבי לתלמידים: תרשים זרימה של התהליכונים בשרת, דיאגרמת sequence של <span class="inline">login</span> ו־<span class="inline">message</span>, ושקף לימודי שמסביר למה צריך <span class="inline">clients_lock</span>.</p>
+      <div>
+        <span class="pill">thread per client</span>
+        <span class="pill">broadcast</span>
+        <span class="pill">lock</span>
+        <span class="pill">recv / sendall</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="tabs">
+        <button onclick="showTab('tab1')">1. תרשים threads בשרת</button>
+        <button onclick="showTab('tab2')">2. Sequence: login + message</button>
+        <button onclick="showTab('tab3')">3. שקף אינטראקטיבי</button>
+      </div>
+
+      <div id="tab1" class="tab-content active">
+        <h2>1. תרשים זרימה של התהליכונים בשרת</h2>
+        <p>בשרת יש <strong>thread ראשי</strong> שמחכה לחיבורים חדשים, ולכל לקוח שנכנס נפתח <strong>thread נפרד</strong> שמטפל רק בו. כך אפשר לשרת כמה לקוחות במקביל.</p>
+
+        <div class="thread-diagram">
+          <div class="lane">
+            <h3>Thread ראשי</h3>
+            <div class="step">srv.listen(5)</div>
+            <div class="step">accept()</div>
+            <div class="arrow">↓</div>
+            <div class="step">Thread(target=handle_client)</div>
+            <div class="arrow">↓</div>
+            <div class="step">accept() שוב</div>
+            <div class="note success">ה־thread הראשי לא מטפל בהודעות chat. הוא רק מקבל חיבורים חדשים ופותח thread עבור כל לקוח.</div>
+          </div>
+
+          <div class="lane">
+            <h3>Thread של לקוח A</h3>
+            <div class="step">recv()</div>
+            <div class="arrow">↓</div>
+            <div class="step">json.loads(...)</div>
+            <div class="arrow">↓</div>
+            <div class="step">action == 'login'</div>
+            <div class="arrow">↓</div>
+            <div class="step">clients[conn] = username</div>
+            <div class="arrow">↓</div>
+            <div class="step">broadcast(status)</div>
+          </div>
+
+          <div class="lane">
+            <h3>Thread של לקוח B</h3>
+            <div class="step">recv()</div>
+            <div class="arrow">↓</div>
+            <div class="step">json.loads(...)</div>
+            <div class="arrow">↓</div>
+            <div class="step">action == 'message'</div>
+            <div class="arrow">↓</div>
+            <div class="step">broadcast(message)</div>
+            <div class="note">ה־broadcast לא פותח thread חדש. הוא רץ בתוך ה־thread של הלקוח ששלח את ההודעה.</div>
+          </div>
+
+          <div class="lane">
+            <h3>משאב משותף</h3>
+            <div class="step">clients = {sock: username}</div>
+            <div class="step">clients_lock</div>
+            <div class="arrow">↓</div>
+            <div class="step">with clients_lock:</div>
+            <div class="step">for sock in list(clients):</div>
+            <div class="step">sock.sendall(...)</div>
+            <div class="note danger">בלי lock שני threads יכולים במקביל להוסיף, למחוק ולעבור על <span class="inline">clients</span> — וזה race condition.</div>
+          </div>
+        </div>
+
+        <div class="quiz">
+          <h3>שאלה לתלמידים</h3>
+          <p>למה השרת לא נתקע כולו אם לקוח אחד יושב ב־<span class="inline">recv()</span> ולא שולח כלום?</p>
+          <button onclick="toggleAnswer('ans1')">הצג תשובה</button>
+          <div id="ans1" class="answer">כי <span class="inline">recv()</span> חוסם רק את ה־thread של אותו לקוח. שאר ה־threads ממשיכים לעבוד, וה־thread הראשי עדיין יכול לקבל לקוחות חדשים.</div>
+        </div>
+      </div>
+
+      <div id="tab2" class="tab-content">
+        <h2>2. דיאגרמת Sequence של login ו־message</h2>
+        <p>הדיאגרמה מחולקת לשלושה משתתפים: לקוח, thread של השרת עבור אותו לקוח, וכל הלקוחות המחוברים שאליהם נשלח ה־broadcast.</p>
+
+        <div class="sequence">
+          <div class="seq-col">
+            <div class="seq-title">לקוח</div>
+            <div class="msg-row"><div class="msg-box">/login alice 1234</div></div>
+            <div class="flowline">⇢</div>
+            <div class="msg-row"><div class="msg-box">מחכה לתשובת info</div></div>
+            <div class="flowline">⇠</div>
+            <div class="msg-row"><div class="msg-box">/msg hello class</div></div>
+            <div class="flowline">⇢</div>
+            <div class="msg-row"><div class="msg-box">recv_loop מקבל הודעות</div></div>
+          </div>
+
+          <div class="seq-col">
+            <div class="seq-title">Thread של השרת</div>
+            <div class="msg-row"><div class="msg-box">recv() + json.loads()</div></div>
+            <div class="msg-row"><div class="msg-box">action == 'login'</div></div>
+            <div class="msg-row"><div class="msg-box">בודק DB עם Session()</div></div>
+            <div class="msg-row"><div class="msg-box">clients[conn] = 'alice'</div></div>
+            <div class="msg-row"><div class="msg-box">send_json(info)</div></div>
+            <div class="msg-row"><div class="msg-box">broadcast(status)</div></div>
+            <div class="msg-row"><div class="msg-box">recv() שוב</div></div>
+            <div class="msg-row"><div class="msg-box">action == 'message'</div></div>
+            <div class="msg-row"><div class="msg-box">broadcast({action:'message', username:'alice', message:'hello class'})</div></div>
+          </div>
+
+          <div class="seq-col">
+            <div class="seq-title">כל הלקוחות המחוברים</div>
+            <div class="msg-row"><div class="msg-box">מקבלים status: *** alice connected ***</div></div>
+            <div class="msg-row"><div class="msg-box">Alice עצמה יכולה לקבל info</div></div>
+            <div class="msg-row"><div class="msg-box">Bob / Carol / Alice מקבלים את הודעת הצ'אט</div></div>
+            <div class="msg-row"><div class="msg-box">ה־recv_loop של כל לקוח מדפיס למסך</div></div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:18px;">
+          <div class="card">
+            <h3>Sequence של login</h3>
+            <pre><code>client -> server_thread: {"action":"login", ...}
+server_thread -> DB: query(User)
+server_thread -> clients: add connection
+server_thread -> client: {"action":"info", ...}
+server_thread -> all clients: {"action":"status", ...}</code></pre>
+          </div>
+          <div class="card">
+            <h3>Sequence של message</h3>
+            <pre><code>client -> server_thread: {"action":"message", ...}
+server_thread -> clients_lock: acquire
+server_thread -> all clients: broadcast(message)
+all clients -> recv_loop: print(username > text)</code></pre>
+          </div>
+        </div>
+
+        <div class="quiz">
+          <h3>שאלה לתלמידים</h3>
+          <p>למה אחרי <span class="inline">login</span> יש גם <span class="inline">send_json(info)</span> וגם <span class="inline">broadcast(status)</span>?</p>
+          <button onclick="toggleAnswer('ans2')">הצג תשובה</button>
+          <div id="ans2" class="answer">כי הלקוח שביצע login צריך תשובה אישית כמו <span class="inline">Welcome alice</span>, אבל שאר הלקוחות צריכים לדעת שמשתמש חדש התחבר. לכן יש הודעה פרטית אחת והודעת broadcast נפרדת.</div>
+        </div>
+      </div>
+
+      <div id="tab3" class="tab-content">
+        <h2>3. שקף HTML אינטראקטיבי: איך עובד broadcast</h2>
+        <p>החלק הכי חשוב להבנה: <strong>ה־broadcast משתמש ב־thread קיים</strong>, ולא יוצר אחד חדש. מה שחייבים להגן עליו הוא לא הקוד עצמו, אלא <span class="inline">clients</span> — המשאב המשותף.</p>
+
+        <div class="grid">
+          <div class="card">
+            <h3>מה קורה כשלקוח שולח הודעה?</h3>
+            <ol>
+              <li>ה־thread של הלקוח קורא <span class="inline">recv()</span>.</li>
+              <li>הוא מפענח JSON.</li>
+              <li>הוא מזהה <span class="inline">action == 'message'</span>.</li>
+              <li>הוא קורא ל־<span class="inline">broadcast(...)</span>.</li>
+              <li>אותו thread בדיוק עובר על כל הלקוחות ושולח להם הודעה.</li>
+            </ol>
+          </div>
+
+          <div class="card">
+            <h3>למה צריך lock?</h3>
+            <ul>
+              <li>כי כמה threads יכולים לגעת במקביל ב־<span class="inline">clients</span>.</li>
+              <li>אחד יכול לעשות <span class="inline">broadcast</span>.</li>
+              <li>אחר יכול להסיר לקוח שהתנתק.</li>
+              <li>אחר יכול להוסיף לקוח חדש אחרי login.</li>
+            </ul>
+          </div>
+        </div>
+
+        <pre><code>def broadcast(data_dict):
+    payload = (json.dumps(data_dict) + '\n').encode()
+
+    with clients_lock:
+        for sock in list(clients):
+            try:
+                sock.sendall(payload)
+            except Exception:
+                clients.pop(sock, None)</code></pre>
+
+        <div class="note success">
+          החלק הנכון כאן: יש הגנה עם <span class="inline">clients_lock</span>, ולכן רק thread אחד בכל פעם ניגש לרשימת הלקוחות.
+        </div>
+
+        <div class="note danger">
+          החיסרון כאן: אם <span class="inline">sendall()</span> ללקוח מסוים איטי, ה־lock נשאר תפוס יותר זמן. במערכת גדולה עדיף להעתיק snapshot של sockets תחת lock, לשחרר lock, ורק אז לשלוח.
+        </div>
+
+        <div class="quiz">
+          <h3>שאלה לתלמידים</h3>
+          <p>מה הבעיה האפשרית אם נעשה <span class="inline">for sock in clients:</span> בלי <span class="inline">clients_lock</span>?</p>
+          <button onclick="toggleAnswer('ans3')">הצג תשובה</button>
+          <div id="ans3" class="answer">בזמן שהלולאה רצה, thread אחר יכול למחוק או להוסיף לקוח. זה עלול לגרום ל־race condition, לשגיאות כמו שינוי גודל dictionary בזמן איטרציה, או למצב לא עקבי של שידור.</div>
+        </div>
+
+        <div class="quiz">
+          <h3>עוד שאלה</h3>
+          <p>האם <span class="inline">broadcast</span> פותח thread חדש?</p>
+          <button onclick="toggleAnswer('ans4')">הצג תשובה</button>
+          <div id="ans4" class="answer">לא. הוא רץ בתוך ה־thread של הלקוח ששלח את ההודעה או שגרם לאירוע כמו login/logout.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function showTab(id) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function toggleAnswer(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+  </script>
+</body>
+</html>

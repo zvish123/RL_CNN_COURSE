@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Socket / WebSocket / Socket.IO — שיעור אינטראקטיבי</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0b0f1a;
+    --bg2:      #111827;
+    --bg3:      #1a2236;
+    --border:   #1e2d45;
+    --tcp:      #f97316;
+    --ws:       #22d3ee;
+    --sio:      #a78bfa;
+    --green:    #34d399;
+    --red:      #f87171;
+    --yellow:   #fbbf24;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --card-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rubik', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BG ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(34,211,238,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── SLIDES ── */
+  .slides-wrap { position: relative; z-index: 1; }
+
+  .slide {
+    display: none;
+    min-height: 100vh;
+    padding: 0;
+    animation: fadeSlide 0.4s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── NAV BAR ── */
+  .nav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(11,15,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 54px;
+    gap: 12px;
+  }
+  .nav-title {
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    font-family: 'Fira Code', monospace;
+    white-space: nowrap;
+  }
+  .nav-dots {
+    display: flex; gap: 6px; align-items: center;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .nav-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border); border: none; cursor: pointer;
+    transition: all 0.2s; padding: 0;
+  }
+  .nav-dot.active { background: var(--ws); transform: scale(1.3); }
+  .nav-dot.done   { background: var(--green); }
+
+  .nav-btns { display: flex; gap: 8px; }
+  .nav-btn {
+    padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text); cursor: pointer;
+    font-family: 'Fira Code', monospace; font-size: 12px;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { border-color: var(--ws); color: var(--ws); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── SLIDE CONTENT ── */
+  .slide-inner {
+    flex: 1; display: flex; flex-direction: column;
+    padding: 80px 48px 40px;
+    max-width: 1100px; margin: 0 auto; width: 100%;
+  }
+
+  .slide-tag {
+    font-family: 'Fira Code', monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .slide-title {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 900; line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .slide-sub {
+    font-size: 16px; color: var(--muted); font-weight: 300;
+    margin-bottom: 32px;
+  }
+
+  /* ── HIGHLIGHT COLORS ── */
+  .tcp  { color: var(--tcp); }
+  .ws   { color: var(--ws); }
+  .sio  { color: var(--sio); }
+  .ok   { color: var(--green); }
+  .warn { color: var(--red); }
+
+  /* ── CARDS ── */
+  .cards-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px; margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .card:hover { transform: translateY(-3px); }
+  .card.tcp-card  { border-top: 3px solid var(--tcp); }
+  .card.ws-card   { border-top: 3px solid var(--ws);  }
+  .card.sio-card  { border-top: 3px solid var(--sio); }
+
+  .card-icon { font-size: 32px; margin-bottom: 12px; }
+  .card-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .card-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; margin-top: 10px;
+  }
+  .badge-tcp { background: rgba(249,115,22,0.15); color: var(--tcp); }
+  .badge-ws  { background: rgba(34,211,238,0.12);  color: var(--ws);  }
+  .badge-sio { background: rgba(167,139,250,0.15); color: var(--sio); }
+
+  /* ── CODE BLOCK ── */
+  .code-wrap {
+    background: #060a12; border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; margin-bottom: 18px;
+  }
+  .code-header {
+    background: var(--bg3); padding: 8px 16px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Fira Code', monospace; font-size: 12px; color: var(--muted);
+  }
+  .dot-r { width: 10px; height: 10px; border-radius: 50%; background: #f87171; }
+  .dot-y { width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; }
+  .dot-g { width: 10px; height: 10px; border-radius: 50%; background: #34d399; }
+  pre {
+    padding: 18px 20px; overflow-x: auto;
+    font-family: 'Fira Code', monospace; font-size: 13px;
+    line-height: 1.7; color: #e2e8f0;
+    direction: ltr; text-align: left;
+  }
+  .code-wrap { direction: ltr; }
+  .code-header { direction: ltr; text-align: left; }
+  .kw  { color: #c792ea; }
+  .fn  { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm  { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .cls { color: #ffcb6b; }
+
+  /* ── TWO-COL ── */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px; margin-bottom: 20px;
+  }
+  @media (max-width: 720px) {
+    .two-col { grid-template-columns: 1fr; }
+    .slide-inner { padding: 80px 20px 40px; }
+  }
+
+  /* ── COMPARISON TABLE ── */
+  .cmp-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 14px; margin-bottom: 20px;
+  }
+  .cmp-table th {
+    padding: 10px 14px; text-align: right; font-weight: 700;
+    border-bottom: 2px solid var(--border); font-size: 13px;
+  }
+  .cmp-table td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .tick  { color: var(--green); font-size: 16px; }
+  .cross { color: var(--red);   font-size: 16px; }
+
+  /* ── DIAGRAM ── */
+  .diagram {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px;
+    margin-bottom: 20px; font-family: 'Fira Code', monospace;
+    font-size: 13px; line-height: 2;
+  }
+  .diagram-row {
+    display: flex; align-items: center;
+    gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .box {
+    padding: 8px 18px; border-radius: 8px; font-weight: 600;
+    border: 2px solid; white-space: nowrap;
+  }
+  .box-react { border-color: var(--ws); color: var(--ws); background: rgba(34,211,238,0.08); }
+  .box-flask { border-color: var(--green); color: var(--green); background: rgba(52,211,153,0.08); }
+  .box-pyqt  { border-color: var(--sio); color: var(--sio); background: rgba(167,139,250,0.08); }
+  .box-py    { border-color: var(--tcp); color: var(--tcp); background: rgba(249,115,22,0.08); }
+  .arr { color: var(--muted); font-size: 20px; flex: 1; text-align: center; min-width: 60px; }
+  .proto-label {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 600; white-space: nowrap;
+  }
+
+  /* ── QUIZ ── */
+  .quiz-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px; margin-bottom: 20px;
+  }
+  .quiz-q {
+    font-size: 17px; font-weight: 600; margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .quiz-opts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .quiz-opt {
+    padding: 13px 18px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--bg3); cursor: pointer; text-align: right;
+    font-size: 14px; font-family: 'Rubik', sans-serif;
+    transition: all 0.2s; color: var(--text);
+    display: flex; align-items: center; justify-content: flex-end;
+    min-height: 70px; line-height: 1.5;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--ws); background: rgba(34,211,238,0.07); }
+  .quiz-opt.correct  { border-color: var(--green); background: rgba(52,211,153,0.12); color: var(--green); }
+  .quiz-opt.wrong    { border-color: var(--red);   background: rgba(248,113,113,0.10); color: var(--red);  }
+  .quiz-opt:disabled { cursor: default; }
+  .quiz-feedback {
+    margin-top: 16px; padding: 12px 16px; border-radius: 8px;
+    font-size: 14px; display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok  { background: rgba(52,211,153,0.12); border: 1px solid var(--green); color: var(--green); }
+  .quiz-feedback.err { background: rgba(248,113,113,0.10); border: 1px solid var(--red);  color: var(--red);  }
+
+  .quiz-counter {
+    font-family: 'Fira Code', monospace; font-size: 12px;
+    color: var(--muted); margin-bottom: 20px;
+  }
+
+  /* ── TASK BOX ── */
+  .task-box {
+    background: linear-gradient(135deg, rgba(167,139,250,0.08), rgba(34,211,238,0.05));
+    border: 1px solid var(--sio);
+    border-radius: 14px; padding: 24px; margin-bottom: 20px;
+  }
+  .task-title {
+    font-size: 16px; font-weight: 700; color: var(--sio);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .task-steps { display: flex; flex-direction: column; gap: 10px; }
+  .task-step {
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 14px; line-height: 1.6;
+  }
+  .step-num {
+    min-width: 26px; height: 26px; border-radius: 50%;
+    background: var(--sio); color: var(--bg);
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* ── SCORE CARD ── */
+  .score-ring {
+    width: 140px; height: 140px; margin: 0 auto 24px;
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .score-num {
+    font-size: 36px; font-weight: 900; z-index: 1;
+  }
+  .score-label { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 20px; }
+
+  .result-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+  .result-item {
+    background: var(--bg2); border-radius: 10px; padding: 16px;
+    border: 1px solid var(--border); text-align: center;
+  }
+  .result-item .ri-num { font-size: 28px; font-weight: 800; }
+  .result-item .ri-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-wrap {
+    background: var(--border); height: 3px; border-radius: 2px;
+    position: fixed; top: 54px; left: 0; right: 0; z-index: 99;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--ws), var(--sio));
+    transition: width 0.4s ease;
+  }
+
+  /* ── HERO SLIDE ── */
+  .hero-inner {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 80px 40px 60px;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 18px; border-radius: 20px; margin-bottom: 28px;
+    border: 1px solid var(--border); font-size: 12px;
+    font-family: 'Fira Code', monospace; color: var(--muted);
+  }
+  .hero-title {
+    font-size: clamp(36px, 6vw, 72px); font-weight: 900;
+    line-height: 1.1; margin-bottom: 20px;
+  }
+  .hero-sub {
+    font-size: 18px; color: var(--muted); font-weight: 300;
+    margin-bottom: 40px; max-width: 600px;
+  }
+  .start-btn {
+    padding: 14px 40px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--ws), var(--sio));
+    color: var(--bg); font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: 'Rubik', sans-serif;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 30px rgba(34,211,238,0.3);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(34,211,238,0.4); }
+
+  .tech-pills {
+    display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;
+  }
+  .tech-pill {
+    padding: 6px 16px; border-radius: 20px; border: 1px solid;
+    font-size: 13px; font-family: 'Fira Code', monospace; font-weight: 500;
+  }
+
+  /* ── INFO BOXES ── */
+  .info-box {
+    padding: 14px 18px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 14px; line-height: 1.6;
+  }
+  .info-tip  { background: rgba(34,211,238,0.07);  border-right: 3px solid var(--ws); }
+  .info-warn { background: rgba(248,113,113,0.08); border-right: 3px solid var(--red); }
+  .info-note { background: rgba(167,139,250,0.08); border-right: 3px solid var(--sio); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 18px; border-radius: 8px 8px 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    background: var(--bg3); color: var(--muted); cursor: pointer;
+    font-family: 'Rubik', sans-serif; font-size: 13px; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--bg2); color: var(--text); border-color: var(--border); }
+  .tab-content {
+    display: none; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 0 10px 10px 10px; padding: 20px;
+  }
+  .tab-content.active { display: block; }
+
+  /* ── SUMMARY CHECK ── */
+  .summary-checks { display: flex; flex-direction: column; gap: 8px; }
+  .sum-check {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .sum-check span:first-child { font-size: 18px; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex; align-items: center; gap: 0;
+    overflow-x: auto; padding: 10px 0; margin-bottom: 16px;
+  }
+  .flow-node {
+    padding: 10px 16px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; white-space: nowrap; text-align: center; min-width: 100px;
+  }
+  .flow-arrow {
+    color: var(--muted); font-size: 22px; padding: 0 8px; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div class="progress-bar-wrap">
+  <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+</div>
+
+<!-- Nav -->
+<nav class="nav-bar">
+  <span class="nav-title" id="navTitle">socket_lesson.py</span>
+  <div class="nav-dots" id="navDots"></div>
+  <div class="nav-btns">
+    <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>→ קודם</button>
+    <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ←</button>
+  </div>
+</nav>
+
+<div class="slides-wrap" id="slidesWrap">
+
+<!-- ══════════════ SLIDE 0: HERO ══════════════ -->
+<div class="slide active" data-title="פתיחה">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span>
+      שיעור אינטראקטיבי · תקשורת רשת
+    </div>
+    <div class="hero-title">
+      <span class="tcp">Socket</span> ·
+      <span class="ws">WebSocket</span> ·
+      <span class="sio">Socket.IO</span>
+    </div>
+    <div class="hero-sub">
+      מה ההבדל? מתי להשתמש בכל אחד?<br>ואיך מחברים Python ל-React ול-PyQt6?
+    </div>
+    <div class="tech-pills">
+      <div class="tech-pill" style="border-color:var(--tcp);color:var(--tcp)">🐍 Python</div>
+      <div class="tech-pill" style="border-color:var(--green);color:var(--green)">🌶️ Flask</div>
+      <div class="tech-pill" style="border-color:var(--ws);color:var(--ws)">⚛️ React</div>
+      <div class="tech-pill" style="border-color:var(--sio);color:var(--sio)">🖥️ PyQt6</div>
+    </div>
+    <button class="start-btn" onclick="changeSlide(1)">התחל את השיעור ←</button>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 1: מהם שלוש השיטות ══════════════ -->
+<div class="slide" data-title="שלוש שיטות">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 1 / 9</div>
+    <div class="slide-title">שלוש שיטות תקשורת</div>
+    <div class="slide-sub">כל אחת פועלת ברמה שונה של ה-stack</div>
+
+    <div class="cards-row">
+      <div class="card tcp-card">
+        <div class="card-icon">🔌</div>
+        <div class="card-name tcp">TCP Socket</div>
+        <div class="card-desc">
+          תקשורת ישירה ברמת הרשת. bytes גולמיים עוברים בין שרת ללקוח.<br><br>
+          מובנה בפייתון — <code>import socket</code><br>
+          <strong>הדפדפן לא יכול להתחבר ישירות!</strong>
+        </div>
+        <span class="badge badge-tcp">server ↔ server</span>
+      </div>
+      <div class="card ws-card">
+        <div class="card-icon">⚡</div>
+        <div class="card-name ws">WebSocket</div>
+        <div class="card-desc">
+          פרוטוקול שמתחיל כ-HTTP ומשתדרג לחיבור דו-כיווני מתמשך.<br><br>
+          Python: <code>websockets</code> / <code>flask-sock</code><br>
+          <strong>הדפדפן תומך ישירות!</strong>
+        </div>
+        <span class="badge badge-ws">browser ↔ server</span>
+      </div>
+      <div class="card sio-card">
+        <div class="card-icon">🚀</div>
+        <div class="card-name sio">Socket.IO</div>
+        <div class="card-desc">
+          ספרייה שבונה מעל WebSocket. מוסיפה events, rooms, reconnect אוטומטי.<br><br>
+          Python: <code>flask-socketio</code><br>
+          <strong>צריך socket.io-client ב-React!</strong>
+        </div>
+        <span class="badge badge-sio">browser ↔ server + rooms</span>
+      </div>
+    </div>
+
+    <div class="info-box info-tip">
+      💡 <strong>עיקרון:</strong> WebSocket ו-Socket.IO פועלים <em>מעל</em> HTTP — כלומר הדפדפן יכול להשתמש בהם. TCP Socket גולמי הוא שכבה נמוכה יותר.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 2: השוואה ══════════════ -->
+<div class="slide" data-title="השוואה">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 2 / 9</div>
+    <div class="slide-title">השוואה בין השיטות</div>
+    <div class="slide-sub">מטריצת יכולות — בחר נכון לפי הצורך</div>
+
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>תכונה</th>
+          <th class="tcp">TCP Socket</th>
+          <th class="ws">WebSocket</th>
+          <th class="sio">Socket.IO</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>דפדפן יכול להתחבר?</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="tick">✓</span></td>
+          <td><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td>פרוטוקול</td>
+          <td>TCP גולמי</td>
+          <td>WS / WSS</td>
+          <td>WS + HTTP fallback</td>
+        </tr>
+        <tr>
+          <td>שמות לאירועים</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="tick">✓</span> (<code>emit('event')</code>)</td>
+        </tr>
+        <tr>
+          <td>Rooms / Namespaces</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td>Reconnect אוטומטי</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td>ספריית Python</td>
+          <td><code>socket</code> (מובנה)</td>
+          <td><code>flask-sock</code></td>
+          <td><code>flask-socketio</code></td>
+        </tr>
+        <tr>
+          <td>ספריית React / JS</td>
+          <td style="color:var(--red)">אין — לא נתמך</td>
+          <td><code>new WebSocket()</code></td>
+          <td><code>socket.io-client</code></td>
+        </tr>
+        <tr>
+          <td>מתאים ל-</td>
+          <td>שרת ↔ שרת</td>
+          <td>צ'אט, live data</td>
+          <td>משחקים, חדרים, צ'אט</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box info-warn">
+      ⚠️ <strong>שים לב:</strong> Socket.IO <u>אינו</u> WebSocket רגיל. לא ניתן להתחבר ל-Socket.IO server עם <code>new WebSocket()</code> — חייבים <code>socket.io-client</code>!
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 3: TCP Socket + Flask ══════════════ -->
+<div class="slide" data-title="TCP Socket">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 3 / 9</div>
+    <div class="slide-title"><span class="tcp">TCP Socket</span> — Python שרת ולקוח</div>
+    <div class="slide-sub">תקשורת גולמית בין שני תוכניות Python</div>
+
+    <div class="diagram">
+      <div class="diagram-row">
+        <div class="box box-py">client.py</div>
+        <div class="arr">──── TCP ────▶</div>
+        <div class="box box-py">server.py</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        ⚠️ Flask / React לא יכולים להתחבר ישירות — רק Python-to-Python
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; server.py</div>
+          <pre><span class="kw">import</span> socket
+
+server = socket.<span class="fn">socket</span>(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+server.<span class="fn">bind</span>((<span class="str">'localhost'</span>, <span class="num">9000</span>))
+server.<span class="fn">listen</span>(<span class="num">5</span>)
+<span class="fn">print</span>(<span class="str">"שרת מאזין..."</span>)
+
+conn, addr = server.<span class="fn">accept</span>()
+<span class="fn">print</span>(<span class="str">f"לקוח: {addr}"</span>)
+
+data = conn.<span class="fn">recv</span>(<span class="num">1024</span>)
+<span class="fn">print</span>(<span class="str">f"קיבלתי: {data.decode()}"</span>)
+conn.<span class="fn">send</span>(<span class="str">b"שלום מהשרת!"</span>)
+conn.<span class="fn">close</span>()</pre>
+        </div>
+      </div>
+      <div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; client.py</div>
+          <pre><span class="kw">import</span> socket
+
+s = socket.<span class="fn">socket</span>(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+
+<span class="cm"># מתחבר לשרת</span>
+s.<span class="fn">connect</span>((<span class="str">'localhost'</span>, <span class="num">9000</span>))
+
+<span class="cm"># שולח הודעה</span>
+s.<span class="fn">send</span>(<span class="str">"שלום שרת!"</span>.<span class="fn">encode</span>())
+
+<span class="cm"># מקבל תשובה</span>
+reply = s.<span class="fn">recv</span>(<span class="num">1024</span>)
+<span class="fn">print</span>(reply.<span class="fn">decode</span>())
+s.<span class="fn">close</span>()</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info-note">
+      📌 TCP Socket + PyQt6: ניתן לפתוח <code>QTcpSocket</code> מ-Qt, אבל בפייתון רגיל — <code>socket</code> עם <code>threading</code> כדי לא לחסום את ה-UI.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 4: WebSocket Flask + React ══════════════ -->
+<div class="slide" data-title="WebSocket">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 4 / 9</div>
+    <div class="slide-title"><span class="ws">WebSocket</span> — Flask + React + PyQt6</div>
+    <div class="slide-sub">חיבור דו-כיווני עם הדפדפן</div>
+
+    <div class="diagram">
+      <div class="diagram-row">
+        <div class="box box-react">React (דפדפן)</div>
+        <div class="arr">◀── ws:// ──▶</div>
+        <div class="box box-flask">Flask + flask-sock</div>
+      </div>
+      <div class="diagram-row" style="margin-top:8px">
+        <div class="box box-pyqt">PyQt6 App</div>
+        <div class="arr">◀── ws:// ──▶</div>
+        <div class="box box-flask">Flask + flask-sock</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(this,'ws-flask')">🌶️ Flask Server</button>
+      <button class="tab-btn" onclick="switchTab(this,'ws-react')">⚛️ React Hook</button>
+      <button class="tab-btn" onclick="switchTab(this,'ws-pyqt')">🖥️ PyQt6</button>
+    </div>
+    <div id="ws-flask" class="tab-content active">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; app.py — pip install flask flask-sock</div>
+        <pre><span class="kw">from</span> flask <span class="kw">import</span> Flask
+<span class="kw">from</span> flask_sock <span class="kw">import</span> Sock
+<span class="kw">import</span> json
+
+app = <span class="cls">Flask</span>(__name__)
+sock = <span class="cls">Sock</span>(app)
+clients = <span class="fn">set</span>()          <span class="cm"># כל הלקוחות המחוברים</span>
+
+<span class="kw">@</span>sock.<span class="fn">route</span>(<span class="str">'/ws'</span>)
+<span class="kw">def</span> <span class="fn">websocket</span>(ws):
+    clients.<span class="fn">add</span>(ws)
+    <span class="kw">try</span>:
+        <span class="kw">while True</span>:
+            raw  = ws.<span class="fn">receive</span>()
+            data = json.<span class="fn">loads</span>(raw)
+            <span class="cm"># שלח לכולם (broadcast)</span>
+            <span class="kw">for</span> client <span class="kw">in</span> clients.<span class="fn">copy</span>():
+                <span class="kw">try</span>:
+                    client.<span class="fn">send</span>(json.<span class="fn">dumps</span>(data))
+                <span class="kw">except</span>:
+                    clients.<span class="fn">discard</span>(client)
+    <span class="kw">finally</span>:
+        clients.<span class="fn">discard</span>(ws)
+
+<span class="kw">if</span> __name__ == <span class="str">'__main__'</span>:
+    app.<span class="fn">run</span>(port=<span class="num">5000</span>)</pre>
+      </div>
+    </div>
+    <div id="ws-react" class="tab-content">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; useWebSocket.js — Custom Hook</div>
+        <pre><span class="kw">import</span> { useState, useEffect, useRef } <span class="kw">from</span> <span class="str">'react'</span>;
+
+<span class="kw">export function</span> <span class="fn">useWebSocket</span>(url) {
+  <span class="kw">const</span> [messages, setMessages] = <span class="fn">useState</span>([]);
+  <span class="kw">const</span> [connected, setConnected] = <span class="fn">useState</span>(<span class="kw">false</span>);
+  <span class="kw">const</span> wsRef = <span class="fn">useRef</span>(<span class="kw">null</span>);
+
+  <span class="fn">useEffect</span>(() => {
+    wsRef.current = <span class="kw">new</span> <span class="cls">WebSocket</span>(url);
+
+    wsRef.current.<span class="fn">onopen</span>    = () => <span class="fn">setConnected</span>(<span class="kw">true</span>);
+    wsRef.current.<span class="fn">onclose</span>   = () => <span class="fn">setConnected</span>(<span class="kw">false</span>);
+    wsRef.current.<span class="fn">onmessage</span> = (e) => {
+      <span class="kw">const</span> data = <span class="cls">JSON</span>.<span class="fn">parse</span>(e.data);
+      <span class="fn">setMessages</span>(prev => [...prev, data]);
+    };
+
+    <span class="kw">return</span> () => wsRef.current?.<span class="fn">close</span>(); <span class="cm">// cleanup!</span>
+  }, [url]);
+
+  <span class="kw">const</span> <span class="fn">send</span> = (text) => {
+    wsRef.current?.<span class="fn">send</span>(<span class="cls">JSON</span>.<span class="fn">stringify</span>({ text }));
+  };
+
+  <span class="kw">return</span> { messages, connected, send };
+}</pre>
+      </div>
+    </div>
+    <div id="ws-pyqt" class="tab-content">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; pyqt_client.py — pip install websockets PyQt6</div>
+        <pre><span class="kw">import</span> asyncio, websockets, json, threading
+<span class="kw">from</span> PyQt6.QtWidgets <span class="kw">import</span> *
+<span class="kw">from</span> PyQt6.QtCore <span class="kw">import</span> pyqtSignal, QObject
+
+<span class="kw">class</span> <span class="cls">WSWorker</span>(QObject):
+    message_received = pyqtSignal(<span class="fn">str</span>)
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, url):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.url = url
+
+    <span class="kw">def</span> <span class="fn">start</span>(self):
+        threading.<span class="cls">Thread</span>(target=self.<span class="fn">_run</span>, daemon=<span class="kw">True</span>).<span class="fn">start</span>()
+
+    <span class="kw">def</span> <span class="fn">_run</span>(self):
+        asyncio.<span class="fn">run</span>(self.<span class="fn">_connect</span>())
+
+    <span class="kw">async def</span> <span class="fn">_connect</span>(self):
+        <span class="kw">async with</span> websockets.<span class="fn">connect</span>(self.url) <span class="kw">as</span> ws:
+            self.ws = ws
+            <span class="kw">async for</span> msg <span class="kw">in</span> ws:
+                data = json.<span class="fn">loads</span>(msg)
+                self.message_received.<span class="fn">emit</span>(data[<span class="str">'text'</span>])
+
+<span class="cm"># --- UI ---</span>
+<span class="kw">class</span> <span class="cls">MainWindow</span>(QMainWindow):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.worker = <span class="cls">WSWorker</span>(<span class="str">'ws://localhost:5000/ws'</span>)
+        self.worker.message_received.<span class="fn">connect</span>(self.<span class="fn">on_message</span>)
+        self.worker.<span class="fn">start</span>()
+
+    <span class="kw">def</span> <span class="fn">on_message</span>(self, text):
+        <span class="fn">print</span>(<span class="str">f"קיבלתי: {text}"</span>)</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 5: Socket.IO Flask + React ══════════════ -->
+<div class="slide" data-title="Socket.IO">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 5 / 9</div>
+    <div class="slide-title"><span class="sio">Socket.IO</span> — Flask + React + PyQt6</div>
+    <div class="slide-sub">events מסודרים, rooms, reconnect אוטומטי</div>
+
+    <div class="diagram">
+      <div class="diagram-row">
+        <div class="box box-react">React</div>
+        <div class="arr">◀── socket.io ──▶</div>
+        <div class="box box-flask">flask-socketio</div>
+        <div class="arr">──▶</div>
+        <div class="box box-react" style="border-color:var(--sio);color:var(--sio);background:rgba(167,139,250,0.08)">חדר / broadcast</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(this,'sio-flask')">🌶️ Flask Server</button>
+      <button class="tab-btn" onclick="switchTab(this,'sio-react')">⚛️ React</button>
+      <button class="tab-btn" onclick="switchTab(this,'sio-pyqt')">🖥️ PyQt6</button>
+    </div>
+
+    <div id="sio-flask" class="tab-content active">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; app.py — pip install flask flask-socketio eventlet</div>
+        <pre><span class="kw">from</span> flask <span class="kw">import</span> Flask
+<span class="kw">from</span> flask_socketio <span class="kw">import</span> SocketIO, emit, join_room
+
+app = <span class="cls">Flask</span>(__name__)
+socketio = <span class="cls">SocketIO</span>(app, cors_allowed_origins=<span class="str">"*"</span>)
+
+<span class="kw">@</span>socketio.<span class="fn">on</span>(<span class="str">'connect'</span>)
+<span class="kw">def</span> <span class="fn">on_connect</span>():
+    <span class="fn">print</span>(<span class="str">"התחבר לקוח חדש"</span>)
+
+<span class="kw">@</span>socketio.<span class="fn">on</span>(<span class="str">'chat:message'</span>)   <span class="cm"># ← שם ה-event</span>
+<span class="kw">def</span> <span class="fn">on_message</span>(data):
+    <span class="cm"># שלח לכולם</span>
+    <span class="fn">emit</span>(<span class="str">'chat:message'</span>, data, broadcast=<span class="kw">True</span>)
+
+<span class="kw">@</span>socketio.<span class="fn">on</span>(<span class="str">'join'</span>)
+<span class="kw">def</span> <span class="fn">on_join</span>(data):
+    <span class="fn">join_room</span>(data[<span class="str">'room'</span>])             <span class="cm"># ← rooms!</span>
+    <span class="fn">emit</span>(<span class="str">'chat:message'</span>,
+         {<span class="str">'text'</span>: <span class="str">f"הצטרף לחדר {data['room']}"</span>},
+         room=data[<span class="str">'room'</span>])
+
+socketio.<span class="fn">run</span>(app, port=<span class="num">5000</span>)</pre>
+      </div>
+    </div>
+
+    <div id="sio-react" class="tab-content">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; Chat.jsx — npm install socket.io-client</div>
+        <pre><span class="kw">import</span> { useEffect, useState } <span class="kw">from</span> <span class="str">'react'</span>;
+<span class="kw">import</span> { io } <span class="kw">from</span> <span class="str">'socket.io-client'</span>;
+
+<span class="kw">const</span> socket = <span class="fn">io</span>(<span class="str">'http://localhost:5000'</span>);
+
+<span class="kw">export default function</span> <span class="fn">Chat</span>() {
+  <span class="kw">const</span> [msgs, setMsgs] = <span class="fn">useState</span>([]);
+
+  <span class="fn">useEffect</span>(() => {
+    <span class="cm">// האזנה לאירוע בשם 'chat:message'</span>
+    socket.<span class="fn">on</span>(<span class="str">'chat:message'</span>, (data) => {
+      <span class="fn">setMsgs</span>(prev => [...prev, data]);
+    });
+
+    socket.<span class="fn">emit</span>(<span class="str">'join'</span>, { room: <span class="str">'כיתה-י'</span> });
+
+    <span class="kw">return</span> () => socket.<span class="fn">off</span>(<span class="str">'chat:message'</span>);
+  }, []);
+
+  <span class="kw">const</span> <span class="fn">send</span> = (text) =>
+    socket.<span class="fn">emit</span>(<span class="str">'chat:message'</span>, { text });
+
+  <span class="kw">return</span> /* JSX... */;
+}</pre>
+      </div>
+    </div>
+
+    <div id="sio-pyqt" class="tab-content">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; pyqt_sio.py — pip install python-socketio[client] PyQt6</div>
+        <pre><span class="kw">import</span> socketio, threading
+<span class="kw">from</span> PyQt6.QtWidgets <span class="kw">import</span> *
+<span class="kw">from</span> PyQt6.QtCore <span class="kw">import</span> pyqtSignal, QObject
+
+<span class="kw">class</span> <span class="cls">SIOWorker</span>(QObject):
+    message_received = pyqtSignal(<span class="fn">dict</span>)
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.sio = socketio.<span class="cls">Client</span>()
+
+        <span class="kw">@</span>self.sio.<span class="fn">on</span>(<span class="str">'chat:message'</span>)
+        <span class="kw">def</span> <span class="fn">on_msg</span>(data):
+            self.message_received.<span class="fn">emit</span>(data)
+
+    <span class="kw">def</span> <span class="fn">start</span>(self):
+        threading.<span class="cls">Thread</span>(
+            target=self.sio.<span class="fn">connect</span>,
+            args=(<span class="str">'http://localhost:5000'</span>,),
+            daemon=<span class="kw">True</span>
+        ).<span class="fn">start</span>()
+
+    <span class="kw">def</span> <span class="fn">send</span>(self, text):
+        self.sio.<span class="fn">emit</span>(<span class="str">'chat:message'</span>, {<span class="str">'text'</span>: text})</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 6: מתי להשתמש ══════════════ -->
+<div class="slide" data-title="מתי להשתמש">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 6 / 9</div>
+    <div class="slide-title">מתי להשתמש בכל שיטה?</div>
+    <div class="slide-sub">עץ החלטה מהיר</div>
+
+    <div class="cards-row">
+      <div class="card tcp-card">
+        <div class="card-name tcp">🔌 TCP Socket</div>
+        <div class="card-desc" style="margin-top:12px">
+          <strong>בחר כשאתה רוצה:</strong>
+          <ul style="margin-top:8px;padding-right:18px;line-height:2">
+            <li>תקשורת בין שני scripts פייתון</li>
+            <li>שרת שמאזין לתוכנת Python אחרת</li>
+            <li>לבנות פרוטוקול משלך</li>
+            <li>ביצועים מקסימליים (bytes גולמיים)</li>
+          </ul>
+        </div>
+        <div class="info-box info-warn" style="margin-top:12px;margin-bottom:0">
+          ❌ לא מתאים לחיבור מ-React / דפדפן
+        </div>
+      </div>
+
+      <div class="card ws-card">
+        <div class="card-name ws">⚡ WebSocket</div>
+        <div class="card-desc" style="margin-top:12px">
+          <strong>בחר כשאתה רוצה:</strong>
+          <ul style="margin-top:8px;padding-right:18px;line-height:2">
+            <li>Flask שרת + React לקוח</li>
+            <li>PyQt6 + שרת Python</li>
+            <li>Live data פשוט (מחירים, ציונים...)</li>
+            <li>פתרון קל, ללא ספריות נוספות ב-JS</li>
+          </ul>
+        </div>
+        <div class="info-box info-tip" style="margin-top:12px;margin-bottom:0">
+          ✅ <code>flask-sock</code> + <code>new WebSocket(url)</code>
+        </div>
+      </div>
+
+      <div class="card sio-card">
+        <div class="card-name sio">🚀 Socket.IO</div>
+        <div class="card-desc" style="margin-top:12px">
+          <strong>בחר כשאתה רוצה:</strong>
+          <ul style="margin-top:8px;padding-right:18px;line-height:2">
+            <li>צ'אט עם חדרים נפרדים</li>
+            <li>משחק מרובה שחקנים</li>
+            <li>Reconnect אוטומטי</li>
+            <li>Events עם שמות (<code>emit('move')</code>)</li>
+          </ul>
+        </div>
+        <div class="info-box info-note" style="margin-top:12px;margin-bottom:0">
+          ✅ <code>flask-socketio</code> + <code>socket.io-client</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 7: TASK ══════════════ -->
+<div class="slide" data-title="משימה">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 7 / 9 — 🛠️ משימה</div>
+    <div class="slide-title">משימה לביצוע</div>
+    <div class="slide-sub">בנה מערכת echo server — שרת שמחזיר כל הודעה</div>
+
+    <div class="task-box">
+      <div class="task-title">🎯 מטרה: Echo Server עם WebSocket</div>
+      <div class="task-steps">
+        <div class="task-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>התקן את הספרייה:</strong><br>
+            <code style="background:var(--bg3);padding:3px 8px;border-radius:4px;font-family:'Fira Code',monospace">pip install flask flask-sock</code>
+          </div>
+        </div>
+        <div class="task-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>שרת Python (app.py):</strong> צור Flask server עם route <code>/ws</code> שמקבל הודעת JSON עם שדה <code>text</code> ומחזיר אותה עם תחילית <code>"ECHO: "</code>
+          </div>
+        </div>
+        <div class="task-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>לקוח Python (client.py):</strong> כתוב client ב-<code>websockets</code> שמתחבר, שולח טקסט, מדפיס את התשובה וסוגר.
+          </div>
+        </div>
+        <div class="task-step">
+          <div class="step-num">4</div>
+          <div>
+            <strong>הרחבה (בונוס):</strong> הוסף לשרת <em>מונה הודעות</em> — כל לקוח שמתחבר מקבל בתחילה כמה הודעות סה"כ נשלחו.
+          </div>
+        </div>
+        <div class="task-step">
+          <div class="step-num">5</div>
+          <div>
+            <strong>בונוס מתקדם:</strong> חבר PyQt6 לקוח — חלון עם <code>QLineEdit</code> ו-<code>QPushButton</code> שמקבלים תשובה ומציגים בחלון.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="code-wrap">
+        <div class="code-header"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>&nbsp; תבנית לשרת (השלם את ה-???)</div>
+        <pre><span class="kw">from</span> flask <span class="kw">import</span> Flask
+<span class="kw">from</span> flask_sock <span class="kw">import</span> Sock
+<span class="kw">import</span> json
+
+app = <span class="cls">Flask</span>(__name__)
+sock = <span class="cls">Sock</span>(app)
+counter = <span class="num">0</span>
+
+<span class="kw">@</span>sock.<span class="fn">route</span>(<span class="str">'/ws'</span>)
+<span class="kw">def</span> <span class="fn">echo</span>(ws):
+    <span class="kw">global</span> counter
+    <span class="kw">while True</span>:
+        raw  = ws.<span class="fn">receive</span>()
+        data = json.<span class="fn">loads</span>(????)
+        counter += ???
+        reply = {<span class="str">'text'</span>: <span class="str">f"ECHO: {???}"</span>,
+                 <span class="str">'count'</span>: counter}
+        ws.<span class="fn">send</span>(json.<span class="fn">dumps</span>(???))
+
+app.<span class="fn">run</span>(port=<span class="num">5000</span>)</pre>
+      </div>
+      <div>
+        <div class="info-box info-tip" style="margin-bottom:12px">
+          💡 <strong>טיפ:</strong> הפעל קודם את השרת (<code>python app.py</code>), ואז הפעל את הלקוח בטרמינל נפרד.
+        </div>
+        <div class="info-box info-note">
+          🔎 <strong>בדיקה:</strong> אם הכל עובד, הלקוח אמור להדפיס:<br>
+          <code style="color:var(--green)">ECHO: שלום! (הודעה מס' 1)</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 8: QUIZ ══════════════ -->
+<div class="slide" data-title="בדיקת הבנה">
+  <div class="slide-inner">
+    <div class="slide-tag">שקופית 8 / 9 — 🧠 בדיקת הבנה</div>
+    <div class="slide-title">בדיקת הבנה</div>
+    <div class="slide-sub">ענה על 5 שאלות — כמה הצלחת?</div>
+
+    <div class="quiz-counter" id="quizCounter">שאלה 1 מתוך 5</div>
+    <div id="quizArea"></div>
+
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+      <button class="nav-btn" id="nextQuizBtn" onclick="nextQuestion()" style="display:none">שאלה הבאה ←</button>
+      <span id="quizProgress" style="font-family:'Fira Code',monospace;font-size:13px;color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SLIDE 9: RESULTS ══════════════ -->
+<div class="slide" data-title="סיכום">
+  <div class="slide-inner" style="align-items:center">
+    <div class="slide-tag" style="text-align:center">סיכום השיעור</div>
+    <div class="slide-title" style="text-align:center">כל הכבוד! 🎉</div>
+
+    <div class="score-ring" id="scoreRing">
+      <svg viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="60" fill="none" stroke="#1e2d45" stroke-width="12"/>
+        <circle id="scoreCircle" cx="70" cy="70" r="60" fill="none"
+          stroke="var(--green)" stroke-width="12"
+          stroke-dasharray="377" stroke-dashoffset="377"
+          stroke-linecap="round" style="transition:stroke-dashoffset 1.2s ease"/>
+      </svg>
+      <div class="score-num" id="scoreNum" style="color:var(--green)">0/5</div>
+    </div>
+    <div class="score-label" id="scoreLabel">טוען תוצאות...</div>
+
+    <div class="result-grid" id="resultGrid"></div>
+
+    <div class="summary-checks">
+      <div class="sum-check"><span>🔌</span><span><strong class="tcp">TCP Socket</strong> — תקשורת Python ↔ Python, bytes גולמיים, לא נגיש מהדפדפן</span></div>
+      <div class="sum-check"><span>⚡</span><span><strong class="ws">WebSocket</strong> — חיבור דו-כיווני עם הדפדפן, <code>flask-sock</code> + <code>new WebSocket()</code></span></div>
+      <div class="sum-check"><span>🚀</span><span><strong class="sio">Socket.IO</strong> — events, rooms, reconnect. <code>flask-socketio</code> + <code>socket.io-client</code></span></div>
+      <div class="sum-check"><span>🖥️</span><span><strong class="sio">PyQt6</strong> — משתמש ב-<code>websockets</code> / <code>python-socketio</code> עם thread נפרד</span></div>
+    </div>
+
+    <button class="start-btn" style="margin-top:24px" onclick="restartQuiz()">התחל מחדש 🔄</button>
+  </div>
+</div>
+
+</div><!-- end slides-wrap -->
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+
+<script>
+// ── STATE ──
+const TOTAL_SLIDES = 10;
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+
+// ── QUIZ DATA ──
+const questions = [
+  {
+    q: "איזו שיטה מאפשרת לדפדפן להתחבר לשרת Python ישירות, ללא ספריות JS נוספות?",
+    opts: [
+      "TCP Socket — תקשורת גולמית ברמת הרשת",
+      "WebSocket — נתמך ישירות ב-new WebSocket(url)",
+      "Socket.IO — דורש socket.io-client",
+      "HTTP Polling — שולח בקשות חוזרות"
+    ],
+    correct: 1,
+    explain: "✅ WebSocket נתמך ישירות בדפדפן עם new WebSocket(url) — ללא ספריות נוספות!"
+  },
+  {
+    q: "מה ההבדל העיקרי בין WebSocket ל-Socket.IO?",
+    opts: [
+      "אין הבדל — הם אותו פרוטוקול בדיוק",
+      "Socket.IO בנויה מעל WebSocket ומוסיפה events, rooms ו-reconnect",
+      "WebSocket תומך ב-rooms ו-Socket.IO לא תומך",
+      "Socket.IO רצה רק בשרת ולא בדפדפן"
+    ],
+    correct: 1,
+    explain: "✅ Socket.IO היא ספרייה שבונה מעל WebSocket — אי אפשר להתחבר ל-Socket.IO server עם new WebSocket()!"
+  },
+  {
+    q: "כותב שרת Flask ורוצה ש-React יתחבר. איזו ספרייה Python תבחר?",
+    opts: [
+      "import socket — מובנה בפייתון",
+      "flask-sock או flask-socketio — תמיכה בדפדפן",
+      "requests — לשליחת בקשות HTTP",
+      "urllib — לניהול URLs"
+    ],
+    correct: 1,
+    explain: "✅ flask-sock (WebSocket) או flask-socketio (Socket.IO) — שניהם תומכים בחיבור מדפדפן!"
+  },
+  {
+    q: "ב-PyQt6, למה חייבים thread נפרד לחיבור WebSocket?",
+    opts: [
+      "כי WebSocket לא עובד כלל בפייתון",
+      "כי קוד רשת חוסם — יקפיא את ה-UI של Qt",
+      "כי Qt לא תומך ברשת בשום צורה",
+      "כי Flask חוסם את ה-socket בצד השרת"
+    ],
+    correct: 1,
+    explain: "✅ קוד רשת חוסם! אם תריץ בthread הראשי — ה-UI יקפא. Thread נפרד + pyqtSignal מאפשרים עדכון UI בטוח."
+  },
+  {
+    q: "בונה משחק מרובה שחקנים עם חדרים נפרדים לכל קבוצה. מה הכי מתאים?",
+    opts: [
+      "TCP Socket — bytes גולמיים, מהיר",
+      "WebSocket גולמי — פשוט לממש",
+      "Socket.IO — rooms מובנים עם join_room()",
+      "HTTP רגיל — בקשה ותשובה קלאסיות"
+    ],
+    correct: 2,
+    explain: "✅ Socket.IO מספקת rooms מובנים! join_room() ו-emit(..., room='X') חוסכים המון קוד."
+  }
+];
+
+let qIndex = 0;
+let score = 0;
+let answered = false;
+const results = [];
+
+// ── NAVIGATION ──
+function buildDots() {
+  const dotsEl = document.getElementById('navDots');
+  dotsEl.innerHTML = '';
+  slides.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goToSlide(i);
+    dotsEl.appendChild(d);
+  });
+}
+
+function goToSlide(n) {
+  slides[currentSlide].classList.remove('active');
+  currentSlide = Math.max(0, Math.min(n, totalSlides - 1));
+  slides[currentSlide].classList.add('active');
+  updateNav();
+  if (currentSlide === totalSlides - 1) showResults();
+}
+
+function changeSlide(dir) { goToSlide(currentSlide + dir); }
+
+function updateNav() {
+  const dots = document.querySelectorAll('.nav-dot');
+  dots.forEach((d, i) => {
+    d.className = 'nav-dot';
+    if (i < currentSlide) d.classList.add('done');
+    if (i === currentSlide) d.classList.add('active');
+  });
+  document.getElementById('prevBtn').disabled = currentSlide === 0;
+  document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+  const pct = (currentSlide / (totalSlides - 1)) * 100;
+  document.getElementById('progressBar').style.width = pct + '%';
+  const title = slides[currentSlide].dataset.title || '';
+  document.getElementById('navTitle').textContent = `socket_lesson.py · ${title}`;
+}
+
+// ── TABS ──
+function switchTab(btn, tabId) {
+  const parent = btn.closest('.slide-inner') || btn.closest('.slide');
+  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ── QUIZ ──
+let shuffledOpts = []; // מערך אחרי ערבוב: { text, originalIndex }
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderQuestion() {
+  if (qIndex >= questions.length) {
+    document.getElementById('quizArea').innerHTML = '';
+    document.getElementById('nextQuizBtn').style.display = 'none';
+    document.getElementById('quizCounter').textContent = 'סיימת את כל השאלות!';
+    document.getElementById('quizProgress').textContent = `ציון: ${score}/${questions.length}`;
+    setTimeout(() => goToSlide(totalSlides - 1), 1500);
+    return;
+  }
+
+  answered = false;
+  const q = questions[qIndex];
+  document.getElementById('quizCounter').textContent = `שאלה ${qIndex + 1} מתוך ${questions.length}`;
+  document.getElementById('nextQuizBtn').style.display = 'none';
+  document.getElementById('quizProgress').textContent = `✅ ${score} נכון עד כה`;
+
+  // ערבוב — שמירת המיקום המקורי לזיהוי התשובה הנכונה
+  shuffledOpts = shuffle(q.opts.map((text, i) => ({ text, originalIndex: i })));
+
+  document.getElementById('quizArea').innerHTML = `
+    <div class="quiz-box">
+      <div class="quiz-q">${q.q}</div>
+      <div class="quiz-opts">
+        ${shuffledOpts.map((o, i) => `
+          <button class="quiz-opt" onclick="answerQ(${i})">${o.text}</button>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback" id="qFeedback"></div>
+    </div>
+  `;
+}
+
+function answerQ(idx) {
+  if (answered) return;
+  answered = true;
+  const q = questions[qIndex];
+  const opts = document.querySelectorAll('.quiz-opt');
+  const fb = document.getElementById('qFeedback');
+
+  // מצא את המיקום החדש של התשובה הנכונה אחרי ערבוב
+  const correctShuffledIdx = shuffledOpts.findIndex(o => o.originalIndex === q.correct);
+
+  opts.forEach(o => o.disabled = true);
+  opts[correctShuffledIdx].classList.add('correct');
+
+  if (idx === correctShuffledIdx) {
+    score++;
+    results.push({ q: q.q, correct: true });
+    fb.className = 'quiz-feedback ok show';
+    fb.textContent = q.explain;
+  } else {
+    opts[idx].classList.add('wrong');
+    results.push({ q: q.q, correct: false });
+    fb.className = 'quiz-feedback err show';
+    fb.textContent = '❌ לא נכון. ' + q.explain;
+  }
+
+  document.getElementById('nextQuizBtn').style.display = 'inline-block';
+}
+
+function nextQuestion() {
+  qIndex++;
+  renderQuestion();
+}
+
+// ── RESULTS ──
+function showResults() {
+  const pct = score / questions.length;
+  const label = pct === 1 ? '🏆 מושלם!' : pct >= 0.8 ? '⭐ מצוין!' : pct >= 0.6 ? '👍 טוב!' : '📚 כדאי לחזור';
+  document.getElementById('scoreNum').textContent = `${score}/${questions.length}`;
+  document.getElementById('scoreLabel').textContent = label;
+
+  const offset = 377 * (1 - pct);
+  setTimeout(() => {
+    document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+    const color = pct >= 0.8 ? 'var(--green)' : pct >= 0.6 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById('scoreCircle').style.stroke = color;
+    document.getElementById('scoreNum').style.color = color;
+  }, 200);
+
+  document.getElementById('resultGrid').innerHTML = `
+    <div class="result-item">
+      <div class="ri-num ok">${score}</div>
+      <div class="ri-label">תשובות נכונות</div>
+    </div>
+    <div class="result-item">
+      <div class="ri-num warn">${questions.length - score}</div>
+      <div class="ri-label">תשובות שגויות</div>
+    </div>
+    <div class="result-item">
+      <div class="ri-num ws">${Math.round(pct * 100)}%</div>
+      <div class="ri-label">ציון</div>
+    </div>
+  `;
+}
+
+function restartQuiz() {
+  qIndex = 0; score = 0; answered = false; results.length = 0;
+  renderQuestion();
+  goToSlide(7);
+}
+
+// ── INIT ──
+buildDots();
+updateNav();
+renderQuestion();
+</script>
+</body>
+</html>

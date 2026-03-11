@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQLAlchemy — ORM בפייתון</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1f2e;
+  --border: #252d42;
+  --accent: #7c3aed;
+  --accent-glow: rgba(124,58,237,0.25);
+  --teal: #0ea5e9;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --pink: #ec4899;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --code-bg: #080a10;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;font-size:18px;line-height:1.7;overflow-x:hidden}
+
+/* Noise texture overlay */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+
+.slides-wrapper{position:relative;z-index:1}
+
+/* ── SLIDE BASE ── */
+.slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:64px 7vw;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.slide::before{content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);pointer-events:none}
+
+.slide-num{position:absolute;top:24px;left:36px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:4px;text-transform:uppercase; direction:rtl;}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:0}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:6px;color:var(--accent);text-transform:uppercase;margin-bottom:24px;opacity:.8}
+.hero-title{font-family:'JetBrains Mono',monospace;font-size:clamp(32px,5.5vw,68px);font-weight:700;line-height:1.05;margin-bottom:20px}
+.hero-title .hl{color:var(--accent)}
+.hero-title .hl2{color:var(--teal)}
+.hero-sub{font-size:18px;color:var(--muted);max-width:640px;font-weight:300;line-height:1.8;margin-bottom:36px}
+.hero-tags{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.htag{background:var(--surface);border:1px solid var(--border);padding:6px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:1px}
+.hero-scroll{position:absolute;bottom:32px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:3px;animation:bounce 2s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+/* ── TYPOGRAPHY ── */
+.slide-title{font-family:'JetBrains Mono',monospace;font-size:clamp(20px,3.5vw,40px);font-weight:700;line-height:1.2;margin-bottom:12px}
+.slide-sub{font-size:18px;color:var(--muted);margin-bottom:36px;font-weight:300}
+h3{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:14px; direction:rtl;}
+p{margin-bottom:12px;font-weight:300;font-size:18px;}
+strong{color:var(--orange);font-weight:700}
+code{font-family:'JetBrains Mono',monospace;font-size:18px;background:var(--surface2);padding:2px 7px;border-radius:3px;color:var(--teal);direction:ltr;}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:16px 0;direction:ltr;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:16px 0}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:16px 0}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}.slide{padding:40px 5vw}}
+
+/* ── CODE BLOCK ── */
+.cb{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:18px;line-height:1.9;overflow-x:auto;margin:12px 0;position:relative}
+.cb.accent{border-right:3px solid var(--accent)}
+.cb.teal{border-right:3px solid var(--teal)}
+.cb.green{border-right:3px solid var(--green)}
+.cb.orange{border-right:3px solid var(--orange)}
+.cb.red{border-right:3px solid var(--red)}
+.cb-label{position:absolute;top:8px;left:14px;font-size:18px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+
+/* syntax */
+.kw{color:#c084fc} /* keyword */
+.fn{color:#60a5fa} /* function/method */
+.cl{color:#34d399} /* class */
+.st{color:#86efac} /* string */
+.nm{color:#fb923c} /* number */
+.cm{color:#334155;font-style:italic} /* comment */
+.dc{color:var(--teal)} /* decorator */
+.op{color:#94a3b8} /* operator */
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px}
+.card.teal{border-color:rgba(14,165,233,.3);background:rgba(14,165,233,.04)}
+.card.green{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.04)}
+.card.orange{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04)}
+.card.red{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)}
+.card.purple{border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.04)}
+.ctitle{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.ctitle.t{color:var(--teal)}.ctitle.g{color:var(--green)}.ctitle.o{color:var(--orange)}.ctitle.r{color:var(--red)}.ctitle.p{color:var(--accent)}
+
+/* ── TABLE ── */
+.sql-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:18px;margin:14px 0}
+.sql-table th{background:var(--surface2);color:var(--accent);padding:10px 16px;text-align:right;border:1px solid var(--border);font-size:18px;letter-spacing:2px;text-transform:uppercase}
+.sql-table td{padding:9px 16px;border:1px solid var(--border);color:var(--text)}
+.sql-table tr:hover td{background:rgba(124,58,237,.05)}
+.sql-table tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.pk{color:var(--orange);font-weight:700}
+.fk{color:var(--teal)}
+.type-badge{display:inline-block;background:var(--surface2);border:1px solid var(--border);padding:1px 8px;border-radius:2px;font-size:18px;color:var(--muted)}
+
+/* ── CALLOUT ── */
+.co{border-right:3px solid var(--accent);padding:14px 18px;background:rgba(124,58,237,.06);border-radius:0 4px 4px 0;margin:12px 0;font-size:18px;}
+.co.t{border-right-color:var(--teal);background:rgba(14,165,233,.05)}
+.co.g{border-right-color:var(--green);background:rgba(16,185,129,.05)}
+.co.o{border-right-color:var(--orange);background:rgba(245,158,11,.05)}
+.co.r{border-right-color:var(--red);background:rgba(239,68,68,.05)}
+
+/* ── STEPS ── */
+.steps{list-style:none;counter-reset:s;margin:12px 0}
+.steps li{counter-increment:s;display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(37,45,66,.5);font-size:18px;font-weight:300}
+.steps li:last-child{border-bottom:none}
+.steps li::before{content:counter(s,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent);flex-shrink:0;margin-top:3px}
+
+/* ── ORM DIAGRAM ── */
+.orm-diagram{display:flex;align-items:center;justify-content:center;gap:0;margin:24px 0;flex-wrap:wrap}
+.orm-box{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 24px;text-align:center;font-family:'JetBrains Mono',monospace;min-width:140px}
+.orm-box.py{border-color:rgba(124,58,237,.5);background:rgba(124,58,237,.08)}
+.orm-box.sa{border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08)}
+.orm-box.db{border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.08)}
+.orm-arrow{font-size:24px;color:var(--muted);padding:0 12px;flex-shrink:0}
+.orm-title{font-size:18px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+.orm-main{font-size:18px;font-weight:700}
+.orm-sub{font-size:18px;color:var(--muted);margin-top:4px}
+
+/* ── CRUD TABS ── */
+.crud-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)}
+.ctab{padding:10px 20px;font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:1px;cursor:pointer;border:1px solid transparent;border-bottom:none;border-radius:4px 4px 0 0;margin-left:4px;color:var(--muted);background:transparent;transition:all .2s}
+.ctab:hover{color:var(--text)}
+.ctab.active{background:var(--surface);border-color:var(--border);color:var(--accent)}
+.crud-panel{display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:24px}
+.crud-panel.active{display:block}
+
+/* ── PROGRESS / NAV ── */
+.progress-bar{position:fixed;top:0;left:0;right:0;height:2px;background:var(--border);z-index:300}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--teal),var(--green));transition:width .3s}
+.nav-dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;z-index:200}
+.ndot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .3s;border:1px solid var(--muted)}
+.ndot:hover,.ndot.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
+
+/* ── QUIZ ── */
+.quiz-section{background:linear-gradient(160deg,#0d0f14 0%,#0f1020 100%);border-top:1px solid rgba(124,58,237,.3)}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:26px;margin-bottom:18px}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent);letter-spacing:4px;margin-bottom:10px;text-transform:uppercase}
+.qtext{font-size:18px;font-weight:500;margin-bottom:20px;line-height:1.6}
+.opts{display:flex;flex-direction:column;gap:9px}
+.opt{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px 16px;cursor:pointer;transition:all .2s;font-size:18px;display:flex;align-items:flex-start;gap:12px;font-weight:300}
+.opt:hover{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.05)}
+.opt.correct{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.5);color:var(--green)}
+.opt.wrong{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.4);color:var(--red)}
+.opt.disabled{pointer-events:none;opacity:.6}
+.olet{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);flex-shrink:0;margin-top:2px}
+.fb{display:none;margin-top:14px;padding:13px 17px;border-radius:4px;font-size:18px;line-height:1.6}
+.fb.show{display:block}
+.fb.ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+.fb.fail{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+
+/* fill-in */
+.fill-wrap{margin-top:14px}
+.fill-input{background:var(--code-bg);border:1px solid var(--border);border-bottom:2px solid var(--accent);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:18px;padding:7px 13px;width:100%;max-width:420px;border-radius:3px;outline:none;transition:border .2s}
+.fill-input:focus{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.check-btn{margin-top:11px;background:transparent;border:1px solid var(--orange);color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:18px;padding:8px 20px;border-radius:3px;cursor:pointer;letter-spacing:2px;transition:all .2s;text-transform:uppercase}
+.check-btn:hover{background:rgba(245,158,11,.1)}
+
+/* score */
+.score-bar{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 22px;display:flex;align-items:center;gap:18px;margin-bottom:22px}
+.score-n{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:var(--accent);flex-shrink:0}
+.score-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--teal));border-radius:3px;transition:width .5s cubic-bezier(.34,1.56,.64,1);width:0%}
+
+/* divider */
+.divider{border:none;border-top:1px solid var(--border);margin:32px 0}
+
+/* live demo */
+.demo-area{background:var(--code-bg);border:1px solid rgba(124,58,237,.3);border-radius:6px;padding:20px}
+.demo-output{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:18px;min-height:80px;max-height:220px;overflow-y:auto;margin-top:12px}
+.do-row{padding:3px 0;border-bottom:1px solid rgba(37,45,66,.4);display:flex;gap:12px}
+.do-row:last-child{border-bottom:none}
+.do-key{color:var(--muted);width:100px;flex-shrink:0}
+.do-val{color:var(--teal)}
+.do-action{color:var(--accent);font-size:18px;letter-spacing:2px}
+.do-ok{color:var(--green)}
+.do-err{color:var(--red)}
+.run-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:18px;padding:8px 20px;border-radius:3px;cursor:pointer;letter-spacing:2px;transition:all .2s;margin:4px}
+.run-btn:hover{background:var(--accent-glow)}
+.run-btn.g{border-color:var(--green);color:var(--green)}
+.run-btn.g:hover{background:rgba(16,185,129,.1)}
+.run-btn.o{border-color:var(--orange);color:var(--orange)}
+.run-btn.r{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+<div class="nav-dots" id="ndots"></div>
+
+<div class="slides-wrapper">
+
+<!-- ══ HERO ═════════════════════════════════════════════════ -->
+<section class="slide hero" id="s0">
+  <div class="hero-eyebrow">Python × Database</div>
+  <div class="hero-title">
+    <div>SQLAlchemy</div>
+    <div><span class="hl">ORM</span> — <span class="hl2">Python ↔ DB</span></div>
+  </div>
+  <div class="hero-sub">מה זה ORM? איך יוצרים טבלה? איך מבצעים Create, Read, Update, Delete מקוד Python?</div>
+  <div class="hero-tags">
+    <span class="htag">declarative_base</span>
+    <span class="htag">Session</span>
+    <span class="htag">Column</span>
+    <span class="htag">query()</span>
+    <span class="htag">SQLite</span>
+    <span class="htag">CRUD</span>
+  </div>
+  <div class="hero-scroll">▼ גלול</div>
+</section>
+
+<!-- ══ SLIDE 1 — ORM ══════════════════════════════════════════ -->
+<section class="slide" id="s1">
+  <div class="slide-num">01 — מה זה ORM?</div>
+  <h2 class="slide-title">ORM — <span style="color:var(--teal)">Object Relational Mapping</span></h2>
+  <div class="slide-sub">גשר בין עולם האובייקטים (Python) לעולם הטבלאות (SQL)</div>
+
+  <div class="orm-diagram">
+    <div class="orm-box py">
+      <div class="orm-title">Python</div>
+      <div class="orm-main" style="color:var(--accent)">Class</div>
+      <div class="orm-sub">User, Product...</div>
+    </div>
+    <div class="orm-arrow">⟷</div>
+    <div class="orm-box sa">
+      <div class="orm-title">SQLAlchemy ORM</div>
+      <div class="orm-main" style="color:var(--teal)">Mapper</div>
+      <div class="orm-sub">translates</div>
+    </div>
+    <div class="orm-arrow">⟷</div>
+    <div class="orm-box db">
+      <div class="orm-title">SQL Database</div>
+      <div class="orm-main" style="color:var(--green)">Table</div>
+      <div class="orm-sub">rows & columns</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <h3>ללא ORM — SQL ישיר</h3>
+      <pre class="cb red">
+<span class="cm"># ❌ SQL ידני — מסורבל ומועד לשגיאות</span>
+<span class="kw">import</span> sqlite3
+conn = sqlite3.<span class="fn">connect</span>(<span class="st">"shop.db"</span>)
+cursor = conn.<span class="fn">cursor</span>()
+
+cursor.<span class="fn">execute</span>(<span class="st">"""
+    INSERT INTO products
+    (name, price, stock)
+    VALUES (?, ?, ?)
+"""</span>, (<span class="st">"מחשב"</span>, <span class="nm">3500</span>, <span class="nm">10</span>))
+
+<span class="cm"># קשה לתחזוקה, SQL strings, אין type safety</span>
+      </pre>
+    </div>
+    <div>
+      <h3>עם ORM — Python נקי</h3>
+      <pre class="cb green">
+<span class="cm"># ✅ SQLAlchemy ORM — Pythonic!</span>
+product = <span class="cl">Product</span>(
+    name=<span class="st">"מחשב"</span>,
+    price=<span class="nm">3500</span>,
+    stock=<span class="nm">10</span>
+)
+session.<span class="fn">add</span>(product)
+session.<span class="fn">commit</span>()
+
+<span class="cm"># Python objects, type hints, autocomplete ✓</span>
+      </pre>
+    </div>
+  </div>
+
+  <div class="g3" style="margin-top:8px">
+    <div class="card purple">
+      <div class="ctitle p">🛡️ בטיחות</div>
+      <p style="font-size:18px;">מגן מ-SQL Injection אוטומטית — פרמטרים לא מוזרקים ישירות</p>
+    </div>
+    <div class="card teal">
+      <div class="ctitle t">🔄 גמישות</div>
+      <p style="font-size:18px;">אותו קוד Python עובד עם SQLite, PostgreSQL, MySQL ועוד</p>
+    </div>
+    <div class="card green">
+      <div class="ctitle g">🧩 OOP</div>
+      <p style="font-size:18px;">טבלה = מחלקה, שורה = instance — הכל Python objects</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 2 — SETUP ════════════════════════════════════════ -->
+<section class="slide" id="s2">
+  <div class="slide-num">02 — התקנה והגדרה</div>
+  <h2 class="slide-title">התקנה ו<span style="color:var(--accent)">הגדרת Engine</span></h2>
+  <div class="slide-sub">Engine = חיבור למסד הנתונים. Base = בסיס לכל המודלים שלנו.</div>
+
+  <div class="g2">
+    <div>
+      <h3>01 — התקנה</h3>
+      <pre class="cb">
+<span class="nm">pip install sqlalchemy</span>
+      </pre>
+
+      <h3>02 — Engine ו-Base</h3>
+      <pre class="cb accent">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> declarative_base
+
+<span class="cm"># Engine = "מנוע" החיבור למסד</span>
+<span class="cm"># SQLite — קובץ מקומי (פשוט לפיתוח)</span>
+engine = <span class="fn">create_engine</span>(
+    <span class="st">"sqlite:///mydb.db"</span>,
+    echo=<span class="kw">False</span>   <span class="cm"># echo=True → מדפיס SQL</span>
+)
+
+<span class="cm"># Base — "אבא" של כל המודלים</span>
+Base = <span class="fn">declarative_base</span>()
+      </pre>
+
+      <div class="co t">
+        <strong>connection string:</strong><br>
+        <code>sqlite:///file.db</code> — קובץ מקומי<br>
+        <code>sqlite:///:memory:</code> — רק בזיכרון (לבדיקות)<br>
+        <code>postgresql://user:pass@host/db</code>
+      </div>
+    </div>
+    <div>
+      <h3>03 — Session Factory</h3>
+      <pre class="cb teal">
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> Session
+
+<span class="cm"># Session = "שיחה" עם מסד הנתונים</span>
+<span class="cm"># כל פעולה מתבצעת דרך Session</span>
+
+<span class="cm"># שיטה מומלצת: context manager</span>
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    <span class="cm"># כל הפעולות כאן</span>
+    session.<span class="fn">add</span>(...)
+    session.<span class="fn">commit</span>()
+<span class="cm"># Session נסגר אוטומטית ← עדיף!</span>
+
+<span class="cm"># או ידנית:</span>
+session = <span class="cl">Session</span>(engine)
+<span class="kw">try</span>:
+    ...
+    session.<span class="fn">commit</span>()
+<span class="kw">except</span>:
+    session.<span class="fn">rollback</span>()
+<span class="kw">finally</span>:
+    session.<span class="fn">close</span>()
+      </pre>
+
+      <h3>מחזור חיי Session</h3>
+      <ul class="steps">
+        <li>פתח Session עם engine</li>
+        <li>בצע פעולות (add / query / delete)</li>
+        <li>commit() — שמור לדיסק</li>
+        <li>סגור Session — שחרר חיבור</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 3 — MODEL ════════════════════════════════════════ -->
+<section class="slide" id="s3">
+  <div class="slide-num">03 — הגדרת מודל (טבלה)</div>
+  <h2 class="slide-title">מודל = <span style="color:var(--green)">מחלקה</span> = <span style="color:var(--teal)">טבלה</span></h2>
+  <div class="slide-sub">דוגמה: מערכת ספרייה — ספרים, מחברים ושאלות</div>
+
+  <div class="g2">
+    <div>
+      <pre class="cb green">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> (
+    Column, Integer, String,
+    Float, Boolean, DateTime
+)
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="cl">Book</span>(Base):
+    <span class="dc">__tablename__</span> = <span class="st">"books"</span>
+
+    <span class="cm"># עמודות — Column(type, options)</span>
+    id       = <span class="fn">Column</span>(<span class="cl">Integer</span>,
+                   primary_key=<span class="kw">True</span>,
+                   autoincrement=<span class="kw">True</span>)
+
+    title    = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">200</span>),
+                   nullable=<span class="kw">False</span>)
+
+    author   = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">100</span>))
+
+    price    = <span class="fn">Column</span>(<span class="cl">Float</span>,
+                   default=<span class="nm">0.0</span>)
+
+    in_stock = <span class="fn">Column</span>(<span class="cl">Boolean</span>,
+                   default=<span class="kw">True</span>)
+
+    added_at = <span class="fn">Column</span>(<span class="cl">DateTime</span>,
+                   default=datetime.utcnow)
+
+    <span class="kw">def</span> <span class="fn">__repr__</span>(self):
+        <span class="kw">return</span> (
+            <span class="st">f"&lt;Book {self.id}: "</span>
+            <span class="st">f"'{self.title}'&gt;"</span>
+        )
+
+<span class="cm"># יצירת כל הטבלאות ב-DB</span>
+Base.metadata.<span class="fn">create_all</span>(engine)
+      </pre>
+    </div>
+    <div>
+      <h3>טיפוסי עמודות נפוצים</h3>
+      <table class="sql-table">
+        <tr><th>SQLAlchemy</th><th>SQL</th><th>דוגמה</th></tr>
+        <tr><td><span class="type-badge">Integer</span></td><td>INTEGER</td><td>id, quantity</td></tr>
+        <tr><td><span class="type-badge">String(n)</span></td><td>VARCHAR(n)</td><td>name, title</td></tr>
+        <tr><td><span class="type-badge">Float</span></td><td>REAL/FLOAT</td><td>price, score</td></tr>
+        <tr><td><span class="type-badge">Boolean</span></td><td>BOOLEAN</td><td>active, paid</td></tr>
+        <tr><td><span class="type-badge">DateTime</span></td><td>DATETIME</td><td>created_at</td></tr>
+        <tr><td><span class="type-badge">Text</span></td><td>TEXT</td><td>description</td></tr>
+      </table>
+
+      <h3 style="margin-top:16px">אפשרויות Column</h3>
+      <pre class="cb">
+<span class="cm"># primary_key=True → מפתח ראשי</span>
+<span class="cm"># nullable=False   → NOT NULL</span>
+<span class="cm"># unique=True       → UNIQUE</span>
+<span class="cm"># default=value     → ברירת מחדל</span>
+<span class="cm"># index=True        → יצירת אינדקס</span>
+
+id    = <span class="fn">Column</span>(<span class="cl">Integer</span>, primary_key=<span class="kw">True</span>)
+email = <span class="fn">Column</span>(<span class="cl">String</span>, unique=<span class="kw">True</span>,
+               nullable=<span class="kw">False</span>)
+score = <span class="fn">Column</span>(<span class="cl">Float</span>, default=<span class="nm">0.0</span>)
+      </pre>
+
+      <div class="co g">
+        <strong>💡 __repr__:</strong> מוסיפים תמיד לצורכי debug — מאפשר הדפסה קריאה של objects.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 4 — CREATE ═══════════════════════════════════════ -->
+<section class="slide" id="s4">
+  <div class="slide-num">04 — CREATE — הוספת שורות</div>
+  <h2 class="slide-title"><span style="color:var(--green)">CREATE</span> — הוספת נתונים</h2>
+  <div class="slide-sub">יצירת instance → הוספה ל-Session → commit לדיסק</div>
+
+  <div class="g2">
+    <div>
+      <h3>הוספת ספר אחד</h3>
+      <pre class="cb green">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># 1. צור Python object</span>
+    book = <span class="cl">Book</span>(
+        title=<span class="st">"הארי פוטר"</span>,
+        author=<span class="st">"J.K. Rowling"</span>,
+        price=<span class="nm">79.90</span>,
+        in_stock=<span class="kw">True</span>
+    )
+
+    <span class="cm"># 2. הוסף ל-Session (עוד לא נשמר!)</span>
+    session.<span class="fn">add</span>(book)
+
+    <span class="cm"># 3. commit → כתב ל-DB</span>
+    session.<span class="fn">commit</span>()
+
+    <span class="cm"># id נוצר אוטומטית אחרי commit</span>
+    <span class="fn">print</span>(<span class="st">f"נשמר עם id={book.id}"</span>)
+      </pre>
+
+      <h3>הוספת כמה ספרים בבת אחת</h3>
+      <pre class="cb green">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    books = [
+        <span class="cl">Book</span>(title=<span class="st">"1984"</span>,
+              author=<span class="st">"Orwell"</span>,
+              price=<span class="nm">59.0</span>),
+        <span class="cl">Book</span>(title=<span class="st">"עלי הגיבורים"</span>,
+              author=<span class="st">"נתן שחם"</span>,
+              price=<span class="nm">89.0</span>),
+    ]
+    session.<span class="fn">add_all</span>(books)  <span class="cm"># ← רשימה</span>
+    session.<span class="fn">commit</span>()
+      </pre>
+    </div>
+    <div>
+      <h3>מה קורה מאחורי הקלעים?</h3>
+      <pre class="cb teal">
+<span class="cm"># SQLAlchemy מתרגם ל-SQL:</span>
+<span class="cm"># INSERT INTO books</span>
+<span class="cm">#   (title, author, price, in_stock)</span>
+<span class="cm"># VALUES</span>
+<span class="cm">#   ('הארי פוטר', 'J.K. Rowling',</span>
+<span class="cm">#    79.90, 1)</span>
+
+<span class="cm"># אנחנו כותבים Python ↑</span>
+<span class="cm"># SQLAlchemy מייצר SQL ↑</span>
+      </pre>
+
+      <h3>מצב ה-Object לאורך זמן</h3>
+      <pre class="cb">
+book = <span class="cl">Book</span>(title=<span class="st">"..."</span>)
+<span class="cm"># מצב: transient (לא מחובר ל-Session)</span>
+
+session.<span class="fn">add</span>(book)
+<span class="cm"># מצב: pending (ב-Session, לא ב-DB)</span>
+
+session.<span class="fn">commit</span>()
+<span class="cm"># מצב: persistent (ב-DB, ב-Session)</span>
+
+session.<span class="fn">close</span>()
+<span class="cm"># מצב: detached (ב-DB, לא ב-Session)</span>
+      </pre>
+
+      <div class="co o">
+        <strong>⚠️ commit חשוב!</strong> ללא commit, הנתונים נמצאים רק ב-Session (בזיכרון). אם התוכנה קורסת — הם אובדים.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 5 — READ ═════════════════════════════════════════ -->
+<section class="slide" id="s5">
+  <div class="slide-num">05 — READ — שליפת נתונים</div>
+  <h2 class="slide-title"><span style="color:var(--teal)">READ</span> — שליפת נתונים</h2>
+  <div class="slide-sub">session.get() לשורה בודדת, session.execute(select()) לשאילתות מורכבות</div>
+
+  <div class="g2">
+    <div>
+      <h3>שליפה לפי ID — get()</h3>
+      <pre class="cb teal">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># שליפה לפי Primary Key</span>
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">1</span>)
+
+    <span class="kw">if</span> book:
+        <span class="fn">print</span>(book.title)   <span class="cm"># הארי פוטר</span>
+        <span class="fn">print</span>(book.price)   <span class="cm"># 79.9</span>
+    <span class="kw">else</span>:
+        <span class="fn">print</span>(<span class="st">"לא נמצא"</span>)
+      </pre>
+
+      <h3>select() — שאילתות גמישות</h3>
+      <pre class="cb teal">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> select
+
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># כל הספרים</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>)
+    all_books = session.<span class="fn">execute</span>(stmt).<span class="fn">scalars</span>().<span class="fn">all</span>()
+
+    <span class="cm"># ספרים במלאי מעל 50 ש"ח</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">where</span>(
+        <span class="cl">Book</span>.in_stock == <span class="kw">True</span>,
+        <span class="cl">Book</span>.price > <span class="nm">50</span>
+    )
+
+    <span class="cm"># מיון לפי מחיר</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">order_by</span>(
+        <span class="cl">Book</span>.price.<span class="fn">desc</span>()
+    )
+
+    <span class="cm"># הגבלת כמות תוצאות</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">limit</span>(<span class="nm">5</span>)
+      </pre>
+    </div>
+    <div>
+      <h3>שאילתות מורכבות</h3>
+      <pre class="cb teal">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> select, func, or_, and_
+
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># ספירה</span>
+    count = session.<span class="fn">execute</span>(
+        <span class="fn">select</span>(<span class="fn">func</span>.count(<span class="cl">Book</span>.id))
+    ).<span class="fn">scalar</span>()
+
+    <span class="cm"># ממוצע מחיר</span>
+    avg = session.<span class="fn">execute</span>(
+        <span class="fn">select</span>(<span class="fn">func</span>.avg(<span class="cl">Book</span>.price))
+    ).<span class="fn">scalar</span>()
+
+    <span class="cm"># or_ — OR בתנאי</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">where</span>(
+        <span class="fn">or_</span>(
+            <span class="cl">Book</span>.author == <span class="st">"Orwell"</span>,
+            <span class="cl">Book</span>.price < <span class="nm">50</span>
+        )
+    )
+
+    <span class="cm"># LIKE — חיפוש חלקי</span>
+    stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">where</span>(
+        <span class="cl">Book</span>.title.<span class="fn">like</span>(<span class="st">"%פוטר%"</span>)
+    )
+      </pre>
+
+      <h3>scalar() vs. all()</h3>
+      <pre class="cb">
+<span class="cm"># scalars().all() → רשימה של objects</span>
+books = session.<span class="fn">execute</span>(stmt).<span class="fn">scalars</span>().<span class="fn">all</span>()
+
+<span class="cm"># scalar() → תוצאה בודדת (מספר/טקסט)</span>
+count = session.<span class="fn">execute</span>(count_stmt).<span class="fn">scalar</span>()
+
+<span class="cm"># scalar_one() → אחד בדיוק, raise אם יותר</span>
+book = session.<span class="fn">execute</span>(stmt).<span class="fn">scalar_one</span>()
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 6 — UPDATE ═══════════════════════════════════════ -->
+<section class="slide" id="s6">
+  <div class="slide-num">06 — UPDATE — עדכון שורות</div>
+  <h2 class="slide-title"><span style="color:var(--orange)">UPDATE</span> — עדכון נתונים</h2>
+  <div class="slide-sub">שלוף object, שנה שדות, commit — SQLAlchemy עוקב אחרי שינויים</div>
+
+  <div class="g2">
+    <div>
+      <h3>עדכון object בודד</h3>
+      <pre class="cb orange">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># שלב 1: שלוף את ה-object</span>
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">1</span>)
+
+    <span class="kw">if</span> book:
+        <span class="cm"># שלב 2: שנה שדות</span>
+        book.price = <span class="nm">89.90</span>
+        book.in_stock = <span class="kw">False</span>
+
+        <span class="cm"># שלב 3: commit — SQLAlchemy</span>
+        <span class="cm"># מזהה שהשתנה ומייצר UPDATE</span>
+        session.<span class="fn">commit</span>()
+        <span class="fn">print</span>(<span class="st">"✓ עודכן בהצלחה"</span>)
+      </pre>
+
+      <div class="co o">
+        <strong>Unit of Work:</strong> SQLAlchemy עוקב אחרי שינויים ב-objects. כשמבצעים commit() — רק השדות שהשתנו נכתבים ל-DB.
+      </div>
+
+      <h3>עדכון מסה — update()</h3>
+      <pre class="cb orange">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> update
+
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    <span class="cm"># עדכן כל ספרי Orwell — מחיר+10</span>
+    stmt = (
+        <span class="fn">update</span>(<span class="cl">Book</span>)
+        .<span class="fn">where</span>(<span class="cl">Book</span>.author == <span class="st">"Orwell"</span>)
+        .<span class="fn">values</span>(price=<span class="cl">Book</span>.price + <span class="nm">10</span>)
+    )
+    session.<span class="fn">execute</span>(stmt)
+    session.<span class="fn">commit</span>()
+      </pre>
+    </div>
+    <div>
+      <h3>מה SQLAlchemy מייצר?</h3>
+      <pre class="cb teal">
+<span class="cm"># book.price = 89.90 → מייצר:</span>
+<span class="cm"># UPDATE books</span>
+<span class="cm"># SET price = 89.90, in_stock = 0</span>
+<span class="cm"># WHERE books.id = 1</span>
+
+<span class="cm"># bulk update → מייצר:</span>
+<span class="cm"># UPDATE books</span>
+<span class="cm"># SET price = price + 10</span>
+<span class="cm"># WHERE books.author = 'Orwell'</span>
+      </pre>
+
+      <h3>עדכון בטוח — בדוק לפני</h3>
+      <pre class="cb orange">
+<span class="kw">def</span> <span class="fn">update_price</span>(session, book_id, new_price):
+    <span class="kw">if</span> new_price < <span class="nm">0</span>:
+        <span class="kw">raise</span> <span class="cl">ValueError</span>(<span class="st">"מחיר לא יכול להיות שלילי"</span>)
+
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, book_id)
+    <span class="kw">if not</span> book:
+        <span class="kw">raise</span> <span class="cl">ValueError</span>(<span class="st">f"ספר {book_id} לא נמצא"</span>)
+
+    old = book.price
+    book.price = new_price
+    session.<span class="fn">commit</span>()
+    <span class="kw">return</span> <span class="st">f"עודכן: {old}→{new_price}"</span>
+      </pre>
+
+      <div class="co">
+        <strong>💡 rollback():</strong> אם משהו נכשל — <code>session.rollback()</code> מבטל את כל השינויים מה-commit האחרון.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 7 — DELETE ═══════════════════════════════════════ -->
+<section class="slide" id="s7">
+  <div class="slide-num">07 — DELETE — מחיקת שורות</div>
+  <h2 class="slide-title"><span style="color:var(--red)">DELETE</span> — מחיקת נתונים</h2>
+  <div class="slide-sub">session.delete(obj) למחיקת object, delete().where() למחיקת מסה</div>
+
+  <div class="g2">
+    <div>
+      <h3>מחיקת שורה אחת</h3>
+      <pre class="cb red">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># שלב 1: שלוף</span>
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">3</span>)
+
+    <span class="kw">if</span> book:
+        <span class="cm"># שלב 2: מחק</span>
+        session.<span class="fn">delete</span>(book)
+
+        <span class="cm"># שלב 3: commit</span>
+        session.<span class="fn">commit</span>()
+        <span class="fn">print</span>(<span class="st">f"נמחק: {book.title}"</span>)
+    <span class="kw">else</span>:
+        <span class="fn">print</span>(<span class="st">"ספר לא נמצא"</span>)
+      </pre>
+
+      <h3>מחיקת מסה — delete().where()</h3>
+      <pre class="cb red">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> delete
+
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># מחק ספרים שאינם במלאי</span>
+    stmt = (
+        <span class="fn">delete</span>(<span class="cl">Book</span>)
+        .<span class="fn">where</span>(<span class="cl">Book</span>.in_stock == <span class="kw">False</span>)
+    )
+    result = session.<span class="fn">execute</span>(stmt)
+    session.<span class="fn">commit</span>()
+
+    <span class="fn">print</span>(<span class="st">f"נמחקו: {result.rowcount} שורות"</span>)
+      </pre>
+    </div>
+    <div>
+      <h3>מחיקה עם אישור — פונקציה בטוחה</h3>
+      <pre class="cb red">
+<span class="kw">def</span> <span class="fn">safe_delete</span>(session, book_id):
+    <span class="st">"""מחיקה בטוחה עם בדיקות"""</span>
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, book_id)
+    <span class="kw">if not</span> book:
+        <span class="kw">return</span> <span class="kw">False</span>, <span class="st">"לא נמצא"</span>
+
+    title = book.title
+    <span class="kw">try</span>:
+        session.<span class="fn">delete</span>(book)
+        session.<span class="fn">commit</span>()
+        <span class="kw">return</span> <span class="kw">True</span>, <span class="st">f"נמחק: {title}"</span>
+    <span class="kw">except Exception as</span> e:
+        session.<span class="fn">rollback</span>()
+        <span class="kw">return</span> <span class="kw">False</span>, <span class="st">f"שגיאה: {e}"</span>
+      </pre>
+
+      <div class="co r">
+        <strong>⚠️ מחיקה היא בלתי הפיכה!</strong> לאחר commit, הנתונים אבודים. בשיטות ממשיות נהוג להשתמש ב-"Soft Delete" — שדה <code>is_deleted=True</code> במקום מחיקה אמיתית.
+      </div>
+
+      <h3>Soft Delete — מחיקה רכה</h3>
+      <pre class="cb">
+<span class="cm"># עדיף! שמור את הנתונים</span>
+<span class="kw">class</span> <span class="cl">Book</span>(Base):
+    ...
+    is_deleted = <span class="fn">Column</span>(<span class="cl">Boolean</span>,
+                         default=<span class="kw">False</span>)
+
+<span class="cm"># "מחיקה"</span>
+book.is_deleted = <span class="kw">True</span>
+session.<span class="fn">commit</span>()
+
+<span class="cm"># שליפה רק של "קיימים"</span>
+stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">where</span>(
+    <span class="cl">Book</span>.is_deleted == <span class="kw">False</span>
+)
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 8 — DEMO ═════════════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="slide-num">08 — הדגמה אינטראקטיבית</div>
+  <h2 class="slide-title">🎮 <span style="color:var(--accent)">הדגמה חיה</span> — מערכת ספרייה</h2>
+  <div class="slide-sub">לחצו על הפעולות לראות כיצד CRUD עובד על "DB" מדומה</div>
+
+  <div class="g2">
+    <div>
+      <div class="demo-area">
+        <h3 style="margin-bottom:12px">פעולות CRUD</h3>
+        <button class="run-btn g" onclick="demoAction('create')">➕ CREATE — הוסף ספר</button>
+        <button class="run-btn" onclick="demoAction('read')">🔍 READ — שלוף הכל</button>
+        <button class="run-btn o" onclick="demoAction('update')">✏️ UPDATE — עדכן מחיר</button>
+        <button class="run-btn r" onclick="demoAction('delete')">🗑️ DELETE — מחק ספר</button>
+        <button class="run-btn" onclick="demoAction('reset')" style="border-color:var(--muted);color:var(--muted)">↺ אפס</button>
+        <div class="demo-output" id="demoOut">
+          <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:18px;">לחץ על פעולה לביצוע...</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>קוד Python שהיה מתבצע</h3>
+      <pre class="cb" id="demoCode" style="min-height:240px">
+<span class="cm"># הקוד יופיע כאן לאחר בחירת פעולה</span>
+      </pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <h3>טבלת ה-DB הנוכחית</h3>
+  <div style="overflow-x:auto">
+    <table class="sql-table" id="dbTable">
+      <thead><tr><th>id</th><th>title</th><th>author</th><th>price</th><th>in_stock</th></tr></thead>
+      <tbody id="dbBody"><tr><td colspan="5" style="text-align:center;color:var(--muted)">DB ריק — הוסף ספרים</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ SLIDE 9 — FULL EXAMPLE ════════════════════════════════ -->
+<section class="slide" id="s9">
+  <div class="slide-num">09 — דוגמה מלאה</div>
+  <h2 class="slide-title">🏪 דוגמה מלאה: <span style="color:var(--teal)">חנות מוצרים</span></h2>
+  <div class="slide-sub">מודל Product + כל פעולות CRUD בפונקציות נפרדות — לא קשורה לתרגיל הצ'אט</div>
+
+  <div class="g2">
+    <div>
+      <pre class="cb teal">
+<span class="cm"># product_store.py — דוגמה מלאה</span>
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> (
+    create_engine, Column,
+    Integer, String, Float, Boolean
+)
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> (
+    declarative_base, Session
+)
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> select, update, delete
+
+engine = <span class="fn">create_engine</span>(<span class="st">"sqlite:///store.db"</span>)
+Base   = <span class="fn">declarative_base</span>()
+
+<span class="kw">class</span> <span class="cl">Product</span>(Base):
+    <span class="dc">__tablename__</span> = <span class="st">"products"</span>
+    id       = <span class="fn">Column</span>(<span class="cl">Integer</span>, primary_key=<span class="kw">True</span>)
+    name     = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">100</span>), nullable=<span class="kw">False</span>)
+    price    = <span class="fn">Column</span>(<span class="cl">Float</span>)
+    category = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">50</span>))
+    active   = <span class="fn">Column</span>(<span class="cl">Boolean</span>, default=<span class="kw">True</span>)
+
+    <span class="kw">def</span> <span class="fn">__repr__</span>(self):
+        <span class="kw">return</span> <span class="st">f"&lt;Product {self.id}: {self.name}&gt;"</span>
+
+Base.metadata.<span class="fn">create_all</span>(engine)
+
+<span class="cm"># ─── CREATE ───────────────────────────</span>
+<span class="kw">def</span> <span class="fn">add_product</span>(name, price, category):
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        p = <span class="cl">Product</span>(name=name,
+                    price=price,
+                    category=category)
+        s.<span class="fn">add</span>(p)
+        s.<span class="fn">commit</span>()
+        <span class="kw">return</span> p.id
+      </pre>
+    </div>
+    <div>
+      <pre class="cb teal">
+<span class="cm"># ─── READ ────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">get_by_category</span>(category):
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        stmt = <span class="fn">select</span>(<span class="cl">Product</span>).<span class="fn">where</span>(
+            <span class="cl">Product</span>.category == category,
+            <span class="cl">Product</span>.active == <span class="kw">True</span>
+        ).<span class="fn">order_by</span>(<span class="cl">Product</span>.price)
+        <span class="kw">return</span> s.<span class="fn">execute</span>(stmt).<span class="fn">scalars</span>().<span class="fn">all</span>()
+
+<span class="cm"># ─── UPDATE ──────────────────────────</span>
+<span class="kw">def</span> <span class="fn">apply_discount</span>(category, pct):
+    <span class="st">"""הנחה באחוזים לקטגוריה"""</span>
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        stmt = (
+            <span class="fn">update</span>(<span class="cl">Product</span>)
+            .<span class="fn">where</span>(<span class="cl">Product</span>.category == category)
+            .<span class="fn">values</span>(
+                price=<span class="cl">Product</span>.price * (<span class="nm">1</span> - pct/<span class="nm">100</span>)
+            )
+        )
+        s.<span class="fn">execute</span>(stmt)
+        s.<span class="fn">commit</span>()
+
+<span class="cm"># ─── DELETE (soft) ───────────────────</span>
+<span class="kw">def</span> <span class="fn">deactivate</span>(product_id):
+    <span class="st">"""מחיקה רכה — לא מוחקים ממש"""</span>
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        p = s.<span class="fn">get</span>(<span class="cl">Product</span>, product_id)
+        <span class="kw">if</span> p:
+            p.active = <span class="kw">False</span>
+            s.<span class="fn">commit</span>()
+
+<span class="cm"># ─── שימוש ───────────────────────────</span>
+<span class="fn">add_product</span>(<span class="st">"מחשב נייד"</span>, <span class="nm">3500</span>, <span class="st">"אלקטרוניקה"</span>)
+<span class="fn">add_product</span>(<span class="st">"אוזניות"</span>,   <span class="nm">249</span>,  <span class="st">"אלקטרוניקה"</span>)
+<span class="fn">apply_discount</span>(<span class="st">"אלקטרוניקה"</span>, <span class="nm">10</span>)  <span class="cm"># -10%</span>
+items = <span class="fn">get_by_category</span>(<span class="st">"אלקטרוניקה"</span>)
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 10 — QUIZ ════════════════════════════════════════ -->
+<section class="slide quiz-section" id="s10">
+  <div class="slide-num">10 — שאלות הבנה ויישום</div>
+  <h2 class="slide-title">🎯 <span style="color:var(--orange)">בדיקת הבנה</span></h2>
+  <div class="slide-sub">ענו על כל השאלות — קבלו הסבר מיידי</div>
+  <div class="score-bar">
+    <div class="score-n" id="scoreN">0/<span id="totalQN">9</span></div>
+    <div class="score-track"><div class="score-fill" id="scoreF"></div></div>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted)">נקודות</span>
+  </div>
+  <div id="quizContainer"></div>
+</section>
+
+<!-- ══ SLIDE 11 — SUMMARY ════════════════════════════════════ -->
+<section class="slide" id="s11">
+  <div class="slide-num">11 — סיכום</div>
+  <h2 class="slide-title">📋 <span style="color:var(--accent)">סיכום</span> — SQLAlchemy CRUD</h2>
+
+  <div dir="ltr" class="g4">
+    <div class="card green">
+      <div class="ctitle g">CREATE</div>
+      <pre class="cb" style="font-size:18px;padding:12px">
+obj = <span class="cl">MyModel</span>(...)
+session.<span class="fn">add</span>(obj)
+session.<span class="fn">commit</span>()
+      </pre>
+    </div>
+    <div class="card teal">
+      <div class="ctitle t">READ</div>
+      <pre class="cb" style="font-size:18px;padding:12px">
+session.<span class="fn">get</span>(<span class="cl">M</span>, id)
+<span class="fn">select</span>(<span class="cl">M</span>).<span class="fn">where</span>(...)
+      </pre>
+    </div>
+    <div class="card orange">
+      <div class="ctitle o">UPDATE</div>
+      <pre class="cb" style="font-size:18px;padding:12px">
+obj = session.<span class="fn">get</span>(<span class="cl">M</span>, id)
+obj.field = new_val
+session.<span class="fn">commit</span>()
+      </pre>
+    </div>
+    <div class="card red">
+      <div class="ctitle r">DELETE</div>
+      <pre class="cb" style="font-size:18px;padding:12px">
+obj = session.<span class="fn">get</span>(<span class="cl">M</span>, id)
+session.<span class="fn">delete</span>(obj)
+session.<span class="fn">commit</span>()
+      </pre>
+    </div>
+  </div>
+
+  <div class="co" style="margin-top:20px">
+    <strong>📌 לשרת הצ'אט שלכם:</strong><br>
+    1. הגדירו <code>User(Base)</code> עם שדות username, password, created_at<br>
+    2. החליפו את users.json בפונקציות <code>register_user()</code> ו-<code>authenticate()</code> שמשתמשות ב-Session<br>
+    3. השתמשו תמיד ב-<code>with Session(engine) as s:</code><br>
+    4. clients_lock עדיין נדרש ל-dict המחוברים — SQLAlchemy מטפל רק ב-DB
+  </div>
+
+  <pre dir="ltr" class="cb teal" style="margin-top:16px">
+<span class="cm"># template לשרת הצ'אט</span>
+<span class="kw">def</span> <span class="fn">register_user</span>(username, password):
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        <span class="kw">if</span> s.<span class="fn">get</span>(<span class="cl">User</span>, username):
+            <span class="kw">return</span> <span class="kw">False</span>, <span class="st">"קיים כבר"</span>
+        s.<span class="fn">add</span>(<span class="cl">User</span>(username=username,
+                    password=password))
+        s.<span class="fn">commit</span>()
+        <span class="kw">return</span> <span class="kw">True</span>, <span class="st">"נרשם"</span>
+
+<span class="kw">def</span> <span class="fn">authenticate</span>(username, password):
+    <span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+        u = s.<span class="fn">get</span>(<span class="cl">User</span>, username)
+        <span class="kw">return</span> u <span class="kw">is not None and</span> u.password == password
+  </pre>
+</section>
+
+</div><!-- slides-wrapper -->
+
+<script>
+
+// ── NAV ──
+const slides = document.querySelectorAll('.slide');
+const ndots = document.getElementById('ndots');
+slides.forEach((s,i)=>{
+  const d = document.createElement('div');
+  d.className='ndot';
+  d.onclick=()=>s.scrollIntoView({behavior:'smooth'});
+  ndots.appendChild(d);
+});
+function updateNav(){
+  const sc=window.scrollY, tot=document.body.scrollHeight-window.innerHeight;
+  document.getElementById('prog').style.width=(sc/tot*100)+'%';
+  slides.forEach((s,i)=>{
+    const r=s.getBoundingClientRect();
+    ndots.children[i]?.classList.toggle('active', r.top<=window.innerHeight/2 && r.bottom>window.innerHeight/2);
+  });
+}
+window.addEventListener('scroll',updateNav,{passive:true});
+updateNav();
+
+// ── DEMO ──
+let db = [];
+let nextId = 1;
+const bookPool = [
+  {title:'הארי פוטר', author:'J.K. Rowling', price:79.9},
+  {title:'1984', author:'Orwell', price:59.0},
+  {title:'עלי הגיבורים', author:'נתן שחם', price:89.0},
+  {title:'המלך ליר', author:'שייקספיר', price:49.0},
+  {title:'מסע לירח', author:"ז'ול ורן", price:65.0},
+];
+let bookIdx = 0;
+
+function renderTable(){
+  const tbody = document.getElementById('dbBody');
+  if(db.length===0){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">DB ריק</td></tr>';
+    return;
+  }
+  tbody.innerHTML = db.map(r=>`
+    <tr>
+      <td class="pk">${r.id}</td>
+      <td>${r.title}</td>
+      <td>${r.author}</td>
+      <td style="color:var(--green)">₪${r.price.toFixed(1)}</td>
+      <td style="color:${r.in_stock?'var(--green)':'var(--red)'}\">${r.in_stock?'✓':'✗'}</td>
+    </tr>`).join('');
+}
+
+function addLog(html){
+  const out = document.getElementById('demoOut');
+  out.innerHTML += html;
+  out.scrollTop=9999;
+}
+
+function demoAction(act){
+  const out = document.getElementById('demoOut');
+  const codeEl = document.getElementById('demoCode');
+  if(act==='reset'){
+    db=[]; nextId=1; bookIdx=0;
+    out.innerHTML='<div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:18px;">אופס ← DB נאפס</div>';
+    renderTable(); return;
+  }
+  if(act==='create'){
+    const b = bookPool[bookIdx % bookPool.length]; bookIdx++;
+    const newBook = {...b, id:nextId++, in_stock:true};
+    db.push(newBook);
+    addLog(`<div class="do-row"><span class="do-action">CREATE</span><span class="do-key">id=</span><span class="do-val">${newBook.id}</span><span class="do-key"> title=</span><span class="do-val">"${newBook.title}"</span><span class="do-ok"> ✓ committed</span></div>`);
+    codeEl.innerHTML=`<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:\n    book = <span class="cl">Book</span>(\n        title=<span class="st">"${newBook.title}"</span>,\n        author=<span class="st">"${newBook.author}"</span>,\n        price=<span class="nm">${newBook.price}</span>\n    )\n    s.<span class="fn">add</span>(book)\n    s.<span class="fn">commit</span>()\n    <span class="cm"># book.id = ${newBook.id}</span>`;
+  } else if(act==='read'){
+    if(db.length===0){ addLog(`<div class="do-row"><span class="do-err">DB ריק — הוסף ספרים קודם</span></div>`); return; }
+    addLog(`<div class="do-row"><span class="do-action">READ</span><span class="do-key">  count=</span><span class="do-val">${db.length}</span></div>`);
+    db.forEach(r=>addLog(`<div class="do-row" style="padding-right:16px"><span class="do-key">id=${r.id} </span><span class="do-val">"${r.title}"</span><span class="do-key"> price=</span><span class="do-val">₪${r.price.toFixed(1)}</span></div>`));
+    codeEl.innerHTML=`<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:\n    stmt = <span class="fn">select</span>(<span class="cl">Book</span>)\n    books = s.<span class="fn">execute</span>(stmt)<span class="fn">.scalars</span>().<span class="fn">all</span>()\n    <span class="kw">for</span> b <span class="kw">in</span> books:\n        <span class="fn">print</span>(b.id, b.title, b.price)\n<span class="cm"># ${db.length} שורות הוחזרו</span>`;
+  } else if(act==='update'){
+    if(db.length===0){ addLog(`<div class="do-row"><span class="do-err">אין ספרים לעדכן</span></div>`); return; }
+    const target = db[Math.floor(Math.random()*db.length)];
+    const old = target.price;
+    target.price = +(target.price * 0.9).toFixed(1);
+    addLog(`<div class="do-row"><span class="do-action">UPDATE</span><span class="do-key"> id=${target.id} price:</span><span class="do-val">${old}→${target.price}</span><span class="do-ok"> ✓</span></div>`);
+    codeEl.innerHTML=`<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:\n    book = s.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">${target.id}</span>)\n    <span class="cm"># ← book.title = "${target.title}"</span>\n    book.price = <span class="nm">${target.price}</span>  <span class="cm"># היה ${old}</span>\n    s.<span class="fn">commit</span>()\n<span class="cm"># UPDATE books SET price=${target.price} WHERE id=${target.id}</span>`;
+  } else if(act==='delete'){
+    if(db.length===0){ addLog(`<div class="do-row"><span class="do-err">אין ספרים למחיקה</span></div>`); return; }
+    const idx = Math.floor(Math.random()*db.length);
+    const target = db.splice(idx,1)[0];
+    addLog(`<div class="do-row"><span class="do-action">DELETE</span><span class="do-key"> id=${target.id}</span><span class="do-val"> "${target.title}"</span><span class="do-ok"> ✓ מחוק</span></div>`);
+    codeEl.innerHTML=`<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:\n    book = s.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">${target.id}</span>)\n    <span class="cm"># ← "${target.title}"</span>\n    s.<span class="fn">delete</span>(book)\n    s.<span class="fn">commit</span>()\n<span class="cm"># שורה id=${target.id} נמחקה מה-DB</span>`;
+  }
+  renderTable();
+}
+
+// ══════════════════════════════════════════════════════
+// ── QUIZ — DATA-DRIVEN + RANDOMIZED ANSWER ORDER ──────
+// ══════════════════════════════════════════════════════
+const LETTERS = ['א','ב','ג','ד'];
+
+const QUIZ_DATA = [
+  {
+    num: 1, tag: 'Q01 — מושגים',
+    q: 'מה תפקיד <code>Base = declarative_base()</code> ב-SQLAlchemy?',
+    opts: [
+      { text: 'יוצר את חיבור ה-Engine למסד הנתונים ופותח את ה-session',
+        ok: false, fb: 'create_engine() הוא זה שיוצר את החיבור. declarative_base() הוא מחלקת אב שממנה מודלים יורשים.' },
+      { text: 'מחלקת בסיס שממנה יורשים כל המודלים — כך SQLAlchemy מזהה טבלאות',
+        ok: true,  fb: 'מדויק! Base הוא superclass. כשמחלקה יורשת ממנו, SQLAlchemy יודע שהיא מייצגת טבלה ב-DB.' },
+      { text: 'מנהל את ה-Session ומבצע את פעולות ה-CRUD בפועל',
+        ok: false, fb: 'Session() הוא זה שמנהל פעולות. Base הוא רק מחלקת אב — לא מבצע פעולות על ה-DB.' },
+      { text: 'יוצר את כל הטבלאות ב-DB על פי המודלים שהוגדרו',
+        ok: false, fb: 'Base.metadata.create_all(engine) הוא שיוצר טבלאות. Base עצמו רק מגדיר את מחלקת האב.' },
+    ]
+  },
+  {
+    num: 2, tag: 'Q02 — קוד',
+    q: 'מה ההבדל בין <code>session.commit()</code> ל-<code>session.rollback()</code>?',
+    opts: [
+      { text: 'commit מבטל שינויים מה-session, rollback שומר אותם לדיסק',
+        ok: false, fb: 'הפוך! commit שומר לדיסק, rollback מבטל. שגיאה נפוצה — חשוב לזכור את הכיוון.' },
+      { text: 'commit שומר שינויים לדיסק, rollback מבטל עד ה-commit האחרון',
+        ok: true,  fb: 'נכון! commit כותב לדיסק, rollback מחזיר למצב לפני ה-commit. שימושי ב-try/except לביטול שינויים כשיש שגיאה.' },
+      { text: 'שניהם סוגרים את חיבור ה-Session אחרי הביצוע',
+        ok: false, fb: 'לא — close() הוא שסוגר את ה-Session. commit ו-rollback לא סוגרים את החיבור.' },
+      { text: 'commit יוצר טבלה חדשה, rollback מוחק אותה מה-DB',
+        ok: false, fb: 'create_all() יוצר טבלאות ו-drop_all() מוחק. commit/rollback מנהלים רק transactions של נתונים.' },
+    ]
+  },
+  {
+    num: 3, tag: 'Q03 — ניתוח קוד',
+    q: 'מה יודפס? (לפני commit ואחריו)',
+    extra: `<pre class="cb" style="margin-top:10px;direction:ltr">p = <span class="cl">Product</span>(name=<span class="st">"כיסא"</span>, price=<span class="nm">299</span>)
+session.<span class="fn">add</span>(p)
+<span class="fn">print</span>(p.id)   <span class="cm"># ??? לפני commit</span>
+session.<span class="fn">commit</span>()
+<span class="fn">print</span>(p.id)   <span class="cm"># ??? אחרי commit</span></pre>`,
+    opts: [
+      { text: 'יודפס 1 פעמיים — ה-id נקבע ביצירת ה-object',
+        ok: false, fb: 'ה-id הוא autoincrement שנקבע על ידי ה-DB בכתיבה בלבד. לפני commit הוא עדיין None.' },
+      { text: 'ראשון None — שני מספר שלם (1, 2...) שה-DB הקצה',
+        ok: true,  fb: 'נכון! לפני commit ה-id הוא None. אחרי commit ה-DB כותב ומחזיר id, ו-SQLAlchemy מעדכן את ה-object.' },
+      { text: 'שגיאת AttributeError — שדה id לא קיים לפני commit',
+        ok: false, fb: 'השדה id קיים (הוגדר ב-Column), ערכו הוא None לפני commit. אין שגיאה — רק ערך None.' },
+      { text: 'ראשון 0 — שני 1, כי Python מונה מ-0',
+        ok: false, fb: 'SQLAlchemy לא מונה מ-0. לפני commit ה-id הוא None, ואחרי commit ה-DB נותן את הערך (בד"כ 1, 2...).' },
+    ]
+  },
+  {
+    num: 4, tag: 'Q04 — שאילתות',
+    q: 'שליפת כל המוצרים שמחירם בין 100 ל-500 ש"ח, ממוינים מהזול ליקר — מה הנכון?',
+    opts: [
+      { text: '<code>select(Product).where(Product.price == 100)</code>',
+        ok: false, fb: '== בודק שוויון בדיוק, לא טווח. חסרים גם שני תנאי >=/<= וגם order_by למיון.' },
+      { text: '<code>select(Product).where(Product.price >= 100, Product.price <= 500).order_by(Product.price)</code>',
+        ok: true,  fb: 'מצוין! where() עם שני תנאים מחובר ב-AND אוטומטית. order_by(Product.price) ממיין מהזול ליקר (asc ברירת מחדל).' },
+      { text: '<code>select(Product).between(Product.price, 100, 500)</code>',
+        ok: false, fb: 'between() לא קיים כמתודה של select() ב-SQLAlchemy ORM. יש להשתמש בשני תנאי where().' },
+      { text: '<code>session.query(Product).filter(Product.price > 100)</code>',
+        ok: false, fb: 'query().filter() הוא Legacy API (SQLAlchemy 1.x). הדרך המודרנית היא select() + where(). גם חסר ה-500 ומיון.' },
+    ]
+  },
+  {
+    num: 5, tag: 'Q05 — עדכון',
+    q: 'יש Product עם id=7. רוצים לשנות את שמו — מה הסדר הנכון?',
+    opts: [
+      { text: 'כתוב SQL ישירות: <code>UPDATE products SET name=\'חדש\' WHERE id=7</code>',
+        ok: false, fb: 'ORM מאפשר להימנע מ-SQL ידני. בנוסף, עקיפת ה-ORM מסוכנת — אין validation, אין tracking, ואין type safety.' },
+      { text: '<code>commit()</code> → שנה את p.name → <code>commit()</code> שוב',
+        ok: false, fb: 'commit לפני שינוי לא עוזר — ה-session לא יודע על השינוי אם נשנה לפני add(). commit חייב לבוא אחרי השינוי.' },
+      { text: '<code>p = session.get(Product, 7)</code> → <code>p.name = "חדש"</code> → <code>session.commit()</code>',
+        ok: true,  fb: 'נכון! זהו ה-pattern הסטנדרטי. SQLAlchemy עוקב אחרי השינוי ומייצר UPDATE אוטומטית. לא צריך לכתוב SQL.' },
+      { text: 'צור Product חדש עם id=7 ו-<code>session.add()</code> כדי לדרוס',
+        ok: false, fb: 'add() עם id קיים לא מעדכן — הוא מנסה להוסיף שורה חדשה. בד"כ תקבל IntegrityError על primary key כפול.' },
+    ]
+  },
+  {
+    num: 6, tag: 'Q06 — מחיקה',
+    q: 'מה ההבדל בין Soft Delete ל-Hard Delete?',
+    opts: [
+      { text: 'Hard Delete בטוח יותר — שומר גיבוי בטבלה נפרדת לשחזור',
+        ok: false, fb: 'Hard Delete מוחק לגמרי ללא גיבוי. Soft Delete הוא זה שמשמר את הנתונים (is_deleted=True).' },
+      { text: 'Soft Delete מסמן is_deleted=True ומשמר; Hard Delete מוחק לגמרי',
+        ok: true,  fb: 'מדויק! Soft Delete שומר שורות בטבלה עם דגל is_deleted=True — אפשר לשחזר. Hard Delete הוא DELETE FROM — בלתי הפיך.' },
+      { text: 'אין הבדל — שתי שיטות מוחקות את הנתונים מה-DB לגמרי',
+        ok: false, fb: 'הבדל גדול! Soft Delete משאיר את הנתונים בטבלה (עם is_deleted=True). רק Hard Delete מוחק אמיתית.' },
+      { text: 'Soft Delete יוצר טבלת archive נפרדת לנתונים שנמחקו',
+        ok: false, fb: 'Soft Delete לא יוצר טבלה נפרדת — הוא פשוט מוסיף שדה is_deleted לאותה טבלה קיימת.' },
+    ]
+  },
+  {
+    num: 7, tag: 'Q07 — השלמת קוד', isFill: true,
+    q: 'השלימו: שליפת כל ה-Products שה-category שלהם הוא <code>"אלקטרוניקה"</code>',
+    extra: `<pre class="cb orange" style="margin:12px 0;direction:ltr">stmt = <span class="fn">select</span>(<span class="cl">Product</span>).__________(<span class="cl">Product</span>.category == <span class="st">"אלקטרוניקה"</span>)
+results = session.<span class="fn">execute</span>(stmt).<span class="fn">scalars</span>().<span class="fn">all</span>()</pre>`,
+    accepts: ['where', '.where'],
+    fillFb: 'where() — מוסיף תנאי WHERE לשאילתה. אפשר להעביר כמה תנאים ל-where() והם מחוברים ב-AND אוטומטית.'
+  },
+  {
+    num: 8, tag: 'Q08 — השלמת קוד', isFill: true,
+    q: 'השלימו: יצירת כל הטבלאות ב-DB על פי המודלים שהוגדרו',
+    extra: `<pre class="cb accent" style="margin:12px 0;direction:ltr">Base.metadata.__________(<span class="nm">engine</span>)</pre>`,
+    accepts: ['create_all', 'create_all(engine)'],
+    fillFb: 'create_all(engine) — עובר על כל מחלקות שיורשות מ-Base, ויוצר בDB את הטבלאות שעדיין לא קיימות.'
+  },
+  {
+    num: 9, tag: 'Q09 — תרחיש',
+    q: `בשרת הצ'אט יש לממש register. <strong>מה הבעיה בקוד הזה?</strong>`,
+    extra: `<pre class="cb red" style="margin-top:10px;direction:ltr"><span class="kw">def</span> <span class="fn">register_user</span>(username, password):
+    session = <span class="cl">Session</span>(engine)
+    existing = session.<span class="fn">get</span>(<span class="cl">User</span>, username)
+    <span class="kw">if</span> existing:
+        <span class="kw">return</span> <span class="kw">False</span>
+    session.<span class="fn">add</span>(<span class="cl">User</span>(username=username, password=password))
+    session.<span class="fn">commit</span>()
+    <span class="kw">return</span> <span class="kw">True</span></pre>`,
+    opts: [
+      { text: 'session.get() שגוי — יש להשתמש ב-select().where() לחיפוש לפי username',
+        ok: false, fb: 'session.get(Model, pk) תקין לחיפוש לפי Primary Key. אם username הוא ה-PK זה בסדר. הבעיה במקום אחר.' },
+      { text: 'חסר session.commit() לפני ה-return False כדי לאשר הפעולה',
+        ok: false, fb: 'כשחוזרים False אין מה לcommit — לא בוצעה שום כתיבה. הבעיה היא ב-Session שלא נסגר, לא בcommit.' },
+      { text: 'ה-Session לא נסגר כשחוזרים False — resource leak שיצבור חיבורים פתוחים',
+        ok: true,  fb: 'מצוין! כשחוזרים False ה-Session נשאר פתוח. הפתרון: with Session(engine) as session — מבטיח סגירה תמיד.' },
+      { text: 'הפרמטרים ל-User() שגויים — צריך לכתוב User(name=username)',
+        ok: false, fb: 'שמות הפרמטרים תלויים בהגדרת המחלקה User. בקוד הזה username= ו-password= נראים תקינים. הבעיה היא ב-Session.' },
+    ]
+  },
+];
+
+// ── RENDER ────────────────────────────────────────────
+let score=0;
+const answered={};
+document.getElementById('totalQN').textContent = QUIZ_DATA.length;
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function renderQuiz(){
+  const container = document.getElementById('quizContainer');
+  QUIZ_DATA.forEach(q => {
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.id = 'qcard' + q.num;
+
+    let html = `<div class="qnum">${q.tag}</div><div class="qtext">${q.q}</div>`;
+    if(q.extra) html += q.extra;
+
+    if(q.isFill){
+      html += `<div class="fill-wrap">
+        <input type="text" class="fill-input" id="ans${q.num}" placeholder="השלם כאן..." />
+        <br><button class="check-btn" onclick="checkFill(${q.num})">בדוק ✓</button>
+      </div>`;
+    } else {
+      const shuffled = shuffle(q.opts);
+      html += '<div class="opts">';
+      shuffled.forEach((opt, i) => {
+        const fb = opt.fb.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html += `<div class="opt" onclick="ans(${q.num},this,${opt.ok},'${fb}')">
+          <span class="olet">${LETTERS[i]}</span>${opt.text}
+        </div>`;
+      });
+      html += '</div>';
+    }
+    html += `<div class="fb" id="fb${q.num}"></div>`;
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+}
+
+renderQuiz();
+
+// ── HANDLERS ──────────────────────────────────────────
+function ans(n, el, correct, explanation){
+  if(answered[n]) return;
+  answered[n] = true;
+  el.classList.add(correct ? 'correct' : 'wrong');
+  document.getElementById('qcard'+n).querySelectorAll('.opt').forEach(o=>o.classList.add('disabled'));
+  const fb = document.getElementById('fb'+n);
+  fb.className = 'fb show ' + (correct ? 'ok' : 'fail');
+  fb.innerHTML = (correct ? '✅ ' : '❌ ') + explanation;
+  if(correct){ score++; updateScore(); }
+}
+
+function checkFill(n){
+  if(answered[n]) return;
+  const q = QUIZ_DATA.find(q=>q.num===n);
+  const inp = document.getElementById('ans'+n);
+  const v = inp.value.trim().toLowerCase().replace(/[\s()]/g,'');
+  const ok = q.accepts.some(a=>v===a.toLowerCase().replace(/[\s()]/g,''));
+  answered[n]=true; inp.disabled=true;
+  const fb = document.getElementById('fb'+n);
+  fb.className = 'fb show ' + (ok ? 'ok' : 'fail');
+  fb.innerHTML = (ok ? '✅ ' : `❌ תשובה נכונה: <code>${q.accepts[0]}</code><br>`) + q.fillFb;
+  if(ok){ score++; updateScore(); }
+}
+
+function updateScore(){
+  document.getElementById('scoreN').textContent = score+'/'+QUIZ_DATA.length;
+  document.getElementById('scoreF').style.width = (score/QUIZ_DATA.length*100)+'%';
+}
+</script>
+</body>
+</html>

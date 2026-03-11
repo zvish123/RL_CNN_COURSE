@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Mastering Enhanced Tournament</title>
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --bg: #0a0f1e;
+            --card: #161e31;
+            --text: #e2e8f0;
+            --code-bg: #000000;
+            --accent: #f59e0b;
+            --correct: #10b981;
+            --wrong: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .presentation-box {
+            width: 95%;
+            max-width: 1050px;
+            height: 700px;
+            background: var(--card);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 35px;
+            flex-direction: column;
+            height: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .slide.active { display: flex; animation: slideFade 0.4s ease-out; }
+
+        @keyframes slideFade {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        h2 { color: var(--primary); border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-top: 0; }
+
+        .code-container {
+            direction: ltr;
+            text-align: left;
+            background: var(--code-bg);
+            color: #10b981;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Consolas', monospace;
+            font-size: 1.2rem;
+            white-space: pre;
+            border: 1px solid #1e293b;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .improvement-info {
+            background: rgba(245, 158, 11, 0.1);
+            border-right: 4px solid var(--accent);
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .nav-bar {
+            background: rgba(0,0,0,0.4);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:disabled { background: #475569; cursor: not-allowed; }
+
+        /* Quiz */
+        .option {
+            background: #1f2937;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid #374151;
+        }
+        .option:hover { border-color: var(--primary); }
+        .option.correct { background: var(--correct); color: white; }
+        .option.wrong { background: var(--wrong); color: white; }
+
+        .progress { height: 4px; background: var(--primary); width: 0%; transition: 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="presentation-box">
+    <div class="progress" id="progress-bar"></div>
+
+    <div class="slide active">
+        <h2>שדרוג הטורניר: מניהול משחק לניהול ניסויים</h2>
+        <p>בגרסה המקורית, הטורניר היה "לולאה" פשוטה שמריצה משחקים. בגרסה החדשה, הפכנו אותו למערכת מחקרית.</p>
+        <div class="improvement-info">
+            <b>השינוי המרכזי:</b> מעבר מפרמטרים "קשיחים" (Hardcoded) לניהול דינמי דרך אובייקט קונפיגורציה.
+        </div>
+        <div class="code-container">
+# original:
+def __init__(self, num_games=100):
+    self.num_games = num_games
+
+# Enhanced:
+def __init__(self, config=None):
+    self.config = config or ExperimentConfig.baseline_experiment()
+    self.num_games = self.config.num_games
+        </div>
+    </div>
+
+    <div class="slide">
+        <h2>1. מערכת תגמולים דינמית (Configurable Rewards)</h2>
+        <p><b>מה השיפור?</b> הניקוד על ניצחון, הפסד או תיקו מגיע כעת מתוך ה-Config.</p>
+        <p><b>המטרה:</b> היכולת לבדוק איך ה-AI לומד כשמשנים לו את סדרי העדיפויות (למשל: לתת "קנס" כבד יותר על הפסד).</p>
+        <div class="code-container">
+# בתוך update_learning_dict
+if winner == "X":
+    current_score = self.config.win_reward
+elif winner == "O":
+    current_score = self.config.loss_penalty
+else:
+    current_score = self.config.tie_reward
+        </div>
+    </div>
+
+    <div class="slide">
+        <h2>2. למידה מהיסטוריית חסימות (Blocking)</h2>
+        <p><b>מה השיפור?</b> הוספת <code>blocking_history</code> למילון הלמידה.</p>
+        <p><b>המטרה:</b> ה-AI לומד כעת באופן ספציפי אילו מצבים הם "חסימה טובה". זה מאיץ את היכולת ההגנתית שלו פי כמה.</p>
+        <div class="code-container">
+blocking_score = 0.95
+for board_str in game.blocking_history:
+    if board_str not in self.learning_dict:
+        self.learning_dict[board_str] = {
+            "accumulated_score": current_score,
+            "count": blocking_score
+        }
+        </div>
+    </div>
+
+    <div class="slide">
+        <h2>3. שליטה בקצב החקירה (Exploration Rate)</h2>
+        <p><b>מה השיפור?</b> הטורניר מעביר לכל משחק את ה-<code>exploration_rate</code> המדויק מהניסוי.</p>
+        <p><b>המטרה:</b> לאזן בין ניצול ידע קיים (Exploitation) לבין ניסיון מהלכים חדשים (Exploration).</p>
+        <div class="code-container">
+# הרצת משחק עם פרמטר חקירה מבוקר
+winner = game.play_game(
+    verbose=False,
+    use_ai=True,
+    exploration_rate=self.config.exploration_rate
+)
+        </div>
+    </div>
+
+    <div class="slide">
+        <h2>4. שמירה מורחבת (Full Persistence)</h2>
+        <p><b>מה השיפור?</b> פונקציית השמירה שומרת כעת הכל - כולל את הגדרות הניסוי והסטטיסטיקות.</p>
+        <p><b>המטרה:</b> היכולת לשחזר ניסוי בדיוק כפי שהיה ולנתח את התוצאות גם חודשים אחרי.</p>
+        <div class="code-container">
+results_data = {
+    'config': self.config.to_dict(),
+    'results': self.results,
+    'learning_dict': self.learning_dict,
+    'statistics': self.get_statistics()
+}
+json.dump(results_data, f, indent=4)
+        </div>
+    </div>
+
+    <div class="slide" id="quiz-slide">
+        <h2>בדיקת הבנה 🧠</h2>
+        <div id="question-area">
+            <p id="q-text">טוען שאלה...</p>
+            <div id="options-area"></div>
+        </div>
+        <div id="quiz-feedback" style="margin-top:20px; font-weight:bold;"></div>
+    </div>
+
+    <div class="nav-bar">
+        <button id="prevBtn" onclick="moveSlide(-1)">➔ הקודם</button>
+        <span id="page-info">1 / 6</span>
+        <button id="nextBtn" onclick="moveSlide(1)">הבא ⬅</button>
+    </div>
+</div>
+
+<script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const questions = [
+        {
+            q: "מדוע העברנו את win_reward לתוך אובייקט ה-Config?",
+            options: ["כדי לחסוך מקום בזיכרון", "כדי לאפשר שינוי של ערכי התגמול ללא שינוי הקוד", "כי פייתון לא מאפשרת מספרים קבועים", "כדי להצפין את תוצאות המשחק"],
+            correct: 1
+        },
+        {
+            q: "מהו היתרון של blocking_history בטורניר המשופר?",
+            options: ["הוא מוחק מהלכים לא חוקיים", "הוא מאפשר ל-AI ללמוד מהר יותר איך לחסום את היריב", "הוא מגדיל את מספר המשבצות בלוח", "הוא גורם למשחק להסתיים בתיקו"],
+            correct: 1
+        },
+        {
+            q: "מה קורה כאשר ה-exploration_rate גבוה מאוד?",
+            options: ["ה-AI יבצע בעיקר מהלכים שהוא כבר מכיר", "ה-AI ינסה הרבה מהלכים אקראיים כדי ללמוד", "ה-AI ינצח בכל משחק", "הקוד יפסיק לעבוד"],
+            correct: 1
+        }
+    ];
+
+    let currentQ = 0;
+
+    function moveSlide(n) {
+        slides[currentSlide].classList.remove('active');
+        currentSlide += n;
+        if (currentSlide < 0) currentSlide = 0;
+        if (currentSlide >= slides.length) currentSlide = slides.length - 1;
+        slides[currentSlide].classList.add('active');
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('page-info').innerText = `${currentSlide + 1} / ${slides.length}`;
+        document.getElementById('prevBtn').disabled = (currentSlide === 0);
+        document.getElementById('nextBtn').innerText = (currentSlide === slides.length - 1) ? "סיום" : "הבא ⬅";
+        document.getElementById('progress-bar').style.width = ((currentSlide + 1) / slides.length * 100) + "%";
+
+        if (currentSlide === 5) loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = questions[currentQ];
+        document.getElementById('q-text').innerText = q.q;
+        const optArea = document.getElementById('options-area');
+        optArea.innerHTML = "";
+
+        q.options.forEach((opt, idx) => {
+            const div = document.createElement('div');
+            div.className = 'option';
+            div.innerText = opt;
+            div.onclick = () => checkAnswer(idx, q.correct);
+            optArea.appendChild(div);
+        });
+    }
+
+    function checkAnswer(idx, correct) {
+        const opts = document.querySelectorAll('.option');
+        const feedback = document.getElementById('quiz-feedback');
+
+        if (idx === correct) {
+            opts[idx].classList.add('correct');
+            feedback.innerText = "נכון מאוד! 🎉";
+            feedback.style.color = "var(--correct)";
+            setTimeout(() => {
+                currentQ = (currentQ + 1) % questions.length;
+                loadQuestion();
+                feedback.innerText = "";
+            }, 1500);
+        } else {
+            opts[idx].classList.add('wrong');
+            feedback.innerText = "לא מדויק, נסה שוב. 🤔";
+            feedback.style.color = "var(--wrong)";
+        }
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>

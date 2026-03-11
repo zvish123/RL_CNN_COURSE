@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מדריך: ExperimentRunner - מנהל הניסויים</title>
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --bg: #0a0f1e;
+            --card: #161e31;
+            --text: #e2e8f0;
+            --code-bg: #000;
+            --accent: #a855f7;
+            --correct: #10b981;
+            --wrong: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .section {
+            background: var(--card);
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        h1, h2 { color: var(--primary); border-bottom: 1px solid #334155; padding-bottom: 10px; }
+
+        .code-header {
+            background: #1e293b;
+            padding: 5px 15px;
+            border-radius: 8px 8px 0 0;
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: #10b981;
+            padding: 20px;
+            border-radius: 0 8px 8px 8px;
+            direction: ltr;
+            text-align: left;
+            overflow-x: auto;
+            border: 1px solid #1e293b;
+            margin-top: 0;
+        }
+
+        .benefit-card {
+            border-right: 4px solid var(--accent);
+            background: rgba(168, 85, 247, 0.1);
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        /* Quiz Styles */
+        .quiz-container { background: #1e293b; padding: 20px; border-radius: 12px; }
+        .option {
+            background: #0f172a;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #334155;
+        }
+        .option:hover { border-color: var(--primary); }
+        .option.correct { background: var(--correct); color: white; }
+        .option.wrong { background: var(--wrong); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 ExperimentRunner: הכוח שבאוטומציה</h1>
+
+    <div class="section">
+        <h2>1. מה זה בעצם עושה?</h2>
+        <p>ה-<b>ExperimentRunner</b> הוא שכבת הניהול העליונה. היתרונות המרכזיים שלו הם:</p>
+        <div class="benefit-card">
+            <b>אוטומציה מלאה:</b> במקום להריץ ידנית כל פעם <code>tournament.run()</code>, אנחנו נותנים לו רשימה של ניסויים והוא מבצע אותם אחד אחרי השני.
+        </div>
+        <div class="benefit-card">
+            <b>ממשק חיצוני (CSV):</b> זו היכולת החשובה ביותר. ניתן להגדיר את כל הפרמטרים (כמו <code>gamma</code> או <code>exploration_rate</code>) בתוך קובץ Excel, והקוד יקרא אותם משם אוטומטית.
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. טעינת ניסויים מקובץ CSV</h2>
+        <p>הפונקציה <code>load_experiments_from_csv</code> מאפשרת לנו להפריד לחלוטין בין הקוד לבין הנתונים.</p>
+        <div class="code-header">experiment_runner.py</div>
+        <pre>
+def load_experiments_from_csv(self, filename: str = "experiments.csv"):
+    experiments = []
+    with open(filename, mode='r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            config = ExperimentConfig(
+                name=row['name'],
+                num_games=int(row['num_games']),
+                gamma=float(row['gamma']),
+                exploration_rate=float(row['exploration_rate']),
+                win_reward=float(row['win_reward'])
+            )
+            experiments.append(config)
+    return experiments
+        </pre>
+        <p><b>המטרה:</b> לאפשר לאנשים שאינם מתכנתים (או לנו, כדי לחסוך זמן) להגדיר ניסויים חדשים בלי לגעת בשורת קוד אחת.</p>
+    </div>
+
+    <div class="section">
+        <h2>3. הרצה ומדידת ביצועים</h2>
+        <p>בזמן הרצת הניסוי, ה-Runner מודד כמה זמן לקח לכל אימון ומנהל את התיקיות באופן מסודר.</p>
+        <div class="code-header">experiment_runner.py</div>
+        <pre>
+def run_single_experiment(self, config: ExperimentConfig):
+    start_time = time.time()
+    tournament = XOTournament(config)
+
+    # הרצת האימון
+    tournament.run()
+
+    duration = time.time() - start_time
+    stats = tournament.get_statistics()
+    stats['duration_sec'] = duration # הוספת נתון זמן הריצה
+    return stats
+        </pre>
+    </div>
+
+    <div class="section">
+        <h2>4. ריכוז תוצאות (Aggregation)</h2>
+        <p>בסיום כל הניסויים, ה-Runner יוצר קובץ CSV אחד מרכזי שמסכם את כל אחוזי הניצחון של כל ה-Configs השונים.</p>
+        <div class="code-header">מבנה קובץ התוצאות הסופי</div>
+        <pre>
+Experiment_Name, Win_Rate_X, Avg_Moves, Duration_Sec
+"High_Gamma", 0.85, 7.2, 12.4
+"Low_Gamma", 0.62, 8.1, 11.8
+        </pre>
+    </div>
+
+    <div class="section">
+        <h2>בדיקת הבנה (שאלות לתלמיד) 🧠</h2>
+        <div class="quiz-container">
+            <div id="q1">
+                <p><b>שאלה 1:</b> מה יקרה אם נוסיף שורה חדשה לקובץ <code>experiments.csv</code> ונריץ את ה-Runner?</p>
+                <div class="option" onclick="check(this, true, 'feedback1')">הקוד יריץ ניסוי נוסף עם הפרמטרים החדשים באופן אוטומטי.</div>
+                <div class="option" onclick="check(this, false, 'feedback1')">הקוד יקרוס כי הוא לא מכיר את הניסוי החדש.</div>
+                <div class="option" onclick="check(this, false, 'feedback1')">הקוד יריץ רק את הניסוי הראשון שמופיע בקובץ.</div>
+                <div id="feedback1" style="margin-top:10px;"></div>
+            </div>
+            <hr style="border: 0.5px solid #334155; margin: 20px 0;">
+            <div id="q2">
+                <p><b>שאלה 2:</b> מדוע ה-Runner משתמש ב-<code>Path(self.output_dir).mkdir(parents=True, exist_ok=True)</code>?</p>
+                <div class="option" onclick="check(this, false, 'feedback2')">כדי למחוק את כל הניסויים הישנים לפני שמתחילים.</div>
+                <div class="option" onclick="check(this, true, 'feedback2')">כדי לוודא שקיימת תיקייה לשמירת התוצאות, ואם לא - ליצור אותה מבלי לגרום לשגיאה.</div>
+                <div class="option" onclick="check(this, false, 'feedback2')">כדי להצפין את הקבצים בתוך התיקייה.</div>
+                <div id="feedback2" style="margin-top:10px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function check(el, isCorrect, feedbackId) {
+        const feedback = document.getElementById(feedbackId);
+        const options = el.parentElement.querySelectorAll('.option');
+        options.forEach(o => o.style.pointerEvents = 'none');
+
+        if (isCorrect) {
+            el.classList.add('correct');
+            feedback.innerHTML = "✅ נכון מאוד! ה-Runner יודע לקרוא כל מספר שורות שנוסיף.";
+            feedback.style.color = "#10b981";
+        } else {
+            el.classList.add('wrong');
+            feedback.innerHTML = "❌ לא מדויק. נסה לחשוב איך הלולאה עוברת על ה-CSV.";
+            feedback.style.color = "#ef4444";
+        }
+    }
+</script>
+
+</body>
+</html>

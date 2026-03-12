@@ -35,7 +35,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:64px 7vw;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
 .slide::before{content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);pointer-events:none}
 
-.slide-num{position:absolute;top:24px;left:36px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:4px;text-transform:uppercase; direction:rtl;}
+.slide-num{position:absolute;top:24px;right:36px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:4px;text-transform:uppercase; direction:rtl;}
 
 /* ── HERO ── */
 .hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:0}
@@ -703,6 +703,7 @@ book = session.<span class="fn">execute</span>(stmt).<span class="fn">scalar_one
   </div>
 </section>
 
+
 <!-- ══ SLIDE 7 — DELETE ═══════════════════════════════════════ -->
 <section class="slide" id="s7">
   <div class="slide-num">07 — DELETE — מחיקת שורות</div>
@@ -790,9 +791,118 @@ stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class=
   </div>
 </section>
 
-<!-- ══ SLIDE 8 — DEMO ═════════════════════════════════════════ -->
+
+<!-- ══ SLIDE 8 — JOINS ════════════════════════════════════ -->
 <section class="slide" id="s8">
-  <div class="slide-num">08 — הדגמה אינטראקטיבית</div>
+  <div class="slide-num">08 — שאילתות בין טבלאות</div>
+  <h2 class="slide-title">🔗 <span style="color:var(--teal)">JOIN</span> — חיבור טבלאות</h2>
+  <div class="slide-sub">ForeignKey + relationship + join() — שלוש שכבות שעובדות יחד</div>
+
+  <!-- ORM diagram -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:0;margin:0 0 24px;flex-wrap:wrap">
+    <div style="background:var(--surface);border:1px solid rgba(14,165,233,.4);border-radius:6px;padding:14px 20px;text-align:center;font-family:'JetBrains Mono',monospace">
+      <div style="font-size:18px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">CUSTOMER</div>
+      <div style="font-size:18px;font-weight:700;color:var(--teal)">id · name</div>
+      <div style="font-size:18px;color:var(--muted);margin-top:4px">orders → relationship</div>
+    </div>
+    <div style="font-size:22px;color:var(--muted);padding:0 14px">1 ──── ∞</div>
+    <div style="background:var(--surface);border:1px solid rgba(124,58,237,.4);border-radius:6px;padding:14px 20px;text-align:center;font-family:'JetBrains Mono',monospace">
+      <div style="font-size:18px;letter-spacing:2px;color:var(--muted);margin-bottom:6px">ORDER</div>
+      <div style="font-size:18px;font-weight:700;color:var(--accent)">id · product · customer_id</div>
+      <div style="font-size:18px;color:var(--muted);margin-top:4px">customer_id → ForeignKey</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <h3>01 — הגדרת מודלים עם FK + relationship</h3>
+      <pre class="cb teal">
+<span class="kw">class</span> <span class="cl">Customer</span>(Base):
+    <span class="dc">__tablename__</span> = <span class="st">"customers"</span>
+    id     = <span class="fn">Column</span>(<span class="cl">Integer</span>, primary_key=<span class="kw">True</span>)
+    name   = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">100</span>))
+    <span class="cm"># relationship — הדרך לגשת להזמנות</span>
+    orders = <span class="fn">relationship</span>(<span class="st">"Order"</span>,
+                 back_populates=<span class="st">"customer"</span>)
+
+<span class="kw">class</span> <span class="cl">Order</span>(Base):
+    <span class="dc">__tablename__</span> = <span class="st">"orders"</span>
+    id          = <span class="fn">Column</span>(<span class="cl">Integer</span>, primary_key=<span class="kw">True</span>)
+    product     = <span class="fn">Column</span>(<span class="cl">String</span>(<span class="nm">200</span>))
+    price       = <span class="fn">Column</span>(<span class="cl">Float</span>)
+    <span class="cm"># ForeignKey — מה מקשר את הטבלאות</span>
+    customer_id = <span class="fn">Column</span>(<span class="cl">Integer</span>,
+                    <span class="fn">ForeignKey</span>(<span class="st">"customers.id"</span>))
+    customer    = <span class="fn">relationship</span>(<span class="st">"Customer"</span>,
+                    back_populates=<span class="st">"orders"</span>)
+      </pre>
+
+      <h3>02 — גישה דרך relationship (הדרך הנקייה)</h3>
+      <pre class="cb green">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+    customer = s.<span class="fn">get</span>(<span class="cl">Customer</span>, <span class="nm">1</span>)
+
+    <span class="cm"># SQLAlchemy מבצע JOIN אוטומטית!</span>
+    <span class="kw">for</span> order <span class="kw">in</span> customer.orders:
+        <span class="fn">print</span>(<span class="st">f"{customer.name}: {order.product}"</span>)
+
+    <span class="cm"># גם מהכיוון השני</span>
+    order = s.<span class="fn">get</span>(<span class="cl">Order</span>, <span class="nm">5</span>)
+    <span class="fn">print</span>(order.customer.name)  <span class="cm"># ← lazy load</span>
+      </pre>
+    </div>
+
+    <div>
+      <h3>03 — join() מפורש בשאילתות</h3>
+      <pre class="cb accent">
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> select
+
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> s:
+
+    <span class="cm"># INNER JOIN — רק שורות עם התאמה</span>
+    stmt = (
+        <span class="fn">select</span>(<span class="cl">Customer</span>, <span class="cl">Order</span>)
+        .<span class="fn">join</span>(<span class="cl">Order</span>,
+              <span class="cl">Customer</span>.id == <span class="cl">Order</span>.customer_id)
+    )
+    <span class="kw">for</span> cust, ord_ <span class="kw">in</span> s.<span class="fn">execute</span>(stmt):
+        <span class="fn">print</span>(<span class="st">f"{cust.name} → {ord_.product}"</span>)
+
+    <span class="cm"># LEFT OUTER JOIN — גם לקוחות ללא הזמנות</span>
+    stmt = (
+        <span class="fn">select</span>(<span class="cl">Customer</span>, <span class="cl">Order</span>)
+        .<span class="fn">outerjoin</span>(<span class="cl">Order</span>,
+                    <span class="cl">Customer</span>.id == <span class="cl">Order</span>.customer_id)
+    )
+
+    <span class="cm"># סינון על פני שתי טבלאות</span>
+    stmt = (
+        <span class="fn">select</span>(<span class="cl">Customer</span>)
+        .<span class="fn">join</span>(<span class="cl">Order</span>)
+        .<span class="fn">where</span>(<span class="cl">Order</span>.price > <span class="nm">500</span>)
+        .<span class="fn">distinct</span>()   <span class="cm"># ← ללא כפילויות</span>
+    )
+      </pre>
+
+      <h3>04 — סוגי JOIN</h3>
+      <table class="sql-table">
+        <tr><th>מתודה</th><th>SQL</th><th>מחזיר</th></tr>
+        <tr><td><code>join()</code></td><td>INNER JOIN</td><td>רק שורות עם התאמה בשתי הטבלאות</td></tr>
+        <tr><td><code>outerjoin()</code></td><td>LEFT JOIN</td><td>כל שורות הטבלה הראשונה + התאמות</td></tr>
+        <tr><td><code>relationship</code></td><td>JOIN אוטומטי</td><td>גישה ישירה דרך ה-object</td></tr>
+      </table>
+
+      <div class="co g" style="margin-top:12px">
+        <strong>💡 כלל אצבע:</strong> הגדר תמיד <code>ForeignKey</code> + <code>relationship</code> במודלים. לשאילתות פשוטות — השתמש ב-<code>customer.orders</code>. לשאילתות מורכבות עם סינון — השתמש ב-<code>join().where()</code>.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══ SLIDE 9 — DEMO ═════════════════════════════════════════ -->
+<section class="slide" id="s9">
+  <div class="slide-num">09 — הדגמה אינטראקטיבית</div>
   <h2 class="slide-title">🎮 <span style="color:var(--accent)">הדגמה חיה</span> — מערכת ספרייה</h2>
   <div class="slide-sub">לחצו על הפעולות לראות כיצד CRUD עובד על "DB" מדומה</div>
 
@@ -828,9 +938,9 @@ stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class=
   </div>
 </section>
 
-<!-- ══ SLIDE 9 — FULL EXAMPLE ════════════════════════════════ -->
-<section class="slide" id="s9">
-  <div class="slide-num">09 — דוגמה מלאה</div>
+<!-- ══ SLIDE 10 — FULL EXAMPLE ════════════════════════════════ -->
+<section class="slide" id="s10">
+  <div class="slide-num">10 — דוגמה מלאה</div>
   <h2 class="slide-title">🏪 דוגמה מלאה: <span style="color:var(--teal)">חנות מוצרים</span></h2>
   <div class="slide-sub">מודל Product + כל פעולות CRUD בפונקציות נפרדות — לא קשורה לתרגיל הצ'אט</div>
 
@@ -918,9 +1028,9 @@ items = <span class="fn">get_by_category</span>(<span class="st">"אלקטרונ
   </div>
 </section>
 
-<!-- ══ SLIDE 10 — QUIZ ════════════════════════════════════════ -->
-<section class="slide quiz-section" id="s10">
-  <div class="slide-num">10 — שאלות הבנה ויישום</div>
+<!-- ══ SLIDE 11 — QUIZ ════════════════════════════════════════ -->
+<section class="slide quiz-section" id="s11">
+  <div class="slide-num">11 — שאלות הבנה ויישום</div>
   <h2 class="slide-title">🎯 <span style="color:var(--orange)">בדיקת הבנה</span></h2>
   <div class="slide-sub">ענו על כל השאלות — קבלו הסבר מיידי</div>
   <div class="score-bar">
@@ -931,9 +1041,10 @@ items = <span class="fn">get_by_category</span>(<span class="st">"אלקטרונ
   <div id="quizContainer"></div>
 </section>
 
-<!-- ══ SLIDE 11 — SUMMARY ════════════════════════════════════ -->
-<section class="slide" id="s11">
-  <div class="slide-num">11 — סיכום</div>
+
+<!-- ══ SLIDE 12 — SUMMARY ════════════════════════════════════ -->
+<section class="slide" id="s12">
+  <div class="slide-num">12 — סיכום</div>
   <h2 class="slide-title">📋 <span style="color:var(--accent)">סיכום</span> — SQLAlchemy CRUD</h2>
 
   <div dir="ltr" class="g4">

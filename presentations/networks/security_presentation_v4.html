@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מנגנון האבטחה בפרויקט הצ'אט</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap');
+
+:root {
+  --bg: #080e1d;
+  --bg2: #0d1530;
+  --card: #111c3a;
+  --card2: #162245;
+  --text: #e8f0ff;
+  --muted: #8fa4d8;
+  --accent: #4fc3f7;
+  --accent2: #7c5cfc;
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --red: #f87171;
+  --line: rgba(255,255,255,0.07);
+  --radius: 20px;
+  --shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Heebo', 'Arial Hebrew', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+/* ===== TOP NAV ===== */
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 28px;
+  background: rgba(8,14,29,0.97);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  gap: 16px;
+  z-index: 50;
+}
+
+.topnav-title {
+  font-size:1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.slide-tabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+  flex: 1;
+}
+
+.tab-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  font-family: inherit;
+  font-size:1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover { background: rgba(79,195,247,0.10); border-color: rgba(79,195,247,0.3); color: var(--text); }
+.tab-btn.active { background: linear-gradient(135deg,rgba(79,195,247,0.20),rgba(124,92,252,0.20)); border-color: rgba(79,195,247,0.45); color: var(--accent); font-weight: 700; }
+
+.progress-counter { font-size:1.2rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+/* ===== SLIDE AREA ===== */
+.slide-area {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 40px 20px;
+}
+
+.slide { display: none; animation: fadeUp 0.32s ease; max-width: 1080px; margin: 0 auto; }
+.slide.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== BOTTOM NAV ===== */
+.bottomnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 28px;
+  background: rgba(8,14,29,0.97);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  gap: 14px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-family: inherit;
+  font-size:1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nav-btn:hover:not(:disabled) { background: rgba(79,195,247,0.12); border-color: rgba(79,195,247,0.35); color: var(--accent); transform: scale(1.02); }
+.nav-btn:disabled { opacity: 0.22; cursor: not-allowed; }
+.nav-btn.primary { background: linear-gradient(135deg,rgba(79,195,247,0.18),rgba(124,92,252,0.18)); border-color: rgba(79,195,247,0.4); color: var(--accent); }
+
+.progress-bar-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 99px; transition: width 0.35s ease; }
+
+/* ===== SHARED COMPONENTS ===== */
+.slide-label { font-size:1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 6px; }
+.slide-title  { font-size: 2rem; font-weight: 900; line-height: 1.2; margin-bottom: 8px; }
+.slide-sub    { color: var(--muted); font-size:1.2rem; line-height: 1.75; margin-bottom: 22px; }
+
+.panel { background: linear-gradient(160deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+.card { background: linear-gradient(160deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.card h3 { font-size:1.2rem; font-weight: 700; margin-bottom: 10px; }
+.card p, .card li { color: var(--muted); line-height: 1.8; font-size:1.2rem; }
+.card ul { padding-right: 18px; }
+.card li { margin-bottom: 4px; }
+
+.note { padding: 13px 17px; border-radius: 14px; background: rgba(251,191,36,0.09); border: 1px solid rgba(251,191,36,0.22); color: #fff8d8; line-height: 1.7; font-size:1.2rem; }
+.note-blue { padding: 13px 17px; border-radius: 14px; background: rgba(79,195,247,0.08); border: 1px solid rgba(79,195,247,0.22); color: #d8f0ff; line-height: 1.7; font-size:1.2rem; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { padding: 5px 13px; border-radius: 999px; background: rgba(79,195,247,0.10); border: 1px solid rgba(79,195,247,0.22); font-size:1.2rem; font-weight: 600; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-card { background: linear-gradient(180deg,var(--card),var(--card2)); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.stat-number { font-size: 1.9rem; font-weight: 900; color: var(--accent); }
+.stat-label { color: var(--muted); font-size:1.2rem; line-height: 1.55; margin-top: 3px; }
+
+/* Architecture */
+.arch { display: grid; grid-template-columns: 1fr 55px 1.1fr 55px 1fr; gap: 10px; align-items: center; }
+.arch-box { background: linear-gradient(180deg,var(--card),var(--card2)); border: 1px solid var(--line); border-radius: 18px; padding: 16px; min-height: 130px; }
+.arch-box h4 { font-size:1.2rem; font-weight: 700; margin-bottom: 8px; }
+.arch-box li { color: var(--muted); font-size:1.2rem; line-height: 1.65; }
+.arch-box ul { padding-right: 14px; }
+.arch-arrow { text-align: center; font-size: 1.6rem; color: var(--accent); }
+.stack { display: grid; gap: 7px; }
+.layer { padding: 9px 11px; border-radius: 11px; font-size:1.2rem; line-height: 1.55; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.20); }
+.layer:nth-child(2) { background: rgba(79,195,247,0.08); border-color: rgba(79,195,247,0.20); }
+.layer:nth-child(3) { background: rgba(124,92,252,0.09); border-color: rgba(124,92,252,0.22); }
+.layer:nth-child(4) { background: rgba(251,191,36,0.09); border-color: rgba(251,191,36,0.20); }
+
+/* Code toggle */
+.code-toggle-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 15px; margin-top: 12px; background: rgba(9,17,38,0.85); border: 1px solid rgba(79,195,247,0.25); border-radius: 13px; color: var(--accent); font-family: inherit; font-size:1.2rem; font-weight: 600; cursor: pointer; text-align: right; transition: all 0.2s; }
+.code-toggle-btn:hover { background: rgba(9,17,38,1); border-color: rgba(79,195,247,0.5); }
+.code-toggle-btn .arr { margin-right: auto; transition: transform 0.25s; font-size:1.2rem; }
+.code-toggle-btn.open .arr { transform: rotate(180deg); }
+.code-block { display: none; }
+.code-block.open { display: block; }
+pre { white-space: pre-wrap; word-break: break-word; background: #060c1a; color: #c8d8ff; padding: 15px; border-radius: 0 0 13px 13px; border: 1px solid var(--line); border-top: none; direction: ltr; text-align: left; overflow-x: auto; font-size:1.2rem; line-height: 1.65; }
+code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; font-size:1.2rem; }
+
+/* ===== THEORY SECTION — per mechanism ===== */
+.theory-box {
+  background: linear-gradient(160deg, rgba(124,92,252,0.07), rgba(79,195,247,0.05));
+  border: 1px solid rgba(124,92,252,0.22);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-top: 16px;
+}
+.theory-box h3 { font-size:1.2rem; font-weight: 800; color: var(--accent2); margin-bottom: 14px; }
+
+.steps { display: grid; gap: 10px; counter-reset: step; }
+.step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+}
+.step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size:1.2rem;
+  font-weight: 900;
+  color: #fff;
+}
+.step-body { flex: 1; font-size:1.2rem; line-height: 1.7; color: var(--muted); }
+.step-body strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+/* Diagram inside theory */
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.flow-box {
+  flex: 1;
+  min-width: 100px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  background: linear-gradient(180deg,var(--card),var(--card2));
+  border: 1px solid var(--line);
+  font-size:1.2rem;
+  line-height: 1.55;
+  text-align: center;
+}
+.flow-box strong { display: block; font-size:1.2rem; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+.flow-arrow { color: var(--accent); font-size: 1.4rem; flex-shrink: 0; }
+
+/* ===== MINI QUIZ per slide ===== */
+.slide-quiz {
+  margin-top: 18px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(52,211,153,0.22);
+  background: rgba(52,211,153,0.05);
+  padding: 18px 20px;
+}
+.slide-quiz .quiz-label { font-size:1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--green); margin-bottom: 10px; }
+.slide-quiz .q-text { font-size:1.2rem; font-weight: 700; margin-bottom: 12px; line-height: 1.5; }
+.quiz-options { display: grid; gap: 8px; }
+.q-option {
+  padding: 10px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  font-family: inherit;
+  font-size:1.2rem;
+  cursor: pointer;
+  text-align: right;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.q-option:hover:not(.locked) { background: rgba(79,195,247,0.08); border-color: rgba(79,195,247,0.3); }
+.q-option .opt-letter { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size:1.2rem; flex-shrink: 0; }
+.q-option.correct { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.4); color: var(--text); }
+.q-option.correct .opt-letter { background: rgba(52,211,153,0.3); color: var(--green); }
+.q-option.wrong { background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.35); color: var(--muted); }
+.q-option.wrong .opt-letter { background: rgba(248,113,113,0.2); color: var(--red); }
+.q-option.locked { cursor: not-allowed; }
+.quiz-feedback { display: none; margin-top: 10px; padding: 11px 14px; border-radius: 11px; font-size:1.2rem; line-height: 1.65; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); color: #c8ffe8; }
+.quiz-feedback.err { background: rgba(248,113,113,0.10); border: 1px solid rgba(248,113,113,0.3); color: #ffd8d8; }
+.quiz-reset { margin-top: 10px; padding: 7px 16px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--muted); font-family: inherit; font-size:1.2rem; cursor: pointer; display: none; }
+.quiz-reset.show { display: inline-block; }
+
+/* Summary */
+.summary-list { list-style: none; display: grid; gap: 11px; padding: 0; }
+.summary-list li { padding: 13px 17px; border-radius: 13px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); line-height: 1.7; color: var(--muted); font-size:1.2rem; }
+.summary-list li strong { color: var(--accent); }
+
+.flow5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
+.mini-card { padding: 13px; border-radius: 14px; background: linear-gradient(180deg,var(--card),var(--card2)); border: 1px solid var(--line); min-height: 100px; font-size:1.2rem; color: var(--muted); line-height: 1.6; }
+.mini-card strong { display: block; margin-bottom: 7px; color: var(--accent); font-size:1.2rem; }
+
+.task-card { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,0.03); }
+.task-card strong { display: block; margin-bottom: 7px; color: var(--accent2); font-size:1.2rem; }
+.task-card p { color: var(--muted); font-size:1.2rem; line-height: 1.75; }
+
+.timeline { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 14px 0; }
+.t-step { padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(180deg,var(--card),var(--card2)); font-size:1.2rem; color: var(--muted); line-height: 1.6; }
+.t-step strong { display: block; margin-bottom: 5px; color: var(--text); }
+
+.hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; align-items: start; margin-bottom: 20px; }
+
+@media (max-width:880px) {
+  .hero-grid,.grid2,.grid3,.arch,.flow5,.timeline { grid-template-columns:1fr; }
+  .arch-arrow { display:none; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .slide-area { padding:18px; }
+  .slide-tabs { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOP NAV -->
+<header class="topnav">
+  <div class="topnav-title">🔒 אבטחת מערכת הצ'אט</div>
+  <div class="slide-tabs" id="slideTabs"></div>
+  <div class="progress-counter" id="progressCounter">1 / 9</div>
+</header>
+
+<!-- SLIDES -->
+<div class="slide-area">
+
+<!-- ══════════════════════════════════════════
+     SLIDE 1 — פתיחה
+═══════════════════════════════════════════ -->
+<div class="slide active" data-title="פתיחה">
+  <div class="slide-label">מבוא</div>
+  <div class="slide-title">אבטחת מערכת הצ'אט —<br>לא מנגנון אחד, אלא שכבות</div>
+  <div class="slide-sub">מערכת מאובטחת לא נשענת על טריק בודד. היא בנויה משכבות: הגנה על הסיסמאות, הגנה על התעבורה ברשת, זיהוי נכון של המשתמש, והגנה על מידע רגיש שנשמר במסד הנתונים.</div>
+  <div class="hero-grid">
+    <div class="panel">
+      <p style="color:var(--muted);line-height:1.85;font-size:1.2rem;">כל מנגנון אבטחה פותר בעיה ספציפית. ביחד הם יוצרים <strong>Defense in Depth</strong> — הגנה שלא תיפול אם שכבה אחת נפרצת.</p>
+      <div class="chips">
+        <span class="chip">bcrypt</span><span class="chip">TLS</span><span class="chip">JWT</span><span class="chip">Fernet</span><span class="chip">Defense in Depth</span>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-number">4</div><div class="stat-label">שכבות אבטחה משלימות</div></div>
+      <div class="stat-card"><div class="stat-number">2</div><div class="stat-label">סוגי מידע: בתעבורה ובשמירה</div></div>
+      <div class="stat-card"><div class="stat-number">1</div><div class="stat-label">עיקרון: לא ממציאים הצפנה לבד</div></div>
+      <div class="stat-card"><div class="stat-number">∞</div><div class="stat-label">אפשרויות הרחבה עתידיות</div></div>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="card"><h3>❌ בלי bcrypt</h3><p>אם מסד הנתונים נחשף, כל הסיסמאות ניתנות לקריאה מיידית.</p></div>
+    <div class="card"><h3>❌ בלי TLS</h3><p>תוקף שמאזין לרשת יכול לקרוא login, הודעות ופרטים רגישים.</p></div>
+    <div class="card"><h3>❌ בלי JWT</h3><p>קשה לנהל זהות והרשאות בצורה מסודרת כשהמערכת גדלה.</p></div>
+  </div>
+  <div class="note" style="margin-top:14px;">💡 <strong>רעיון מרכזי:</strong> כל מנגנון מגן על בעיה אחרת. לכן צריך לחשוב בשכבות ולא בפתרון יחיד.</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 2 — ארכיטקטורה
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="ארכיטקטורה">
+  <div class="slide-label">תרשים מערכת</div>
+  <div class="slide-title">ארכיטקטורת הגנת המידע</div>
+  <div class="slide-sub">מה עובר איפה, ואיזה מנגנון מגן על כל שכבה</div>
+  <div class="panel">
+    <div class="arch">
+      <div class="arch-box">
+        <h4>👤 לקוח</h4>
+        <ul>
+          <li>username + password</li>
+          <li>JWT token לאחר login</li>
+          <li>הודעות צ'אט</li>
+          <li>בקשות לשמירה/קריאה</li>
+        </ul>
+      </div>
+      <div class="arch-arrow">⟷</div>
+      <div class="arch-box">
+        <h4>🔐 תעבורה מאובטחת</h4>
+        <div class="stack">
+          <div class="layer"><strong>TLS</strong><br>מצפין את התקשורת</div>
+          <div class="layer"><strong>JWT</strong><br>נשלח לצורך זיהוי</div>
+        </div>
+      </div>
+      <div class="arch-arrow">⟷</div>
+      <div class="arch-box">
+        <h4>🖥️ שרת + מסד נתונים</h4>
+        <div class="stack">
+          <div class="layer"><strong>bcrypt</strong> — hash סיסמאות</div>
+          <div class="layer"><strong>JWT Verify</strong> — אימות token</div>
+          <div class="layer"><strong>Fernet</strong> — שדות רגישים</div>
+          <div class="layer"><strong>App Logic</strong> — הרשאות</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="timeline">
+    <div class="t-step"><strong>Passwords ← bcrypt</strong>מגן על סיסמאות אם מסד הנתונים נגנב.</div>
+    <div class="t-step"><strong>Traffic ← TLS</strong>מגן על מה שעובר ברשת בין לקוח לשרת.</div>
+    <div class="t-step"><strong>Identity ← JWT</strong>מזהה מי המשתמש ומה התוקף של ההתחברות.</div>
+  </div>
+  <div class="note" style="margin-top:4px;">🏛️ <strong>Defense in Depth:</strong> אם שכבה אחת נפרצת — שאר השכבות ממשיכות להגן.</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 3 — bcrypt
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="bcrypt">
+  <div class="slide-label">שלב 7A</div>
+  <div class="slide-title">bcrypt — הגנה על סיסמאות</div>
+  <div class="slide-sub">לא לשמור סיסמאות כטקסט גלוי — אלא כ-hash חד-כיווני שלא ניתן לפענח</div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>🎯 המטרה</h3>
+      <p>גם אם קובץ ה-DB דולף, הסיסמאות לא קריאות ישירות. שומרים hash — לא הסיסמה עצמה.</p>
+    </div>
+    <div class="card">
+      <h3>❓ למה זה נדרש?</h3>
+      <ul>
+        <li>מסד נתונים עלול להיחשף</li>
+        <li>סיסמה היא מידע שאסור לשחזר</li>
+        <li>בדיקת login — מול hash, לא טקסט</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- THEORY -->
+  <div class="theory-box">
+    <h3>🔬 איך bcrypt עובד — הסבר מורחב</h3>
+    <p style="color:var(--muted);font-size:1.2rem;margin-bottom:14px;">bcrypt הוא אלגוריתם hashing חד-כיווני. הוא לא מצפין — הוא ממיר את הסיסמה לייצוג בלתי-הפיך.</p>
+
+    <div class="flow-row">
+      <div class="flow-box"><strong>קלט</strong>סיסמה: "1234"</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>Salt</strong>מחרוזת אקראית ייחודית</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>Hashing</strong>אלגוריתם bcrypt (12 rounds)</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>פלט</strong>$2b$12$abc...xyz (60 תווים)</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Salt אקראי</strong>
+          bcrypt מייצר מחרוזת אקראית (salt) לכל סיסמה. כך שתי משתמשים עם אותה סיסמה מקבלים hash שונה לחלוטין — מה שמנטרל מתקפות rainbow table.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Cost factor — מכוון איטי</strong>
+          bcrypt מבצע את החישוב 2<sup>cost</sup> פעמים (ברירת מחדל: 12 rounds = 4,096 איטרציות). זה לוקח ~100ms למחשב רגיל. לתוקף שמנסה מיליוני סיסמאות — זה הופך brute-force לבלתי-כדאי.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>בדיקת login — השוואה ולא פענוח</strong>
+          כשמשתמש מתחבר, bcrypt לוקח את הסיסמה שהוזנה + את ה-salt מה-hash השמור, מחשב מחדש, ומשווה. אין פענוח — יש <em>hash → hash</em>.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>חד-כיווני לחלוטין</strong>
+          אין דרך מתמטית לשחזר את הסיסמה המקורית מה-hash. זו תכונה מובנית — ולא באג.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="code-toggle-btn" onclick="toggleCode(this)">
+    <span>💻 דוגמת קוד — bcrypt</span>
+    <span class="arr">▼</span>
+  </button>
+  <div class="code-block">
+<pre>import bcrypt
+
+# הרשמה — יצירת hash מהסיסמה
+password = "1234"
+hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+# hashed נשמר במסד הנתונים (לא "1234"!)
+# לדוגמה: b'$2b$12$EixZaYVK1fsbw1ZfbX3OXe.PkAbm...'
+
+# התחברות — בדיקת התאמה (ולא פענוח)
+entered_password = "1234"
+is_valid = bcrypt.checkpw(entered_password.encode("utf-8"), hashed)
+# is_valid == True אם הסיסמה נכונה</pre>
+  </div>
+
+  <!-- MINI QUIZ -->
+  <div class="slide-quiz">
+    <div class="quiz-label">🧠 שאלת הבנה</div>
+    <div class="q-text">שני משתמשים בחרו את אותה סיסמה "sunshine123". האם ה-hash שנשמר עבורם במסד הנתונים יהיה זהה?</div>
+    <div class="quiz-options" id="q_bcrypt">
+      <button class="q-option" onclick="checkAnswer(this,'q_bcrypt',false,'כמעט בטוח שלא — bcrypt מוסיף salt אקראי ייחודי לכל משתמש. גם עם אותה סיסמה, ה-hash יהיה שונה לחלוטין.')">
+        <span class="opt-letter">א</span><span>כן — אותה סיסמה תמיד מייצרת אותו hash</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_bcrypt',true,'נכון מאוד! bcrypt מוסיף salt אקראי ייחודי לכל hash. לכן שני משתמשים עם אותה סיסמה יקבלו hash שונה לחלוטין — וזה בדיוק מה שמנטרל rainbow table attacks.')">
+        <span class="opt-letter">ב</span><span>לא — bcrypt מוסיף salt אקראי, כך שכל hash ייחודי</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_bcrypt',false,'לא בדיוק. הסיסמאות אמנם קשורות, אבל ה-salt הוא אקראי לחלוטין ולא תלוי בשם המשתמש.')">
+        <span class="opt-letter">ג</span><span>תלוי בשם המשתמש — hash שונה לפי username</span>
+      </button>
+    </div>
+    <div class="quiz-feedback" id="fb_q_bcrypt"></div>
+    <button class="quiz-reset" id="reset_q_bcrypt" onclick="resetQuiz('q_bcrypt')">נסה שוב ↺</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 4 — TLS
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="TLS">
+  <div class="slide-label">שלב 7B</div>
+  <div class="slide-title">TLS — הגנה על התעבורה</div>
+  <div class="slide-sub">הצפנת ערוץ התקשורת בין הלקוח לשרת — כדי שאף מאזין לא יוכל לקרוא את המידע</div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>🎯 המטרה</h3>
+      <p>להצפין את המידע בזמן המעבר ברשת: login, הודעות, tokens וכל מידע אחר.</p>
+    </div>
+    <div class="card">
+      <h3>❓ למה זה נדרש?</h3>
+      <ul>
+        <li>הודעות ברשת יכולות להיצפות (Man in the Middle)</li>
+        <li>גם JWT וגם password עוברים בתעבורה</li>
+        <li>ללא TLS, מאזין לרשת יקרא הכול</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="theory-box">
+    <h3>🔬 איך TLS עובד — הסבר מורחב</h3>
+    <p style="color:var(--muted);font-size:1.2rem;margin-bottom:14px;">TLS הוא פרוטוקול שמקים <em>ערוץ מאובטח</em> בין הלקוח לשרת. הוא משלב שני סוגי הצפנה: אסימטרית (לחילופי מפתחות) וסימטרית (לתעבורה עצמה).</p>
+
+    <div class="flow-row">
+      <div class="flow-box"><strong>לקוח</strong>Client Hello</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>שרת</strong>Certificate + Public Key</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>לקוח</strong>מאמת cert + מחשב Session Key</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>שניהם</strong>תעבורה מוצפנת בסימטרי</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>TLS Handshake — לחיצת יד</strong>
+          הלקוח שולח Client Hello עם רשימת אלגוריתמים שתומך בהם. השרת בוחר אלגוריתם ושולח בחזרה Server Hello.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Certificate — תעודת זהות של השרת</strong>
+          השרת שולח Certificate חתום על ידי רשות מהימנה (CA). הלקוח מאמת שאכן מדובר בשרת הנכון ולא בתוקף שמתחזה.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Key Exchange — חילוף מפתחות (הצפנה אסימטרית)</strong>
+          הלקוח מייצר Session Key, מצפין אותו עם ה-Public Key של השרת ושולח. רק השרת יכול לפענח עם ה-Private Key שלו. כעת שניהם יודעים את Session Key — בלי לשלוח אותו בגלוי.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Symmetric Encryption — הצפנה סימטרית לתעבורה</strong>
+          מכאן והלאה, כל התעבורה מוצפנת עם ה-Session Key הסימטרי (למשל AES). הצפנה סימטרית הרבה יותר מהירה — לכן משתמשים בה לנתונים בפועל.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="code-toggle-btn" onclick="toggleCode(this)">
+    <span>💻 זרימת TLS Handshake</span>
+    <span class="arr">▼</span>
+  </button>
+  <div class="code-block">
+<pre>Client ──── ClientHello ──────────────────────► Server
+             (TLS version, cipher suites)
+
+Client ◄─── ServerHello + Certificate ───────── Server
+             (chosen cipher, public key)
+
+Client ──── ClientKeyExchange ────────────────► Server
+             (Session Key, encrypted with Server's Public Key)
+
+Client ◄════ Encrypted Application Data ══════► Server
+             (all traffic now encrypted with Session Key)</pre>
+  </div>
+
+  <div class="slide-quiz">
+    <div class="quiz-label">🧠 שאלת הבנה</div>
+    <div class="q-text">מדוע TLS משתמש גם בהצפנה אסימטרית (RSA/Diffie-Hellman) וגם בהצפנה סימטרית (AES), ולא רק בסוג אחד?</div>
+    <div class="quiz-options" id="q_tls">
+      <button class="q-option" onclick="checkAnswer(this,'q_tls',false,'לא מדויק — AES מהיר בהרבה מ-RSA. כך שהסיבה אינה מהירות ה-Handshake.')">
+        <span class="opt-letter">א</span><span>כי AES מהיר יותר בשלב ה-Handshake</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_tls',false,'לא — ה-Certificate משמש לאימות זהות השרת, לא לביצוע ההצפנה של הנתונים.')">
+        <span class="opt-letter">ב</span><span>כי ה-Certificate לא יכול להצפין נתונים</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_tls',true,'מצוין! הצפנה אסימטרית (RSA) בטוחה לחילופי מפתח אבל איטית מדי לכמויות גדולות. לכן היא משמשת רק להעביר Session Key בצורה בטוחה — ואז ה-Session Key הסימטרי (AES) מבצע את ההצפנה המהירה לכל שאר הנתונים.')">
+        <span class="opt-letter">ג</span><span>הצפנה אסימטרית מאובטחת לחילופי מפתחות אבל איטית — סימטרית מהירה לתעבורה שוטפת</span>
+      </button>
+    </div>
+    <div class="quiz-feedback" id="fb_q_tls"></div>
+    <button class="quiz-reset" id="reset_q_tls" onclick="resetQuiz('q_tls')">נסה שוב ↺</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 5 — JWT
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="JWT">
+  <div class="slide-label">שלב 8</div>
+  <div class="slide-title">JWT — ניהול זהות משתמש</div>
+  <div class="slide-sub">לאחר login מוצלח, השרת יוצר token חתום. הלקוח שולח אותו בכל פעולה שמחייבת זיהוי</div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>🎯 המטרה</h3>
+      <p>לאחר login — לזהות את המשתמש בכל בקשה עתידית בלי לשלוח שוב סיסמה.</p>
+    </div>
+    <div class="card">
+      <h3>❓ למה זה נדרש?</h3>
+      <ul>
+        <li>להפריד בין login לבין פעולות בהמשך</li>
+        <li>לנהל זהות משתמש ב-API</li>
+        <li>לבדוק תוקף התחברות ו-expiration</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="theory-box">
+    <h3>🔬 איך JWT עובד — הסבר מורחב</h3>
+    <p style="color:var(--muted);font-size:1.2rem;margin-bottom:14px;">JWT = JSON Web Token. הוא מורכב משלושה חלקים מופרדים בנקודה: <code>Header.Payload.Signature</code></p>
+
+    <div class="flow-row">
+      <div class="flow-box"><strong>Header</strong>{"alg":"HS256","typ":"JWT"}</div>
+      <div class="flow-arrow">.</div>
+      <div class="flow-box"><strong>Payload</strong>{"username":"alice","exp":...}</div>
+      <div class="flow-arrow">.</div>
+      <div class="flow-box"><strong>Signature</strong>HMAC(header+payload, SECRET_KEY)</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Header</strong>
+          מכיל מידע על סוג ה-token ואלגוריתם החתימה. מקודד ב-Base64 (לא מוצפן — ניתן לקריאה).
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Payload — המידע</strong>
+          מכיל claims: מי המשתמש (<code>username</code>), מתי פג תוקף (<code>exp</code>), הרשאות וכו'. גם זה מקודד ב-Base64 ולא מוצפן — אל תשים בו סיסמאות!
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Signature — החתימה</strong>
+          השרת מחשב HMAC על Header+Payload עם SECRET_KEY. אם מישהו ישנה את ה-Payload, החתימה תיפסל — השרת יזהה את הזיוף.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Stateless — השרת לא שומר sessions</strong>
+          כל המידע הנדרש נמצא בתוך ה-token. השרת רק מאמת את החתימה ובודק תוקף — אין צורך בשאילתת DB לכל בקשה.
+        </div>
+      </div>
+    </div>
+    <div class="note-blue" style="margin-top:12px;">⚠️ JWT לא מוצפן — הוא חתום. כל אחד יכול לקרוא את ה-Payload. לכן הוא חייב לנסוע מעל TLS, ואסור לשמור בו מידע רגיש.</div>
+  </div>
+
+  <button class="code-toggle-btn" onclick="toggleCode(this)">
+    <span>💻 דוגמת קוד — JWT</span>
+    <span class="arr">▼</span>
+  </button>
+  <div class="code-block">
+<pre>import jwt, datetime
+
+# יצירת token בעת login מוצלח
+token = jwt.encode(
+    {
+        "username": "alice",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    },
+    SECRET_KEY,
+    algorithm="HS256"
+)
+# token נשלח ללקוח — הוא ישמור אותו ויצרף לכל בקשה
+
+# אימות token בכל בקשה מוגנת (בשרת)
+try:
+    payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    username = payload["username"]   # זהות המשתמש
+except jwt.ExpiredSignatureError:
+    print("Token פג תוקפו")
+except jwt.InvalidTokenError:
+    print("Token לא תקין — אולי זויף")</pre>
+  </div>
+
+  <div class="slide-quiz">
+    <div class="quiz-label">🧠 שאלת הבנה</div>
+    <div class="q-text">תוקף שיירט JWT token יכול לקרוא את תוכן ה-Payload (Username, תוקף וכו'). מה הוא <strong>לא</strong> יכול לעשות?</div>
+    <div class="quiz-options" id="q_jwt">
+      <button class="q-option" onclick="checkAnswer(this,'q_jwt',false,'לא נכון — הוא בהחלט יכול לקרוא את ה-Payload, כי הוא מקודד ב-Base64 ולא מוצפן.')">
+        <span class="opt-letter">א</span><span>לקרוא את שם המשתמש ב-Payload</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_jwt',true,'נכון! הוא יכול לשנות את ה-Payload אבל לא יוכל לחשב מחדש חתימה תקינה בלי ה-SECRET_KEY. השרת יגלה את הזיוף כשיאמת את ה-Signature.')">
+        <span class="opt-letter">ב</span><span>לזייף את ה-Payload ולחתום בחתימה תקינה (בלי SECRET_KEY)</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_jwt',false,'הוא יכול לנסות להשתמש בו כל עוד הוא בתוקף. לכן חשוב להגדיר exp קצר ולהשתמש ב-TLS כדי שלא ייירט.')">
+        <span class="opt-letter">ג</span><span>לשלוח את ה-token לשרת ולהתחזות למשתמש</span>
+      </button>
+    </div>
+    <div class="quiz-feedback" id="fb_q_jwt"></div>
+    <button class="quiz-reset" id="reset_q_jwt" onclick="resetQuiz('q_jwt')">נסה שוב ↺</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 6 — Fernet
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="Fernet">
+  <div class="slide-label">שלב 9</div>
+  <div class="slide-title">Fernet — הצפנת מידע רגיש</div>
+  <div class="slide-sub">הגנה על שדות רגישים שנשמרים במסד הנתונים — הצפנה הפיכה שניתן לשחזר בעת הצורך</div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>🎯 המטרה</h3>
+      <p>להגן על שדות רגישים (private note, email וכו') כך שגם אם ה-DB נחשף — המידע לא קריא ישירות.</p>
+    </div>
+    <div class="card">
+      <h3>❓ למה זה נדרש?</h3>
+      <ul>
+        <li>DB דלף → מידע רגיש לא קריא</li>
+        <li>bcrypt לא מתאים — אנחנו צריכים לקרוא את המידע בחזרה</li>
+        <li>הצפנה סימטרית: מהירה ומאובטחת</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="theory-box">
+    <h3>🔬 איך Fernet עובד — הסבר מורחב</h3>
+    <p style="color:var(--muted);font-size:1.2rem;margin-bottom:14px;">Fernet היא ספרייה להצפנה סימטרית — אותו מפתח משמש להצפנה ולפענוח. היא משתמשת ב-AES-128-CBC + HMAC לאימות שלמות.</p>
+
+    <div class="flow-row">
+      <div class="flow-box"><strong>טקסט גלוי</strong>"my private note"</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>Key + IV</strong>256-bit key, IV אקראי</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>AES-CBC</strong>הצפנת בלוקים</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>HMAC</strong>חתימה לאימות</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box"><strong>Token</strong>Base64 מוצפן</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>המפתח — 256 ביט (32 בייטים)</strong>
+          Fernet מייצר מפתח אקראי 256-bit. <strong>המפתח הוא הסוד האמיתי</strong> — מי שמחזיק אותו יכול לפענח הכול. שומרים אותו מחוץ לקוד ב-environment variable.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>IV — Initialization Vector אקראי</strong>
+          Fernet מוסיף IV אקראי לכל הצפנה. כמו ה-salt ב-bcrypt — מבטיח שאותו טקסט מוצפן יניב תוצאה שונה בכל פעם.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>AES-128-CBC — ההצפנה עצמה</strong>
+          המידע מחולק לבלוקים של 128 ביט ומוצפן בשרשרת (CBC = Cipher Block Chaining). כל בלוק תלוי בבלוק שלפניו.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>HMAC-SHA256 — אימות שלמות</strong>
+          Fernet מחשב HMAC על הנתונים המוצפנים. בעת פענוח, מאמת שהנתונים לא שונו — מגן מפני tampering.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Timestamp — תוקף אופציונלי</strong>
+          ה-token כולל timestamp של יצירה. ניתן להגדיר TTL (time-to-live) כך שה-token יפוג לאחר זמן מסוים.
+        </div>
+      </div>
+    </div>
+    <div class="note-blue" style="margin-top:12px;">🆚 <strong>bcrypt vs Fernet:</strong> bcrypt = חד-כיווני (לסיסמאות). Fernet = דו-כיווני (למידע שצריך לשחזר). לעולם אל תצפין סיסמאות עם Fernet!</div>
+  </div>
+
+  <button class="code-toggle-btn" onclick="toggleCode(this)">
+    <span>💻 דוגמת קוד — Fernet</span>
+    <span class="arr">▼</span>
+  </button>
+  <div class="code-block">
+<pre>from cryptography.fernet import Fernet
+import os
+
+# יצירת מפתח — פעם אחת, שמור ב-env variable
+key = Fernet.generate_key()
+# key = b'abc123...' (32 bytes, base64url encoded)
+fernet = Fernet(key)
+
+# הצפנה — לפני שמירה במסד
+plaintext = "my private note"
+encrypted = fernet.encrypt(plaintext.encode("utf-8"))
+# encrypted = b'gAAAAABh...' — זה מה ששמור בDB
+
+# פענוח — בעת קריאה מה-DB
+decrypted = fernet.decrypt(encrypted).decode("utf-8")
+# decrypted == "my private note"
+
+# שימוש נכון — מפתח מ-environment
+KEY = os.environ.get("FERNET_KEY")
+fernet = Fernet(KEY)</pre>
+  </div>
+
+  <div class="slide-quiz">
+    <div class="quiz-label">🧠 שאלת הבנה</div>
+    <div class="q-text">תוקף גנב את קובץ ה-DB של המערכת. הוא רואה שדות מוצפנים עם Fernet. מה הוא <strong>חייב</strong> כדי לפענח את המידע?</div>
+    <div class="quiz-options" id="q_fernet">
+      <button class="q-option" onclick="checkAnswer(this,'q_fernet',false,'לא מספיק — גם עם הקוד, בלי המפתח הוא לא יכול לפענח. AES-256 עם מפתח אקראי 256-bit אינו ניתן לפריצה בכוח גס.')">
+        <span class="opt-letter">א</span><span>את קוד המקור של השרת</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_fernet',true,'בדיוק! הכוח של Fernet הוא שגם עם ה-DB וגם עם הקוד — בלי המפתח אין פענוח. לכן המפתח חייב להישמר בנפרד לחלוטין (env variable, secrets manager) ולא בתוך הקוד או ה-DB.')">
+        <span class="opt-letter">ב</span><span>את מפתח ה-Fernet (FERNET_KEY)</span>
+      </button>
+      <button class="q-option" onclick="checkAnswer(this,'q_fernet',false,'לא — ה-IV מוטמע בתוך ה-token המוצפן ואינו סוד. בלעדי המפתח, ה-IV לא מועיל.')">
+        <span class="opt-letter">ג</span><span>את ה-IV של כל שדה</span>
+      </button>
+    </div>
+    <div class="quiz-feedback" id="fb_q_fernet"></div>
+    <button class="quiz-reset" id="reset_q_fernet" onclick="resetQuiz('q_fernet')">נסה שוב ↺</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 7 — השוואת מנגנונים
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="השוואה">
+  <div class="slide-label">השוואה</div>
+  <div class="slide-title">איזה מנגנון לאיזה בעיה?</div>
+  <div class="slide-sub">המפתח הוא התאמה נכונה בין הבעיה לכלי — שימוש בכלי הלא-נכון הוא בעיית אבטחה בפני עצמה</div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <h3>bcrypt</h3>
+      <ul>
+        <li>✅ הגנה על סיסמאות</li>
+        <li>✅ חד-כיווני — לא ניתן לפענח</li>
+        <li>❌ לא מתאים לנתונים שצריך לקרוא</li>
+        <li>❌ לא מתאים לתעבורה</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>TLS</h3>
+      <ul>
+        <li>✅ הגנה על תעבורת רשת</li>
+        <li>✅ מצפין את הערוץ כולו</li>
+        <li>❌ לא שומר מידע לאחר התקשורת</li>
+        <li>❌ לא מזהה משתמשים</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>JWT</h3>
+      <ul>
+        <li>✅ זיהוי משתמש לאחר login</li>
+        <li>✅ Stateless — אין שמירת sessions</li>
+        <li>❌ לא מצפין — רק חותם</li>
+        <li>❌ חייב לנסוע מעל TLS</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Fernet</h3>
+      <ul>
+        <li>✅ הצפנת שדות רגישים ב-DB</li>
+        <li>✅ דו-כיווני — ניתן לפענח</li>
+        <li>❌ לא מתאים לסיסמאות</li>
+        <li>❌ מי שמחזיק מפתח — יפענח הכול</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="flow5">
+      <div class="mini-card"><strong>bcrypt</strong>מתאים רק לסיסמאות. לא נועד לפענוח.</div>
+      <div class="mini-card"><strong>TLS</strong>מגן על התעבורה. מצפין הכל שעובר ברשת.</div>
+      <div class="mini-card"><strong>JWT</strong>מזהה משתמש, מנהל תוקף, Stateless.</div>
+      <div class="mini-card"><strong>Fernet</strong>שדות רגישים שצריך לשחזר בעתיד.</div>
+      <div class="mini-card"><strong>כולם יחד</strong>Defense in Depth — שכבות הגנה משלימות.</div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:14px;">🏆 <strong>עיקרון הכי חשוב:</strong> לא ממציאים הצפנה לבד. משתמשים בספריות מוכחות ומתאימים את הכלי לבעיה.</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 8 — שאלות הבנה כלליות
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="שאלות הבנה">
+  <div class="slide-label">מבחן הבנה</div>
+  <div class="slide-title">שאלות הבנה — כלליות</div>
+  <div class="slide-sub">שאלות שמחברות בין כל המנגנונים — לחצו על שאלה לחשיפת תשובה</div>
+
+  <div class="panel">
+    <div style="display:grid;gap:10px;">
+
+      <button class="q-option" style="font-size:1.2rem;" onclick="toggleOldAnswer(this)">
+        <span class="opt-letter">?</span>
+        <span>מה יקרה אם המערכת תשתמש ב-JWT אבל לא ב-TLS?</span>
+      </button>
+      <div class="answer" style="display:none;padding:12px 16px;border-radius:0 0 14px 14px;background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-top:none;color:var(--text);font-size:1.2rem;line-height:1.7;margin-top:-6px;">
+        תוקף שמאזין לרשת יוכל לגנוב את ה-JWT token. מכיוון שה-token מזהה את המשתמש, התוקף יוכל להתחזות אליו עד שפג תוקפו. JWT לא מחליף TLS — הוא חייב לנסוע בתוך ערוץ מוצפן.
+      </div>
+
+      <button class="q-option" style="font-size:1.2rem;" onclick="toggleOldAnswer(this)">
+        <span class="opt-letter">?</span>
+        <span>למה bcrypt מתאים לסיסמאות אבל לא מתאים ל-private note?</span>
+      </button>
+      <div class="answer" style="display:none;padding:12px 16px;border-radius:0 0 14px 14px;background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-top:none;color:var(--text);font-size:1.2rem;line-height:1.7;margin-top:-6px;">
+        bcrypt הוא hash חד-כיווני — לא ניתן לשחזר את הטקסט המקורי. לסיסמה זה מושלם כי אנחנו רק צריכים לבדוק התאמה. אבל private note צריך להיות קריא בחזרה — לכן משתמשים ב-Fernet שמאפשר פענוח.
+      </div>
+
+      <button class="q-option" style="font-size:1.2rem;" onclick="toggleOldAnswer(this)">
+        <span class="opt-letter">?</span>
+        <span>הציעו שדה נוסף שכדאי להצפין עם Fernet — ולמה?</span>
+      </button>
+      <div class="answer" style="display:none;padding:12px 16px;border-radius:0 0 14px 14px;background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-top:none;color:var(--text);font-size:1.2rem;line-height:1.7;margin-top:-6px;">
+        לדוגמה: כתובת email, מספר טלפון, תוכן הודעות פרטיות, מספר ת"ז. כל שדה שהוא מידע רגיש אישי, שצריך להיות קריא בעתיד (לכן לא hash), ושנרצה להגן עליו גם אם ה-DB דולף.
+      </div>
+
+      <button class="q-option" style="font-size:1.2rem;" onclick="toggleOldAnswer(this)">
+        <span class="opt-letter">?</span>
+        <span>מה ההבדל בין הצפנה סימטרית לאסימטרית?</span>
+      </button>
+      <div class="answer" style="display:none;padding:12px 16px;border-radius:0 0 14px 14px;background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-top:none;color:var(--text);font-size:1.2rem;line-height:1.7;margin-top:-6px;">
+        <strong>סימטרית</strong> (למשל AES, Fernet): אותו מפתח מצפין ומפענח. מהיר אבל מחייב שניהם להחזיק מפתח משותף. <strong>אסימטרית</strong> (למשל RSA): זוג מפתחות Public+Private. Public מצפין, Private מפענח. בטוח לחילופי מפתח אבל איטי. TLS משתמש בשניהם.
+      </div>
+
+      <button class="q-option" style="font-size:1.2rem;" onclick="toggleOldAnswer(this)">
+        <span class="opt-letter">?</span>
+        <span>מה זה "Defense in Depth" ולמה זה חשוב?</span>
+      </button>
+      <div class="answer" style="display:none;padding:12px 16px;border-radius:0 0 14px 14px;background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-top:none;color:var(--text);font-size:1.2rem;line-height:1.7;margin-top:-6px;">
+        הגנה בשכבות — אם שכבת אבטחה אחת נפרצת, שאר השכבות ממשיכות להגן. לדוגמה: אם TLS מתפשר, עדיין bcrypt מגן על הסיסמאות ו-Fernet על המידע הרגיש. אין נקודת כשל אחת שמפילה את הכול.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 9 — סיכום ויישום
+═══════════════════════════════════════════ -->
+<div class="slide" data-title="סיכום">
+  <div class="slide-label">סיכום</div>
+  <div class="slide-title">מה חשוב לזכור</div>
+  <div class="slide-sub">ארבעה מנגנונים, ארבע בעיות שונות, הגנה אחת משולבת</div>
+
+  <ul class="summary-list">
+    <li>🔑 <strong>bcrypt</strong> — hash חד-כיווני לסיסמאות. לא ניתן לפענח. Salt + Cost factor.</li>
+    <li>🌐 <strong>TLS</strong> — מצפין את ערוץ התקשורת. Handshake ← Session Key ← AES.</li>
+    <li>🪪 <strong>JWT</strong> — token חתום לזיהוי משתמש. Header.Payload.Signature. חייב על TLS.</li>
+    <li>🗄️ <strong>Fernet</strong> — AES-128-CBC + HMAC לשדות רגישים. דו-כיווני. מפתח = הסוד.</li>
+  </ul>
+
+  <div style="margin-top:18px;">
+    <div class="slide-label" style="margin-bottom:10px;">שאלות יישום לתרגול</div>
+    <div class="grid2">
+      <div class="task-card"><strong>יישום 1</strong><p>כתבו במילים שלכם מה יקרה אם המערכת תשתמש ב-JWT אבל לא ב-TLS.</p></div>
+      <div class="task-card"><strong>יישום 2</strong><p>הסבירו למה bcrypt מתאים לסיסמאות אבל לא מתאים ל-private note.</p></div>
+      <div class="task-card"><strong>יישום 3</strong><p>הציעו שדה אחד נוסף שצריך להצפין עם Fernet והסבירו למה.</p></div>
+      <div class="task-card"><strong>יישום 4</strong><p>ציירו זרימת login מלאה: לקוח ← שרת ← מסד נתונים, וציינו איפה פועל כל מנגנון אבטחה.</p></div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:14px;">🏆 <strong>עיקרון הכי חשוב:</strong> לא ממציאים הצפנה לבד. משתמשים בספריות מוכחות ומתאימים את הכלי לבעיה.</div>
+</div>
+
+</div><!-- end slide-area -->
+
+<!-- BOTTOM NAV -->
+<footer class="bottomnav">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled>→ קודם</button>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressFill" style="width:11.1%"></div>
+  </div>
+  <button class="nav-btn primary" id="nextBtn" onclick="navigate(1)">הבא ←</button>
+</footer>
+
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const tabsContainer = document.getElementById('slideTabs');
+const progressCounter = document.getElementById('progressCounter');
+const progressFill = document.getElementById('progressFill');
+let current = 0;
+
+slides.forEach((slide, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+  btn.textContent = slide.dataset.title;
+  btn.onclick = () => goTo(i);
+  tabsContainer.appendChild(btn);
+});
+
+function goTo(index) {
+  slides[current].classList.remove('active');
+  tabsContainer.children[current].classList.remove('active');
+  current = index;
+  slides[current].classList.add('active');
+  tabsContainer.children[current].classList.add('active');
+  updateNav();
+  document.querySelector('.slide-area').scrollTop = 0;
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next >= 0 && next < slides.length) goTo(next);
+}
+
+function updateNav() {
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === slides.length - 1;
+  progressCounter.textContent = `${current + 1} / ${slides.length}`;
+  progressFill.style.width = `${((current + 1) / slides.length) * 100}%`;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown')  navigate(1);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp')    navigate(-1);
+});
+
+// Code toggle
+function toggleCode(btn) {
+  const block = btn.nextElementSibling;
+  const open = block.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+
+// Multi-choice quiz
+function checkAnswer(btn, qId, isCorrect, explanation) {
+  const container = document.getElementById(qId);
+  const feedback  = document.getElementById('fb_' + qId);
+  const reset     = document.getElementById('reset_' + qId);
+  // Lock all options
+  container.querySelectorAll('.q-option').forEach(b => {
+    if (!b.getAttribute('data-onclick')) {
+      b.setAttribute('data-onclick', b.getAttribute('onclick'));
+    }
+    b.classList.add('locked');
+    b.onclick = null;
+  });
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  feedback.textContent = (isCorrect ? '✅ ' : '❌ ') + explanation;
+  feedback.className = 'quiz-feedback show ' + (isCorrect ? 'ok' : 'err');
+  reset.className = 'quiz-reset show';
+}
+
+function resetQuiz(qId) {
+  const container = document.getElementById(qId);
+  const feedback  = document.getElementById('fb_' + qId);
+  const reset     = document.getElementById('reset_' + qId);
+  container.querySelectorAll('.q-option').forEach(btn => {
+    btn.classList.remove('correct','wrong','locked');
+    // Restore onclick from saved data attribute
+    const saved = btn.getAttribute('data-onclick');
+    if (saved) btn.onclick = new Function(saved);
+  });
+  feedback.className = 'quiz-feedback';
+  reset.className = 'quiz-reset';
+}
+
+// Old-style toggle answer (slide 8)
+function toggleOldAnswer(btn) {
+  const answer = btn.nextElementSibling;
+  const isOpen = answer.style.display === 'block';
+  // Close all
+  document.querySelectorAll('.answer').forEach(a => a.style.display = 'none');
+  document.querySelectorAll('.q-option').forEach(b => b.style.borderRadius = '11px');
+  if (!isOpen) {
+    answer.style.display = 'block';
+    btn.style.borderRadius = '11px 11px 0 0';
+  }
+}
+
+updateNav();
+</script>
+</body>
+</html>

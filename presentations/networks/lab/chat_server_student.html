@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שרת צ'אט רב-משתמשים — דף תלמיד</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Alef:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f5f2eb;
+    --paper:    #faf8f3;
+    --ink:      #1a1a1a;
+    --ink2:     #3a3a3a;
+    --muted:    #888;
+    --rule:     #d6d0c4;
+    --step1:    #c0392b;
+    --step2:    #2980b9;
+    --step3:    #16a085;
+    --step4:    #8e44ad;
+    --warn:     #e67e22;
+    --mono:     'JetBrains Mono', monospace;
+    --serif:    'Alef', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--serif);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Subtle paper texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ═══ TOP BAR ═══ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 32px;
+    height: 52px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+
+  .topbar-title { font-weight: 700; font-size: 0.85rem; }
+  .topbar-sep { color: #555; }
+
+  .step-tabs {
+    display: flex;
+    gap: 4px;
+    margin-right: auto;
+  }
+
+  .step-tab {
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    transition: all 0.15s;
+  }
+
+  .step-tab:hover { color: #fff; background: #333; }
+  .step-tab.active { color: #fff; }
+  .step-tab[data-step="1"].active { background: var(--step1); }
+  .step-tab[data-step="2"].active { background: var(--step2); }
+  .step-tab[data-step="3"].active { background: var(--step3); }
+  .step-tab[data-step="4"].active { background: var(--step4); }
+
+  /* ═══ LAYOUT ═══ */
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 40px 80px;
+  }
+
+  /* ═══ HERO ═══ */
+  .hero {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+  }
+
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    border-bottom: 3px solid var(--step1);
+  }
+
+  .hero-sub {
+    margin-top: 14px;
+    font-size: 1rem;
+    color: var(--ink2);
+    max-width: 600px;
+  }
+
+  .hero-meta {
+    margin-top: 20px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .meta-item strong { color: var(--ink); }
+
+  /* ═══ STEP PANEL ═══ */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* ═══ STEP HEADER ═══ */
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .step-num {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .step-num.s1 { background: var(--step1); }
+  .step-num.s2 { background: var(--step2); }
+  .step-num.s3 { background: var(--step3); }
+  .step-num.s4 { background: var(--step4); }
+
+  .step-head-text h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .step-head-text p {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* ═══ SECTION ═══ */
+  .section {
+    margin-bottom: 32px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 6px;
+    margin-bottom: 16px;
+  }
+
+  /* ═══ CONCEPT CARDS ═══ */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px; height: 100%;
+  }
+
+  .step-panel[data-step="1"] .card::before { background: var(--step1); }
+  .step-panel[data-step="2"] .card::before { background: var(--step2); }
+  .step-panel[data-step="3"] .card::before { background: var(--step3); }
+  .step-panel[data-step="4"] .card::before { background: var(--step4); }
+
+  .card-icon { font-size: 22px; margin-bottom: 8px; }
+  .card-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+  .card-desc { font-size: 0.82rem; color: var(--ink2); line-height: 1.5; }
+
+  /* ═══ CODE ═══ */
+  .code-wrap {
+    position: relative;
+    margin: 14px 0;
+  }
+
+  .code-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .code-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 6px;
+    padding: 18px 20px;
+    font-family: var(--mono);
+    font-size: 0.83rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+  }
+
+  .kw  { color: #569cd6; }
+  .fn  { color: #dcdcaa; }
+  .str { color: #ce9178; }
+  .cm  { color: #6a9955; }
+  .cl  { color: #4ec9b0; }
+  .num { color: #b5cea8; }
+  .op  { color: #d4d4d4; }
+
+  /* inline code */
+  code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: rgba(0,0,0,0.07);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ═══ TASK BOX ═══ */
+  .task-box {
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 24px;
+  }
+
+  .task-header {
+    background: var(--ink);
+    color: #fff;
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .task-body { padding: 20px; background: var(--paper); }
+
+  .task-list { list-style: none; }
+
+  .task-list li {
+    display: flex;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 0.93rem;
+    align-items: flex-start;
+  }
+
+  .task-list li:last-child { border-bottom: none; }
+
+  .task-num {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  /* ═══ SUBMIT ═══ */
+  .submit-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+    padding: 14px 20px;
+    background: #eef7ee;
+    border: 1px solid #b2d8b2;
+    border-radius: 6px;
+    font-size: 0.88rem;
+  }
+
+  .submit-row .si { font-size: 20px; }
+
+  /* ═══ ALERT ═══ */
+  .alert {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fef9ec;
+    border: 1px solid #f0c96a;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    color: #7a5c00;
+    margin: 14px 0;
+    align-items: flex-start;
+  }
+
+  /* ═══ PROTOCOL TABLE ═══ */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 14px 0;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    padding: 9px 14px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f0ede6; }
+
+  td:first-child {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    direction: ltr;
+    text-align: left;
+  }
+
+  /* ═══ STEP NAV ═══ */
+  .step-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .nav-btn {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 5px;
+    padding: 10px 22px;
+    cursor: pointer;
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--ink);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn:hover { background: var(--ink); color: #fff; }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ═══ PROGRESS DOTS ═══ */
+  .progress-dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--muted);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .dot.done { border-color: var(--ink); background: var(--ink); }
+  .dot[data-n="1"].active { border-color: var(--step1); background: var(--step1); }
+  .dot[data-n="2"].active { border-color: var(--step2); background: var(--step2); }
+  .dot[data-n="3"].active { border-color: var(--step3); background: var(--step3); }
+  .dot[data-n="4"].active { border-color: var(--step4); background: var(--step4); }
+
+  /* ═══ DIVIDER ═══ */
+  .hr { height: 1px; background: var(--rule); margin: 24px 0; }
+
+  /* ═══ SESSION BADGE ═══ */
+  .session-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 4px 12px;
+    border-radius: 3px;
+    margin-bottom: 20px;
+  }
+
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 16px 0;
+    overflow-x: auto;
+    padding: 4px 0;
+  }
+
+  .flow-node {
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-family: var(--mono);
+    text-align: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .flow-arrow {
+    padding: 0 6px;
+    color: var(--muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar">
+  <span class="topbar-title">🖧 Chat Server Project</span>
+  <span class="topbar-sep">|</span>
+  <span style="color:#888">Python · Sockets · Threads · SQLAlchemy</span>
+  <div class="step-tabs">
+    <button class="step-tab active" data-step="1" onclick="goStep(1)">שלב 1</button>
+    <button class="step-tab" data-step="2" onclick="goStep(2)">שלב 2</button>
+    <button class="step-tab" data-step="3" onclick="goStep(3)">שלב 3</button>
+    <button class="step-tab" data-step="4" onclick="goStep(4)">שלב 4</button>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- ═══ HERO (shown once) ═══ -->
+  <div class="hero" id="hero">
+    <div class="hero-tag">פרויקט תכנות רשתות · Python</div>
+    <h1>בניית שרת צ'אט <em>רב-משתמשים</em></h1>
+    <p class="hero-sub">
+      נפתח מערכת צ'אט מלאה בארבעה שלבים — משרת Socket פשוט
+      ועד מסד נתונים מקצועי עם SQLAlchemy.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-item">📁 <strong>server.py</strong> + client.py לכל שלב</div>
+      <div class="meta-item">📸 <strong>output.txt</strong> עם פלט הריצה</div>
+      <div class="meta-item">👥 <strong>עבודה בקבוצות</strong> 2–3 תלמידים</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 1
+  ══════════════════════════════════════════ -->
+  <div class="step-panel active" id="step-1" data-step="1">
+    <div class="session-badge">🎬 מפגש זום 1 — חלק ראשון</div>
+
+    <div class="step-header">
+      <div class="step-num s1">1</div>
+      <div class="step-head-text">
+        <h2>לוגיקת שרת בסיסית — JSON & List</h2>
+        <p>ניהול משתמשים, קובץ JSON, רשימת לקוחות מחוברים</p>
+      </div>
+    </div>
+
+    <!-- מושגי יסוד -->
+    <div class="section">
+      <div class="section-label">מושגי יסוד</div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <div class="card-title">Socket + recv</div>
+          <div class="card-desc">ה-socket מקבל מחרוזת טקסט מהלקוח. <code>recv(1024)</code> מחזיר bytes שיש לפענח.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📂</div>
+          <div class="card-title">users.json</div>
+          <div class="card-desc">שמירת משתמשים (שם + סיסמה) כקובץ JSON על הדיסק.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📋</div>
+          <div class="card-title">clients [ ]</div>
+          <div class="card-desc">רשימה גלובלית של לקוחות <em>מחוברים כרגע</em> — socket + שם משתמש.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔀</div>
+          <div class="card-title">פרוטוקול action||</div>
+          <div class="card-desc">כל הודעה מתחילה בפעולה ואחריה פרמטרים: <code>register||zvi||1234</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- פרוטוקול -->
+    <div class="section">
+      <div class="section-label">פרוטוקול הפקודות</div>
+      <table>
+        <tr>
+          <th>פקודה</th>
+          <th>פורמט</th>
+          <th>פעולה בשרת</th>
+        </tr>
+        <tr>
+          <td>register||user||pass</td>
+          <td>רישום</td>
+          <td>בדיקה אם קיים ב-JSON → הוספה אם לא → שמירה</td>
+        </tr>
+        <tr>
+          <td>login||user||pass</td>
+          <td>התחברות</td>
+          <td>אימות מול JSON → הוספת socket לרשימת clients</td>
+        </tr>
+        <tr>
+          <td>message||text</td>
+          <td>הודעה</td>
+          <td>קבלת הודעה → אישור "Message received"</td>
+        </tr>
+        <tr>
+          <td>logout</td>
+          <td>התנתקות</td>
+          <td>הסרה מרשימת clients → סגירת החיבור</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- קוד עזר -->
+    <div class="section">
+      <div class="section-label">קוד עזר — שלד handle_client</div>
+      <div class="code-wrap">
+        <div class="code-label">server.py</div>
+        <pre><span class="kw">def</span> <span class="fn">handle_client</span>(conn, addr):
+    <span class="kw">while</span> <span class="kw">True</span>:
+        data = conn.recv(<span class="num">1024</span>).decode()
+        parts = data.split(<span class="str">"||"</span>)
+        action = parts[<span class="num">0</span>]
+
+        <span class="kw">if</span> action == <span class="str">"register"</span>:
+            <span class="fn">do_register</span>(parts[<span class="num">1</span>], parts[<span class="num">2</span>])
+        <span class="kw">elif</span> action == <span class="str">"login"</span>:
+            <span class="fn">do_login</span>(conn, parts[<span class="num">1</span>], parts[<span class="num">2</span>])
+        <span class="kw">elif</span> action == <span class="str">"message"</span>:
+            conn.send(<span class="str">b"Message received"</span>)
+        <span class="kw">elif</span> action == <span class="str">"logout"</span>:
+            <span class="fn">do_logout</span>(conn); <span class="kw">break</span></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-label">מבנה users.json</div>
+        <pre>{
+  <span class="str">"zvi"</span>: { <span class="str">"password"</span>: <span class="str">"1234"</span> },
+  <span class="str">"dana"</span>: { <span class="str">"password"</span>: <span class="str">"abcd"</span> }
+}</pre>
+      </div>
+    </div>
+
+    <div class="alert">
+      ⚠️ <span>עטפו את ה-<code>recv()</code> בתוך <code>try-except</code> — לקוח שמתנתק פתאום יזרוק שגיאה שתקרוס את השרת!</span>
+    </div>
+
+    <!-- משימה -->
+    <div class="task-box">
+      <div class="task-header">✏️ &nbsp; משימה — שלב 1</div>
+      <div class="task-body">
+        <ul class="task-list">
+          <li><span class="task-num">1</span><span>ממשו את הפונקציה <code>handle_client</code> עם כל ארבע הפעולות</span></li>
+          <li><span class="task-num">2</span><span>ממשו <code>do_register</code>: טענו users.json, בדקו אם המשתמש קיים, הוסיפו ושמרו</span></li>
+          <li><span class="task-num">3</span><span>ממשו <code>do_login</code>: אמתו פרטים ואם נכונים — הוסיפו את ה-socket לרשימת <code>clients</code></span></li>
+          <li><span class="task-num">4</span><span>הוסיפו הדפסות <code>[INFO]</code> לכל פעולה (כניסה, יציאה, שגיאה)</span></li>
+          <li><span class="task-num">5</span><span>הריצו שרת מול <strong>שני לקוחות שונים</strong> שמבצעים Login</span></li>
+        </ul>
+        <div class="submit-row">
+          <span class="si">📁</span>
+          <span><strong>להגיש:</strong> server.py + client.py + צילום מסך של שני לקוחות מחוברים</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="nav-btn" disabled>→ שלב קודם</button>
+      <div class="progress-dots">
+        <div class="dot active" data-n="1" onclick="goStep(1)"></div>
+        <div class="dot" data-n="2" onclick="goStep(2)"></div>
+        <div class="dot" data-n="3" onclick="goStep(3)"></div>
+        <div class="dot" data-n="4" onclick="goStep(4)"></div>
+      </div>
+      <button class="nav-btn" onclick="goStep(2)">שלב 2 ←</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 2
+  ══════════════════════════════════════════ -->
+  <div class="step-panel" id="step-2" data-step="2">
+    <div class="session-badge">🎬 מפגש זום 1 — חלק שני</div>
+
+    <div class="step-header">
+      <div class="step-num s2">2</div>
+      <div class="step-head-text">
+        <h2>תקשורת דו-כיוונית — Threads & Broadcast</h2>
+        <p>Threads בלקוח, הפצת הודעות לכולם, נעילה למניעת Race Condition</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">הבעיה ופתרונה</div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">🚫</div>
+          <div class="card-title">הבעיה</div>
+          <div class="card-desc"><code>recv()</code> חוסם — אם הלקוח מחכה לקלט, הוא לא יכול לקבל הודעות נכנסות.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔁</div>
+          <div class="card-title">Thread ראשי</div>
+          <div class="card-desc"><code>input()</code> + שליחה לשרת. ממתין לקלט המשתמש.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">👂</div>
+          <div class="card-title">Thread האזנה</div>
+          <div class="card-desc">לולאה אינסופית עם <code>recv()</code> — מדפיס הודעות ברגע שמגיעות.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📢</div>
+          <div class="card-title">broadcast()</div>
+          <div class="card-desc">שולח הודעה לכל הלקוחות המחוברים, חוץ מהשולח עצמו.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <div class="card-title">threading.Lock</div>
+          <div class="card-desc">מונע <em>Race Condition</em> כאשר מספר Threads ניגשים ל-<code>clients[]</code> ול-JSON במקביל.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">קוד עזר — broadcast + Lock</div>
+      <div class="code-wrap">
+        <div class="code-label">server.py</div>
+        <pre>clients_lock = threading.<span class="cl">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">broadcast</span>(data_dict, exclude_sock):
+    <span class="kw">with</span> clients_lock:
+        <span class="kw">for</span> client <span class="kw">in</span> clients:
+            <span class="kw">if</span> client[<span class="str">"socket"</span>] != exclude_sock:
+                <span class="kw">try</span>:
+                    client[<span class="str">"socket"</span>].send(
+                        json.dumps(data_dict).encode()
+                    )
+                <span class="kw">except</span>:
+                    <span class="kw">pass</span></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-label">client.py — Thread האזנה</div>
+        <pre><span class="kw">def</span> <span class="fn">listen_from_server</span>(sock):
+    <span class="kw">while</span> <span class="kw">True</span>:
+        msg = sock.recv(<span class="num">1024</span>).decode()
+        <span class="fn">print</span>(<span class="str">f"\n[הודעה] </span>{msg}<span class="str">"</span>)
+
+t = threading.<span class="cl">Thread</span>(target=listen_from_server, args=(sock,))
+t.daemon = <span class="kw">True</span>
+t.start()</pre>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <span>ה-Lock נדרש גם כשקוראים את הרשימה וגם כשכותבים אליה. גישה בלי Lock עלולה לגרום לתוצאות בלתי צפויות.</span></div>
+
+    <div class="task-box">
+      <div class="task-header">✏️ &nbsp; משימה — שלב 2</div>
+      <div class="task-body">
+        <ul class="task-list">
+          <li><span class="task-num">1</span><span>הוסיפו Thread האזנה בלקוח עם <code>daemon=True</code></span></li>
+          <li><span class="task-num">2</span><span>ממשו <code>broadcast(data, exclude_sock)</code> בשרת עם Lock</span></li>
+          <li><span class="task-num">3</span><span>קראו ל-broadcast מתוך <code>handle_client</code> כשמתקבלת הודעת message</span></li>
+          <li><span class="task-num">4</span><span>הגנו על כל גישה לרשימת <code>clients</code> ולקובץ JSON עם <code>threading.Lock()</code></span></li>
+          <li><span class="task-num">5</span><span>בדקו: משתמש א' שולח → משתמש ב' מקבל <strong>ללא שביצע פעולה</strong></span></li>
+        </ul>
+        <div class="submit-row">
+          <span class="si">📁</span>
+          <span><strong>להגיש:</strong> קוד מעודכן + פלט הרצה המראה קבלת הודעה בין שני לקוחות</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="nav-btn" onclick="goStep(1)">→ שלב 1</button>
+      <div class="progress-dots">
+        <div class="dot done" data-n="1" onclick="goStep(1)"></div>
+        <div class="dot active" data-n="2" onclick="goStep(2)"></div>
+        <div class="dot" data-n="3" onclick="goStep(3)"></div>
+        <div class="dot" data-n="4" onclick="goStep(4)"></div>
+      </div>
+      <button class="nav-btn" onclick="goStep(3)">שלב 3 ←</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 3
+  ══════════════════════════════════════════ -->
+  <div class="step-panel" id="step-3" data-step="3">
+    <div class="session-badge">🎬 מפגש זום 2</div>
+
+    <div class="step-header">
+      <div class="step-num s3">3</div>
+      <div class="step-head-text">
+        <h2>פרוטוקול תקשורת — JSON Protocol & Framing</h2>
+        <p>TCP Stream, מפריד <code>\n</code>, Buffer, json.loads</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">הבעיה — TCP Stream</div>
+      <p style="font-size:0.92rem; margin-bottom:14px;">
+        TCP הוא <strong>זרם רציף</strong> — אין "גבול" בין הודעות. שתי הודעות שנשלחות מהר עלולות
+        להגיע כחתיכה אחת אצל הנמען.
+      </p>
+
+      <div class="flow-diagram">
+        <div class="flow-node">שולח: הודעה 1</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-node">שולח: הודעה 2</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="border-color:#c0392b; color:#c0392b">recv מקבל: הודעה1הודעה2</div>
+      </div>
+
+      <p style="font-size:0.92rem; margin-top:10px;">
+        <strong>הפתרון — Delimited Framing:</strong> נוסיף <code>\n</code> בסוף כל הודעה.
+        הנמען קורא עד שהוא רואה <code>\n</code> — ואז הוא יודע שהגיע הודעה שלמה.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-label">פורמט ההודעה החדש</div>
+      <div class="code-wrap">
+        <div class="code-label">פורמט — JSON + newline</div>
+        <pre><span class="cm"># כל הודעה: JSON object + תו \n</span>
+{<span class="str">"action"</span>: <span class="str">"login"</span>, <span class="str">"username"</span>: <span class="str">"zvi"</span>, <span class="str">"password"</span>: <span class="str">"1234"</span>}<span class="op">\n</span>
+{<span class="str">"action"</span>: <span class="str">"message"</span>, <span class="str">"text"</span>: <span class="str">"שלום!"</span>}<span class="op">\n</span></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-label">client.py — שליחה</div>
+        <pre>msg = {<span class="str">"action"</span>: <span class="str">"login"</span>, <span class="str">"username"</span>: <span class="str">"zvi"</span>, <span class="str">"password"</span>: <span class="str">"1234"</span>}
+sock.send((json.dumps(msg) + <span class="str">"\n"</span>).encode())</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-label">server.py — קבלה עם Buffer</div>
+        <pre>buffer = <span class="str">""</span>
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    chunk = conn.recv(<span class="num">4096</span>).decode()
+    buffer += chunk
+
+    <span class="kw">while</span> <span class="str">"\n"</span> <span class="kw">in</span> buffer:
+        line, buffer = buffer.split(<span class="str">"\n"</span>, <span class="num">1</span>)
+        data = json.loads(line.strip())   <span class="cm"># dict מלא</span>
+        <span class="fn">handle_message</span>(data)</pre>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <span><code>recv(4096)</code> יכול להחזיר חצי הודעה או הודעה וחצי! ה-Buffer מבטיח שנעבד רק הודעות שלמות.</span></div>
+
+    <div class="task-box">
+      <div class="task-header">✏️ &nbsp; משימה — שלב 3</div>
+      <div class="task-body">
+        <ul class="task-list">
+          <li><span class="task-num">1</span><span>שנו את הלקוח: כל שליחה תהיה JSON + <code>"\n"</code></span></li>
+          <li><span class="task-num">2</span><span>שנו את השרת: קריאה לתוך buffer עד <code>"\n"</code>, פיענוח עם <code>json.loads(line.strip())</code></span></li>
+          <li><span class="task-num">3</span><span>ודאו ש-<code>broadcast</code> גם שולח JSON + <code>"\n"</code></span></li>
+          <li><span class="task-num">4</span><span>בדקו edge case: שלחו 3 הודעות רצופות מהר — האם כולן מתקבלות בנפרד?</span></li>
+        </ul>
+        <div class="submit-row">
+          <span class="si">📁</span>
+          <span><strong>להגיש:</strong> server.py + client.py + output.txt עם פלט ריצה</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="nav-btn" onclick="goStep(2)">→ שלב 2</button>
+      <div class="progress-dots">
+        <div class="dot done" data-n="1" onclick="goStep(1)"></div>
+        <div class="dot done" data-n="2" onclick="goStep(2)"></div>
+        <div class="dot active" data-n="3" onclick="goStep(3)"></div>
+        <div class="dot" data-n="4" onclick="goStep(4)"></div>
+      </div>
+      <button class="nav-btn" onclick="goStep(4)">שלב 4 ←</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 4
+  ══════════════════════════════════════════ -->
+  <div class="step-panel" id="step-4" data-step="4">
+    <div class="session-badge">🎬 מפגש זום 3</div>
+
+    <div class="step-header">
+      <div class="step-num s4">4</div>
+      <div class="step-head-text">
+        <h2>בסיס נתונים — SQLAlchemy & SQLite</h2>
+        <p>החלפת users.json ב-ORM מקצועי: מודל, session, שאילתות</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">למה לעבור ל-DB?</div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">⚛️</div>
+          <div class="card-title">עסקאות אטומיות</div>
+          <div class="card-desc">ה-DB מנהל נעילה פנימית — אין צורך ב-Lock על קובץ.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <div class="card-title">חיפוש מהיר</div>
+          <div class="card-desc"><code>filter_by()</code> עם אינדקס — גם מיליון שורות במילישניות.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧩</div>
+          <div class="card-title">Python Objects</div>
+          <div class="card-desc">עובדים עם objects מוכרים — לא JSON ידני ולא SQL גולמי.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">💾</div>
+          <div class="card-title">עמידות</div>
+          <div class="card-desc">הנתונים נשמרים גם אחרי הפעלה מחדש של השרת.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">קוד עזר — הגדרת מודל</div>
+      <div class="code-wrap">
+        <div class="code-label">server.py — setup</div>
+        <pre><span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine, Column, Integer, String
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> declarative_base, sessionmaker
+
+Base = declarative_base()
+
+<span class="kw">class</span> <span class="cl">User</span>(Base):
+    __tablename__ = <span class="str">"users"</span>
+    id       = Column(Integer, primary_key=<span class="kw">True</span>)
+    username = Column(String, unique=<span class="kw">True</span>)
+    password = Column(String)
+
+engine  = create_engine(<span class="str">"sqlite:///chat.db"</span>)
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-label">server.py — Register & Login</div>
+        <pre><span class="kw">def</span> <span class="fn">do_register</span>(username, password):
+    session = <span class="fn">Session</span>()
+    existing = session.query(<span class="cl">User</span>).<span class="fn">filter_by</span>(username=username).first()
+    <span class="kw">if not</span> existing:
+        session.<span class="fn">add</span>(<span class="cl">User</span>(username=username, password=password))
+        session.<span class="fn">commit</span>()
+        <span class="kw">return</span> <span class="str">"registered"</span>
+    <span class="kw">return</span> <span class="str">"exists"</span>
+
+<span class="kw">def</span> <span class="fn">do_login</span>(username, password):
+    session = <span class="fn">Session</span>()
+    user = session.query(<span class="cl">User</span>).<span class="fn">filter_by</span>(
+        username=username, password=password
+    ).first()
+    <span class="kw">return</span> user <span class="kw">is not None</span></pre>
+      </div>
+    </div>
+
+    <div class="alert">⚠️ <span>הסירו את ה-Lock שהגנתם על קובץ JSON — ה-DB מנהל נעילה בעצמו. <strong>שמרו</strong> את ה-Lock על רשימת ה-clients!</span></div>
+
+    <div class="task-box">
+      <div class="task-header">✏️ &nbsp; משימה — שלב 4</div>
+      <div class="task-body">
+        <ul class="task-list">
+          <li><span class="task-num">1</span><span>הגדירו מודל <code>User</code> עם שדות: <code>id</code>, <code>username</code>, <code>password</code></span></li>
+          <li><span class="task-num">2</span><span>החליפו את כל קריאות users.json ב-<code>session.add()</code> ו-<code>filter_by()</code></span></li>
+          <li><span class="task-num">3</span><span>הסירו את ה-Lock על ה-JSON (שמרו Lock רק על <code>clients[]</code>)</span></li>
+          <li><span class="task-num">4</span><span>הוסיפו הדפסות <code>[DB]</code> לכל פעולת DB</span></li>
+          <li><span class="task-num">5</span><span>בדקו: הפעילו מחדש את השרת — האם המשתמשים הרשומים עדיין קיימים?</span></li>
+        </ul>
+        <div class="submit-row">
+          <span class="si">📁</span>
+          <span><strong>הגשה סופית:</strong> תיקייה לכל שלב — server.py + client.py + output.txt + chat.db</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- סיכום -->
+    <div class="hr"></div>
+    <div class="section">
+      <div class="section-label">סיכום — מה בנינו</div>
+      <div class="flow-diagram">
+        <div class="flow-node" style="border-color:var(--step1); color:var(--step1)">שלב 1<br><small>Socket + JSON</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="border-color:var(--step2); color:var(--step2)">שלב 2<br><small>Threads + Lock</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="border-color:var(--step3); color:var(--step3)">שלב 3<br><small>Framing + Buffer</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" style="border-color:var(--step4); color:var(--step4)">שלב 4<br><small>SQLAlchemy</small></div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="nav-btn" onclick="goStep(3)">→ שלב 3</button>
+      <div class="progress-dots">
+        <div class="dot done" data-n="1" onclick="goStep(1)"></div>
+        <div class="dot done" data-n="2" onclick="goStep(2)"></div>
+        <div class="dot done" data-n="3" onclick="goStep(3)"></div>
+        <div class="dot active" data-n="4" onclick="goStep(4)"></div>
+      </div>
+      <button class="nav-btn" disabled>סיום ✓</button>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+  function goStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+
+    document.querySelectorAll('.step-tab').forEach(t => {
+      t.classList.toggle('active', parseInt(t.dataset.step) === n);
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

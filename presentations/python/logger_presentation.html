@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger — כלי תיעוד לפרויקט גמר</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0D1117;
+  --panel:  #161B22;
+  --border: #30363D;
+  --cyan:   #00E5FF;
+  --green:  #3DFF91;
+  --orange: #FF9500;
+  --red:    #FF453A;
+  --yellow: #FFD60A;
+  --white:  #E6EDF3;
+  --muted:  #8B949E;
+  --purple: #A371F7;
+  --pink:   #FF79C6;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-heb:  'Heebo', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  font-family: var(--font-heb);
+  overflow-x: hidden;
+  color: var(--white);
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 48px;
+}
+.nav-title { color: var(--cyan); font-family: var(--font-mono); font-size: 18px; letter-spacing: 2px; }
+.nav-dots  { display: flex; gap: 6px; flex-wrap: wrap; }
+.nav-dot   {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--border); cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.nav-dot:hover    { background: var(--muted); transform: scale(1.3); }
+.nav-dot.active   { background: var(--cyan); }
+.nav-dot.pink     { }
+.nav-dot.active.pink { background: var(--pink); }
+.nav-arrows { display: flex; gap: 8px; }
+.nav-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--muted); font-family: var(--font-mono);
+  font-size: 18px; padding: 3px 12px; border-radius: 4px;
+  cursor: pointer; transition: all .2s;
+}
+.nav-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ── SLIDES ── */
+.slides-wrap { margin-top: 48px; width: 100%; max-width: 1400px; padding: 2rem 1rem 4rem; }
+
+.slide {
+  display: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+<!--  overflow: hidden;-->
+  position: relative;
+  min-height: 600px;
+  max-height: 82vh;
+  animation: slideIn .35s ease;
+}
+.slide.active { display: block; }
+@keyframes slideIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+
+/* top stripe */
+.stripe { height: 5px; width: 100%; }
+.stripe-cyan   { background: var(--cyan); }
+.stripe-pink   { background: var(--pink); }
+.stripe-green  { background: var(--green); }
+.stripe-purple { background: var(--purple); }
+
+/* slide body */
+.slide-body {
+  padding: 1.8rem 2.2rem 1.6rem;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* footer */
+.slide-footer {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 5px 1.2rem;
+  font-family: var(--font-mono); font-size: 18px;
+  color: var(--muted);
+  display: flex; justify-content: space-between;
+}
+
+/* slide number badge */
+.slide-num {
+  position: absolute; top: 16px; left: 20px;
+  font-family: var(--font-mono); font-size: 18px;
+  color: var(--border); letter-spacing: 1px;
+}
+
+/* ── TYPOGRAPHY ── */
+h1 { font-family: var(--font-mono); font-size: 2.8rem; font-weight: 700; color: var(--white); }
+h2 { font-family: var(--font-mono); font-size: 1.9rem; font-weight: 700; color: var(--white); margin-bottom: .3rem; }
+h3 { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 500; }
+.sub { font-family: var(--font-mono); font-size: 1.2rem; color: var(--muted); margin-bottom: 1.4rem; }
+
+/* ── CARDS / PANELS ── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.3rem;
+}
+.card-cyan   { border-color: var(--cyan); }
+.card-green  { border-color: var(--green); }
+.card-orange { border-color: var(--orange); }
+.card-red    { border-color: var(--red); }
+.card-purple { border-color: var(--purple); }
+.card-pink   { border-color: var(--pink); }
+.card-yellow { border-color: var(--yellow); }
+
+.card-title {
+  font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700;
+  margin-bottom: .6rem; padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+.c-cyan   { color: var(--cyan); }
+.c-green  { color: var(--green); }
+.c-orange { color: var(--orange); }
+.c-red    { color: var(--red); }
+.c-yellow { color: var(--yellow); }
+.c-purple { color: var(--purple); }
+.c-pink   { color: var(--pink); }
+.c-muted  { color: var(--muted); }
+.c-white  { color: var(--white); }
+
+/* ── CODE BLOCK ── */
+.code-block {
+  background: #0A0E14;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  line-height: 1.7;
+}
+.code-bar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  font-size: 1.2rem;
+  color: var(--muted);
+  display: flex; justify-content: space-between; align-items: center;
+  direction: ltr; text-align: left;
+}
+.code-dots { display: flex; gap: 5px; }
+.code-dots span {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
+.code-body {
+  padding: .8rem 1rem;
+  direction: ltr; text-align: left;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 800px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.code-body .line { display: block; white-space: pre; text-align: left; color: white;}
+.code-bar { direction: ltr; text-align: left; }
+
+/* ── GRID HELPERS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: .8rem; }
+
+/* ── LEVEL ROWS ── */
+.level-row {
+  display: grid; grid-template-columns: 110px 1fr auto;
+  align-items: center; gap: 1rem;
+  background: var(--panel);
+  border-radius: 8px; padding: .7rem 1rem;
+  border-left: 4px solid;
+  margin-bottom: .7rem;
+}
+.level-badge {
+  font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700;
+  padding: 3px 10px; border-radius: 4px; text-align: center;
+  border: 1px solid currentColor; background: transparent;
+}
+.level-desc { font-size: 1.2rem; color: white;}
+.level-example { font-family: var(--font-mono); font-size: 1.2rem; color: var(--muted); text-align: left; direction: ltr; }
+
+/* ── BADGE ── */
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700;
+  padding: 2px 10px; border-radius: 4px; border: 1px solid currentColor;
+}
+
+/* ── TABLE ── */
+.cmp-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 1.2rem; }
+.cmp-table th, .cmp-table td { padding: .55rem .8rem; border-bottom: 1px solid var(--border); }
+.cmp-table th { color: var(--muted); font-weight: 400; font-size: 1.2rem; }
+.cmp-table tr:last-child td { border-bottom: none; }
+
+/* ── SLIDE 1 TITLE ── */
+.title-bg-text {
+  position: absolute; top: 50%; left: -10px; transform: translateY(-60%);
+  font-family: var(--font-mono); font-size: 18rem; font-weight: 900;
+  color: var(--cyan); opacity: .05; pointer-events: none; line-height: 1;
+  user-select: none;
+}
+.title-main { font-size: 4.5rem; font-weight: 900; letter-spacing: 4px; position: relative; z-index: 1; }
+.title-divider { height: 2px; background: var(--cyan); margin: .8rem 0; width: 100%; }
+.pillar-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1.5rem; position: relative; z-index: 1; }
+.pillar { background: var(--panel); border-radius: 10px; padding: 1.1rem; text-align: center; border: 1px solid; }
+.pillar-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+.pillar-label { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; }
+
+/* ── LOGGING MODULE BOXES ── */
+.module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: 1rem; }
+.module-box {
+  background: var(--panel); border-radius: 8px;
+  padding: .8rem 1rem; border: 1px solid var(--border);
+  position: relative; overflow: hidden;
+}
+.module-box::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.module-box.mb-cyan::before   { background: var(--cyan); }
+.module-box.mb-green::before  { background: var(--green); }
+.module-box.mb-orange::before { background: var(--orange); }
+.module-box.mb-purple::before { background: var(--purple); }
+.module-box.mb-yellow::before { background: var(--yellow); }
+.module-box.mb-pink::before   { background: var(--pink); }
+.module-name { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; margin-bottom: .35rem; }
+.module-desc { font-size: 1.2rem; color: var(--muted); line-height: 1.5; }
+.module-example { font-family: var(--font-mono); font-size: 1.2rem; color: var(--border); margin-top: .4rem; }
+
+/* ── FLOW DIAGRAM ── */
+.flow { display: flex; align-items: center; gap: 0; }
+.flow-box {
+  flex: 1; background: var(--panel); border-radius: 8px;
+  padding: .9rem .7rem; border: 1px solid; text-align: center;
+}
+.flow-arrow {
+  color: var(--muted); font-size: 1.4rem; padding: 0 .5rem;
+  flex-shrink: 0;
+}
+.flow-label { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; margin-bottom: .25rem; }
+.flow-sub   { font-size: 1.2rem; color: var(--muted); }
+
+/* ── FACADE DIAGRAM ── */
+.facade-wrap { display: grid; grid-template-columns: 1fr 40px 1.2fr 40px 1fr; gap: 0; align-items: center; margin: 1.2rem 0; }
+.facade-box { background: var(--panel); border-radius: 10px; border: 1px solid; padding: 1rem .8rem; }
+.facade-arrow { display: flex; flex-direction: column; align-items: center; color: var(--muted); font-size: 1.2rem; }
+.facade-arrow small { font-family: var(--font-mono); font-size: 1.2rem; text-align: center; margin-top: 3px; }
+.facade-item { font-family: var(--font-mono); font-size: 1.2rem; padding: 2px 0; }
+
+/* ── DECORATOR SLIDE ── */
+.decorator-flow {
+  display: flex; align-items: flex-start; gap: 1rem; margin: 1rem 0;
+}
+.deco-step {
+  flex: 1; background: var(--panel); border-radius: 8px;
+  padding: .8rem; border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 1.2rem;
+}
+.deco-arrow { padding-top: 2.2rem; color: var(--yellow); font-size: 1.4rem; flex-shrink: 0; }
+
+/* ── SUMMARY GRID ── */
+.summary-card {
+  background: var(--panel); border-radius: 10px;
+  border: 1px solid; padding: 1.1rem;
+  text-align: center; position: relative; overflow: hidden;
+}
+.summary-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+}
+.summary-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+.summary-concept { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; margin-bottom: .25rem; }
+.summary-example { font-family: var(--font-mono); font-size: 1.2rem; color: var(--muted); }
+
+/* ── CLOSING ── */
+.closing-wrap { position: relative; text-align: center; padding: 2rem; }
+.closing-bg {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%);
+  font-family: var(--font-mono); font-size: 16rem; font-weight: 900;
+  color: var(--cyan); opacity: .04; pointer-events: none; user-select: none;
+}
+.next-steps { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8rem; margin-top: 1.5rem; }
+.next-step {
+  background: var(--panel); border: 1px solid var(--purple);
+  border-radius: 8px; padding: .7rem; text-align: center;
+  font-family: var(--font-mono); font-size: 1.2rem; color: var(--purple);
+}
+
+/* ── OPTION CARDS (A/B/C) ── */
+.option-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+.option-card {
+  border-radius: 10px; padding: 1.1rem; text-align: center;
+  border: 1px solid; position: relative; overflow: hidden;
+}
+.option-card.dim { background: #0F1318; opacity: .6; }
+.option-card:not(.dim) { background: var(--panel); }
+.option-card.featured { border-width: 2px; }
+.option-letter {
+  display: inline-block; font-family: var(--font-mono);
+  font-size: 1.6rem; font-weight: 900;
+  width: 50px; height: 50px; line-height: 50px;
+  border-radius: 8px; border: 1px solid; margin-bottom: .6rem;
+  background: transparent;
+}
+.option-title { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; color: var(--white); margin-bottom: .4rem; }
+.option-desc  { font-size: 1.2rem; line-height: 1.5; }
+
+/* ── INFO BOX ── */
+.info-box {
+  border-radius: 8px; padding: .8rem 1.1rem;
+  border: 1px solid; margin-top: .8rem;
+  font-size: 1.2rem; line-height: 1.6;
+}
+
+/* ── PROGRESS BAR ── */
+.progress {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 3px;
+  background: var(--border); z-index: 200;
+}
+.progress-fill { height: 100%; background: var(--cyan); transition: width .3s ease; }
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+  .grid-2, .grid-3, .grid-4, .pillar-cards, .option-cards, .next-steps { grid-template-columns: 1fr 1fr; }
+  .facade-wrap { grid-template-columns: 1fr; }
+  .facade-arrow { display: none; }
+  h1.title-main { font-size: 2.8rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-title">LOGGER.PY</span>
+  <div class="nav-dots" id="navDots"></div>
+  <div class="nav-arrows">
+    <button class="nav-btn" onclick="goSlide(cur-1)">‹</button>
+    <span id="slideCount" style="font-family:var(--font-mono);font-size: 18px;color:var(--muted);align-self:center;min-width:40px;text-align:center"></span>
+    <button class="nav-btn" onclick="goSlide(cur+1)">›</button>
+  </div>
+</nav>
+
+<div class="slides-wrap">
+
+<!-- ════════════════════════════════════════
+     SLIDE 1 — TITLE
+════════════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body" style="min-height:530px;position:relative;">
+    <span class="slide-num">01 / 13</span>
+    <div class="title-bg-text">LOG</div>
+    <div style="position:relative;z-index:1;padding-top:1.5rem;">
+      <h1 class="title-main c-white">Logger</h1>
+      <div class="title-divider"></div>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--cyan);margin-bottom:2rem;">
+        כלי תיעוד (Logging) לפרויקט גמר &nbsp;—&nbsp; Python
+      </div>
+      <div class="pillar-cards">
+        <div class="pillar" style="border-color:var(--cyan);">
+          <div class="pillar-icon">📁</div>
+          <div class="pillar-label c-cyan">שמירה לקובץ</div>
+        </div>
+        <div class="pillar" style="border-color:var(--green);">
+          <div class="pillar-icon">🖥</div>
+          <div class="pillar-label c-green">הדפסה למסך</div>
+        </div>
+        <div class="pillar" style="border-color:var(--purple);">
+          <div class="pillar-icon">🎚</div>
+          <div class="pillar-label c-purple">רמות לוג</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>פרויקט גמר | Python | OOP</span>
+    <span style="color:var(--cyan);">LOGGER.PY</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 2 — מה זה Logger? + ספריית logging
+════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">02 / 13</span>
+    <h2 style="margin-bottom:.2rem;">מה זה Logger?</h2>
+    <p class="sub">ספריית <code style="color:var(--cyan)">logging</code> המובנית של Python — ארגז כלים מקצועי לתיעוד</p>
+
+    <div class="grid-2" style="gap:1.2rem;">
+      <!-- LEFT: logging module -->
+      <div>
+        <div class="card card-cyan" style="margin-bottom:.9rem;">
+          <div class="card-title c-cyan">📦 import logging</div>
+          <div style="font-size: 1.2rem;color:var(--muted);margin-bottom:.7rem;">
+            מודול סטנדרטי — מגיע עם Python, אפס התקנות
+          </div>
+          <div class="code-block">
+            <div class="code-body">
+<span class="line"><span class="c-purple">import</span> <span class="c-cyan">logging</span></span>
+<span class="line"></span>
+<span class="line"><span class="c-muted"># הגדרה בסיסית — שורה אחת</span></span>
+<span class="line"><span class="c-cyan">logging</span>.<span class="c-green">basicConfig</span>(</span>
+<span class="line">  level=<span class="c-cyan">logging</span>.DEBUG,</span>
+<span class="line">  format=<span class="c-yellow">"%(asctime)s [%(levelname)s]"</span>,</span>
+<span class="line">  handlers=[</span>
+<span class="line">    <span class="c-cyan">logging</span>.FileHandler(<span class="c-yellow">"app.log"</span>),</span>
+<span class="line">    <span class="c-cyan">logging</span>.StreamHandler()</span>
+<span class="line">  ]</span>
+<span class="line">)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- print vs logging -->
+        <div class="card card-orange">
+          <div class="card-title c-orange">print() vs logging</div>
+          <table class="cmp-table">
+            <tr><th>print()</th><th>logging</th></tr>
+            <tr><td class="c-red">💬 למסך בלבד</td><td class="c-green">📁 קובץ / מסך / שניים</td></tr>
+            <tr><td class="c-red">⛔ ללא רמה</td><td class="c-green">🎚 DEBUG→ERROR</td></tr>
+            <tr><td class="c-red">⛔ ללא זמן</td><td class="c-green">⏱ Timestamp אוטו</td></tr>
+            <tr><td class="c-red">⛔ Production</td><td class="c-green">✅ Production-ready</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT: module components -->
+      <div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--muted);margin-bottom:.6rem;">מרכיבי הספרייה:</div>
+        <div class="module-grid">
+          <div class="module-box mb-cyan">
+            <div class="module-name c-cyan">Logger</div>
+            <div class="module-desc">האובייקט המרכזי — שולח הודעות</div>
+            <div class="module-example">getLogger(__name__)</div>
+          </div>
+          <div class="module-box mb-green">
+            <div class="module-name c-green">Handler</div>
+            <div class="module-desc">לאן ישלח הלוג — קובץ / מסך / Email</div>
+            <div class="module-example">FileHandler, StreamHandler</div>
+          </div>
+          <div class="module-box mb-yellow">
+            <div class="module-name c-yellow">Formatter</div>
+            <div class="module-desc">איך ייראה הפלט — תבנית הטקסט</div>
+            <div class="module-example">%(asctime)s %(message)s</div>
+          </div>
+          <div class="module-box mb-orange">
+            <div class="module-name c-orange">Filter</div>
+            <div class="module-desc">אילו הודעות לאפשר / לחסום</div>
+            <div class="module-example">logging.Filter()</div>
+          </div>
+          <div class="module-box mb-purple">
+            <div class="module-name c-purple">RotatingHandler</div>
+            <div class="module-desc">קובץ מתחלף אוטומטית לפי גודל</div>
+            <div class="module-example">maxBytes=500_000</div>
+          </div>
+          <div class="module-box mb-pink">
+            <div class="module-name c-pink">config</div>
+            <div class="module-desc">הגדרות מקובץ JSON / YAML</div>
+            <div class="module-example">fileConfig('log.ini')</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 3 — רמות לוג
+════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">03 / 13</span>
+    <h2>רמות לוג</h2>
+    <p class="sub">כל רמה מייצגת מידת חשיבות — חמור יותר = ערך גבוה יותר</p>
+
+    <div class="level-row" style="border-color:var(--yellow);">
+      <div><span class="badge c-yellow" style="border-color:var(--yellow);">0 DEBUG</span></div>
+      <div class="level-desc">מידע פיתוח — ערכים, מצבים פנימיים</div>
+      <div class="level-example">log.debug("x = " + str(x))</div>
+    </div>
+    <div class="level-row" style="border-color:var(--cyan);">
+      <div><span class="badge c-cyan" style="border-color:var(--cyan);">1 INFO</span></div>
+      <div class="level-desc">אירועים רגילים — המערכת עובדת כשורה</div>
+      <div class="level-example">log.info("שרת עלה בהצלחה")</div>
+    </div>
+    <div class="level-row" style="border-color:var(--orange);">
+      <div><span class="badge c-orange" style="border-color:var(--orange);">2 WARNING</span></div>
+      <div class="level-desc">משהו חריג אבל המערכת ממשיכה</div>
+      <div class="level-example">log.warning("קובץ חסר, משתמש בברירת מחדל")</div>
+    </div>
+    <div class="level-row" style="border-color:var(--red);">
+      <div><span class="badge c-red" style="border-color:var(--red);">3 ERROR</span></div>
+      <div class="level-desc">שגיאה — חלק מהמערכת נכשל</div>
+      <div class="level-example">log.error("חיבור נכשל!")</div>
+    </div>
+
+    <div class="info-box" style="border-color:var(--purple);background:#1A1F2A;margin-top:1rem;">
+      <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+        💡 ב-Development: <strong>min_level=DEBUG</strong> &nbsp;|&nbsp; ב-Production: <strong>min_level=WARNING</strong>
+      </span>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 4 — עיצוב הכיתה
+════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="stripe stripe-green"></div>
+  <div class="slide-body">
+    <span class="slide-num">04 / 13</span>
+    <h2>עיצוב הכיתה</h2>
+
+    <div dir="ltr" class="card card-green" style="margin-bottom:1rem;">
+      <div class="card-title c-green">__init__ — בנאי</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 2rem;">
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;line-height:2;">
+          <span class="c-cyan">filepath</span><span class="c-muted">: </span><span class="c-yellow">str = "app.log"</span>
+          <span class="c-muted" style="font-size: 1.2rem;margin-right:.5rem;"># שם קובץ הלוג</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;line-height:2;">
+          <span class="c-cyan">to_screen</span><span class="c-muted">: </span><span class="c-yellow">bool = True</span>
+          <span class="c-muted" style="font-size: 1.2rem;margin-right:.5rem;"># הדפסה למסך?</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;line-height:2;">
+          <span class="c-cyan">to_file</span><span class="c-muted">: </span><span class="c-yellow">bool = True</span>
+          <span class="c-muted" style="font-size: 1.2rem;margin-right:.5rem;"># כתיבה לקובץ?</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;line-height:2;">
+          <span class="c-cyan">min_level</span><span class="c-muted">: </span><span class="c-yellow">int = DEBUG</span>
+          <span class="c-muted" style="font-size: 1.2rem;margin-right:.5rem;"># רמה מינימלית (0–3)</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--white);margin-bottom:.6rem;">מתודות ציבוריות</div>
+    <div class="grid-4" style="margin-bottom:1rem;color: white;">
+      <div class="card card-yellow" style="text-align:center;">
+        <div style="font-size: 1.2rem;color:var(--yellow);margin-bottom:.3rem;">LV 0</div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">debug(msg)</div>
+      </div>
+      <div class="card card-cyan" style="text-align:center;">
+        <div style="font-size: 1.2rem;color:var(--cyan);margin-bottom:.3rem;">LV 1</div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">info(msg)</div>
+      </div>
+      <div class="card card-orange" style="text-align:center;">
+        <div style="font-size: 1.2rem;color:var(--orange);margin-bottom:.3rem;">LV 2</div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">warning(msg)</div>
+      </div>
+      <div class="card card-red" style="text-align:center;">
+        <div style="font-size: 1.2rem;color:var(--red);margin-bottom:.3rem;">LV 3</div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">error(msg)</div>
+      </div>
+    </div>
+
+    <div class="info-box" style="border-color:var(--purple);background:#1A1F2A;">
+      <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+        _log(level, msg) — מתודה פרטית — מבצעת את כל הלוגיקה הפנימית (timestamp + כתיבה)
+      </span>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 5 — הקוד: __init__
+════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">05 / 13</span>
+    <h2>הקוד — לב המנגנון</h2>
+    <div class="code-block" style="margin-top:.8rem;">
+      <div class="code-bar">
+        <span>logger.py</span>
+        <div class="code-dots">
+          <span style="background:#FF5F57"></span>
+          <span style="background:#FEBC2E"></span>
+          <span style="background:#28C840"></span>
+        </div>
+      </div>
+      <div class="code-body">
+<span class="line"><span class="c-purple">import</span> datetime</span>
+<span class="line"></span>
+<span class="line"><span class="c-orange">DEBUG, INFO, WARNING, ERROR = 0, 1, 2, 3</span></span>
+<span class="line"><span class="c-white">LEVEL_NAMES = {DEBUG:<span class="c-yellow">'DEBUG'</span>, INFO:<span class="c-yellow">'INFO'</span>, WARNING:<span class="c-yellow">'WARNING'</span>, ERROR:<span class="c-yellow">'ERROR'</span>}</span></span>
+<span class="line"></span>
+<span class="line"><span class="c-cyan">class</span> <span class="c-green">Logger</span>:</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__init__</span>(self, filepath=<span class="c-yellow">'app.log'</span>,</span>
+<span class="line">               to_screen=<span class="c-orange">True</span>, to_file=<span class="c-orange">True</span>,</span>
+<span class="line">               min_level=DEBUG):</span>
+<span class="line">    self.filepath  = filepath</span>
+<span class="line">    self.to_screen = to_screen</span>
+<span class="line">    self.to_file   = to_file</span>
+<span class="line">    self.min_level = min_level</span>
+<span class="line">    <span class="c-cyan">if</span> to_file:</span>
+<span class="line">      self._file = <span class="c-green">open</span>(filepath, <span class="c-yellow">"a"</span>, encoding=<span class="c-yellow">"utf-8"</span>)</span>
+<span class="line">    <span class="c-cyan">else</span>:</span>
+<span class="line">      self._file = <span class="c-orange">None</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 6 — הקוד: _log + שימוש
+════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">06 / 13</span>
+    <h2>הקוד — _log + שימוש</h2>
+    <div class="grid-2" style="margin-top:.8rem;">
+      <div class="code-block">
+        <div class="code-bar"><span>_log + helpers</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line">  <span class="c-cyan">def</span> <span class="c-purple">_log</span>(self, level, msg):</span>
+<span class="line">    <span class="c-cyan">if</span> level &lt; self.min_level:</span>
+<span class="line">      <span class="c-red">return</span></span>
+<span class="line">    ts = datetime.datetime.now()</span>
+<span class="line">            .strftime(<span class="c-yellow">"%Y-%m-%d %H:%M:%S"</span>)</span>
+<span class="line">    ln = f<span class="c-yellow">'[{ts}][{LEVEL_NAMES[level]}] {msg}'</span></span>
+<span class="line">    <span class="c-cyan">if</span> self.to_screen:</span>
+<span class="line">      <span class="c-green">print</span>(ln)</span>
+<span class="line">    <span class="c-cyan">if</span> self.to_file:</span>
+<span class="line">      self._file.write(ln + <span class="c-yellow">'\n'</span>)</span>
+<span class="line">      self._file.<span class="c-cyan">flush</span>()</span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-yellow">debug</span>(self, m):   self._log(DEBUG, m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-cyan">info</span>(self, m):    self._log(INFO, m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-orange">warning</span>(self, m): self._log(WARNING, m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-red">error</span>(self, m):   self._log(ERROR, m)</span>
+        </div>
+      </div>
+      <div>
+        <div class="code-block" style="margin-bottom:.8rem;">
+          <div class="code-bar"><span>usage.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+          <div class="code-body">
+<span class="line"><span class="c-purple">from</span> logger <span class="c-purple">import</span> Logger</span>
+<span class="line"></span>
+<span class="line">log = <span class="c-green">Logger</span>(</span>
+<span class="line">  filepath=<span class="c-yellow">"app.log"</span>,</span>
+<span class="line">  to_screen=<span class="c-orange">True</span>,</span>
+<span class="line">  to_file=<span class="c-orange">True</span></span>
+<span class="line">)</span>
+<span class="line"></span>
+<span class="line">log.<span class="c-yellow">debug</span>(<span class="c-yellow">"טוען נתונים"</span>)</span>
+<span class="line">log.<span class="c-cyan">info</span>(<span class="c-yellow">"נטענו 42 שורות"</span>)</span>
+<span class="line">log.<span class="c-orange">warning</span>(<span class="c-yellow">"3 שורות חסרות"</span>)</span>
+<span class="line">log.<span class="c-red">error</span>(<span class="c-yellow">"DB נכשל!"</span>)</span>
+<span class="line">log.close()</span>
+          </div>
+        </div>
+        <div class="code-block" style="border-color:var(--green);">
+          <div class="code-bar" style="background:#0A1A0A;"><span style="color:var(--green);">פלט</span></div>
+          <div class="code-body">
+<span class="line c-green">▶ [2025-06-12 14:32:01][INFO] נטענו 42 שורות</span>
+<span class="line c-red">▶ [2025-06-12 14:32:01][ERROR] DB נכשל!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 7 — min_level
+════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">07 / 13</span>
+    <h2>סינון לפי רמה — min_level</h2>
+    <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--orange);margin-bottom:1.2rem;">
+      log = Logger(min_level=WARNING) &nbsp;&nbsp;<span class="c-muted"># מסנן DEBUG ו-INFO</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.7rem;">
+      <div class="card" style="border-color:var(--border);display:grid;grid-template-columns:120px 1fr 100px;align-items:center;gap:1rem;">
+        <span class="badge c-yellow" style="border-color:var(--yellow);">DEBUG</span>
+        <span style="font-family:var(--font-mono);font-size: 1.2rem;">log.debug("זה לא יודפס")</span>
+        <span class="badge c-red" style="border-color:var(--red);text-align:center;">✗ מסונן</span>
+      </div>
+      <div class="card" style="border-color:var(--border);display:grid;grid-template-columns:120px 1fr 100px;align-items:center;gap:1rem;">
+        <span class="badge c-cyan" style="border-color:var(--cyan);">INFO</span>
+        <span style="font-family:var(--font-mono);font-size: 1.2rem;">log.info("גם זה לא")</span>
+        <span class="badge c-red" style="border-color:var(--red);text-align:center;">✗ מסונן</span>
+      </div>
+      <div class="card card-orange" style="display:grid;grid-template-columns:120px 1fr 100px;align-items:center;gap:1rem;">
+        <span class="badge c-orange" style="border-color:var(--orange);">WARNING</span>
+        <span style="font-family:var(--font-mono);font-size: 1.2rem;">log.warning("זה כן!")</span>
+        <span class="badge c-green" style="border-color:var(--green);text-align:center;">✓ יודפס</span>
+      </div>
+      <div class="card card-red" style="display:grid;grid-template-columns:120px 1fr 100px;align-items:center;gap:1rem;">
+        <span class="badge c-red" style="border-color:var(--red);">ERROR</span>
+        <span style="font-family:var(--font-mono);font-size: 1.2rem;">log.error("וגם זה!")</span>
+        <span class="badge c-green" style="border-color:var(--green);text-align:center;">✓ יודפס</span>
+      </div>
+    </div>
+
+    <div class="info-box" style="border-color:var(--purple);background:#1A1F2A;margin-top:1rem;text-align:center;">
+      <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+        💡 Development: min_level=DEBUG &nbsp;|&nbsp; Production: min_level=WARNING
+      </span>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 8 — Context Manager
+════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">08 / 13</span>
+    <h2>Context Manager — with</h2>
+    <div class="grid-2" style="margin-top:.9rem;">
+      <div class="code-block" style="border-color:var(--red);">
+        <div class="code-bar" style="background:#1A0A0A;"><span class="c-red">❌ ללא with</span></div>
+        <div class="code-body">
+<span class="line">log = <span class="c-green">Logger</span>(<span class="c-yellow">'app.log'</span>)</span>
+<span class="line"></span>
+<span class="line">log.<span class="c-cyan">info</span>(<span class="c-yellow">'מתחיל'</span>)</span>
+<span class="line">do_something()</span>
+<span class="line"></span>
+<span class="line"><span class="c-red"># 💀 שכחת?</span></span>
+<span class="line"><span class="c-muted">log.close()  # קובץ נשאר פתוח!</span></span>
+        </div>
+      </div>
+      <div class="code-block" style="border-color:var(--green);">
+        <div class="code-bar" style="background:#0A1A0A;"><span class="c-green">✅ עם with</span></div>
+        <div class="code-body">
+<span class="line"><span class="c-green">with</span> <span class="c-green">Logger</span>(<span class="c-yellow">'app.log'</span>) <span class="c-green">as</span> log:</span>
+<span class="line"></span>
+<span class="line">  log.<span class="c-cyan">info</span>(<span class="c-yellow">'מתחיל'</span>)</span>
+<span class="line">  do_something()</span>
+<span class="line"></span>
+<span class="line"><span class="c-green"># ✅ סגור אוטומטית!</span></span>
+<span class="line"><span class="c-green"># אפילו אם יש Exception</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="info-box" style="border-color:var(--purple);background:#1A1F2A;margin-top:.9rem;">
+      <div class="code-block" style="border:none;background:transparent;">
+        <div class="code-body" style="padding:.3rem 0;">
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">__enter__</span>(self): <span class="c-cyan">return</span> self</span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">__exit__</span>(self, *args): self.close(); <span class="c-cyan">return</span> <span class="c-orange">False</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 9 — Wrapper מעל logging (ללא "אפשרות C")
+════════════════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="stripe stripe-pink"></div>
+  <div class="slide-body">
+    <span class="slide-num">09 / 13</span>
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.2rem;">
+      <h2>Wrapper מעל <span class="c-pink">logging</span></h2>
+      <span class="badge c-pink" style="border-color:var(--pink);font-size: 1.2rem;">Facade Pattern</span>
+    </div>
+    <p class="sub">הגישה המקצועית — API זהה + כוח הספרייה המובנית</p>
+
+    <div class="option-cards" style="margin-bottom:.9rem;">
+      <div class="option-card dim" style="border-color:var(--border);">
+        <div class="option-letter c-muted" style="border-color:var(--border);">A</div>
+        <div class="option-title">Logger עצמאי</div>
+        <div class="option-desc c-muted">כתבנו הכל מאפס<br>מדגים הבנת OOP</div>
+      </div>
+      <div class="option-card" style="border-color:var(--cyan);">
+        <div class="option-letter c-cyan" style="border-color:var(--cyan);">B</div>
+        <div class="option-title">logging בלבד</div>
+        <div class="option-desc c-cyan">Production-ready<br>מינימום קוד</div>
+      </div>
+      <div class="option-card featured" style="border-color:var(--pink);">
+        <div class="option-letter c-pink" style="border-color:var(--pink);">C ⭐</div>
+        <div class="option-title">Wrapper</div>
+        <div class="option-desc c-pink">ה-API שלנו<br>+ כוח הספרייה</div>
+      </div>
+    </div>
+
+    <div class="info-box" style="border-color:var(--pink);background:#1A0A1A;">
+      <span class="c-pink" style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">💡 למה Wrapper?</span>
+      <span style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--white);margin-right:.5rem;">
+        API זהה ← לא צריך לשנות שום קוד | RotatingFileHandler + Thread-safety בחינם
+      </span>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--pink);margin-top:.3rem;font-style:italic;">
+        Facade Pattern — ממשק פשוט מעל מערכת מורכבת — Design Pattern אמיתי לפרויקט גמר
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | Facade Pattern | פרויקט גמר</span><span style="color:var(--pink)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 10 — Wrapper: הקוד המלא
+════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="stripe stripe-pink"></div>
+  <div class="slide-body">
+    <span class="slide-num">10 / 13</span>
+    <h2>Wrapper — הקוד המלא</h2>
+    <div class="grid-2" style="margin-top:.8rem;">
+      <div class="code-block" style="border-color:var(--pink);">
+        <div class="code-bar" style="background:#1A0A1A;"><span class="c-pink">logger_wrapper.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line"><span class="c-purple">import</span> logging</span>
+<span class="line"><span class="c-purple">from</span> logging.handlers <span class="c-purple">import</span> RotatingFileHandler</span>
+<span class="line"></span>
+<span class="line"><span class="c-cyan">class</span> <span class="c-pink">Logger</span>:</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__init__</span>(self, name,</span>
+<span class="line">        filepath=<span class="c-yellow">'app.log'</span>,</span>
+<span class="line">        to_screen=<span class="c-orange">True</span>, to_file=<span class="c-orange">True</span>,</span>
+<span class="line">        min_level=logging.DEBUG):</span>
+<span class="line">    lg = logging.<span class="c-green">getLogger</span>(name)</span>
+<span class="line">    lg.<span class="c-cyan">setLevel</span>(min_level)</span>
+<span class="line">    fmt = logging.<span class="c-green">Formatter</span>(</span>
+<span class="line">      <span class="c-yellow">"%(asctime)s [%(levelname)s] %(message)s"</span>,</span>
+<span class="line">      datefmt=<span class="c-yellow">"%Y-%m-%d %H:%M:%S"</span>)</span>
+<span class="line">    <span class="c-cyan">if</span> to_file:</span>
+<span class="line">      fh = <span class="c-cyan">RotatingFileHandler</span>(</span>
+<span class="line">        filepath, maxBytes=<span class="c-orange">500_000</span>, backupCount=<span class="c-orange">2</span>)</span>
+<span class="line">      fh.<span class="c-cyan">setFormatter</span>(fmt); lg.<span class="c-cyan">addHandler</span>(fh)</span>
+<span class="line">    <span class="c-cyan">if</span> to_screen:</span>
+<span class="line">      sh = logging.<span class="c-green">StreamHandler</span>()</span>
+<span class="line">      sh.<span class="c-cyan">setFormatter</span>(fmt); lg.<span class="c-cyan">addHandler</span>(sh)</span>
+<span class="line">    self._lg = lg</span>
+        </div>
+      </div>
+      <div>
+        <div class="code-block" style="border-color:var(--pink);margin-bottom:.8rem;">
+          <div class="code-bar" style="background:#1A0A1A;"><span class="c-pink">Public API — זהה לחלוטין!</span></div>
+          <div class="code-body">
+<span class="line">  <span class="c-cyan">def</span> <span class="c-yellow">debug</span>(self, m):   self._lg.debug(m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-cyan">info</span>(self, m):    self._lg.info(m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-orange">warning</span>(self, m): self._lg.warning(m)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-red">error</span>(self, m):   self._lg.error(m)</span>
+          </div>
+        </div>
+        <div class="code-block" style="border-color:var(--green);">
+          <div class="code-bar" style="background:#0A1A0A;"><span class="c-green">▶ פלט — קובץ מתחלף ב-500KB</span></div>
+          <div class="code-body">
+<span class="line c-green">2025-06-12 14:32:01 [INFO] נטענו 42 שורות</span>
+<span class="line c-orange">2025-06-12 14:32:01 [WARNING] 3 חסרות</span>
+<span class="line c-red">2025-06-12 14:32:01 [ERROR] DB נכשל!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | Facade Pattern | פרויקט גמר</span><span style="color:var(--pink)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 11 — Decorator @log_calls (דרך נוספת)
+════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="stripe stripe-purple"></div>
+  <div class="slide-body">
+    <span class="slide-num">11 / 13</span>
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.2rem;">
+      <h2>Decorator — <span class="c-purple">@log_calls</span></h2>
+      <span class="badge c-purple" style="border-color:var(--purple);font-size: 1.2rem;">דרך נוספת</span>
+    </div>
+    <p class="sub">במקום להוסיף log בכל פונקציה — עוטפים אותה פעם אחת</p>
+
+    <div class="grid-2" style="gap:1rem;">
+      <div>
+        <div class="code-block" style="margin-bottom:.8rem;">
+          <div class="code-bar"><span>decorator.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+          <div class="code-body">
+<span class="line"><span class="c-purple">import</span> functools, logging</span>
+<span class="line"></span>
+<span class="line">log = logging.<span class="c-green">getLogger</span>(<span class="c-yellow">"app"</span>)</span>
+<span class="line"></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-purple">log_calls</span>(func):</span>
+<span class="line">  <span class="c-green">@functools.wraps</span>(func)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">wrapper</span>(*args, **kwargs):</span>
+<span class="line">    log.<span class="c-cyan">info</span>(f<span class="c-yellow">"▶ {func.__name__}() נקרא"</span>)</span>
+<span class="line">    <span class="c-cyan">try</span>:</span>
+<span class="line">      result = func(*args, **kwargs)</span>
+<span class="line">      log.<span class="c-cyan">info</span>(f<span class="c-yellow">"✓ {func.__name__}() הסתיים"</span>)</span>
+<span class="line">      <span class="c-cyan">return</span> result</span>
+<span class="line">    <span class="c-cyan">except</span> Exception <span class="c-cyan">as</span> e:</span>
+<span class="line">      log.<span class="c-red">error</span>(f<span class="c-yellow">"✗ {func.__name__}(): {e}"</span>)</span>
+<span class="line">      <span class="c-cyan">raise</span></span>
+<span class="line">  <span class="c-cyan">return</span> wrapper</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="code-block" style="margin-bottom:.8rem;border-color:var(--purple);">
+          <div class="code-bar" style="background:#1A1A2A;"><span class="c-purple">שימוש</span></div>
+          <div class="code-body">
+<span class="line"><span class="c-green">@log_calls</span>  <span class="c-muted"># ← שורה אחת!</span></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">load_data</span>(filepath):</span>
+<span class="line">  <span class="c-muted"># קוד פונקציה...</span></span>
+<span class="line">  <span class="c-cyan">return</span> data</span>
+<span class="line"></span>
+<span class="line"><span class="c-green">@log_calls</span></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">connect_db</span>(host):</span>
+<span class="line">  <span class="c-muted"># ...</span></span>
+          </div>
+        </div>
+        <div class="code-block" style="border-color:var(--green);">
+          <div class="code-bar" style="background:#0A1A0A;"><span class="c-green">פלט אוטומטי</span></div>
+          <div class="code-body">
+<span class="line c-cyan">▶ load_data() נקרא</span>
+<span class="line c-green">✓ load_data() הסתיים</span>
+<span class="line c-cyan">▶ connect_db() נקרא</span>
+<span class="line c-red">✗ connect_db(): Connection refused</span>
+          </div>
+        </div>
+
+        <div class="info-box" style="border-color:var(--purple);background:#1A1F2A;margin-top:.8rem;">
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;">
+            <span class="c-purple">🎯 יתרון:</span>
+            <span class="c-white"> לא נוגעים בקוד הפנימי של הפונקציה — </span>
+            <span class="c-purple">Separation of Concerns</span>
+          </div>
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--muted);margin-top:.3rem;">
+
+            כל פונקציה עם @log_calls מקבלת תיעוד מלא: כניסה, יציאה, שגיאות
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | Decorator Pattern | פרויקט גמר</span><span style="color:var(--purple)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 12 — סיכום
+════════════════════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body">
+    <span class="slide-num">12 / 13</span>
+    <h2>סיכום — מה למדנו?</h2>
+    <div class="grid-3" style="gap:.9rem;margin-top:1rem;">
+      <div class="summary-card" style="border-color:var(--cyan);">
+        <div class="summary-icon">🔒</div>
+        <div class="summary-concept c-cyan">Encapsulation</div>
+        <div class="summary-example">_log() פרטי</div>
+      </div>
+      <div class="summary-card" style="border-color:var(--green);">
+        <div class="summary-icon">⚙️</div>
+        <div class="summary-concept c-green">Default params</div>
+        <div class="summary-example">min_level=DEBUG</div>
+      </div>
+      <div class="summary-card" style="border-color:var(--purple);">
+        <div class="summary-icon">🛡</div>
+        <div class="summary-concept c-purple">Context Manager</div>
+        <div class="summary-example">with Logger() as log</div>
+      </div>
+      <div class="summary-card" style="border-color:var(--orange);">
+        <div class="summary-icon">📁</div>
+        <div class="summary-concept c-orange">File I/O</div>
+        <div class="summary-example">open / write / flush</div>
+      </div>
+      <div class="summary-card" style="border-color:var(--pink);">
+        <div class="summary-icon">🎭</div>
+        <div class="summary-concept c-pink">Facade Pattern</div>
+        <div class="summary-example">Wrapper מעל logging</div>
+      </div>
+      <div class="summary-card" style="border-color:var(--yellow);">
+        <div class="summary-icon">✨</div>
+        <div class="summary-concept c-yellow">Decorator</div>
+        <div class="summary-example">@log_calls</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SLIDE 13 — CLOSING
+════════════════════════════════════════ -->
+<div class="slide" id="s12">
+  <div class="stripe stripe-cyan"></div>
+  <div class="slide-body" style="min-height:530px;">
+    <span class="slide-num">13 / 13</span>
+    <div class="closing-wrap" style="padding-top:1.5rem;">
+      <div class="closing-bg">LOG</div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:3rem;margin-bottom:.5rem;">🚀</div>
+        <h1 style="font-size:2.8rem;margin-bottom:.6rem;">Logger מוכן!</h1>
+        <p style="color:var(--muted);font-size: 1.2rem;margin-bottom:1.5rem;">
+          הפרויקט תיעד, זיהה, ועזר לאתר באגים
+        </p>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--cyan);margin-bottom:.8rem;">שלבים הבאים אפשריים:</div>
+        <div class="next-steps">
+          <div class="next-step">Singleton pattern</div>
+          <div class="next-step">ANSI צבעים בטרמינל</div>
+          <div class="next-step">logging.config (YAML)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Logger | פרויקט גמר | Python</span><span style="color:var(--cyan)">LOGGER.PY</span></div>
+</div>
+
+</div><!-- /slides-wrap -->
+
+<!-- PROGRESS BAR -->
+<div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+
+<script>
+const TOTAL = 13;
+let cur = 0;
+
+const slides   = document.querySelectorAll('.slide');
+const dotsWrap = document.getElementById('navDots');
+const countEl  = document.getElementById('slideCount');
+const fill     = document.getElementById('progressFill');
+
+// build dots
+slides.forEach((_, i) => {
+  const d = document.createElement('button');
+  d.className = 'nav-dot' + (i >= 8 && i <= 10 ? ' pink' : '');
+  d.title = `שקף ${i+1}`;
+  d.onclick = () => goSlide(i);
+  dotsWrap.appendChild(d);
+});
+
+function goSlide(n) {
+  n = Math.max(0, Math.min(TOTAL - 1, n));
+  slides[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  document.querySelectorAll('.nav-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === cur);
+  });
+  countEl.textContent = `${cur + 1} / ${TOTAL}`;
+  fill.style.width = `${((cur + 1) / TOTAL) * 100}%`;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  goSlide(cur + 1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    goSlide(cur - 1);
+  if (e.key === 'Home') goSlide(0);
+  if (e.key === 'End')  goSlide(TOTAL - 1);
+});
+
+// touch swipe
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend',   e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) goSlide(dx > 0 ? cur - 1 : cur + 1);
+});
+
+goSlide(0);
+</script>
+</body>
+</html>

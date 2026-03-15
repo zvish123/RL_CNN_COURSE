@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>בדיקות שרת סוקטים | pytest & MagicMock</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Heebo:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e3a5f;
+    --accent1: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --accent5: #ef4444;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Heebo', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* HEADER */
+  header {
+    padding: 48px 0 32px;
+    text-align: center;
+    position: relative;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent1);
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 24px;
+  }
+
+  .header-badge::before { content: '▶'; font-size: 8px; }
+
+  h1 {
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  h1 .line1 { color: var(--accent1); display: block; }
+  h1 .line2 { color: var(--text); display: block; font-weight: 300; font-size: 1.2rem; }
+
+  .header-sub {
+    color: var(--text-dim);
+    font-size: 1rem;
+    max-width: 600px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+
+  .progress-step {
+    width: 32px;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .progress-step.active { background: var(--accent1); }
+  .progress-step.done { background: var(--accent3); }
+  .progress-step:hover { transform: scaleY(2); }
+
+  /* SLIDES */
+  .slides-wrapper { position: relative; min-height: 500px; }
+
+  .slide {
+    display: none;
+    animation: slideIn 0.4s ease;
+  }
+
+  .slide.active { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION HEADER */
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+
+  .label-theory { background: rgba(124,58,237,0.15); color: var(--accent2); border: 1px solid rgba(124,58,237,0.3); }
+  .label-code { background: rgba(0,212,255,0.1); color: var(--accent1); border: 1px solid rgba(0,212,255,0.3); }
+  .label-practice { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.3); }
+  .label-quiz { background: rgba(245,158,11,0.1); color: var(--accent4); border: 1px solid rgba(245,158,11,0.3); }
+  .label-results { background: rgba(239,68,68,0.1); color: var(--accent5); border: 1px solid rgba(239,68,68,0.3); }
+
+  .slide-title {
+    font-size: 1.9rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    line-height: 1.2;
+  }
+
+  .slide-intro {
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    margin-bottom: 28px;
+    line-height: 1.7;
+  }
+
+  /* INFO CARDS */
+  .card-grid { display: grid; gap: 16px; margin-bottom: 24px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .card:hover { border-color: var(--accent1); transform: translateY(-2px); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent1);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-icon { font-size: 1.8rem; margin-bottom: 10px; }
+
+  .card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--accent1);
+  }
+
+  .card p {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .card.accent2 h3, .card.accent2 .card-icon { color: var(--accent2); }
+  .card.accent2::before { background: var(--accent2); }
+  .card.accent3 h3, .card.accent3 .card-icon { color: var(--accent3); }
+  .card.accent3::before { background: var(--accent3); }
+  .card.accent4 h3, .card.accent4 .card-icon { color: var(--accent4); }
+  .card.accent4::before { background: var(--accent4); }
+  .card.accent5 h3, .card.accent5 .card-icon { color: var(--accent5); }
+  .card.accent5::before { background: var(--accent5); }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: #060b14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-filename {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent1);
+    letter-spacing: 1px;
+  }
+
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .code-body {
+    padding: 20px;
+    font-size: 1.2rem;
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre;
+    color: #abb2bf;
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: isolate;
+  }
+
+  .kw { color: #c678dd; }
+  .fn { color: #61afef; }
+  .str { color: #98c379; }
+  .cm { color: #5c6370; font-style: italic; }
+  .num { color: #d19a66; }
+  .cls { color: #e5c07b; }
+  .dec { color: #e06c75; }
+  .op { color: #56b6c2; }
+  .hl { background: rgba(0,212,255,0.08); border-right: 3px solid var(--accent1); display: block; margin: 0 -20px; padding: 0 20px; }
+
+  /* DIAGRAM */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 18px;
+    font-size: 1.2rem;
+    font-family: var(--mono);
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .flow-box.mock-box {
+    border-color: var(--accent4);
+    color: var(--accent4);
+    background: rgba(245,158,11,0.08);
+  }
+
+  .flow-box.real-box {
+    border-color: var(--accent5);
+    color: var(--accent5);
+    background: rgba(239,68,68,0.08);
+  }
+
+  .flow-box.test-box {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(0,212,255,0.08);
+  }
+
+  .flow-box.server-box {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(16,185,129,0.08);
+  }
+
+  .flow-arrow { color: var(--text-dim); font-size: 1.2rem; }
+
+  .diagram-label {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    margin-top: 12px;
+  }
+
+  /* COMPARE TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+  }
+
+  .compare-table th {
+    background: var(--surface2);
+    padding: 10px 16px;
+    text-align: right;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    color: var(--accent1);
+    font-family: var(--mono);
+    border-bottom: 2px solid var(--border);
+  }
+
+  .compare-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .compare-table tr:hover td { background: var(--surface2); color: var(--text); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 1.2rem;
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+
+  .tag-green { background: rgba(16,185,129,0.15); color: var(--accent3); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--accent5); }
+  .tag-blue { background: rgba(0,212,255,0.15); color: var(--accent1); }
+  .tag-yellow { background: rgba(245,158,11,0.15); color: var(--accent4); }
+
+  /* CALLOUT */
+  .callout {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+
+  .callout-info { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25); }
+  .callout-warn { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+  .callout-tip { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); }
+
+  .callout-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+
+  .callout-body { font-size: 1.2rem; line-height: 1.7; }
+
+  .callout-body strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 1.2rem;
+    letter-spacing: 0.5px;
+  }
+
+  .callout-info strong { color: var(--accent1); }
+  .callout-warn strong { color: var(--accent4); }
+  .callout-tip strong { color: var(--accent3); }
+
+  /* QUIZ */
+  .quiz-container { display: flex; flex-direction: column; gap: 24px; }
+
+  .quiz-question {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    transition: border-color 0.3s;
+  }
+
+  .quiz-question.answered-correct { border-color: var(--accent3); }
+  .quiz-question.answered-wrong { border-color: var(--accent5); }
+
+  .question-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  .question-num {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent4);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+
+  .option-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: right;
+    font-family: var(--sans);
+    font-size: 1.2rem;
+    transition: all 0.25s;
+    line-height: 1.5;
+  }
+
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent1);
+    background: rgba(0,212,255,0.07);
+    color: var(--accent1);
+    transform: translateX(-3px);
+  }
+
+  .option-btn.correct {
+    background: rgba(16,185,129,0.15);
+    border-color: var(--accent3);
+    color: var(--accent3);
+  }
+
+  .option-btn.wrong {
+    background: rgba(239,68,68,0.12);
+    border-color: var(--accent5);
+    color: var(--accent5);
+  }
+
+  .option-btn:disabled { cursor: default; }
+
+  .feedback {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .feedback.show { display: block; animation: fadeUp 0.3s ease; }
+  .feedback-correct { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.3); }
+  .feedback-wrong { background: rgba(239,68,68,0.1); color: var(--accent5); border: 1px solid rgba(239,68,68,0.3); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCORE */
+  .score-display {
+    text-align: center;
+    padding: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 24px;
+  }
+
+  .score-number {
+    font-size: 4rem;
+    font-weight: 900;
+    font-family: var(--mono);
+    color: var(--accent1);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .score-label { color: var(--text-dim); font-size: 1.2rem; }
+
+  /* NAV */
+  .slide-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 48px;
+    gap: 16px;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 1.2rem;
+    font-weight: 600;
+    transition: all 0.25s;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(0,212,255,0.07);
+  }
+
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .nav-btn.primary { background: var(--accent1); color: var(--bg); border-color: var(--accent1); }
+  .nav-btn.primary:hover { background: #33ddff; }
+
+  .slide-counter {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  /* TOOLTIP */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-trigger {
+    border-bottom: 1px dashed var(--accent4);
+    cursor: help;
+    color: var(--accent4);
+  }
+  .tooltip-box {
+    display: none;
+    position: absolute;
+    bottom: 130%;
+    right: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 1.2rem;
+    white-space: nowrap;
+    z-index: 100;
+    color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+
+  /* REVEAL */
+  .reveal-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .reveal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .reveal-header:hover { background: rgba(0,212,255,0.05); }
+
+  .reveal-header .arrow {
+    font-size: 1.2rem;
+    color: var(--accent1);
+    transition: transform 0.3s;
+  }
+
+  .reveal-header.open .arrow { transform: rotate(90deg); }
+
+  .reveal-body {
+    display: none;
+    padding: 0 16px 16px;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .reveal-body.open { display: block; animation: fadeUp 0.3s ease; }
+
+  /* ANNOTATION */
+  .annotation-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+  .annotation-list li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .annotation-list li .num-badge {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0,212,255,0.15);
+    color: var(--accent1);
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+
+  /* RESULTS TABLE */
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .result-icon { font-size: 2rem; margin-bottom: 8px; }
+  .result-title { font-size: 1.2rem; color: var(--text-dim); margin-bottom: 4px; }
+  .result-value { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; }
+
+  hr.divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  .inline-code {
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--accent1);
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-badge">pytest + MagicMock</div>
+    <h1>
+      <span class="line1">בדיקות שרת סוקטים</span>
+      <span class="line2">כיצד בודקים קוד שרת מבלי לחבר רשת אמיתית?</span>
+    </h1>
+    <p class="header-sub">
+      מדריך אינטראקטיבי לבדיקות יחידה של שרתי TCP בפייתון —
+      תיאוריה, טכניקות, דוגמאות קוד, ותוצאות צפויות
+    </p>
+    <div class="progress-bar" id="progressBar"></div>
+  </header>
+
+  <div class="slides-wrapper">
+
+    <!-- ===== SLIDE 0: מה זה Unit Testing ===== -->
+    <div class="slide active" id="slide-0">
+      <div class="section-label label-theory">📚 תיאוריה בסיסית</div>
+      <div class="slide-title">מה זה בדיקות יחידה (Unit Testing)?</div>
+      <p class="slide-intro">
+        לפני שנצלול לקוד — נבין למה בכלל כותבים בדיקות אוטומטיות ומה הבעיה המיוחדת בבדיקת שרתי רשת.
+      </p>
+
+      <div class="card-grid card-grid-3">
+        <div class="card">
+          <div class="card-icon">🧪</div>
+          <h3>מה זה?</h3>
+          <p>בדיקת יחידה = בדיקה של פונקציה אחת בבידוד, ללא תלות במערכות חיצוניות.</p>
+        </div>
+        <div class="card accent3">
+          <div class="card-icon">⚡</div>
+          <h3>למה?</h3>
+          <p>מאפשר לגלות באגים מוקדם, בלי להריץ את כל המערכת. כל שינוי קוד — הרץ את הבדיקות!</p>
+        </div>
+        <div class="card accent2">
+          <div class="card-icon">🤖</div>
+          <h3>אוטומטי</h3>
+          <p>pytest מריץ מאות בדיקות תוך שניות, מדווח בדיוק מה נשבר ואיפה.</p>
+        </div>
+      </div>
+
+      <div class="diagram">
+        <strong style="color:var(--text-dim);font-size: 1.2rem;letter-spacing:1px;">הבעיה: בדיקת שרת סוקטים דורשת...</strong>
+        <div class="flow" style="margin-top:20px;">
+          <div class="flow-box real-box">לקוח אמיתי</div>
+          <div class="flow-arrow">←→</div>
+          <div class="flow-box server-box">שרת TCP</div>
+          <div class="flow-arrow">←→</div>
+          <div class="flow-box real-box">רשת פעילה</div>
+        </div>
+        <div class="diagram-label">⚠️ זה מסובך, איטי, ועלול להיכשל מסיבות שלא קשורות לקוד שלנו</div>
+        <div class="flow-arrow" style="font-size:2rem;color:var(--accent3);display:block;margin:12px 0;">↓</div>
+        <strong style="color:var(--accent3);font-size: 1.2rem;">הפתרון: MagicMock — סוקט מדומה!</strong>
+        <div class="flow" style="margin-top:12px;">
+          <div class="flow-box mock-box">MagicMock (מדומה)</div>
+          <div class="flow-arrow">←→</div>
+          <div class="flow-box server-box">handle_client()</div>
+        </div>
+        <div class="diagram-label">✅ מהיר, בלי רשת, בלי לקוח אמיתי, בלי תלות חיצונית</div>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <strong>עיקרון מפתח — Isolation</strong>
+          כשבודקים את <span class="inline-code">handle_client()</span>, רוצים לבדוק רק את הלוגיקה שלה — לא את TCP, לא את מערכת ההפעלה, לא את הרשת. MagicMock מאפשר להחליף את הסוקט האמיתי בעצם מדומה שנוכל לשלוט בו.
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 1: pytest - מבנה ===== -->
+    <div class="slide" id="slide-1">
+      <div class="section-label label-theory">📚 תיאוריה</div>
+      <div class="slide-title">pytest — מבנה ומוסכמות</div>
+      <p class="slide-intro">
+        pytest היא ספרייה לבדיקות אוטומטיות בפייתון. היא מגלה ומריצה בדיקות לפי מוסכמות שמות פשוטות.
+      </p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+          <span class="code-filename">test_example.py</span>
+        </div>
+        <div class="code-body"><span class="cm"># pytest מוצא אוטומטית קבצים שמתחילים ב test_</span>
+<span class="cm"># ופונקציות שמתחילות ב test_</span>
+
+<span class="kw">import</span> pytest
+
+<span class="cm"># fixture = פונקציה שמייצרת משאב לבדיקות</span>
+<span class="dec">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">sample_data</span>():
+    <span class="kw">return</span> {<span class="str">"key"</span>: <span class="str">"value"</span>}
+
+<span class="cm"># כל פונקציה שמתחילה ב test_ = בדיקה אוטומטית</span>
+<span class="kw">def</span> <span class="fn">test_something</span>(sample_data):
+    result = do_something(sample_data)
+    <span class="cm"># assert = בודק שהתוצאה נכונה; נכשל = הבדיקה נכשלת</span>
+    <span class="kw">assert</span> result == <span class="str">"expected"</span>
+
+<span class="kw">def</span> <span class="fn">test_another_thing</span>():
+    <span class="kw">assert</span> <span class="num">2</span> + <span class="num">2</span> == <span class="num">4</span></div>
+      </div>
+
+      <div class="card-grid card-grid-2">
+        <div class="card">
+          <h3>📁 מוסכמות שמות</h3>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+            <li style="font-size: 1.2rem;color:var(--text-dim);">📄 קובץ: <span class="inline-code">test_*.py</span></li>
+            <li style="font-size: 1.2rem;color:var(--text-dim);">🔧 פונקציה: <span class="inline-code">def test_*()</span></li>
+            <li style="font-size: 1.2rem;color:var(--text-dim);">🏛️ כיתה: <span class="inline-code">class Test*:</span></li>
+          </ul>
+        </div>
+        <div class="card accent3">
+          <h3>▶️ הרצה</h3>
+          <div style="font-family:var(--mono);font-size: 1.2rem;background:#060b14;padding:10px;border-radius:4px;margin-top:4px;line-height:2;">
+            <span style="color:var(--accent3);">$</span> <span style="color:var(--text);">pytest</span><br>
+            <span style="color:var(--accent3);">$</span> <span style="color:var(--text);">pytest test_server.py</span><br>
+            <span style="color:var(--accent3);">$</span> <span style="color:var(--text);">pytest -v</span> <span style="color:var(--text-dim)"># verbose</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>מילת מפתח</th><th>שימוש</th><th>דוגמה</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="inline-code">assert</span></td>
+            <td>בדיקת תנאי — אם שקר = הבדיקה נכשלת</td>
+            <td><span class="inline-code">assert x == 5</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">@pytest.fixture</span></td>
+            <td>יצירת משאב משותף לכמה בדיקות</td>
+            <td><span class="inline-code">@pytest.fixture</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">teardown_module</span></td>
+            <td>ניקיון לאחר כל הבדיקות</td>
+            <td>מחיקת קבצים זמניים</td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">side_effect</span></td>
+            <td>רשימת ערכים שיוחזרו ברצף</td>
+            <td><span class="inline-code">[b"...", b"..."]</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== SLIDE 2: MagicMock ===== -->
+    <div class="slide" id="slide-2">
+      <div class="section-label label-theory">🪄 MagicMock</div>
+      <div class="slide-title">MagicMock — הסוקט המדומה</div>
+      <p class="slide-intro">
+        <span class="inline-code">MagicMock</span> מ-<span class="inline-code">unittest.mock</span> יוצר עצם שמחקה כל אובייקט אחר — בלי שצריך את האובייקט האמיתי.
+      </p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+          <span class="code-filename">test_server.py — mock_socket fixture</span>
+        </div>
+        <div class="code-body"><span class="kw">from</span> unittest.mock <span class="kw">import</span> <span class="cls">MagicMock</span>
+
+<span class="dec">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">mock_socket</span>():
+    sock = <span class="cls">MagicMock</span>()   <span class="cm"># יוצר "סוקט מדומה"</span>
+    <span class="kw">return</span> sock
+
+<span class="cm"># --- מה MagicMock יכול לעשות? ---</span>
+
+<span class="cm"># 1. לקבוע מה recv() יחזיר (כל קריאה תחזיר ערך אחר)</span>
+sock.recv.side_effect = [
+    <span class="hl">    b<span class="str">"register||zvi||password123"</span>,    <span class="cm"># קריאה ראשונה</span></span>
+<span class="hl">    b<span class="str">"logout"</span>                          <span class="cm"># קריאה שנייה</span></span>
+]
+
+<span class="cm"># 2. לבדוק מה נשלח (שימוש ב-assert_any_call)</span>
+sock.sendall.assert_any_call(b<span class="str">"OK||Registered successfully"</span>)
+
+<span class="cm"># 3. לבדוק שנסגר</span>
+sock.close.assert_called()</div>
+      </div>
+
+      <div class="card-grid card-grid-2">
+        <div class="card accent4">
+          <div class="card-icon">📥</div>
+          <h3>recv().side_effect</h3>
+          <p>מגדיר רשימה של ערכים שיוחזרו ברצף בכל פעם ש-<span class="inline-code">recv()</span> נקראת. כך מדמים שרצף הודעות מגיע מלקוח.</p>
+        </div>
+        <div class="card accent3">
+          <div class="card-icon">📤</div>
+          <h3>sendall.assert_any_call()</h3>
+          <p>בודק ש-<span class="inline-code">sendall()</span> נקרא עם ארגומנט מסוים <em>לפחות פעם אחת</em>. כך אוכפים שהשרת שלח את התשובה הנכונה.</p>
+        </div>
+      </div>
+
+      <div dir="ltr" class="diagram">
+        <strong dir="rtl" style="color:var(--text-dim);font-size: 1.2rem;letter-spacing:1px;">זרימת בדיקה עם MagicMock</strong>
+        <div class="flow" style="margin-top:16px;">
+          <div dir="rtl" class="flow-box test-box">בדיקת pytest</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box server-box">handle_client(mock_sock)</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box mock-box">mock_sock.recv()</div>
+        </div>
+        <div class="flow" style="margin-top:8px;">
+          <div dir="rtl" class="flow-box mock-box">מחזיר side_effect[i]</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box server-box">עיבוד בשרת</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box mock-box">mock_sock.sendall()</div>
+        </div>
+        <div class="flow" style="margin-top:8px;">
+          <div class="flow-box test-box">assert_any_call(expected)</div>
+          <div class="flow-arrow">→</div>
+          <div style="background:rgba(16,185,129,0.15);border:1px solid var(--accent3);color:var(--accent3);padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size: 1.2rem;">✅ PASSED</div>
+          <div class="flow-arrow">|</div>
+          <div style="background:rgba(239,68,68,0.15);border:1px solid var(--accent5);color:var(--accent5);padding:10px 16px;border-radius:6px;font-family:var(--mono);font-size: 1.2rem;">❌ FAILED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 3: ניתוח קוד הבדיקות ===== -->
+    <div class="slide" id="slide-3">
+      <div class="section-label label-code">💻 ניתוח קוד</div>
+      <div class="slide-title">ניתוח test_server.py</div>
+      <p class="slide-intro">
+        נעבור על כל בדיקה בקובץ, ונבין מה היא בודקת, איך היא עובדת, ומה תוצאה צפויה להיות.
+      </p>
+
+      <div class="reveal-block">
+        <div class="reveal-header" onclick="toggleReveal(this)">
+          <span>🔬 בדיקה 1 — <span class="inline-code">test_register_success</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="reveal-body">
+          <div class="code-block" style="margin-top:12px;">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+              <span class="code-filename">test_register_success</span>
+            </div>
+            <div class="code-body"><span class="kw">def</span> <span class="fn">test_register_success</span>(mock_socket):
+    mock_socket.recv.side_effect = [
+        b<span class="str">"register||zvi||password123"</span>,
+        b<span class="str">"logout"</span>
+    ]
+    handle_client(mock_socket, (<span class="str">'127.0.0.1'</span>, <span class="num">1111</span>))
+    mock_socket.sendall.assert_any_call(b<span class="str">"OK||Registered successfully"</span>)</div>
+          </div>
+          <ul class="annotation-list">
+            <li><div class="num-badge">1</div><div>מגדיר שתי "הודעות" שיגיעו מהלקוח: רישום ואחר כך logout</div></li>
+            <li><div class="num-badge">2</div><div>מריץ את <span class="inline-code">handle_client()</span> עם הסוקט המדומה — השרת "חושב" שקיבל חיבור אמיתי</div></li>
+            <li><div class="num-badge">3</div><div>בודק שהשרת שלח <span class="inline-code">OK||Registered successfully</span></div></li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:12px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>תוצאה צפויה: PASSED</strong> כי שם משתמש "zvi" לא קיים → יירשם בהצלחה → שרת שולח OK</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal-block">
+        <div class="reveal-header" onclick="toggleReveal(this)">
+          <span>🔬 בדיקה 2 — <span class="inline-code">test_register_invalid_format</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="reveal-body">
+          <div class="code-block" style="margin-top:12px;">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+              <span class="code-filename">test_register_invalid_format</span>
+            </div>
+            <div class="code-body"><span class="kw">def</span> <span class="fn">test_register_invalid_format</span>(mock_socket):
+    mock_socket.recv.side_effect = [
+        b<span class="str">"register||only_username"</span>,  <span class="cm"># חסר פרמטר שלישי!</span>
+        b<span class="str">"logout"</span>
+    ]
+    handle_client(mock_socket, (<span class="str">'127.0.0.1'</span>, <span class="num">1111</span>))
+    mock_socket.sendall.assert_any_call(b<span class="str">"ERROR||Invalid register format"</span>)</div>
+          </div>
+          <ul class="annotation-list">
+            <li><div class="num-badge">1</div><div>הפורמט הנכון הוא <span class="inline-code">register||user||pass</span> — כאן חסר הסיסמה</div></li>
+            <li><div class="num-badge">2</div><div>השרת מחלק ב-<span class="inline-code">||</span> ומקבל רק 2 חלקים במקום 3</div></li>
+            <li><div class="num-badge">3</div><div>מצפים שהשרת יזהה זאת ויחזיר שגיאת פורמט</div></li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:12px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>תוצאה צפויה: PASSED</strong> — השרת בודק <span class="inline-code">if len(parts) != 3</span> ומחזיר שגיאה</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal-block">
+        <div class="reveal-header" onclick="toggleReveal(this)">
+          <span>🔬 בדיקה 3 — <span class="inline-code">test_login_wrong_password</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="reveal-body">
+          <div class="code-block" style="margin-top:12px;">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+              <span class="code-filename">test_login_wrong_password</span>
+            </div>
+            <div class="code-body"><span class="kw">def</span> <span class="fn">test_login_wrong_password</span>(mock_socket):
+    <span class="cm"># הכנה: יצירת קובץ משתמשים עם סיסמה ידועה</span>
+    <span class="kw">with</span> <span class="fn">open</span>(USERS_FILE, <span class="str">"w"</span>) <span class="kw">as</span> f:
+        json.dump({<span class="str">"zvi"</span>: {<span class="str">"username"</span>: <span class="str">"zvi"</span>, <span class="str">"password"</span>: <span class="str">"correct"</span>}}, f)
+
+    mock_socket.recv.side_effect = [
+        b<span class="str">"login||zvi||wrong_pass"</span>,   <span class="cm"># ניסיון עם סיסמה שגויה</span>
+        b<span class="str">"logout"</span>
+    ]
+    handle_client(mock_socket, (<span class="str">'127.0.0.1'</span>, <span class="num">1111</span>))
+    mock_socket.sendall.assert_any_call(b<span class="str">"ERROR||Wrong password"</span>)</div>
+          </div>
+          <ul class="annotation-list">
+            <li><div class="num-badge">1</div><div>שלב ה"הכנה" (Arrange): יוצרים קובץ JSON עם משתמש "zvi" וסיסמה "correct"</div></li>
+            <li><div class="num-badge">2</div><div>שלב ה"פעולה" (Act): שולחים ניסיון התחברות עם "wrong_pass"</div></li>
+            <li><div class="num-badge">3</div><div>שלב ה"בדיקה" (Assert): השרת צריך לזהות שהסיסמה שגויה</div></li>
+          </ul>
+          <div class="callout callout-warn" style="margin-top:12px;">
+            <div class="callout-icon">⚠️</div>
+            <div class="callout-body"><strong>שים לב: Arrange-Act-Assert</strong> זהו דפוס (pattern) נפוץ בבדיקות — הכנה, פעולה, בדיקת תוצאה. שם לב שנוצר קובץ JSON בהתחלה!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal-block">
+        <div class="reveal-header" onclick="toggleReveal(this)">
+          <span>🔬 בדיקות 4 ו-5 — <span class="inline-code">unknown_action</span> ו-<span class="inline-code">disconnect</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="reveal-body">
+          <div class="code-block" style="margin-top:12px;">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+              <span class="code-filename">test_unknown_action + test_client_disconnect_suddenly</span>
+            </div>
+            <div class="code-body"><span class="kw">def</span> <span class="fn">test_unknown_action</span>(mock_socket):
+    mock_socket.recv.side_effect = [
+        b<span class="str">"attack||127.0.0.1"</span>,  <span class="cm"># פקודה לא קיימת בפרוטוקול</span>
+        b<span class="str">"logout"</span>
+    ]
+    handle_client(mock_socket, (<span class="str">'127.0.0.1'</span>, <span class="num">1111</span>))
+    mock_socket.sendall.assert_any_call(b<span class="str">"ERROR||Unknown action"</span>)
+
+
+<span class="kw">def</span> <span class="fn">test_client_disconnect_suddenly</span>(mock_socket):
+    <span class="cm"># recv מחזיר bytes ריק = ניתוק</span>
+    mock_socket.recv.return_value = b<span class="str">""</span>
+
+    handle_client(mock_socket, (<span class="str">'127.0.0.1'</span>, <span class="num">1111</span>))
+
+    <span class="cm"># בודק שהשרת סגר את הסוקט</span>
+    mock_socket.close.assert_called()</div>
+          </div>
+          <ul class="annotation-list">
+            <li><div class="num-badge">1</div><div><span class="inline-code">unknown_action</span>: מוודא שהשרת מוגן מפני פקודות שרירותיות — חשוב לאבטחה!</div></li>
+            <li><div class="num-badge">2</div><div><span class="inline-code">return_value</span> שונה מ-<span class="inline-code">side_effect</span> — כאן <em>תמיד</em> מחזיר אותו ערך</div></li>
+            <li><div class="num-badge">3</div><div>bytes ריק (<span class="inline-code">b""</span>) הוא איך TCP מסמן שהחיבור נסגר מהצד השני</div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 4: תוצאות צפויות ===== -->
+    <div class="slide" id="slide-4">
+      <div class="section-label label-results">📊 תוצאות</div>
+      <div class="slide-title">תוצאות צפויות מ-pytest</div>
+      <p class="slide-intro">
+        מה נראה כשנריץ <span class="inline-code">pytest test_server.py -v</span> — ולמה כל בדיקה תעבור או תיכשל?
+      </p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><div class="code-dot dot-r"></div><div class="code-dot dot-y"></div><div class="code-dot dot-g"></div></div>
+          <span class="code-filename">Terminal — pytest output</span>
+        </div>
+        <div class="code-body"><span style="color:#56b6c2;">============================= test session starts ==============================</span>
+platform linux -- Python 3.11 -- pytest-7.x
+collected 5 items
+
+test_server.py::TestServerProtocol::<span style="color:var(--accent3);">test_register_success</span>       <span style="color:var(--accent3);">PASSED  [✓]</span>
+test_server.py::TestServerProtocol::<span style="color:var(--accent3);">test_register_invalid_format</span>  <span style="color:var(--accent3);">PASSED  [✓]</span>
+test_server.py::TestServerProtocol::<span style="color:var(--accent3);">test_login_wrong_password</span>     <span style="color:var(--accent3);">PASSED  [✓]</span>
+test_server.py::TestServerProtocol::<span style="color:var(--accent3);">test_unknown_action</span>           <span style="color:var(--accent3);">PASSED  [✓]</span>
+test_server.py::TestServerProtocol::<span style="color:var(--accent3);">test_client_disconnect_suddenly</span> <span style="color:var(--accent3);">PASSED  [✓]</span>
+
+<span style="color:var(--accent3);">============================== 5 passed in 0.23s ================================</span></div>
+      </div>
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-icon">✅</div>
+          <div class="result-title">בדיקות עברו</div>
+          <div class="result-value" style="color:var(--accent3);">5 / 5</div>
+        </div>
+        <div class="result-card">
+          <div class="result-icon">⚡</div>
+          <div class="result-title">זמן ריצה</div>
+          <div class="result-value" style="color:var(--accent1);">0.23s</div>
+        </div>
+        <div class="result-card">
+          <div class="result-icon">🔌</div>
+          <div class="result-title">חיבורי רשת</div>
+          <div class="result-value" style="color:var(--accent4);">0</div>
+        </div>
+        <div class="result-card">
+          <div class="result-icon">📁</div>
+          <div class="result-title">קבצים שנוצרו</div>
+          <div class="result-value" style="color:var(--accent2);">1</div>
+        </div>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">❓</div>
+        <div class="callout-body">
+          <strong>מה קורה אם השרת שובר?</strong>
+          אם נשנה בשרת <span class="inline-code">"OK||Registered successfully"</span> ל-<span class="inline-code">"OK||Registered"</span>, הבדיקה תיכשל עם שגיאה כמו: <span class="inline-code">AssertionError: b"OK||Registered successfully" call not found</span>
+        </div>
+      </div>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>בדיקה</th><th>מה נבדק</th><th>ציפייה</th><th>סטטוס</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="inline-code">test_register_success</span></td>
+            <td>רישום תקין</td>
+            <td><span class="inline-code">OK||Registered</span></td>
+            <td><span class="tag tag-green">PASS</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">test_register_invalid_format</span></td>
+            <td>חסר פרמטר</td>
+            <td><span class="inline-code">ERROR||Invalid register</span></td>
+            <td><span class="tag tag-green">PASS</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">test_login_wrong_password</span></td>
+            <td>סיסמה שגויה</td>
+            <td><span class="inline-code">ERROR||Wrong password</span></td>
+            <td><span class="tag tag-green">PASS</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">test_unknown_action</span></td>
+            <td>פקודה לא מוכרת</td>
+            <td><span class="inline-code">ERROR||Unknown action</span></td>
+            <td><span class="tag tag-green">PASS</span></td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">test_client_disconnect</span></td>
+            <td>ניתוק פתאומי</td>
+            <td><span class="inline-code">close()</span> נקרא</td>
+            <td><span class="tag tag-green">PASS</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== SLIDE 5: QUIZ ===== -->
+    <div class="slide" id="slide-5">
+      <div class="section-label label-quiz">🧠 בדיקת הבנה</div>
+      <div class="slide-title">שאלות לבדיקת הבנה</div>
+      <p class="slide-intro">
+        ענה על השאלות — לחץ על התשובה שלדעתך נכונה. אחרי הבחירה תקבל הסבר.
+      </p>
+
+      <div class="quiz-container" id="quizContainer">
+
+        <!-- Q1 -->
+        <div class="quiz-question" id="q1">
+          <div class="question-num">שאלה 01 / 06</div>
+          <div class="question-text">
+            מה המטרה העיקרית של שימוש ב-<span class="inline-code">MagicMock</span> בבדיקת שרת TCP?
+          </div>
+          <div class="options" id="opts-q1">
+          </div>
+          <div class="feedback" id="fb-q1"></div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="quiz-question" id="q2">
+          <div class="question-num">שאלה 02 / 06</div>
+          <div class="question-text">
+            מה ההבדל בין <span class="inline-code">side_effect</span> לבין <span class="inline-code">return_value</span> ב-MagicMock?
+          </div>
+          <div class="options" id="opts-q2"></div>
+          <div class="feedback" id="fb-q2"></div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="quiz-question" id="q3">
+          <div class="question-num">שאלה 03 / 06</div>
+          <div class="question-text">
+            בבדיקה <span class="inline-code">test_client_disconnect_suddenly</span>, מדוע <span class="inline-code">recv</span> מחזיר <span class="inline-code">b""</span>?
+          </div>
+          <div class="options" id="opts-q3"></div>
+          <div class="feedback" id="fb-q3"></div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="quiz-question" id="q4">
+          <div class="question-num">שאלה 04 / 06</div>
+          <div class="question-text">
+            מה מטרת פונקציית <span class="inline-code">teardown_module</span> בקובץ הבדיקות?
+          </div>
+          <div class="options" id="opts-q4"></div>
+          <div class="feedback" id="fb-q4"></div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="quiz-question" id="q5">
+          <div class="question-num">שאלה 05 / 06</div>
+          <div class="question-text">
+            בבדיקת <span class="inline-code">test_register_success</span>, למה צריך לשלוח גם <span class="inline-code">b"logout"</span> אחרי ה-register?
+          </div>
+          <div class="options" id="opts-q5"></div>
+          <div class="feedback" id="fb-q5"></div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="quiz-question" id="q6">
+          <div class="question-num">שאלה 06 / 06</div>
+          <div class="question-text">
+            מה יקרה אם נשנה בשרת את הטקסט <span class="inline-code">"OK||Registered successfully"</span> ל-<span class="inline-code">"OK||Done"</span>?
+          </div>
+          <div class="options" id="opts-q6"></div>
+          <div class="feedback" id="fb-q6"></div>
+        </div>
+
+      </div>
+
+      <div class="score-display" id="scoreDisplay" style="display:none;">
+        <div class="score-number" id="scoreNum">0/6</div>
+        <div class="score-label" id="scoreLabel"></div>
+      </div>
+    </div>
+
+  </div><!-- end slides-wrapper -->
+
+  <div class="slide-nav">
+    <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>
+      → הקודם
+    </button>
+    <span class="slide-counter" id="slideCounter">01 / 06</span>
+    <button class="nav-btn primary" id="nextBtn" onclick="changeSlide(1)">
+      הבא ←
+    </button>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+const TOTAL_SLIDES = 6;
+let currentSlide = 0;
+let quizScore = 0;
+let quizAnswered = 0;
+
+// ===== QUIZ DATA =====
+const quizData = [
+  {
+    id: "q1",
+    correct: 1,
+    options: [
+      "לבדוק שמנגנון ה-TCP עובד כמו שצריך",
+      "להחליף את הסוקט האמיתי בעצם מדומה, כדי לבדוק לוגיקת השרת בלי רשת",
+      "להריץ את השרת על פורט אחר בזמן הבדיקות",
+      "לבדוק שמספר הפורטים הפתוחים נכון"
+    ],
+    feedbackCorrect: "✅ נכון! MagicMock מאפשר לנו לבדוק את הלוגיקה של handle_client() בבידוד מוחלט — בלי רשת, בלי לקוח, בלי תלות חיצונית.",
+    feedbackWrong: "❌ לא נכון. MagicMock לא בודק את TCP עצמו — הוא מחליף אותו! המטרה היא לבדוק רק את הלוגיקה של handle_client() ללא תלות ברשת."
+  },
+  {
+    id: "q2",
+    correct: 0,
+    options: [
+      "side_effect מחזיר ערכים שונים בכל קריאה (רשימה), return_value מחזיר תמיד אותו ערך",
+      "side_effect הוא לשגיאות, return_value הוא לערכים רגילים",
+      "אין הבדל — שניהם עושים אותו דבר",
+      "side_effect עובד רק עם recv(), return_value עם כל הפונקציות"
+    ],
+    feedbackCorrect: "✅ מצוין! side_effect=[a,b,c] יחזיר a בקריאה הראשונה, b בשנייה, c בשלישית. return_value=x יחזיר x בכל קריאה.",
+    feedbackWrong: "❌ לא מדויק. side_effect מקבל רשימה ומחזיר ערך אחר בכל קריאה לפי הסדר. return_value מחזיר תמיד את אותו ערך בכל קריאה."
+  },
+  {
+    id: "q3",
+    correct: 2,
+    options: [
+      "כי MagicMock לא יכול להחזיר bytes שמכיל תוכן",
+      "כי הלקוח שולח הודעה ריקה כסימן לסיום",
+      "כי בפרוטוקול TCP, bytes ריק מסמן שהחיבור נסגר מהצד השני",
+      "כי זה מהיר יותר מלשלוח logout"
+    ],
+    feedbackCorrect: "✅ בדיוק! בפרוטוקול TCP, כאשר recv() מחזיר b\"\", זה אומר שהחיבור נסגר. השרת חייב לטפל במקרה הזה ולסגור גם מצידו.",
+    feedbackWrong: "❌ לא נכון. בפרוטוקול TCP, recv() מחזיר bytes ריק (b\"\") כשהחיבור נסגר מצד הלקוח — זהו מנגנון הסגירה של TCP."
+  },
+  {
+    id: "q4",
+    correct: 3,
+    options: [
+      "לאתחל את בדיקות הפונקציות לפני ריצה",
+      "להדפיס דוח סיכום בסוף",
+      "ליצור את קובץ users.json לפני הבדיקות",
+      "למחוק את קובץ users.json שנוצר במהלך הבדיקות, כדי שכל ריצה תתחיל נקי"
+    ],
+    feedbackCorrect: "✅ נכון! teardown_module רצה אחרי כל הבדיקות ומוחק את users.json. בלי זה, בדיקות עוקבות עלולות להיכשל כי המשתמש 'zvi' כבר קיים.",
+    feedbackWrong: "❌ לא נכון. teardown_module היא פונקציית ניקיון שרצה לאחר כל מודול הבדיקות — בקוד שלנו היא מוחקת את users.json שנוצר."
+  },
+  {
+    id: "q5",
+    correct: 1,
+    options: [
+      "כי pytest דורש לפחות שתי הודעות בכל בדיקה",
+      "כי בלי logout, handle_client() ממשיך לקרוא מה-mock ומקבל StopIteration error",
+      "כי השרת לא מעבד register בלי logout אחריו",
+      "כי זה סוגר את חיבור הרשת בסוף"
+    ],
+    feedbackCorrect: "✅ נכון! handle_client() רץ בלולאה אינסופית. אם side_effect נגמר, Python זורק StopIteration. logout גורם לפונקציה לצאת מהלולאה בצורה מסודרת.",
+    feedbackWrong: "❌ לא נכון. handle_client() רצה בלולאה while True. אם side_effect לא מכיל מספיק ערכים, ייזרק StopIteration. logout מסיים את הלולאה בצורה מסודרת."
+  },
+  {
+    id: "q6",
+    correct: 2,
+    options: [
+      "הבדיקות ימשיכו לרוץ כרגיל, אין השפעה",
+      "pytest יסמן את כל הבדיקות כ-SKIP",
+      "test_register_success תיכשל עם AssertionError, כי היא מצפה לטקסט הישן",
+      "Python יזרוק SyntaxError"
+    ],
+    feedbackCorrect: "✅ מעולה! זו בדיוק הנקודה של הבדיקות! כששרת משתנה, הבדיקה תיכשל ותתריע לנו: 'שינית משהו שישפיע על הלקוח!'",
+    feedbackWrong: "❌ לא נכון. assert_any_call(b'OK||Registered successfully') ייכשל כי sendall לא נקרא עם הטקסט הישן. הבדיקה תדווח FAILED — בדיוק כמו שצריך!"
+  }
+];
+
+// ===== SHUFFLE =====
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ===== BUILD QUIZ =====
+function buildQuiz() {
+  quizData.forEach((q, qi) => {
+    const container = document.getElementById('opts-' + q.id);
+    const correctText = q.options[q.correct];
+
+    const shuffled = shuffle(q.options);
+    const newCorrectIdx = shuffled.indexOf(correctText);
+
+    shuffled.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = opt;
+      btn.onclick = () => answerQuestion(q.id, i === newCorrectIdx, q, btn);
+      container.appendChild(btn);
+    });
+  });
+}
+
+function answerQuestion(qId, isCorrect, qData, clickedBtn) {
+  const qEl = document.getElementById(qId);
+  const fbEl = document.getElementById('fb-' + qId);
+  const allBtns = qEl.querySelectorAll('.option-btn');
+
+  allBtns.forEach(b => { b.disabled = true; });
+
+  if (isCorrect) {
+    clickedBtn.classList.add('correct');
+    fbEl.className = 'feedback show feedback-correct';
+    fbEl.textContent = qData.feedbackCorrect;
+    qEl.classList.add('answered-correct');
+    quizScore++;
+  } else {
+    clickedBtn.classList.add('wrong');
+    fbEl.className = 'feedback show feedback-wrong';
+    fbEl.textContent = qData.feedbackWrong;
+    qEl.classList.add('answered-wrong');
+    // show correct
+    allBtns.forEach(b => {
+      if (b.textContent === qData.options[qData.correct] ||
+          [...document.getElementById('opts-' + qId).querySelectorAll('.option-btn')]
+            .some(el => el === b && !el.classList.contains('wrong'))) {
+        // find correct btn
+      }
+    });
+  }
+
+  quizAnswered++;
+  if (quizAnswered === quizData.length) {
+    showScore();
+  }
+}
+
+function showScore() {
+  const sd = document.getElementById('scoreDisplay');
+  sd.style.display = 'block';
+  document.getElementById('scoreNum').textContent = quizScore + '/6';
+  const labels = ['כדאי לחזור על החומר 📖', 'התחלה טובה, ממשיכים ✊', 'לא רע! עוד קצת 💪', 'יפה מאוד! כמעט שם 🎯', 'מצוין! בקיא בחומר 🌟', 'מושלם! כוכב pytest ⭐', 'מושלם! כוכב pytest ⭐'];
+  document.getElementById('scoreLabel').textContent = labels[quizScore] || labels[6];
+}
+
+// ===== SLIDE NAVIGATION =====
+function buildProgressBar() {
+  const bar = document.getElementById('progressBar');
+  bar.innerHTML = '';
+  for (let i = 0; i < TOTAL_SLIDES; i++) {
+    const d = document.createElement('div');
+    d.className = 'progress-step' + (i === 0 ? ' active' : '');
+    d.onclick = () => goToSlide(i);
+    bar.appendChild(d);
+  }
+}
+
+function updateProgress() {
+  const steps = document.querySelectorAll('.progress-step');
+  steps.forEach((s, i) => {
+    s.className = 'progress-step';
+    if (i < currentSlide) s.classList.add('done');
+    if (i === currentSlide) s.classList.add('active');
+  });
+  document.getElementById('slideCounter').textContent =
+    String(currentSlide + 1).padStart(2, '0') + ' / ' + String(TOTAL_SLIDES).padStart(2, '0');
+  document.getElementById('prevBtn').disabled = currentSlide === 0;
+  document.getElementById('nextBtn').disabled = currentSlide === TOTAL_SLIDES - 1;
+  if (currentSlide === TOTAL_SLIDES - 1) {
+    document.getElementById('nextBtn').textContent = '✓ סיום';
+  } else {
+    document.getElementById('nextBtn').textContent = 'הבא ←';
+  }
+}
+
+function goToSlide(n) {
+  document.getElementById('slide-' + currentSlide).classList.remove('active');
+  currentSlide = n;
+  document.getElementById('slide-' + currentSlide).classList.add('active');
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function changeSlide(dir) {
+  const next = currentSlide + dir;
+  if (next >= 0 && next < TOTAL_SLIDES) goToSlide(next);
+}
+
+function toggleReveal(header) {
+  const body = header.nextElementSibling;
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+// ===== INIT =====
+buildProgressBar();
+updateProgress();
+buildQuiz();
+</script>
+</body>
+</html>

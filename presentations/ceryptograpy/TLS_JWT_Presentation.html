@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TLS + JWT — שרת-לקוח מאובטח</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0D1117; --bg2: #161B22; --bg3: #21262D;
+  --border: #30363D; --teal: #3FB950; --blue: #58A6FF;
+  --amber:  #E3B341; --red:  #F85149; --purple: #BC8CFF;
+  --white:  #F0F6FC; --gray: #8B949E; --ok: #3FB950; --denied: #F85149;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--white);font-family:'Heebo',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+#topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:46px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+#slide-title{flex:1;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nbtn{background:var(--bg3);border:1px solid var(--border);color:var(--white);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.nbtn:hover{background:var(--border)}.nbtn:disabled{opacity:.3;cursor:default}
+#ctr{font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--gray);flex-shrink:0}
+#prog{height:2px;background:var(--border);flex-shrink:0}
+#progfill{height:100%;background:var(--teal);transition:width .3s}
+
+/* ── STAGE ── */
+#stage{flex:1;overflow:hidden;position:relative}
+.slide{position:absolute;inset:0;padding:28px 44px;display:none;flex-direction:column;overflow-y:auto;animation:fi .22s ease}
+.slide.active{display:flex}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* ── TEXT ── */
+.stag{font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--teal);letter-spacing:.1em;margin-bottom:4px;text-transform:uppercase}
+h1.sh{font-size:30px;font-weight:800;line-height:1.15;margin-bottom:6px}
+h2.sh{font-size:18px;font-weight:600;color:var(--blue);margin:22px 0 8px}
+h3.sh{font-size:18px;font-weight:600;color:var(--amber);margin:16px 0 6px;font-family:'IBM Plex Mono',monospace}
+.lead{font-size:18px;color:var(--gray);line-height:1.7;margin-bottom:14px}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* ── CODE ── */
+pre{background:var(--bg3);border:1px solid var(--border);border-right:3px solid var(--blue);border-radius:6px;padding:14px 16px;font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1.65;color:#E6EDF3;direction:ltr;text-align:left;overflow-x:auto;margin:6px 0 14px;white-space:pre}
+pre .c{color:var(--gray)} pre .k{color:var(--purple)} pre .s{color:var(--teal)} pre .f{color:var(--blue)} pre .n{color:var(--amber)}
+.code-label{font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--gray);background:var(--bg3);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;padding:4px 12px;display:inline-block;margin-bottom:-1px}
+
+/* ── BOXES ── */
+.ibox{background:var(--bg2);border-right:3px solid var(--blue);border-radius:6px;padding:12px 16px;margin:8px 0 14px;font-size:18px;line-height:1.7}
+.ibox.warn{border-color:var(--amber)}.ibox.ok{border-color:var(--teal)}.ibox.err{border-color:var(--red)}
+.ibox strong{color:var(--amber)}.ibox.ok strong{color:var(--teal)}.ibox.err strong{color:var(--red)}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px}
+.card-t{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-bottom:6px}
+.card-b{font-size:18px;color:var(--gray);line-height:1.6;}
+
+/* ── TABLE ── */
+table.pt{width:100%;border-collapse:collapse;font-size:18px;margin:10px 0}
+table.pt th{background:var(--bg3);color:var(--white);font-weight:600;padding:8px 12px;border:1px solid var(--border);text-align:right}
+table.pt td{background:var(--bg2);padding:7px 12px;border:1px solid var(--border);text-align:right}
+table.pt tr:nth-child(even) td{background:#1A1F28}
+
+/* ── FLOW DIAGRAM ── */
+.flow-wrap{display:flex;flex-direction:row-reverse;gap:0;margin:14px 0;align-items:stretch}
+.flow-col{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
+.flow-col-title{font-size:18px;font-weight:600;padding:5px 12px;border-radius:4px 4px 0 0;text-align:center;font-family:'IBM Plex Mono',monospace;margin-bottom:0}
+.flow-lane{border:1px solid var(--border);border-radius:0 0 6px 6px;padding:10px 8px;flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--bg2)}
+.fmsg{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:18px;text-align:center;width:100%;line-height:1.4}
+.fmsg.enc{border-color:var(--teal);color:var(--teal)}
+.fmsg.plain{color:var(--gray)}
+.farrow{font-size:18px;color:var(--border);align-self:center;flex-shrink:0;padding:0 4px}
+.fspacer{height:10px}
+.flow-mid{display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:0 6px;padding-top:26px}
+.farrow-row{font-size:18px;color:var(--amber);white-space:nowrap;writing-mode:horizontal-tb;font-family:'IBM Plex Mono',monospace}
+
+/* ── TRAFFIC TABLE ── */
+.traffic{width:100%;border-collapse:collapse;font-size:11.5px;margin:10px 0}
+.traffic th{background:var(--bg3);padding:7px 10px;border:1px solid var(--border);text-align:right;font-size:18px;}
+.traffic td{padding:7px 10px;border:1px solid var(--border);background:var(--bg2);font-family:'IBM Plex Mono',monospace;font-size:18px;;vertical-align:top}
+.traffic tr:nth-child(even) td{background:#1A1F28}
+.enc-cell{color:var(--gray);font-style:italic}
+.plain-cell{color:var(--teal)}
+
+/* ── RESULTS ── */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}
+.res-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.res-head{padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;border-bottom:1px solid var(--border)}
+.res-head.ok-h{color:var(--ok);background:#0D2213}
+.res-head.bad-h{color:var(--denied);background:#200D0D}
+.res-body{padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:2;direction:ltr;text-align:left}
+.okl{color:var(--ok)}.badl{color:var(--denied)}
+
+/* ── TITLE SLIDE ── */
+#sl0{align-items:center;justify-content:center;text-align:center}
+.tmain{font-size:52px;font-weight:800;font-family:'IBM Plex Mono',monospace;line-height:1.1;margin-bottom:12px}
+.tsub{font-size:18px;color:var(--blue);margin-bottom:20px;font-weight:300}
+.ttags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tag{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:18px;font-family:'IBM Plex Mono',monospace;color:var(--gray)}
+
+/* ── DOTS ── */
+#dots{display:flex;justify-content:center;gap:5px;padding:8px;flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:.2s}
+.dot.active{background:var(--teal);transform:scale(1.5)}
+.dot:hover:not(.active){background:var(--gray)}
+#hint{position:fixed;bottom:34px;left:16px;font-size:18px;color:var(--border);font-family:'IBM Plex Mono',monospace;pointer-events:none}
+
+/* ── ANNOT ── */
+.annot{display:flex;gap:8px;align-items:flex-start;margin:3px 0;font-size:18px;color:var(--white);line-height:1.5;}
+.annot::before{content:'▸';color:var(--teal);flex-shrink:0;margin-top:2px}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="nbtn" id="bp" onclick="go(-1)">►</button>
+  <span id="slide-title">TLS + JWT</span>
+  <span id="ctr">1 / 10</span>
+  <button class="nbtn" id="bn" onclick="go(1)">◄</button>
+</div>
+<div id="prog"><div id="progfill"></div></div>
+
+<div id="stage">
+
+<!-- ══ 0: TITLE ══ -->
+<div class="slide active" id="sl0" data-title="TLS + JWT — שרת-לקוח מאובטח">
+  <div>
+    <div class="tmain"><span style="color:var(--teal)">TLS</span> + <span style="color:var(--blue)">JWT</span></div>
+    <div class="tsub">שרת-לקוח מאובטח עם Python socket</div>
+    <div class="ttags">
+      <span class="tag">ssl.SSLContext</span><span class="tag">TLSv1.3</span><span class="tag">AES-256-GCM</span>
+      <span class="tag">PyJWT / HS256</span><span class="tag">RBAC</span><span class="tag">Permission</span>
+      <span class="tag">Scope</span><span class="tag">Resource</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 1: ARCHITECTURE ══ -->
+<div class="slide" id="sl1" data-title="ארכיטקטורה — שתי שכבות אבטחה">
+  <div class="stag">01 — ארכיטקטורה</div>
+  <h1 class="sh">שתי שכבות אבטחה</h1>
+  <p class="lead">TLS מגן על הרשת, JWT מגן על הזהות וההרשאות — כל שכבה עצמאית ומשלימה את האחרת.</p>
+  <div class="g2">
+    <div class="card" style="border-top:2px solid var(--teal)">
+      <div class="card-t" style="color:var(--teal)">שכבה 1 — TLS</div>
+      <div class="card-b">
+        <div class="annot">כל הבייטים על הרשת מוצפנים</div>
+        <div class="annot">מונע האזנה (eavesdropping)</div>
+        <div class="annot">מאמת זהות השרת באמצעות אישור X.509</div>
+        <div class="annot">TLSv1.3 + AES-256-GCM-SHA384</div>
+      </div>
+    </div>
+    <div class="card" style="border-top:2px solid var(--blue)">
+      <div class="card-t" style="color:var(--blue)">שכבה 2 — JWT</div>
+      <div class="card-b">
+        <div class="annot">אחרי login — לא נשלחת סיסמה שוב</div>
+        <div class="annot">הטוקן חתום עם HS256 + SECRET_KEY</div>
+        <div class="annot">מכיל role, permissions, scope, resources</div>
+        <div class="annot">תוקף מוגבל — exp: שעה אחת</div>
+      </div>
+    </div>
+  </div>
+  <div class="g2" style="margin-top:4px">
+    <div dir="ltr" class="card" style="border-top:2px solid var(--amber)">
+      <div class="card-t" style="color:var(--amber)">alice — admin</div>
+      <div class="card-b">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--teal)">permissions: ["read","write","delete"]</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--blue);margin-top:4px">scope: "read:all write:all delete:all"</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--purple);margin-top:4px">resources: {reports:admin, users:admin}</div>
+      </div>
+    </div>
+    <div dir="ltr" class="card" style="border-top:2px solid var(--gray)">
+      <div class="card-t" style="color:var(--gray)">bob — viewer</div>
+      <div class="card-b">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--teal)">permissions: ["read"]</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--blue);margin-top:4px">scope: "read:reports"</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--purple);margin-top:4px">resources: {reports:read}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 2: FLOW DIAGRAM ══ -->
+<div class="slide" id="sl2" data-title="תרשים זרימה — TLS Handshake + JWT">
+  <div class="stag">02 — תרשים זרימה</div>
+  <h1 class="sh">זרימה מלאה</h1>
+  <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:0;margin:10px 0;font-size:18px;">
+    <!-- CLIENT col -->
+    <div style="display:flex;flex-direction:column">
+      <div style="background:#0D2213;border:1px solid var(--teal);border-radius:6px 6px 0 0;padding:6px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--teal)">לקוח</div>
+      <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:10px;background:var(--bg2);display:flex;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:18px;">
+        <div class="fmsg enc">ssl.SSLContext(TLS_CLIENT)</div>
+        <div class="fmsg enc">ctx.load_verify_locations(cert)</div>
+        <div class="fmsg enc">ctx.wrap_socket(raw)</div>
+        <div class="fspacer"></div>
+        <div class="fmsg plain">recv ready msg</div>
+        <div class="fmsg plain" style="color:var(--amber)">send "alice:alice_pass\n"</div>
+        <div class="fmsg plain">recv JWT token</div>
+        <div class="fspacer"></div>
+        <div class="fmsg plain" style="color:var(--amber)">send {"check":"rbac","value":"admin"}</div>
+        <div class="fmsg plain">recv {"status":"OK",...}</div>
+        <div class="fmsg plain" style="color:var(--amber)">send {"check":"permission","value":"delete"}</div>
+        <div class="fmsg plain">recv {"status":"OK",...}</div>
+        <div style="color:var(--gray);text-align:center;padding:4px 0">... 6 בדיקות נוספות ...</div>
+      </div>
+    </div>
+    <!-- MIDDLE arrows -->
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:space-around;padding:30px 0">
+      <div style="font-size:18px;color:var(--teal)">⇄</div>
+      <div style="font-size:18px;color:var(--teal);writing-mode:vertical-rl;text-align:center;font-family:'IBM Plex Mono',monospace">TLS&nbsp;HANDSHAKE</div>
+      <div style="width:1px;background:var(--border);flex:1;margin:4px 0"></div>
+      <div style="font-size:18px;color:var(--amber);writing-mode:vertical-rl;font-family:'IBM Plex Mono',monospace">מוצפן</div>
+      <div style="width:1px;background:var(--amber);flex:1;margin:4px 0;opacity:.4"></div>
+    </div>
+    <!-- SERVER col -->
+    <div style="display:flex;flex-direction:column">
+      <div style="background:#0D1A2E;border:1px solid var(--blue);border-radius:6px 6px 0 0;padding:6px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--blue)">שרת</div>
+      <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:10px;background:var(--bg2);display:flex;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:18px;">
+        <div class="fmsg enc">ssl.SSLContext(TLS_SERVER)</div>
+        <div class="fmsg enc">ctx.load_cert_chain(crt, key)</div>
+        <div class="fmsg enc">ctx.wrap_socket(raw, server_side=True)</div>
+        <div class="fspacer"></div>
+        <div class="fmsg plain" style="color:var(--blue)">send {"status":"ready","msg":"שלח credentials"}</div>
+        <div class="fmsg plain">recv "alice:alice_pass"</div>
+        <div class="fmsg plain">USERS_DB check → jwt.encode(payload)</div>
+        <div class="fmsg plain" style="color:var(--blue)">send {"status":"ok","token":"eyJ..."}</div>
+        <div class="fspacer"></div>
+        <div class="fmsg plain">recv JSON request</div>
+        <div class="fmsg plain">jwt.decode(token) → payload</div>
+        <div class="fmsg plain">check_rbac(payload,"admin")</div>
+        <div class="fmsg plain" style="color:var(--blue)">send {"status":"OK","check":"RBAC>=admin"}</div>
+        <div style="color:var(--gray);text-align:center;padding:4px 0">... לכל בקשה ...</div>
+      </div>
+    </div>
+  </div>
+  <div class="ibox ok" style="font-size:18px;">
+    <strong>מה עובר על הרשת?</strong> כל הנתונים מוצפנים ב-TLS. מאזין על הקו יראה רק בייטים אקראיים — לא את הסיסמה, לא את הטוקן, לא את תוצאות הבדיקה.
+  </div>
+</div>
+
+<!-- ══ 3: SERVER CODE ══ -->
+<div class="slide" id="sl3" data-title="קוד שרת — TLS + JWT">
+  <div class="stag">03 — קוד שרת</div>
+  <h1 class="sh">קוד שרת</h1>
+  <div class="g2">
+    <div>
+      <h3 class="sh">// הגדרת TLS</h3>
+<pre><span class="c"># SSLContext מגדיר את פרמטרי TLS</span>
+ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ctx.load_cert_chain(
+    certfile=<span class="s">"server.crt"</span>,
+    keyfile=<span class="s">"server.key"</span>
+)
+ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+
+<span class="c"># עוטפים את ה-socket ב-TLS</span>
+raw_sock = socket.socket(AF_INET, SOCK_STREAM)
+raw_sock.bind((HOST, PORT))
+raw_sock.listen(<span class="n">10</span>)
+tls_sock = ctx.wrap_socket(raw_sock,
+                           server_side=<span class="n">True</span>)</pre>
+
+      <h3 class="sh">// יצירת JWT</h3>
+<pre><span class="k">def</span> <span class="f">create_token</span>(username):
+    user = USERS_DB[username]
+    payload = {
+        <span class="s">"user_id"</span>:     username,
+        <span class="s">"role"</span>:        user[<span class="s">"role"</span>],
+        <span class="s">"permissions"</span>: user[<span class="s">"permissions"</span>],
+        <span class="s">"scope"</span>:       user[<span class="s">"scope"</span>],
+        <span class="s">"resources"</span>:   user[<span class="s">"resources"</span>],
+        <span class="s">"exp"</span>: datetime.utcnow() + timedelta(hours=<span class="n">1</span>),
+    }
+    <span class="k">return</span> jwt.encode(payload, SECRET_KEY,
+                       algorithm=<span class="s">"HS256"</span>)</pre>
+    </div>
+    <div>
+      <h3 class="sh">// טיפול בלקוח (per-thread)</h3>
+<pre><span class="k">def</span> <span class="f">handle_client</span>(conn, addr):
+  <span class="k">with</span> conn:
+    <span class="c"># שלב 1: שלח ready</span>
+    send_json(conn, {<span class="s">"status"</span>:<span class="s">"ready"</span>})
+
+    <span class="c"># שלב 2: קבל credentials</span>
+    raw = recv_line(conn)
+    username, password = raw.split(<span class="s">":"</span>, <span class="n">1</span>)
+    user = USERS_DB.get(username)
+    <span class="k">if not</span> user <span class="k">or</span> user[<span class="s">"password"</span>] != password:
+        send_json(conn, {<span class="s">"status"</span>:<span class="s">"error"</span>})
+        <span class="k">return</span>
+
+    <span class="c"># שלב 3: הנפק JWT</span>
+    token = create_token(username)
+    send_json(conn, {<span class="s">"status"</span>:<span class="s">"ok"</span>,
+                     <span class="s">"token"</span>: token})
+
+    <span class="c"># שלב 4: לולאת בקשות</span>
+    <span class="k">while True</span>:
+        req = json.loads(recv_line(conn))
+        payload = decode_token(req[<span class="s">"token"</span>])
+        <span class="c"># בדוק הרשאה → שלח תוצאה</span>
+        result = dispatch_check(payload, req)
+        send_json(conn, result)</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 4: CLIENT CODE ══ -->
+<div class="slide" id="sl4" data-title="קוד לקוח — TLS + JWT">
+  <div class="stag">04 — קוד לקוח</div>
+  <h1 class="sh">קוד לקוח</h1>
+  <div class="g2">
+    <div>
+      <h3 class="sh">// חיבור TLS</h3>
+<pre><span class="k">def</span> <span class="f">make_tls_connection</span>():
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    <span class="c"># אימות אישור השרת</span>
+    ctx.load_verify_locations(<span class="s">"server.crt"</span>)
+    <span class="c"># self-signed → ללא hostname check</span>
+    ctx.check_hostname = <span class="n">False</span>
+
+    raw = socket.socket(AF_INET, SOCK_STREAM)
+    <span class="c"># עוטפים ב-TLS</span>
+    tls = ctx.wrap_socket(raw,
+              server_hostname=HOST)
+    tls.connect((HOST, PORT))
+    <span class="k">return</span> tls</pre>
+
+      <h3 class="sh">// login + קבלת JWT</h3>
+<pre><span class="k">with</span> make_tls_connection() <span class="k">as</span> conn:
+    <span class="c"># הדפס cipher שנבחר</span>
+    cipher = conn.cipher()
+    <span class="c"># קבל ready</span>
+    resp = recv_json(conn)
+
+    <span class="c"># שלח credentials (ללא JWT)</span>
+    conn.sendall(
+        f<span class="s">"{username}:{password}\n"</span>.encode()
+    )
+    <span class="c"># קבל JWT</span>
+    resp = recv_json(conn)
+    token = resp[<span class="s">"token"</span>]</pre>
+    </div>
+    <div>
+      <h3 class="sh">// שליחת בדיקות הרשאה</h3>
+<pre>checks = [
+  {<span class="s">"check"</span>:<span class="s">"rbac"</span>,
+   <span class="s">"value"</span>:<span class="s">"admin"</span>},
+  {<span class="s">"check"</span>:<span class="s">"rbac"</span>,
+   <span class="s">"value"</span>:<span class="s">"viewer"</span>},
+  {<span class="s">"check"</span>:<span class="s">"permission"</span>,
+   <span class="s">"value"</span>:<span class="s">"delete"</span>},
+  {<span class="s">"check"</span>:<span class="s">"permission"</span>,
+   <span class="s">"value"</span>:<span class="s">"read"</span>},
+  {<span class="s">"check"</span>:<span class="s">"scope"</span>,
+   <span class="s">"value"</span>:<span class="s">"write:all"</span>},
+  {<span class="s">"check"</span>:<span class="s">"scope"</span>,
+   <span class="s">"value"</span>:<span class="s">"read:reports"</span>},
+  {<span class="s">"check"</span>:<span class="s">"resource"</span>,
+   <span class="s">"resource"</span>:<span class="s">"reports"</span>,
+   <span class="s">"value"</span>:<span class="s">"admin"</span>},
+  {<span class="s">"check"</span>:<span class="s">"resource"</span>,
+   <span class="s">"resource"</span>:<span class="s">"reports"</span>,
+   <span class="s">"value"</span>:<span class="s">"read"</span>},
+]
+<span class="k">for</span> req <span class="k">in</span> checks:
+    req[<span class="s">"token"</span>] = token  <span class="c"># צרף JWT</span>
+    send_json(conn, req)
+    r = recv_json(conn)
+    print(r[<span class="s">"status"</span>])</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5: PERMISSION CHECKS ══ -->
+<div class="slide" id="sl5" data-title="פונקציות בדיקת הרשאה — 4 סוגים">
+  <div class="stag">05 — בדיקות הרשאה</div>
+  <h1 class="sh">4 פונקציות בדיקה</h1>
+  <div class="g2">
+    <div>
+<pre><span class="c"># 1. RBAC — רמת תפקיד</span>
+<span class="k">def</span> <span class="f">check_rbac</span>(payload, required_role):
+    levels = {<span class="s">"admin"</span>:<span class="n">3</span>,<span class="s">"editor"</span>:<span class="n">2</span>,<span class="s">"viewer"</span>:<span class="n">1</span>}
+    <span class="k">return</span> (levels.get(payload[<span class="s">"role"</span>],<span class="n">0</span>)
+            >= levels.get(required_role,<span class="n">99</span>))
+
+<span class="c"># 2. Permission-Based — פעולה ספציפית</span>
+<span class="k">def</span> <span class="f">check_permission</span>(payload, action):
+    <span class="k">return</span> action <span class="k">in</span> payload.get(
+               <span class="s">"permissions"</span>, [])</pre>
+    </div>
+    <div>
+<pre><span class="c"># 3. Scope — OAuth2 סגנון</span>
+<span class="c">#    read:all מכסה read:reports</span>
+<span class="k">def</span> <span class="f">check_scope</span>(payload, required_scope):
+    scopes = payload.get(<span class="s">"scope"</span>,<span class="s">""</span>).split()
+    <span class="k">if</span> required_scope <span class="k">in</span> scopes:
+        <span class="k">return True</span>
+    action = required_scope.split(<span class="s">":"</span>)[<span class="n">0</span>]
+    <span class="k">return</span> f<span class="s">"{action}:all"</span> <span class="k">in</span> scopes
+
+<span class="c"># 4. Resource-Based — הרשאה למשאב</span>
+<span class="k">def</span> <span class="f">check_resource</span>(payload, resource, action):
+    levels = {<span class="s">"admin"</span>:<span class="n">3</span>,<span class="s">"write"</span>:<span class="n">2</span>,<span class="s">"read"</span>:<span class="n">1</span>}
+    user_level = levels.get(
+        payload.get(<span class="s">"resources"</span>,{})
+               .get(resource,<span class="s">""</span>), <span class="n">0</span>)
+    <span class="k">return</span> user_level >= levels.get(action,<span class="n">99</span>)</pre>
+    </div>
+  </div>
+  <table class="pt">
+    <thead><tr><th>פונקציה</th><th>מה נבדק ב-payload</th><th>לוגיקה</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono" style="color:var(--blue)">check_rbac</span></td><td><span class="mono">payload["role"]</span></td><td>רמה מספרית ≥ נדרשת</td></tr>
+      <tr><td><span class="mono" style="color:var(--blue)">check_permission</span></td><td><span class="mono">payload["permissions"]</span></td><td><span class="mono">action in list</span></td></tr>
+      <tr><td><span class="mono" style="color:var(--blue)">check_scope</span></td><td><span class="mono">payload["scope"]</span></td><td>exact match או <span class="mono">action:all</span></td></tr>
+      <tr><td><span class="mono" style="color:var(--blue)">check_resource</span></td><td><span class="mono">payload["resources"][res]</span></td><td>רמה מספרית למשאב ספציפי</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══ 6: TRAFFIC ══ -->
+<div class="slide" id="sl6" data-title="מה עובר בתעבורה — מוצפן vs גלוי">
+  <div class="stag">06 — תעבורת רשת</div>
+  <h1 class="sh">מה עובר בתעבורה?</h1>
+  <div class="ibox warn">
+    <strong>עיקרון:</strong> ה-TLS עוטף את <em>כל</em> התקשורת — כולל credentials, טוקנים ותוצאות. מאזין על הקו רואה רק bytes מוצפנים.
+  </div>
+
+  <table class="traffic">
+    <thead>
+      <tr>
+        <th>שלב</th>
+        <th style="color:var(--teal)">מה נשלח (plaintext לוגי)</th>
+        <th style="color:var(--gray)">מה נראה על הרשת</th>
+        <th>כיוון</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">TLS Handshake</td>
+        <td class="plain-cell">ClientHello, ServerHello, Certificate, Finished</td>
+        <td class="enc-cell">TLS records — metadata גלוי, תוכן מוצפן</td>
+        <td>⇄</td>
+      </tr>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">Ready</td>
+        <td class="plain-cell">{"status":"ready","msg":"שלח username:password"}</td>
+        <td class="enc-cell">🔒 AES-256-GCM ciphertext</td>
+        <td>← שרת</td>
+      </tr>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">Login</td>
+        <td class="plain-cell" style="color:var(--red)">alice:alice_pass\n</td>
+        <td class="enc-cell">🔒 AES-256-GCM ciphertext</td>
+        <td>→ לקוח</td>
+      </tr>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">JWT Token</td>
+        <td class="plain-cell">{"status":"ok","token":"eyJhbGci..."}</td>
+        <td class="enc-cell">🔒 AES-256-GCM ciphertext</td>
+        <td>← שרת</td>
+      </tr>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">בקשת הרשאה</td>
+        <td class="plain-cell">{"token":"eyJ...","check":"rbac","value":"admin"}</td>
+        <td class="enc-cell">🔒 AES-256-GCM ciphertext</td>
+        <td>→ לקוח</td>
+      </tr>
+      <tr>
+        <td style="color:var(--amber);font-weight:600">תשובת הרשאה</td>
+        <td class="plain-cell">{"status":"OK","check":"RBAC role>=admin","user":"alice"}</td>
+        <td class="enc-cell">🔒 AES-256-GCM ciphertext</td>
+        <td>← שרת</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="g2" style="margin-top:8px">
+    <div class="card" style="border-right:2px solid var(--red)">
+      <div class="card-t" style="color:var(--red)">ללא TLS — מה האזנה תחשוף</div>
+      <div class="card-b" style="font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1.8;direction:ltr;text-align:left">
+        alice:alice_pass<br>
+        eyJhbGciOiJIUzI1NiJ9...<br>
+        {"check":"rbac","value":"admin"}<br>
+        {"status":"OK","user":"alice"}
+      </div>
+    </div>
+    <div class="card" style="border-right:2px solid var(--teal)">
+      <div class="card-t" style="color:var(--teal)">עם TLS — מה האזנה תחשוף</div>
+      <div class="card-b" style="font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1.8;direction:ltr;text-align:left;color:var(--gray)">
+        \x17\x03\x03\x00\x28\xf3\x9a...<br>
+        \x4a\x2c\x8b\x11\xde\x00\x3f...<br>
+        \x9c\x7e\x12\xab\x44\x88\x01...<br>
+        <span style="color:var(--teal)">← רק גודל הפקט גלוי</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 7: JWT PAYLOAD ══ -->
+<div class="slide" id="sl7" data-title="מבנה ה-JWT Payload">
+  <div class="stag">07 — JWT Payload</div>
+  <h1 class="sh">מבנה ה-JWT Payload</h1>
+  <p class="lead">הטוקן מכיל את כל פרטי הזהות וההרשאות — השרת לא צריך לשאול את ה-DB שוב.</p>
+  <div class="g2">
+    <div>
+      <h3 class="sh">// alice — admin</h3>
+<pre>{
+  <span class="s">"user_id"</span>:     <span class="s">"alice"</span>,
+  <span class="s">"role"</span>:        <span class="s">"admin"</span>,
+  <span class="s">"permissions"</span>: [
+    <span class="s">"read"</span>, <span class="s">"write"</span>, <span class="s">"delete"</span>
+  ],
+  <span class="s">"scope"</span>: <span class="s">"read:all write:all delete:all"</span>,
+  <span class="s">"resources"</span>: {
+    <span class="s">"reports"</span>: <span class="s">"admin"</span>,
+    <span class="s">"users"</span>:   <span class="s">"admin"</span>
+  },
+  <span class="s">"exp"</span>: <span class="n">1712349678</span>,
+  <span class="s">"iat"</span>: <span class="n">1712346078</span>
+}</pre>
+    </div>
+    <div>
+      <h3 class="sh">// bob — viewer</h3>
+<pre>{
+  <span class="s">"user_id"</span>:     <span class="s">"bob"</span>,
+  <span class="s">"role"</span>:        <span class="s">"viewer"</span>,
+  <span class="s">"permissions"</span>: [
+    <span class="s">"read"</span>
+  ],
+  <span class="s">"scope"</span>: <span class="s">"read:reports"</span>,
+  <span class="s">"resources"</span>: {
+    <span class="s">"reports"</span>: <span class="s">"read"</span>
+  },
+  <span class="s">"exp"</span>: <span class="n">1712349678</span>,
+  <span class="s">"iat"</span>: <span class="n">1712346078</span>
+}</pre>
+    </div>
+  </div>
+  <div class="ibox">
+    <strong>מבנה הטוקן:</strong>
+    <span style="color:var(--blue);font-family:'IBM Plex Mono',monospace;font-size:18px;"> eyJhbGciOiJIUzI1NiJ9</span>
+    <span style="color:var(--gray)">.</span>
+    <span style="color:var(--teal);font-family:'IBM Plex Mono',monospace;font-size:18px;">eyJ1c2VyX2lkIjoiYWxpY2UifQ</span>
+    <span style="color:var(--gray)">.</span>
+    <span style="color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:18px;">K8hJt_wu5H7jD3PI3EsT3NOF6Z</span>
+    <br><span style="color:var(--gray);font-size:18px;">Header · Payload · Signature — שלושה חלקים מופרדים בנקודות, base64url encoded</span>
+  </div>
+</div>
+
+<!-- ══ 8: RESULTS ALICE ══ -->
+<div class="slide" id="sl8" data-title="תוצאות הרצה — alice (admin)">
+  <div class="stag">08 — תוצאות הרצה</div>
+  <h1 class="sh">תוצאות — alice (admin)</h1>
+  <div class="ibox ok" style="font-size:18px;margin-bottom:10px">
+    <strong>TLS חיבור:</strong> TLSv1.3 | cipher=TLS_AES_256_GCM_SHA384<br>
+    <strong>טוקן:</strong> eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vy... (תוקף שעה)
+  </div>
+  <div class="g2">
+    <div>
+      <table class="pt">
+        <thead><tr><th>בדיקה</th><th>ערך</th><th>תוצאה</th></tr></thead>
+        <tbody>
+          <tr><td>RBAC</td><td class="mono">role >= admin</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>RBAC</td><td class="mono">role >= viewer</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Permission</td><td class="mono">delete</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Permission</td><td class="mono">read</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Scope</td><td class="mono">write:all</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Scope</td><td class="mono">read:reports</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Resource</td><td class="mono">reports:admin</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Resource</td><td class="mono">reports:read</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 class="sh">// הסבר</h3>
+      <div class="annot">RBAC admin ✓ — alice.role="admin" → level 3 ≥ 3</div>
+      <div class="annot">RBAC viewer ✓ — level 3 ≥ 1</div>
+      <div class="annot">Permission delete ✓ — "delete" in ["read","write","delete"]</div>
+      <div class="annot">Scope write:all ✓ — "write:all" in scope string</div>
+      <div class="annot" style="color:var(--amber)">Scope read:reports ✓ — לא ישיר, אבל "read:all" מכסה את כל read:*</div>
+      <div class="annot">Resource reports:admin ✓ — resources["reports"]="admin" → level 3 ≥ 3</div>
+      <div style="margin-top:12px" class="ibox ok" style="font-size:18px;">
+        <strong>8/8 בדיקות עברו</strong> — alice כ-admin יש גישה לכל משאב ופעולה
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 9: RESULTS BOB ══ -->
+<div class="slide" id="sl9" data-title="תוצאות הרצה — bob (viewer)">
+  <div class="stag">09 — תוצאות הרצה</div>
+  <h1 class="sh">תוצאות — bob (viewer)</h1>
+  <div class="ibox" style="font-size:18px;margin-bottom:10px">
+    <strong>TLS חיבור:</strong> TLSv1.3 | cipher=TLS_AES_256_GCM_SHA384<br>
+    <strong>טוקן:</strong> eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vy... (תוקף שעה)
+  </div>
+  <div class="g2">
+    <div>
+      <table class="pt">
+        <thead><tr><th>בדיקה</th><th>ערך</th><th>תוצאה</th></tr></thead>
+        <tbody>
+          <tr><td>RBAC</td><td class="mono">role >= admin</td><td style="color:var(--denied);font-weight:600">✗ DENIED</td></tr>
+          <tr><td>RBAC</td><td class="mono">role >= viewer</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Permission</td><td class="mono">delete</td><td style="color:var(--denied);font-weight:600">✗ DENIED</td></tr>
+          <tr><td>Permission</td><td class="mono">read</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Scope</td><td class="mono">write:all</td><td style="color:var(--denied);font-weight:600">✗ DENIED</td></tr>
+          <tr><td>Scope</td><td class="mono">read:reports</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+          <tr><td>Resource</td><td class="mono">reports:admin</td><td style="color:var(--denied);font-weight:600">✗ DENIED</td></tr>
+          <tr><td>Resource</td><td class="mono">reports:read</td><td style="color:var(--ok);font-weight:600">✓ OK</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 class="sh">// הסבר</h3>
+      <div class="annot" style="color:var(--denied)">RBAC admin ✗ — bob.role="viewer" → level 1 &lt; 3</div>
+      <div class="annot">RBAC viewer ✓ — level 1 ≥ 1</div>
+      <div class="annot" style="color:var(--denied)">Permission delete ✗ — "delete" not in ["read"]</div>
+      <div class="annot">Permission read ✓ — "read" in ["read"]</div>
+      <div class="annot" style="color:var(--denied)">Scope write:all ✗ — bob.scope="read:reports" בלבד</div>
+      <div class="annot">Scope read:reports ✓ — "read:reports" in scope</div>
+      <div class="annot" style="color:var(--denied)">Resource reports:admin ✗ — level 1 (read) &lt; 3 (admin)</div>
+      <div class="annot">Resource reports:read ✓ — level 1 ≥ 1</div>
+      <div style="margin-top:12px" class="ibox warn">
+        <strong>4/8 עברו</strong> — bob כ-viewer יש גישת קריאה בלבד
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 10: SUMMARY ══ -->
+<div class="slide" id="sl10" data-title="סיכום — TLS + JWT">
+  <div class="stag">10 — סיכום</div>
+  <h1 class="sh">סיכום</h1>
+  <div class="g2">
+    <div>
+      <h2 class="sh" style="margin-top:0">השוואת משתמשים</h2>
+      <table class="pt">
+        <thead><tr><th>בדיקה</th><th style="color:var(--ok)">alice</th><th style="color:var(--denied)">bob</th></tr></thead>
+        <tbody>
+          <tr><td>RBAC admin</td><td style="color:var(--ok)">✓</td><td style="color:var(--denied)">✗</td></tr>
+          <tr><td>Permission delete</td><td style="color:var(--ok)">✓</td><td style="color:var(--denied)">✗</td></tr>
+          <tr><td>Permission read</td><td style="color:var(--ok)">✓</td><td style="color:var(--ok)">✓</td></tr>
+          <tr><td>Scope write:all</td><td style="color:var(--ok)">✓</td><td style="color:var(--denied)">✗</td></tr>
+          <tr><td>Scope read:reports</td><td style="color:var(--ok)">✓</td><td style="color:var(--ok)">✓</td></tr>
+          <tr><td>Resource reports:admin</td><td style="color:var(--ok)">✓</td><td style="color:var(--denied)">✗</td></tr>
+          <tr><td>Resource reports:read</td><td style="color:var(--ok)">✓</td><td style="color:var(--ok)">✓</td></tr>
+          <tr><td>סיסמה שגויה</td><td colspan="2" style="color:var(--ok);text-align:center">✓ נדחתה</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h2 class="sh" style="margin-top:0">שכבות האבטחה</h2>
+      <div class="card" style="border-top:2px solid var(--teal);margin-bottom:10px">
+        <div class="card-t" style="color:var(--teal)">TLS — הגנה על הרשת</div>
+        <div class="card-b">
+          <div class="annot">הצפנה: AES-256-GCM</div>
+          <div class="annot">גרסה: TLSv1.3</div>
+          <div class="annot">אימות שרת: X.509 certificate</div>
+          <div class="annot">SECRET_KEY לעולם לא עובר על הרשת</div>
+        </div>
+      </div>
+      <div class="card" style="border-top:2px solid var(--blue)">
+        <div class="card-t" style="color:var(--blue)">JWT — הגנה על הזהות</div>
+        <div class="card-b">
+          <div class="annot">חתימה: HS256</div>
+          <div class="annot">תוקף מוגבל: 1 שעה (exp)</div>
+          <div class="annot">4 מודלי הרשאות בטוקן אחד</div>
+          <div class="annot">Stateless — אין שאילתת DB בכל בקשה</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /stage -->
+
+<div id="dots"></div>
+<div id="hint">← → ניווט</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const N = slides.length;
+let cur = 0;
+
+const dots = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dots.appendChild(d);
+});
+
+function goTo(n) {
+  if (n < 0 || n >= N) return;
+  slides[cur].classList.remove('active');
+  dots.children[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  dots.children[cur].classList.add('active');
+  document.getElementById('ctr').textContent = `${cur+1} / ${N}`;
+  document.getElementById('slide-title').textContent = slides[cur].dataset.title || '';
+  document.getElementById('progfill').style.width = `${(cur+1)/N*100}%`;
+  document.getElementById('bp').disabled = cur === 0;
+  document.getElementById('bn').disabled = cur === N-1;
+}
+function go(d) { goTo(cur+d); }
+document.addEventListener('keydown', e => {
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') go(1);
+  if (e.key==='ArrowLeft' ||e.key==='ArrowUp')   go(-1);
+});
+goTo(0);
+</script>
+</body>
+</html>

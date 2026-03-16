@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JWT ו-socket — חתימה דיגיטלית</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0D1117;
+  --bg2:     #161B22;
+  --bg3:     #21262D;
+  --border:  #30363D;
+  --teal:    #56D364;
+  --blue:    #58A6FF;
+  --amber:   #E3B341;
+  --red:     #F85149;
+  --purple:  #BC8CFF;
+  --white:   #F0F6FC;
+  --gray:    #8B949E;
+  --ok:      #3FB950;
+  --denied:  #F85149;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Heebo', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOP BAR ─────────────────────────────────────── */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 48px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+#slide-title {
+  font-size:18px;
+  font-weight: 600;
+  color: var(--gray);
+  font-family: 'IBM Plex Mono', monospace;
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--white);
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size:18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.nav-btn:hover { background: var(--border); border-color: var(--gray); }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+#counter {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  color: var(--gray);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── PROGRESS ────────────────────────────────────── */
+#progress-bar {
+  height: 2px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+#progress-fill {
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.3s ease;
+}
+
+/* ── SLIDE AREA ──────────────────────────────────── */
+#stage {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  padding: 36px 52px;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  animation: fadeIn 0.25s ease;
+}
+.slide.active { display: flex; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── SLIDE PARTS ─────────────────────────────────── */
+.slide-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  color: var(--teal);
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+h1.slide-h {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--white);
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+h2.slide-h {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--blue);
+  margin: 28px 0 10px;
+}
+h3.slide-h {
+  font-size:18px;
+  font-weight: 600;
+  color: var(--amber);
+  margin: 20px 0 8px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.lead {
+  font-size:18px;
+  color: var(--gray);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+/* ── CODE BLOCK ──────────────────────────────────── */
+pre {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-right: 3px solid var(--blue);
+  border-radius: 6px;
+  padding: 16px 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  line-height: 1.65;
+  color: #E6EDF3;
+  direction: ltr;
+  text-align: left;
+  overflow-x: auto;
+  margin: 8px 0 16px;
+  white-space: pre;
+}
+pre .c  { color: var(--gray); }
+pre .k  { color: var(--purple); }
+pre .s  { color: var(--teal); }
+pre .f  { color: var(--blue); }
+pre .n  { color: var(--amber); }
+
+/* ── INFO / WARNING BOXES ────────────────────────── */
+.infobox {
+  background: #161B22;
+  border-right: 3px solid var(--blue);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 10px 0 18px;
+  font-size:18px;
+  line-height: 1.7;
+}
+.infobox.warn  { border-color: var(--amber); }
+.infobox.ok    { border-color: var(--teal); }
+.infobox.error { border-color: var(--red); }
+.infobox strong { color: var(--amber); }
+.infobox.ok strong { color: var(--teal); }
+
+/* ── LISTS ───────────────────────────────────────── */
+ul.rtl-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+ul.rtl-list li {
+  padding: 6px 0 6px 0;
+  font-size:18px;
+  color: var(--white);
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-direction: row-reverse;
+}
+ul.rtl-list li::before {
+  content: '▸';
+  color: var(--teal);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── GRID ────────────────────────────────────────── */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 16px 0; }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.card-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.card-body { font-size:18px; color: var(--gray); line-height: 1.6; }
+.card pre  { font-size:18px; margin: 8px 0 0; padding: 10px 12px; }
+
+/* ── FLOW STEPS ──────────────────────────────────── */
+.flow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 20px 0;
+  flex-direction: row-reverse;
+}
+.flow-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.flow-step:not(:last-child)::before {
+  content: '◄';
+  position: absolute;
+  left: -10px;
+  top: 18px;
+  color: var(--border);
+  font-size:18px;
+  z-index: 1;
+}
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.step-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 8px;
+  text-align: center;
+  width: 100%;
+  font-size:18px;
+  line-height: 1.4;
+}
+.step-code {
+  background: var(--bg3);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  color: var(--teal);
+  direction: ltr;
+  text-align: left;
+  margin-top: 6px;
+  width: 100%;
+}
+
+/* ── TABLE ───────────────────────────────────────── */
+table.perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size:18px;
+  margin: 12px 0;
+}
+table.perm-table th {
+  background: var(--bg3);
+  color: var(--white);
+  font-weight: 600;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: right;
+}
+table.perm-table td {
+  background: var(--bg2);
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  text-align: right;
+  color: var(--white);
+}
+table.perm-table tr:nth-child(even) td { background: #1A1F28; }
+.mono { font-family: 'IBM Plex Mono', monospace; color: var(--teal); }
+.tag-amber { color: var(--amber); font-weight: 600; }
+
+/* ── USER ROW ────────────────────────────────────── */
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin: 6px 0;
+  font-size:18px;
+  direction: ltr;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.user-name { font-weight: 600; min-width: 100px; }
+.user-name.ok-color  { color: var(--ok); }
+.user-name.bad-color { color: var(--denied); }
+
+/* ── OUTPUT ──────────────────────────────────────── */
+.output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.output-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.output-header {
+  padding: 10px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.output-header.ok-h   { color: var(--ok);     background: #0D2213; }
+.output-header.bad-h  { color: var(--denied);  background: #200D0D; }
+.output-body {
+  padding: 14px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size:18px;
+  line-height: 1.9;
+  direction: ltr;
+  text-align: left;
+}
+.ok-line   { color: var(--ok); }
+.bad-line  { color: var(--denied); }
+
+/* ── PROS/CONS ───────────────────────────────────── */
+.pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.pros-box, .cons-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pros-box { border-top: 3px solid var(--ok); }
+.cons-box { border-top: 3px solid var(--denied); }
+.box-header {
+  padding: 10px 16px;
+  font-size:18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.pros-box .box-header { color: var(--ok); }
+.cons-box .box-header { color: var(--denied); }
+.box-items { padding: 12px 16px;}
+.box-item {
+  font-size:18px;
+  color: var(--white);
+  padding: 5px 0;
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+<!--  flex-direction: row-reverse;-->
+<!--  align-items: flex-start;-->
+  direction: rtl;text-align: right;
+}
+.box-item::before { content: '•'; flex-shrink: 0; margin-top: 1px; }
+.pros-box .box-item::before { color: var(--ok); }
+.cons-box .box-item::before { color: var(--denied); }
+
+/* ── TITLE SLIDE ─────────────────────────────────── */
+#slide-0 {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.title-main {
+  font-size: 58px;
+  font-weight: 800;
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+.title-main span { color: var(--teal); }
+.title-sub {
+  font-size: 20px;
+  color: var(--blue);
+  margin-bottom: 24px;
+  font-weight: 300;
+}
+.title-tags {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.tag {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size:18px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--gray);
+}
+
+/* ── BOTTOM NAV ──────────────────────────────────── */
+#dot-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+}
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.dot.active { background: var(--teal); transform: scale(1.4); }
+.dot:hover:not(.active) { background: var(--gray); }
+
+/* KEYBOARD HINT */
+#hint {
+  position: fixed;
+  bottom: 52px;
+  left: 20px;
+  font-size:18px;
+  color: var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <button class="nav-btn" id="btn-prev" onclick="go(-1)">►</button>
+  <span id="slide-title">JWT ו-socket</span>
+  <span id="counter">1 / 10</span>
+  <button class="nav-btn" id="btn-next" onclick="go(1)">◄</button>
+</div>
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<!-- SLIDES -->
+<div id="stage">
+
+<!-- ══ 0: TITLE ══════════════════════════════════════════════════════════ -->
+<div class="slide active" id="slide-0" data-title="JWT ו-socket — חתימה דיגיטלית">
+  <div>
+    <div class="title-main">JWT <span>&</span> socket</div>
+    <div class="title-sub">חתימה דיגיטלית ובקרת הרשאות</div>
+    <div class="title-tags">
+      <span class="tag">JSON Web Token</span>
+      <span class="tag">Python socket</span>
+      <span class="tag">PyJWT</span>
+      <span class="tag">RBAC</span>
+      <span class="tag">Permissions</span>
+      <span class="tag">Scope</span>
+      <span class="tag">Resource-Based</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 1: WHAT IS JWT ════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-1" data-title="מה זה JWT?">
+  <div class="slide-tag">01 — הגדרה</div>
+  <h1 class="slide-h">מה זה JWT?</h1>
+  <p class="lead">JWT הוא תקן מבוסס JSON להעברת מידע מאובטח בין צדדים. המידע חתום דיגיטלית — ניתן לאמת שלא שונה.</p>
+
+  <h2 class="slide-h">סיכום זרימה כללית</h2>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="step-num" style="background:#0D2213;color:var(--teal);border:1px solid var(--teal)">1</div><strong style="background:#0D2213;color:var(--teal);">לקוח</strong>
+      <div class="step-box">שולח credentials</div>
+      <div class="step-code">alice:password</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num" style="background:#0D1A2E;color:var(--blue);border:1px solid var(--blue)">2</div><strong style="background:#0D1A2E;color:var(--blue);">שרת</strong>
+      <div class="step-box">מאמת + יוצר JWT</div>
+      <div class="step-code">jwt.encode()</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num" style="background:#0D2213;color:var(--teal);border:1px solid var(--teal)">3</div><strong style="background:#0D2213;color:var(--teal);">לקוח</strong>
+      <div class="step-box">מקבל ושומר JWT</div>
+      <div class="step-code">token = recv()</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num" style="background:#0D2213;color:var(--teal);border:1px solid var(--teal)">4</div><strong style="background:#0D2213;color:var(--teal);">לקוח</strong>
+      <div class="step-box">שולח JWT + פעולה</div>
+      <div class="step-code">send(token|action)</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num" style="background:#0D1A2E;color:var(--blue);border:1px solid var(--blue)">5</div><strong style="background:#0D1A2E;color:var(--blue);">שרת</strong>
+      <div class="step-box">מאמת + בודק הרשאה</div>
+      <div class="step-code">jwt.decode()</div>
+    </div>
+  </div>
+
+  <div class="infobox ok">
+    <strong>עקרון הזהב:</strong> SECRET_KEY נמצא אך ורק בשרת — הלקוח מקבל טוקן חתום, לעולם לא רואה את המפתח ולעולם לא יוצר טוקן בעצמו.
+  </div>
+</div>
+
+<!-- ══ 2: JWT STRUCTURE ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-2" data-title="מבנה JWT">
+  <div class="slide-tag">02 — מבנה</div>
+  <h1 class="slide-h">מבנה JWT</h1>
+  <p class="lead">JWT מורכב משלושה חלקים מופרדים בנקודות:</p>
+
+  <div dir="ltr" class="grid-3">
+    <div class="card" style="border-top:2px solid var(--blue)">
+      <div class="card-title" style="color:var(--blue)">Header (כותרת)</div>
+      <div class="card-body">סוג האלגוריתם לחתימה</div>
+<pre>{
+  "alg": "HS256",
+  "typ": "JWT"
+}</pre>
+    </div>
+    <div class="card" style="border-top:2px solid var(--teal)">
+      <div class="card-title" style="color:var(--teal)">Payload (מטען)</div>
+      <div class="card-body">נתוני המשתמש והרשאות</div>
+<pre>{
+  "user_id": "alice",
+  "role": "admin",
+  "exp": 1712345678
+}</pre>
+    </div>
+    <div class="card" style="border-top:2px solid var(--amber)">
+      <div class="card-title" style="color:var(--amber)">Signature (חתימה)</div>
+      <div class="card-body">מונעת זיוף — נוצרת עם SECRET_KEY</div>
+<pre>HMACSHA256(
+  header+"."+payload,
+  SECRET_KEY
+)</pre>
+    </div>
+  </div>
+
+  <p style="font-size:18px;color:var(--gray);font-family:'IBM Plex Mono',monospace;margin-top:8px;direction:ltr;text-align:left;word-break:break-all">
+    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYWxpY2UiLCJyb2xlIjoiYWRtaW4ifQ.K8hJt_wu5H7jD3PI3EsT3NOF6Z
+  </p>
+
+  <h2 class="slide-h">העברה ב-HTTP</h2>
+  <pre>Authorization: Bearer &lt;JWT&gt;</pre>
+</div>
+
+<!-- ══ 3: SOCKET SERVER ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-3" data-title="שרת — socket + JWT">
+  <div class="slide-tag">03 — דוגמת קוד</div>
+  <h1 class="slide-h">שרת — socket + JWT</h1>
+  <p class="lead">זרימה סינכרונית עם <code style="color:var(--teal);font-family:'IBM Plex Mono',monospace">socket</code> + <code style="color:var(--teal);font-family:'IBM Plex Mono',monospace">threading</code> לריבוי לקוחות:</p>
+
+  <h3 class="slide-h">// קוד שרת</h3>
+<pre><span class="k">import</span> socket, jwt, os, threading
+<span class="k">from</span> datetime <span class="k">import</span> datetime, timedelta
+
+<span class="c"># SECRET_KEY נמצא רק בשרת — נטען ממשתני סביבה</span>
+SECRET_KEY = os.getenv(<span class="s">"SECRET_KEY"</span>, <span class="s">"mysecret"</span>)
+USERS_DB = { <span class="s">"alice"</span>: <span class="s">"1234"</span>, <span class="s">"bob"</span>: <span class="s">"5678"</span> }
+
+<span class="k">def</span> <span class="f">create_token</span>(username):
+    payload = {<span class="s">"user_id"</span>: username,
+               <span class="s">"exp"</span>: datetime.utcnow() + timedelta(hours=<span class="n">1</span>)}
+    <span class="k">return</span> jwt.encode(payload, SECRET_KEY, algorithm=<span class="s">"HS256"</span>)
+
+<span class="k">def</span> <span class="f">verify_token</span>(token):
+    <span class="k">try</span>:
+        <span class="k">return</span> jwt.decode(token, SECRET_KEY, algorithms=[<span class="s">"HS256"</span>])
+    <span class="k">except</span> (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        <span class="k">return</span> <span class="n">None</span>
+
+<span class="k">def</span> <span class="f">handle_client</span>(conn, addr):
+    <span class="k">with</span> conn:
+        <span class="c"># שלב 1: קבלת credentials</span>
+        username, password = conn.recv(<span class="n">1024</span>).decode().split(<span class="s">":"</span>, <span class="n">1</span>)
+        <span class="k">if</span> USERS_DB.get(username) != password:
+            conn.sendall(<span class="s">b"ERROR: bad credentials"</span>); <span class="k">return</span>
+        <span class="c"># שלב 2: יצירת JWT ושליחה</span>
+        token = create_token(username)
+        conn.sendall(token.encode())
+        <span class="c"># שלב 3: קבלת בקשה עם הטוקן</span>
+        token_recv = conn.recv(<span class="n">4096</span>).decode()
+        payload = verify_token(token_recv)
+        msg = f<span class="s">"אומת: {payload['user_id']}"</span> <span class="k">if</span> payload <span class="k">else</span> <span class="s">"ERROR"</span>
+        conn.sendall(msg.encode())
+
+<span class="k">def</span> <span class="f">main</span>():
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, <span class="n">1</span>)
+    srv.bind((<span class="s">"localhost"</span>, <span class="n">9000</span>)); srv.listen(<span class="n">5</span>)
+    <span class="k">while</span> <span class="n">True</span>:
+        conn, addr = srv.accept()
+        threading.Thread(target=handle_client, args=(conn, addr)).start()
+
+main()</pre>
+</div>
+
+<!-- ══ 4: SOCKET CLIENT ══════════════════════════════════════════════════ -->
+<div class="slide" id="slide-4" data-title="לקוח — socket (ללא SECRET_KEY)">
+  <div class="slide-tag">04 — דוגמת קוד</div>
+  <h1 class="slide-h">לקוח — socket</h1>
+
+  <div class="infobox error" style="margin-bottom:14px">
+    <strong>⚠️ חשוב:</strong> הלקוח לא מכיר את SECRET_KEY בכלל — רק שולח credentials ומקבל טוקן מהשרת.
+  </div>
+
+  <h3 class="slide-h">// קוד לקוח</h3>
+<pre><span class="k">import</span> socket
+
+<span class="k">def</span> <span class="f">communicate</span>(username, password):
+    <span class="k">with</span> socket.socket(socket.AF_INET, socket.SOCK_STREAM) <span class="k">as</span> s:
+        s.connect((<span class="s">"localhost"</span>, <span class="n">9000</span>))
+
+        <span class="c"># שלב 1: שליחת פרטי התחברות</span>
+        s.sendall(f<span class="s">"{username}:{password}"</span>.encode())
+
+        <span class="c"># שלב 2: קבלת JWT מהשרת</span>
+        token = s.recv(<span class="n">4096</span>).decode()
+        <span class="k">if</span> token.startswith(<span class="s">"ERROR"</span>):
+            print(token); <span class="k">return</span>
+        print(f<span class="s">"קיבלנו טוקן: {token[:40]}..."</span>)
+
+        <span class="c"># שלב 3: שימוש בטוקן לבקשות הבאות</span>
+        s.sendall(token.encode())
+        response = s.recv(<span class="n">1024</span>).decode()
+        print(f<span class="s">"תגובה: {response}"</span>)
+
+communicate(<span class="s">"alice"</span>, <span class="s">"1234"</span>)</pre>
+
+  <h3 class="slide-h">// סיכום זרימה</h3>
+<pre>
+שרת                              לקוח
+|── alice:1234 (TCP) ──────────→ |  אימות מול USERS_DB
+|← JWT (bytes, תוקף שעה) ────────|  jwt.encode() + SECRET_KEY
+|── JWT ───────────────────────→ |  jwt.decode() + אימות
+|← אומת בהצלחה: alice ────────── |
+     [ SECRET_KEY נמצא אך ורק בשרת ]</pre>
+</div>
+
+<!-- ══ 5: SECRET KEY ═════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-5" data-title="שמירת SECRET_KEY">
+  <div class="slide-tag">05 — אבטחה</div>
+  <h1 class="slide-h">שמירת SECRET_KEY</h1>
+
+  <div class="infobox warn">
+    <strong>כלל ברזל:</strong> לעולם לא שומרים את ה-SECRET_KEY ישירות בקוד! הפתרון: משתני סביבה (Environment Variables)
+  </div>
+
+  <h3 class="slide-h">// קובץ .env (לא מועלה ל-Git!)</h3>
+  <pre>
+      SECRET_KEY=my_super_secret_key_123
+  </pre>
+
+  <h3 class="slide-h">// טעינה בקוד Python</h3>
+<pre>
+    <span class="k">import</span> os
+<span class="k">from</span> dotenv <span class="k">import</span> load_dotenv
+
+load_dotenv()
+SECRET_KEY = os.getenv(<span class="s">"SECRET_KEY"</span>)</pre>
+
+  <h2 class="slide-h">האם משתפים SECRET_KEY עם הלקוח?</h2>
+
+  <table class="perm-table">
+    <thead><tr><th></th><th>שרת</th><th>לקוח</th></tr></thead>
+    <tbody>
+      <tr><td><strong>HS256 (סימטרי)</strong></td><td class="mono">יש לו את ה-secret</td><td style="color:var(--denied)">אין לו</td></tr>
+      <tr><td><strong>RS256 (אסימטרי)</strong></td><td class="mono">Private Key</td><td class="mono">Public Key בלבד</td></tr>
+    </tbody>
+  </table>
+
+  <div class="infobox ok">
+    <strong>זרימה נכונה:</strong><br>
+    1. הלקוח שולח username + password<br>
+    2. השרת בודק ויוצר JWT ושולח ללקוח<br>
+    3. הלקוח שומר ושולח בכל בקשה<br>
+    → הלקוח מעולם לא יוצר טוקן ומעולם לא רואה את ה-SECRET_KEY
+  </div>
+</div>
+
+<!-- ══ 6: PERMISSIONS TABLE ══════════════════════════════════════════════ -->
+<div class="slide" id="slide-6" data-title="ארבעת סוגי ההרשאות">
+  <div class="slide-tag">06 — הרשאות</div>
+  <h1 class="slide-h">ארבעת סוגי ההרשאות ב-JWT</h1>
+  <p class="lead">ניתן לשלב מספר שיטות יחד ב-Payload אחד:</p>
+
+  <table class="perm-table">
+    <thead>
+      <tr><th>סוג</th><th>שדה ב-JWT</th><th>ערך לדוגמה</th><th>בדיקה בשרת</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag-amber">RBAC</span></td>
+        <td><span class="mono">role</span></td>
+        <td><span class="mono">"admin"</span></td>
+        <td>רמת תפקיד ≥ נדרש</td>
+      </tr>
+      <tr>
+        <td><span class="tag-amber">Permission</span></td>
+        <td><span class="mono">permissions</span></td>
+        <td><span class="mono">["read","delete"]</span></td>
+        <td><span class="mono">action in list</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag-amber">Scope</span></td>
+        <td><span class="mono">scope</span></td>
+        <td><span class="mono">"read:all write:all"</span></td>
+        <td><span class="mono">scope in split()</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag-amber">Resource</span></td>
+        <td><span class="mono">resources</span></td>
+        <td><span class="mono">{"reports":"admin"}</span></td>
+        <td>רמת משאב ≥ נדרש</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="user-row">
+    <span class="user-name ok-color">alice (admin)</span>
+    <span style="color:var(--gray)">role:"admin"</span>
+    <span style="color:var(--teal)">permissions:["read","write","delete"]</span>
+    <span style="color:var(--blue)">scope:"read:all write:all"</span>
+  </div>
+  <div class="user-row">
+    <span class="user-name bad-color">bob (viewer)</span>
+    <span style="color:var(--gray)">role:"viewer"</span>
+    <span style="color:var(--teal)">permissions:["read"]</span>
+    <span style="color:var(--blue)">scope:"read:reports"</span>
+  </div>
+</div>
+
+<!-- ══ 7: PERM FUNCTIONS ═════════════════════════════════════════════════ -->
+<div class="slide" id="slide-7" data-title="פונקציות בדיקת הרשאה">
+  <div class="slide-tag">07 — קוד</div>
+  <h1 class="slide-h">פונקציות בדיקת הרשאה</h1>
+
+<pre><span class="c"># 1. RBAC — תפקיד מספיק?</span>
+<span class="k">def</span> <span class="f">check_rbac</span>(payload, required_role):
+    level = {<span class="s">"admin"</span>:<span class="n">3</span>, <span class="s">"editor"</span>:<span class="n">2</span>, <span class="s">"viewer"</span>:<span class="n">1</span>}
+    <span class="k">return</span> level.get(payload[<span class="s">"role"</span>],<span class="n">0</span>) >= level.get(required_role,<span class="n">99</span>)
+
+<span class="c"># 2. Permission-Based — הפעולה ברשימה?</span>
+<span class="k">def</span> <span class="f">check_permission</span>(payload, action):
+    <span class="k">return</span> action <span class="k">in</span> payload.get(<span class="s">"permissions"</span>, [])
+
+<span class="c"># 3. Scope-Based — ה-scope כולל את הדרוש?</span>
+<span class="k">def</span> <span class="f">check_scope</span>(payload, required_scope):
+    <span class="k">return</span> required_scope <span class="k">in</span> payload.get(<span class="s">"scope"</span>,<span class="s">""</span>).split()
+
+<span class="c"># 4. Resource-Based — הרשאה למשאב ספציפי?</span>
+<span class="k">def</span> <span class="f">check_resource</span>(payload, resource, action):
+    level = {<span class="s">"admin"</span>:<span class="n">3</span>, <span class="s">"write"</span>:<span class="n">2</span>, <span class="s">"read"</span>:<span class="n">1</span>}
+    user_perm = payload.get(<span class="s">"resources"</span>,{}).get(resource,<span class="s">""</span>)
+    <span class="k">return</span> level.get(user_perm,<span class="n">0</span>) >= level.get(action,<span class="n">99</span>)</pre>
+</div>
+
+<!-- ══ 8: FULL SERVER ════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-8" data-title="שרת מלא עם הרשאות">
+  <div class="slide-tag">08 — קוד מלא</div>
+  <h1 class="slide-h">שרת מלא — socket + הרשאות</h1>
+  <p class="lead">פורמט בקשה: <code style="color:var(--teal);font-family:'IBM Plex Mono',monospace">TOKEN|TYPE|VALUE</code></p>
+
+<pre><span class="k">def</span> <span class="f">handle_client</span>(conn, addr):
+    <span class="k">with</span> conn:
+        <span class="c"># Login</span>
+        username, password = conn.recv(<span class="n">1024</span>).decode().split(<span class="s">":"</span>,<span class="n">1</span>)
+        <span class="k">if</span> USERS_DB.get(username,{}).get(<span class="s">"password"</span>) != password:
+            conn.sendall(<span class="s">b"ERROR"</span>); <span class="k">return</span>
+        conn.sendall(create_token(username).encode())
+
+        <span class="k">while</span> <span class="n">True</span>:
+            raw = conn.recv(<span class="n">4096</span>).decode().strip()
+            <span class="k">if not</span> raw: <span class="k">break</span>
+            token_recv, check_type, value = raw.split(<span class="s">"|"</span>)
+            payload = jwt.decode(token_recv, SECRET_KEY,
+                                 algorithms=[<span class="s">"HS256"</span>])
+
+            <span class="k">if</span>   check_type == <span class="s">"rbac"</span>:
+                ok = check_rbac(payload, value)
+            <span class="k">elif</span> check_type == <span class="s">"permission"</span>:
+                ok = check_permission(payload, value)
+            <span class="k">elif</span> check_type == <span class="s">"scope"</span>:
+                ok = check_scope(payload, value)
+            <span class="k">elif</span> check_type.startswith(<span class="s">"resource:"</span>):
+                resource = check_type.split(<span class="s">":"</span>,<span class="n">1</span>)[<span class="n">1</span>]
+                ok = check_resource(payload, resource, value)
+
+            conn.sendall((<span class="s">"OK"</span> <span class="k">if</span> ok <span class="k">else</span> <span class="s">"DENIED"</span>).encode())</pre>
+
+  <h3 class="slide-h">// קוד לקוח — 4 בדיקות</h3>
+<pre>checks = [
+    f<span class="s">"{token}|rbac|admin"</span>,
+    f<span class="s">"{token}|permission|delete"</span>,
+    f<span class="s">"{token}|scope|read:all"</span>,
+    f<span class="s">"{token}|resource:reports|write"</span>,
+]</pre>
+</div>
+
+<!-- ══ 9: OUTPUT ═════════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-9" data-title="פלט צפוי — socket + JWT + הרשאות">
+  <div class="slide-tag">09 — תוצאות</div>
+  <h1 class="slide-h">פלט צפוי</h1>
+
+  <div class="output-grid">
+    <div class="output-card">
+      <div class="output-header ok-h">alice — admin ✓</div>
+      <div class="output-body">
+        <div class="ok-line">RBAC role&gt;=admin:        OK</div>
+        <div class="ok-line">PERMISSION delete:       OK</div>
+        <div class="ok-line">SCOPE read:all:          OK</div>
+        <div class="ok-line">RESOURCE reports:write:  OK</div>
+      </div>
+    </div>
+    <div class="output-card">
+      <div class="output-header bad-h">bob — viewer ✗</div>
+      <div class="output-body">
+        <div class="bad-line">RBAC role&gt;=admin:        DENIED</div>
+        <div class="bad-line">PERMISSION delete:       DENIED</div>
+        <div class="bad-line">SCOPE read:all:          DENIED</div>
+        <div class="bad-line">RESOURCE reports:write:  DENIED</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="slide-h">// זרימה מלאה עם הרשאות</h3>
+<pre>
+שרת                           לקוח
+|── username:password ───────→ |  בדיקת פרטים
+|← JWT (עם role+permissions)───|  יצירת טוקן
+|── JWT:rbac:admin ──────────→ |  check_rbac()     → OK / DENIED
+|── JWT:permission:delete ───→ |  check_permission()→ OK / DENIED
+|── JWT:scope:read:all ──────→ |  check_scope()    → OK / DENIED
+|─ JWT:resource:reports:write─→|  check_resource() → OK / DENIED</pre>
+</div>
+
+<!-- ══ 10: PROS/CONS ═════════════════════════════════════════════════════ -->
+<div class="slide" id="slide-10" data-title="יתרונות וחסרונות">
+  <div class="slide-tag">10 — סיכום</div>
+  <h1 class="slide-h">יתרונות וחסרונות של JWT</h1>
+
+  <div class="pros-cons">
+    <div class="pros-box">
+      <div class="box-header">יתרונות</div>
+      <div class="box-items">
+        <div class="box-item">החתימה מוודאת שהאסימון לא שונה</div>
+        <div class="box-item">נישא עצמאית — כל המידע בטוקן, ללא שאילתת DB</div>
+        <div class="box-item">גמיש — תומך RBAC, Permissions, Scope, Resource</div>
+        <div class="box-item">ניתן לשלוח בכל חיבור: HTTP, socket</div>
+        <div class="box-item">תוקף מובנה (exp) — פג אוטומטית</div>
+      </div>
+    </div>
+    <div class="cons-box">
+      <div class="box-header">חסרונות</div>
+      <div class="box-items">
+        <div class="box-item">אם נגנב — אי אפשר לבטל לפני פקיעת תוקף</div>
+        <div class="box-item">דורש ניהול blacklist לביטול מוקדם</div>
+        <div class="box-item">SECRET_KEY שנחשף = כל הטוקנים בסכנה</div>
+        <div class="box-item">Payload גדול → בקשות כבדות יותר</div>
+        <div class="box-item">חייבים לשמור SECRET_KEY בצורה מאובטחת</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end #stage -->
+
+<!-- DOT NAV -->
+<div id="dot-nav"></div>
+<div id="hint">← → לניווט</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const N = slides.length;
+let cur = 0;
+
+const dotNav = document.getElementById('dot-nav');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotNav.appendChild(d);
+});
+
+function goTo(n) {
+  if (n < 0 || n >= N) return;
+  slides[cur].classList.remove('active');
+  dotNav.children[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  dotNav.children[cur].classList.add('active');
+  document.getElementById('counter').textContent = `${cur + 1} / ${N}`;
+  document.getElementById('slide-title').textContent = slides[cur].dataset.title || '';
+  document.getElementById('progress-fill').style.width = `${((cur + 1) / N) * 100}%`;
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = cur === N - 1;
+}
+
+function go(d) { goTo(cur + d); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+});
+
+goTo(0);
+</script>
+</body>
+</html>

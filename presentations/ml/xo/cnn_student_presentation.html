@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN - רשתות קונבולוציה | מצגת אינטראקטיבית</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7c3aed;
+    --accent4: #10b981;
+    --text: #e8e8f0;
+    --text-dim: #8888aa;
+    --border: #2a2a3e;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(255,107,53,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    direction: rtl;
+  }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--border);
+    z-index: 100;
+  }
+  #progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.4s ease;
+    box-shadow: var(--glow);
+  }
+
+  /* Navigation */
+  #nav {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: rgba(18,18,26,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 0.75rem 1.5rem;
+    z-index: 100;
+  }
+  .nav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: var(--accent3); border-color: var(--accent3); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  #slide-counter { color: var(--text-dim); font-size: 0.85rem; min-width: 60px; text-align: center; }
+
+  /* Slides */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    padding: 3rem 4rem 7rem;
+    overflow-y: auto;
+    animation: slideIn 0.4s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Slide title */
+  .slide-tag {
+    font-size: 0.75rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  h1.slide-title {
+    font-size: 3rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  h2.slide-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+  h2.slide-title span { color: var(--accent); }
+
+  /* Content boxes */
+  .content-grid {
+    display: grid;
+    gap: 1.25rem;
+    flex: 1;
+  }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    background: var(--accent);
+    opacity: 0.03;
+    border-radius: 0 16px 0 60px;
+  }
+  .card.accent-orange::before { background: var(--accent2); }
+  .card.accent-purple::before { background: var(--accent3); }
+  .card.accent-green::before { background: var(--accent4); }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  .card.accent-orange h3 { color: var(--accent2); }
+  .card.accent-purple h3 { color: #a78bfa; }
+  .card.accent-green h3 { color: var(--accent4); }
+
+  .card p { font-size: 0.95rem; color: var(--text-dim); line-height: 1.7; }
+  .card ul { list-style: none; }
+  .card ul li {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    padding: 0.3rem 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    line-height: 1.6;
+  }
+  .card ul li::before { content: '›'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  /* Code blocks */
+  .code-block {
+    background: #050508;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    direction: ltr;
+    text-align: left;
+    color: #c8c8d8;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+  .code-block .kw { color: #569cd6; }
+  .code-block .fn { color: #dcdcaa; }
+  .code-block .str { color: #ce9178; }
+  .code-block .num { color: #b5cea8; }
+  .code-block .cm { color: #6a9955; }
+  .code-block .cls { color: #4ec9b0; }
+
+  /* Matrix visualization */
+  .matrix {
+    display: inline-grid;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    direction: ltr;
+  }
+  .matrix.g3 { grid-template-columns: repeat(3, 48px); }
+  .matrix.g4 { grid-template-columns: repeat(4, 40px); }
+  .matrix.g2 { grid-template-columns: repeat(2, 48px); }
+  .matrix.g9x3 { grid-template-columns: repeat(9, 28px); }
+  .matrix-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .matrix-cell.x { background: rgba(0,212,255,0.12); color: var(--accent); border-color: var(--accent); }
+  .matrix-cell.o { background: rgba(255,107,53,0.12); color: var(--accent2); border-color: var(--accent2); }
+  .matrix-cell.highlight { background: rgba(16,185,129,0.2); border-color: var(--accent4); color: var(--accent4); }
+  .matrix-cell.filter-cell { background: rgba(124,58,237,0.2); border-color: #7c3aed; color: #a78bfa; }
+  .matrix-cell.result { background: rgba(0,212,255,0.2); border-color: var(--accent); animation: pulse 1s ease infinite; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(0,212,255,0); }
+  }
+
+  /* Quiz */
+  .quiz-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-top: 1rem;
+  }
+  .quiz-question {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+    padding-right: 0;
+    line-height: 1.6;
+  }
+  .quiz-question .q-num {
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .options {
+    display: grid;
+    gap: 0.7rem;
+  }
+  .option-btn {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.95rem;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: right;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .option-btn:hover:not(:disabled) { border-color: var(--accent3); background: rgba(124,58,237,0.1); }
+  .option-btn.correct { border-color: var(--accent4); background: rgba(16,185,129,0.12); color: var(--accent4); }
+  .option-btn.wrong { border-color: #ef4444; background: rgba(239,68,68,0.1); color: #f87171; }
+  .option-btn:disabled { cursor: default; }
+  .option-letter {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    min-width: 20px;
+    font-weight: 700;
+  }
+  .option-btn.wrong .option-letter { color: #ef4444; }
+  .option-btn.correct .option-letter { color: var(--accent4); }
+
+  .quiz-feedback {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    display: none;
+  }
+  .quiz-feedback.correct { background: rgba(16,185,129,0.1); border: 1px solid var(--accent4); color: var(--accent4); }
+  .quiz-feedback.wrong { background: rgba(239,68,68,0.08); border: 1px solid #ef4444; color: #f87171; }
+  .quiz-feedback.show { display: block; }
+
+  /* Convolution interactive demo */
+  .conv-demo {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    direction: rtl;
+  }
+  .conv-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .conv-step-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    text-align: center;
+  }
+  .conv-op {
+    font-size: 2rem;
+    color: var(--accent);
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    padding-top: 2rem;
+  }
+
+  /* Hyperparameter sliders */
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .param-name {
+    min-width: 130px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+  }
+  .param-value {
+    min-width: 40px;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+  input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .param-desc {
+    flex: 2;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 1rem 0;
+    direction: ltr;
+  }
+  .arch-layer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .arch-block {
+    width: 80px;
+    height: 70px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+    border: 2px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 4px;
+    line-height: 1.3;
+  }
+  .arch-block:hover { transform: scale(1.08); }
+  .arch-block.input { border-color: var(--accent); background: rgba(0,212,255,0.08); color: var(--accent); }
+  .arch-block.conv { border-color: var(--accent3); background: rgba(124,58,237,0.1); color: #a78bfa; }
+  .arch-block.pool { border-color: var(--accent2); background: rgba(255,107,53,0.1); color: var(--accent2); }
+  .arch-block.flat { border-color: #f59e0b; background: rgba(245,158,11,0.1); color: #fbbf24; }
+  .arch-block.dense { border-color: var(--accent4); background: rgba(16,185,129,0.1); color: var(--accent4); }
+  .arch-block.output { border-color: #ec4899; background: rgba(236,72,153,0.1); color: #f9a8d4; }
+  .arch-label { font-size: 0.68rem; color: var(--text-dim); text-align: center; max-width: 80px; }
+  .arch-arrow {
+    color: var(--border);
+    font-size: 1.5rem;
+    padding: 0 0.25rem;
+    margin-bottom: 20px;
+  }
+
+  .arch-tooltip {
+    background: var(--surface2);
+    border: 1px solid var(--accent3);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-top: 1rem;
+    display: none;
+    direction: rtl;
+    text-align: right;
+  }
+  .arch-tooltip.show { display: block; }
+  .arch-tooltip strong { color: var(--text); }
+
+  /* XO board */
+  .xo-board {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    gap: 6px;
+    direction: ltr;
+  }
+  .xo-cell {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 900;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .xo-cell:hover:not(.taken) { border-color: var(--accent); background: rgba(0,212,255,0.06); }
+  .xo-cell.X { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.08); }
+  .xo-cell.O { color: var(--accent2); border-color: var(--accent2); background: rgba(255,107,53,0.08); }
+  .xo-cell.win { background: rgba(16,185,129,0.15); border-color: var(--accent4); }
+
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  /* Hero slide */
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    gap: 2rem;
+  }
+  .hero-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    max-width: 650px;
+    line-height: 1.7;
+  }
+  .hero-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .badge.cyan { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.06); }
+  .badge.orange { border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.06); }
+  .badge.purple { border-color: var(--accent3); color: #a78bfa; background: rgba(124,58,237,0.06); }
+  .badge.green { border-color: var(--accent4); color: var(--accent4); background: rgba(16,185,129,0.06); }
+
+  .big-start-btn {
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    color: white;
+    border: none;
+    font-family: 'Heebo', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 1rem 2.5rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: fit-content;
+    box-shadow: 0 8px 30px rgba(124,58,237,0.35);
+  }
+  .big-start-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(124,58,237,0.5); }
+
+  /* Concept chip */
+  .concept-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(124,58,237,0.1);
+    border: 1px solid var(--accent3);
+    color: #a78bfa;
+    border-radius: 20px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin: 0.2rem;
+  }
+
+  /* Pool demo */
+  .pool-grid {
+    display: grid;
+    gap: 4px;
+    direction: ltr;
+  }
+  .pool-grid.g4x4 { grid-template-columns: repeat(4, 48px); }
+  .pool-grid.g2x2 { grid-template-columns: repeat(2, 48px); }
+  .pool-cell {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background: var(--surface;
+    color: var(--text);
+    transition: all 0.4s;
+  }
+  .pool-cell.region1 { background: rgba(0,212,255,0.1); border-color: var(--accent); }
+  .pool-cell.region2 { background: rgba(255,107,53,0.1); border-color: var(--accent2); }
+  .pool-cell.region3 { background: rgba(124,58,237,0.1); border-color: var(--accent3); }
+  .pool-cell.region4 { background: rgba(16,185,129,0.1); border-color: var(--accent4); }
+  .pool-cell.max-val { transform: scale(1.15); font-size: 1rem; }
+
+  /* Section header with line */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .section-header h2 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .section-header-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Background decoration */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -30%;
+    right: -20%;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -20%;
+    left: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(ellipse, rgba(0,212,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .slide { z-index: 1; }
+
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.06));
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin: 0.75rem 0;
+  }
+  .highlight-box p { color: var(--text); font-size: 1rem; line-height: 1.7; }
+  .highlight-box strong { color: var(--accent); }
+
+  /* XO to CNN bridge illustration */
+  .bridge-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .bridge-arrow {
+    font-size: 1.5rem;
+    color: var(--accent3);
+  }
+
+  /* Completion badge */
+  .completion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  .completion-icon {
+    font-size: 5rem;
+    line-height: 1;
+  }
+  .completion h2 {
+    font-size: 2.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent4), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Score tracker */
+  #score-display {
+    position: fixed;
+    top: 1rem;
+    left: 1.5rem;
+    background: rgba(18,18,26,0.9);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    z-index: 100;
+  }
+  #score-display span { color: var(--accent4); font-weight: 700; }
+
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .flex { display: flex; }
+  .gap-2 { gap: 1rem; }
+  .items-center { align-items: center; }
+  .flex-wrap { flex-wrap: wrap; }
+
+  /* Interactive filter builder */
+  .filter-builder {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    gap: 6px;
+    direction: ltr;
+  }
+  .filter-cell-input {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 2px solid var(--accent3);
+    color: #a78bfa;
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .filter-cell-input:hover { transform: scale(1.05); background: rgba(124,58,237,0.2); }
+  .filter-cell-input.val-1 { background: rgba(16,185,129,0.2); border-color: var(--accent4); color: var(--accent4); }
+  .filter-cell-input.val-0 { background: var(--surface2); border-color: var(--border); color: var(--text-dim); }
+  .filter-cell-input.val-neg1 { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #f87171; }
+
+  .check-btn {
+    background: var(--accent3);
+    color: white;
+    border: none;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.6rem 1.5rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .check-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+</style>
+</head>
+<body>
+
+<div id="progress-bar"><div id="progress-fill"></div></div>
+<div id="score-display">ניקוד: <span id="score-val">0</span> / <span id="score-total">0</span></div>
+
+<!-- ===== SLIDE 1: HERO ===== -->
+<div class="slide active" id="slide-1">
+  <div class="hero-content">
+    <div>
+      <div class="slide-tag">// מצגת אינטראקטיבית לתלמיד</div>
+      <h1 class="slide-title">CNN<br>רשתות קונבולוציה</h1>
+    </div>
+    <p class="hero-subtitle">
+      איך רשת נוירונים <strong style="color:var(--accent)">לומדת לראות</strong> לוח משחק XO —
+      ומדוע CNN היא ההשלמה המושלמת לאיסוף הנתונים שלכם.
+    </p>
+    <div class="hero-badges">
+      <span class="badge cyan">🎮 משחק XO</span>
+      <span class="badge orange">🔍 Convolution</span>
+      <span class="badge purple">🧠 Deep Learning</span>
+      <span class="badge green">⚡ TensorFlow/Keras</span>
+    </div>
+    <button class="big-start-btn" onclick="goToSlide(2)">▶ בואו נתחיל</button>
+  </div>
+</div>
+
+<!-- ===== SLIDE 2: THE PROBLEM ===== -->
+<div class="slide" id="slide-2">
+  <div class="slide-tag">// הבעיה</div>
+  <h2 class="slide-title">יש לכם מיליון לוחות XO — <span>ועכשיו מה?</span></h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>📦 מה יש לנו: מילון נתונים</h3>
+        <p>אספנו לוחות XO עם ניקוד ממוצע שמייצג עד כמה המצב "טוב" עבור שחקן מסוים. למשל:</p>
+        <div style="margin-top:1rem; direction:ltr;">
+          <pre class="code-block"><span class="cm"># board → average_score</span>
+{
+  <span class="str">"XOX|OXO|XOX"</span>: <span class="num">0.85</span>,
+  <span class="str">"X..|.O.|..."</span>: <span class="num">0.52</span>,
+  <span class="str">"XXO|OOX|XO."</span>: <span class="num">0.31</span>
+}</pre>
+        </div>
+      </div>
+      <div class="card accent-orange" style="margin-top:1rem">
+        <h3>❓ הבעיה: כיסוי חסר</h3>
+        <p>לוח XO 3×3 יכול לייצר <strong style="color:var(--accent2)">~250,000</strong> מצבים שונים. גם עם מיליון לוחות — לא כיסינו הכל. מה יקרה כשהמחשב יגיע למצב שמעולם לא ראה?</p>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-purple">
+        <h3>✨ הפתרון: CNN</h3>
+        <p>רשת קונבולוציה <strong style="color:#a78bfa">לומדת דפוסים</strong>, לא רק שינון. היא מבינה:</p>
+        <ul style="margin-top:0.75rem">
+          <li>שלושה X ברצף = ניצחון, בכל מיקום בלוח</li>
+          <li>שני X בשורה = מצב מסוכן / מבטיח</li>
+          <li>מרכז הלוח חשוב מהפינות</li>
+          <li>יחסים בין תאים סמוכים משמעותיים</li>
+        </ul>
+        <div class="highlight-box" style="margin-top:1rem">
+          <p>💡 כמו שחקן מנוסה — CNN לא זוכרת כל משחק, היא <strong>מבינה את הלוגיקה</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:1rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 1 מתוך 13</span>
+      מדוע מילון נתונים בלבד אינו מספיק כדי לשחק XO טוב?
+    </div>
+    <div class="options" id="q1-options">
+      <button class="option-btn" onclick="answerQ(1,'a')"><span class="option-letter">א</span> כי הוא תופס יותר זיכרון ממודל</button>
+      <button class="option-btn" onclick="answerQ(1,'b')"><span class="option-letter">ב</span> כי לא ניתן לייצג לוח XO כמחרוזת</button>
+      <button class="option-btn" onclick="answerQ(1,'c')"><span class="option-letter">ג</span> כי יש מצבים שלא נראו ולא ניתן לבצע הכללה למצבים חדשים</button>
+      <button class="option-btn" onclick="answerQ(1,'d')"><span class="option-letter">ד</span> כי מילון לא יכול לשמור ערכים שבורים</button>
+    </div>
+    <div class="quiz-feedback" id="q1-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 3: BOARD REPRESENTATION ===== -->
+<div class="slide" id="slide-3">
+  <div class="slide-tag">// ייצוג נתונים</div>
+  <h2 class="slide-title">הלוח כ<span>מטריצה</span> — שפת ה-CNN</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🔢 קידוד הלוח</h3>
+        <p>כל תא בלוח מקבל ערך מספרי:</p>
+        <div style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap">
+          <span class="badge cyan">0 = ריק</span>
+          <span class="badge cyan">1 = X</span>
+          <span class="badge orange">-1 = O</span>
+        </div>
+        <div style="margin-top:1.25rem; direction:ltr; text-align:center">
+          <div style="display:flex; gap:1.5rem; align-items:flex-start; justify-content:center; flex-wrap:wrap">
+            <div class="conv-step">
+              <div style="font-size:2rem; text-align:center; line-height:1.6; font-family:monospace; color:var(--text-dim)">
+                X | O | X<br>O | X | .<br>. | . | O
+              </div>
+              <div class="conv-step-label">לוח המשחק</div>
+            </div>
+            <div class="conv-op" style="font-size:1.5rem">→</div>
+            <div class="conv-step">
+              <div class="matrix g3">
+                <div class="matrix-cell x">1</div><div class="matrix-cell o">-1</div><div class="matrix-cell x">1</div>
+                <div class="matrix-cell o">-1</div><div class="matrix-cell x">1</div><div class="matrix-cell">0</div>
+                <div class="matrix-cell">0</div><div class="matrix-cell">0</div><div class="matrix-cell o">-1</div>
+              </div>
+              <div class="conv-step-label">מטריצת קלט</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card accent-green" style="margin-top:1rem">
+        <h3>📐 ממדי הקלט ל-CNN</h3>
+        <pre class="code-block" style="margin-top:0.5rem">
+<span class="cm"># לוח 3x3, ערוץ 1</span>
+input_shape = (<span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>)
+
+<span class="cm"># לוח 6x7 (4 בשורה)</span>
+input_shape = (<span class="num">6</span>, <span class="num">7</span>, <span class="num">1</span>)
+
+<span class="cm"># כן, הלוח = "תמונה" בגרייסקייל!</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-purple">
+        <h3>🎮 נסה בעצמך — בנה לוח</h3>
+        <p style="margin-bottom:1rem; font-size:0.85rem">לחץ על תאים כדי להציב X ו-O ותראה את המטריצה:</p>
+        <div style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:wrap">
+          <div>
+            <div class="xo-board" id="demo-board">
+              <div class="xo-cell" onclick="toggleCell(0)"></div>
+              <div class="xo-cell" onclick="toggleCell(1)"></div>
+              <div class="xo-cell" onclick="toggleCell(2)"></div>
+              <div class="xo-cell" onclick="toggleCell(3)"></div>
+              <div class="xo-cell" onclick="toggleCell(4)"></div>
+              <div class="xo-cell" onclick="toggleCell(5)"></div>
+              <div class="xo-cell" onclick="toggleCell(6)"></div>
+              <div class="xo-cell" onclick="toggleCell(7)"></div>
+              <div class="xo-cell" onclick="toggleCell(8)"></div>
+            </div>
+            <button class="check-btn" onclick="resetBoard()" style="margin-top:0.75rem; background:var(--surface2); border:1px solid var(--border); color:var(--text-dim)">אפס</button>
+          </div>
+          <div>
+            <div class="conv-step-label" style="margin-bottom:0.5rem">ייצוג מטריצה:</div>
+            <div class="matrix g3" id="demo-matrix">
+              <div class="matrix-cell" id="mc0">0</div><div class="matrix-cell" id="mc1">0</div><div class="matrix-cell" id="mc2">0</div>
+              <div class="matrix-cell" id="mc3">0</div><div class="matrix-cell" id="mc4">0</div><div class="matrix-cell" id="mc5">0</div>
+              <div class="matrix-cell" id="mc6">0</div><div class="matrix-cell" id="mc7">0</div><div class="matrix-cell" id="mc8">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:1rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 2 מתוך 13</span>
+      מה הערך שיש להציב במטריצה עבור תא שמכיל O?
+    </div>
+    <div class="options" id="q2-options">
+      <button class="option-btn" onclick="answerQ(2,'a')"><span class="option-letter">א</span> 2</button>
+      <button class="option-btn" onclick="answerQ(2,'b')"><span class="option-letter">ב</span> 0</button>
+      <button class="option-btn" onclick="answerQ(2,'c')"><span class="option-letter">ג</span> -1</button>
+      <button class="option-btn" onclick="answerQ(2,'d')"><span class="option-letter">ד</span> 0.5</button>
+    </div>
+    <div class="quiz-feedback" id="q2-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 4: CONVOLUTION EXPLAINED ===== -->
+<div class="slide" id="slide-4">
+  <div class="slide-tag">// פעולת הקונבולוציה</div>
+  <h2 class="slide-title">איך <span>Convolution</span> עובדת?</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🔍 מה זה Kernel / Filter?</h3>
+        <p>מטריצה קטנה שסורקת את הקלט ומחפשת תבנית ספציפית. כל איבר הוא משקולת.</p>
+        <div style="margin-top:1rem; display:flex; gap:1.5rem; align-items:flex-start; direction:ltr; justify-content:center; flex-wrap:wrap">
+          <div class="conv-step">
+            <div class="matrix g4">
+              <div class="matrix-cell highlight">2</div><div class="matrix-cell highlight">7</div><div class="matrix-cell">9</div><div class="matrix-cell">4</div>
+              <div class="matrix-cell highlight">6</div><div class="matrix-cell highlight">9</div><div class="matrix-cell">7</div><div class="matrix-cell">9</div>
+              <div class="matrix-cell">4</div><div class="matrix-cell">8</div><div class="matrix-cell">3</div><div class="matrix-cell">9</div>
+              <div class="matrix-cell">7</div><div class="matrix-cell">2</div><div class="matrix-cell">6</div><div class="matrix-cell">2</div>
+            </div>
+            <div class="conv-step-label">מטריצת קלט 4×4</div>
+          </div>
+          <div class="conv-op">⊛</div>
+          <div class="conv-step">
+            <div class="matrix g2">
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell filter-cell">0</div>
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell filter-cell">0</div>
+            </div>
+            <div class="conv-step-label">פילטר 2×2</div>
+          </div>
+          <div class="conv-op">=</div>
+          <div class="conv-step">
+            <div class="matrix g3" id="conv-result-matrix">
+              <div class="matrix-cell result" id="conv-r0">?</div><div class="matrix-cell" id="conv-r1">?</div><div class="matrix-cell" id="conv-r2">?</div>
+              <div class="matrix-cell" id="conv-r3">?</div><div class="matrix-cell" id="conv-r4">?</div><div class="matrix-cell" id="conv-r5">?</div>
+              <div class="matrix-cell" id="conv-r6">?</div><div class="matrix-cell" id="conv-r7">?</div><div class="matrix-cell" id="conv-r8">?</div>
+            </div>
+            <div class="conv-step-label">תפוקת קונבולוציה 3×3</div>
+          </div>
+        </div>
+        <button class="check-btn" onclick="runConvDemo()" style="margin-top:1rem">▶ חשב!</button>
+      </div>
+      <div class="card accent-orange" style="margin-top:1rem">
+        <h3>📐 הנוסחה</h3>
+        <p>עבור כל מיקום, מכפילים איבר-באיבר ומסכמים:</p>
+        <pre class="code-block" style="margin-top:0.5rem">
+result[i,j] = Σ (input[i+k, j+l] × filter[k,l])
+        </pre>
+        <p style="margin-top:0.5rem; font-size:0.85rem">כלומר: מכפל ואחיד (dot product) בין הפילטר לתת-מערך מהקלט.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-purple">
+        <h3>🎯 פילטרים לזיהוי ניצחון ב-XO</h3>
+        <p style="margin-bottom:1rem; font-size:0.9rem">פילטר עם סכום = 3 מזהה שורה שלמה של X:</p>
+        <div style="display:flex; gap:1rem; align-items:flex-start; direction:ltr; flex-wrap:wrap">
+          <div class="conv-step">
+            <div class="matrix g3">
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell filter-cell">1</div><div class="matrix-cell filter-cell">1</div>
+              <div class="matrix-cell">0</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+              <div class="matrix-cell">0</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+            </div>
+            <div class="conv-step-label">שורה ראשונה</div>
+          </div>
+          <div class="conv-step">
+            <div class="matrix g3">
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+            </div>
+            <div class="conv-step-label">עמודה שמאל</div>
+          </div>
+          <div class="conv-step">
+            <div class="matrix g3">
+              <div class="matrix-cell filter-cell">1</div><div class="matrix-cell">0</div><div class="matrix-cell">0</div>
+              <div class="matrix-cell">0</div><div class="matrix-cell filter-cell">1</div><div class="matrix-cell">0</div>
+              <div class="matrix-cell">0</div><div class="matrix-cell">0</div><div class="matrix-cell filter-cell">1</div>
+            </div>
+            <div class="conv-step-label">אלכסון ראשי</div>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top:1rem">
+          <p>💡 כשפילטר "שורה" מוחל על לוח עם X בכל השורה, התוצאה = <strong>3</strong>. זה הסיגנל לניצחון!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:0.75rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 3 מתוך 13</span>
+      מה התוצאה של הכפלת [1,0,0] × [1,0,0] (איבר-באיבר) וסכום כל האיברים?
+    </div>
+    <div class="options" id="q3-options">
+      <button class="option-btn" onclick="answerQ(3,'a')"><span class="option-letter">א</span> 3</button>
+      <button class="option-btn" onclick="answerQ(3,'b')"><span class="option-letter">ב</span> 0</button>
+      <button class="option-btn" onclick="answerQ(3,'c')"><span class="option-letter">ג</span> 1</button>
+      <button class="option-btn" onclick="answerQ(3,'d')"><span class="option-letter">ד</span> -1</button>
+    </div>
+    <div class="quiz-feedback" id="q3-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 5: BUILD YOUR FILTER ===== -->
+<div class="slide" id="slide-5">
+  <div class="slide-tag">// תרגיל</div>
+  <h2 class="slide-title">בנה <span>פילטר</span> משלך</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card accent-purple">
+        <h3>🛠 בנאי פילטרים אינטראקטיבי</h3>
+        <p style="font-size:0.85rem; margin-bottom:1rem">לחץ על תאי הפילטר כדי לשנות ערכים: 0 → 1 → -1 → 0</p>
+        <div style="direction:ltr; display:flex; gap:1.5rem; align-items:flex-start; flex-wrap:wrap">
+          <div class="conv-step">
+            <div class="filter-builder" id="filter-builder">
+              <div class="filter-cell-input val-0" onclick="cycleFilter(0)" id="fb0">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(1)" id="fb1">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(2)" id="fb2">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(3)" id="fb3">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(4)" id="fb4">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(5)" id="fb5">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(6)" id="fb6">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(7)" id="fb7">0</div>
+              <div class="filter-cell-input val-0" onclick="cycleFilter(8)" id="fb8">0</div>
+            </div>
+            <div class="conv-step-label">הפילטר שלך</div>
+          </div>
+          <div class="conv-op">⊛</div>
+          <div class="conv-step">
+            <div class="xo-board" id="filter-test-board" style="grid-template-columns: repeat(3, 52px);">
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(0)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(1)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(2)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(3)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(4)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(5)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(6)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(7)"></div>
+              <div class="xo-cell" style="width:52px;height:52px;font-size:1.3rem" onclick="toggleFilterCell(8)"></div>
+            </div>
+            <div class="conv-step-label">לוח בדיקה</div>
+          </div>
+          <div class="conv-op">=</div>
+          <div class="conv-step" style="align-items:center">
+            <div id="filter-result-display" style="font-family:'Space Mono',monospace; font-size:3rem; font-weight:700; color:var(--accent); min-width:80px; text-align:center; background:var(--surface2); border:2px solid var(--accent); border-radius:16px; padding:1rem;">0</div>
+            <div class="conv-step-label">ציון פילטר</div>
+          </div>
+        </div>
+        <button class="check-btn" onclick="applyFilterDemo()" style="margin-top:1rem">⚡ הפעל פילטר</button>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>💡 מטרות לתרגיל</h3>
+        <ul>
+          <li>צור פילטר שמזהה שורה ראשונה של X (ציון = 3)</li>
+          <li>צור פילטר שמזהה עמודה שמאלית של X</li>
+          <li>צור פילטר שמזהה אלכסון ראשי</li>
+          <li>מה קורה כשהפילטר לא תואם ללוח?</li>
+        </ul>
+      </div>
+      <div class="quiz-container" style="margin-top:1rem">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 4 מתוך 13</span>
+          פילטר [[1,1,1],[0,0,0],[0,0,0]] על לוח עם X בכל השורה הראשונה יחזיר ציון של:
+        </div>
+        <div class="options" id="q4-options">
+          <button class="option-btn" onclick="answerQ(4,'a')"><span class="option-letter">א</span> 0 — אין התאמה</button>
+          <button class="option-btn" onclick="answerQ(4,'b')"><span class="option-letter">ב</span> 3 — התאמה מושלמת לשורה ראשונה</button>
+          <button class="option-btn" onclick="answerQ(4,'c')"><span class="option-letter">ג</span> 9 — כל הלוח</button>
+          <button class="option-btn" onclick="answerQ(4,'d')"><span class="option-letter">ד</span> -3 — ניצחון O</button>
+        </div>
+        <div class="quiz-feedback" id="q4-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 6: HYPERPARAMETERS ===== -->
+<div class="slide" id="slide-6">
+  <div class="slide-tag">// היפר-פרמטרים</div>
+  <h2 class="slide-title">ידיות הכוונה של <span>CNN</span></h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>⚙️ פרמטרים שאנחנו קובעים</h3>
+        <div id="hyper-params">
+          <div class="param-row">
+            <span class="param-name">filters</span>
+            <input type="range" min="1" max="32" value="8" oninput="updateParam('f',this.value)">
+            <span class="param-value" id="pv-f">8</span>
+            <span class="param-desc" id="pd-f">מספר הפילטרים — כמה דפוסים שונים ללמוד</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">kernel_size</span>
+            <input type="range" min="2" max="5" value="3" oninput="updateParam('k',this.value)">
+            <span class="param-value" id="pv-k">3</span>
+            <span class="param-desc" id="pd-k">גודל הפילטר (3×3) — חלון הסריקה</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">stride</span>
+            <input type="range" min="1" max="3" value="1" oninput="updateParam('s',this.value)">
+            <span class="param-value" id="pv-s">1</span>
+            <span class="param-desc" id="pd-s">גודל הצעד — כמה תאים לזוז בכל פעם</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">padding</span>
+            <input type="range" min="0" max="2" value="0" oninput="updateParam('p',this.value)">
+            <span class="param-value" id="pv-p">0</span>
+            <span class="param-desc" id="pd-p">ריפוד בקצוות — שמירת גודל הפלט</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">epochs</span>
+            <input type="range" min="5" max="100" value="50" oninput="updateParam('e',this.value)">
+            <span class="param-value" id="pv-e">50</span>
+            <span class="param-desc" id="pd-e">מספר מחזורי אימון על כל הנתונים</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-orange">
+        <h3>📊 גודל פלט הקונבולוציה</h3>
+        <p style="margin-bottom:0.75rem; font-size:0.9rem">הנוסחה לחישוב ממדי הפלט:</p>
+        <pre class="code-block">output_size = 
+  (input - kernel + 2×padding) / stride + 1
+
+<span class="cm"># דוגמה: לוח 3×3</span>
+= (<span class="num">3</span> - <span class="num">3</span> + 2×<span class="num">0</span>) / <span class="num">1</span> + 1 = <span class="num">1</span>
+
+<span class="cm"># עם padding=1:</span>
+= (<span class="num">3</span> - <span class="num">3</span> + 2×<span class="num">1</span>) / <span class="num">1</span> + 1 = <span class="num">3</span></pre>
+        <div id="output-size-display" class="highlight-box" style="margin-top:0.75rem">
+          <p>עם הגדרות נוכחיות: פלט = <strong id="calc-output">1×1</strong></p>
+        </div>
+      </div>
+      <div class="card accent-green" style="margin-top:1rem">
+        <h3>🧩 מה אומר כל פרמטר?</h3>
+        <div id="param-explanation" style="font-size:0.9rem; color:var(--text-dim); line-height:1.7">
+          הזז את הסליידרים כדי לראות הסבר מפורט...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:0.75rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 5 מתוך 13</span>
+      מה ה-padding עושה לקצוות מטריצת הקלט?
+    </div>
+    <div class="options" id="q5-options">
+      <button class="option-btn" onclick="answerQ(5,'a')"><span class="option-letter">א</span> מגדיל את ערכי הקצה</button>
+      <button class="option-btn" onclick="answerQ(5,'b')"><span class="option-letter">ב</span> מוסיף שורות ועמודות של אפסים מסביב — כדי לשמר את הגודל</button>
+      <button class="option-btn" onclick="answerQ(5,'c')"><span class="option-letter">ג</span> מחתך את הקצוות מהלוח</button>
+      <button class="option-btn" onclick="answerQ(5,'d')"><span class="option-letter">ד</span> מוסיף רעש אקראי לקצוות</button>
+    </div>
+    <div class="quiz-feedback" id="q5-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 7: POOLING ===== -->
+<div class="slide" id="slide-7">
+  <div class="slide-tag">// שכבת Pooling</div>
+  <h2 class="slide-title"><span>Max Pooling</span> — לסנן את החשוב</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>📉 למה מצמצמים?</h3>
+        <ul>
+          <li>מפחית את מספר הפרמטרים שצריך ללמוד</li>
+          <li>מונע overfitting (שינון יתר)</li>
+          <li>יוצר invariance להזזות קטנות</li>
+          <li>שומר על המאפיינים החשובים ביותר</li>
+        </ul>
+        <div class="highlight-box" style="margin-top:1rem">
+          <p>💡 Max Pooling שואל: <strong>"מה הסיגנל הכי חזק באזור הזה?"</strong></p>
+        </div>
+      </div>
+      <div class="card accent-orange" style="margin-top:1rem">
+        <h3>▶ Average Pooling</h3>
+        <p>לוקח את הממוצע במקום המקסימום. שימושי כשכל הערכים באזור חשובים — לא רק השיא.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-purple">
+        <h3>🎬 הדגמה אינטראקטיבית — Max Pooling 2×2</h3>
+        <div style="direction:ltr; display:flex; gap:2rem; align-items:flex-start; flex-wrap:wrap; margin-top:0.75rem">
+          <div class="conv-step">
+            <div class="pool-grid g4x4" id="pool-input">
+              <div class="pool-cell region1">2</div><div class="pool-cell region1">7</div><div class="pool-cell region2">9</div><div class="pool-cell region2">4</div>
+              <div class="pool-cell region1">6</div><div class="pool-cell region1">3</div><div class="pool-cell region2">1</div><div class="pool-cell region2">8</div>
+              <div class="pool-cell region3">5</div><div class="pool-cell region3">4</div><div class="pool-cell region4">6</div><div class="pool-cell region4">2</div>
+              <div class="pool-cell region3">1</div><div class="pool-cell region3">9</div><div class="pool-cell region4">3</div><div class="pool-cell region4">7</div>
+            </div>
+            <div class="conv-step-label">קלט 4×4</div>
+          </div>
+          <div class="conv-op">→</div>
+          <div class="conv-step">
+            <div class="pool-grid g2x2" id="pool-output">
+              <div class="pool-cell" id="pool-r0" style="background:rgba(0,212,255,0.1);border-color:var(--accent)">?</div>
+              <div class="pool-cell" id="pool-r1" style="background:rgba(255,107,53,0.1);border-color:var(--accent2)">?</div>
+              <div class="pool-cell" id="pool-r2" style="background:rgba(124,58,237,0.1);border-color:var(--accent3)">?</div>
+              <div class="pool-cell" id="pool-r3" style="background:rgba(16,185,129,0.1);border-color:var(--accent4)">?</div>
+            </div>
+            <div class="conv-step-label">פלט 2×2</div>
+          </div>
+        </div>
+        <button class="check-btn" onclick="runPoolDemo()" style="margin-top:1rem">▶ הפעל Max Pooling</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:0.75rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 6 מתוך 13</span>
+      Max Pooling 2×2 על אזור [3, 8, 1, 5] יחזיר:
+    </div>
+    <div class="options" id="q6-options">
+      <button class="option-btn" onclick="answerQ(6,'a')"><span class="option-letter">א</span> 3 — הערך הראשון</button>
+      <button class="option-btn" onclick="answerQ(6,'b')"><span class="option-letter">ב</span> 4.25 — הממוצע</button>
+      <button class="option-btn" onclick="answerQ(6,'c')"><span class="option-letter">ג</span> 8 — המקסימום</button>
+      <button class="option-btn" onclick="answerQ(6,'d')"><span class="option-letter">ד</span> 17 — הסכום</button>
+    </div>
+    <div class="quiz-feedback" id="q6-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 8: CNN ARCHITECTURE ===== -->
+<div class="slide" id="slide-8">
+  <div class="slide-tag">// ארכיטקטורה</div>
+  <h2 class="slide-title">מבנה <span>CNN שלמה</span> ל-XO</h2>
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3>🏗️ לחץ על כל שכבה לפרטים</h3>
+    <div class="arch-diagram">
+      <div class="arch-layer">
+        <div class="arch-block input" onclick="showArchTip('input')">Input<br>3×3×1</div>
+        <div class="arch-label">לוח המשחק</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-layer">
+        <div class="arch-block conv" onclick="showArchTip('conv1')">Conv2D<br>8 filters<br>3×3</div>
+        <div class="arch-label">פילטרים</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-layer">
+        <div class="arch-block conv" onclick="showArchTip('relu')">ReLU</div>
+        <div class="arch-label">אקטיבציה</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-layer">
+        <div class="arch-block flat" onclick="showArchTip('flat')">Flatten</div>
+        <div class="arch-label">שיטוח</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-layer">
+        <div class="arch-block dense" onclick="showArchTip('dense1')">Dense<br>32</div>
+        <div class="arch-label">שכבה צפופה</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-layer">
+        <div class="arch-block output" onclick="showArchTip('output')">Dense<br>3<br>softmax</div>
+        <div class="arch-label">פלט: ניצחון/הפסד/תיקו</div>
+      </div>
+    </div>
+    <div class="arch-tooltip" id="arch-tooltip"></div>
+  </div>
+
+  <div class="content-grid cols-2">
+    <div class="card">
+      <h3>💻 קוד Keras מלא</h3>
+      <pre class="code-block">
+<span class="kw">from</span> tensorflow.keras.models <span class="kw">import</span> <span class="cls">Sequential</span>
+<span class="kw">from</span> tensorflow.keras.layers <span class="kw">import</span> <span class="cls">Conv2D</span>, <span class="cls">Flatten</span>, <span class="cls">Dense</span>
+
+model = <span class="cls">Sequential</span>([
+  <span class="cm"># שכבת קונבולוציה ראשונה</span>
+  <span class="cls">Conv2D</span>(<span class="num">8</span>, (<span class="num">3</span>,<span class="num">3</span>), activation=<span class="str">'relu'</span>,
+         input_shape=(<span class="num">3</span>,<span class="num">3</span>,<span class="num">1</span>), padding=<span class="str">'same'</span>),
+  <span class="cls">Flatten</span>(),           <span class="cm"># משטח לוקטור</span>
+  <span class="cls">Dense</span>(<span class="num">32</span>, activation=<span class="str">'relu'</span>),
+  <span class="cls">Dense</span>(<span class="num">3</span>, activation=<span class="str">'softmax'</span>) <span class="cm"># ניצחון/הפסד/תיקו</span>
+])
+
+model.<span class="fn">compile</span>(
+  optimizer=<span class="str">'adam'</span>,
+  loss=<span class="str">'categorical_crossentropy'</span>,
+  metrics=[<span class="str">'accuracy'</span>]
+)
+model.<span class="fn">fit</span>(X_train, y_train, epochs=<span class="num">50</span>)</pre>
+    </div>
+    <div>
+      <div class="quiz-container">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 7 מתוך 13</span>
+          מה עושה שכבת ה-Flatten בארכיטקטורה?
+        </div>
+        <div class="options" id="q7-options">
+          <button class="option-btn" onclick="answerQ(7,'a')"><span class="option-letter">א</span> מסיר ערכים שליליים מהמטריצה</button>
+          <button class="option-btn" onclick="answerQ(7,'b')"><span class="option-letter">ב</span> ממיר את מפות התכונות הדו-ממדיות לוקטור חד-ממדי</button>
+          <button class="option-btn" onclick="answerQ(7,'c')"><span class="option-letter">ג</span> מבצע Max Pooling</button>
+          <button class="option-btn" onclick="answerQ(7,'d')"><span class="option-letter">ד</span> מנרמל את ערכי הקלט</button>
+        </div>
+        <div class="quiz-feedback" id="q7-feedback"></div>
+      </div>
+      <div class="quiz-container" style="margin-top:1rem">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 8 מתוך 13</span>
+          מדוע שכבת הפלט משתמשת ב-softmax ולא ב-relu?
+        </div>
+        <div class="options" id="q8-options">
+          <button class="option-btn" onclick="answerQ(8,'a')"><span class="option-letter">א</span> כי relu מהיר יותר</button>
+          <button class="option-btn" onclick="answerQ(8,'b')"><span class="option-letter">ב</span> כי softmax מחלקת ל-3 קטגוריות עם הסתברויות שסכומן 1</button>
+          <button class="option-btn" onclick="answerQ(8,'c')"><span class="option-letter">ג</span> כי softmax עובד רק עם מספרים שלמים</button>
+          <button class="option-btn" onclick="answerQ(8,'d')"><span class="option-letter">ד</span> כי Keras לא תומך ב-relu בשכבה אחרונה</button>
+        </div>
+        <div class="quiz-feedback" id="q8-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 9: CNN + DICTIONARY ===== -->
+<div class="slide" id="slide-9">
+  <div class="slide-tag">// CNN + מילון</div>
+  <h2 class="slide-title">CNN <span>+</span> מילון — כוח כפול</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🤝 שילוב אסטרטגי</h3>
+        <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:0.5rem">
+          <div style="display:flex; align-items:center; gap:1rem">
+            <div style="font-size:1.5rem">📚</div>
+            <div>
+              <div style="font-weight:700; color:var(--text); font-size:0.95rem">מילון — מהיר ומדויק</div>
+              <div style="font-size:0.85rem; color:var(--text-dim)">למצבים שנראו: lookup מיידי ב-O(1)</div>
+            </div>
+          </div>
+          <div style="text-align:center; color:var(--accent3)">↓ אם לא נמצא במילון ↓</div>
+          <div style="display:flex; align-items:center; gap:1rem">
+            <div style="font-size:1.5rem">🧠</div>
+            <div>
+              <div style="font-weight:700; color:var(--text); font-size:0.95rem">CNN — מכלל ומנחש</div>
+              <div style="font-size:0.85rem; color:var(--text-dim)">למצבים חדשים: חישוב חכם מבוסס דפוסים</div>
+            </div>
+          </div>
+          <div style="text-align:center; color:var(--accent4)">↓ תמיד ↓</div>
+          <div style="display:flex; align-items:center; gap:1rem">
+            <div style="font-size:1.5rem">⚡</div>
+            <div>
+              <div style="font-weight:700; color:var(--text); font-size:0.95rem">שילוב — הטוב משניהם</div>
+              <div style="font-size:0.85rem; color:var(--text-dim)">CNN מספק "prior" טוב לאימון</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card accent-purple" style="margin-top:1rem">
+        <h3>💻 קוד השילוב</h3>
+        <pre class="code-block">
+<span class="kw">def</span> <span class="fn">get_score</span>(board, dictionary, cnn_model):
+  key = <span class="fn">board_to_key</span>(board)
+  
+  <span class="cm"># ראשית — חפש במילון</span>
+  <span class="kw">if</span> key <span class="kw">in</span> dictionary:
+    <span class="kw">return</span> dictionary[key]
+  
+  <span class="cm"># אחרת — השתמש ב-CNN</span>
+  board_matrix = <span class="fn">board_to_matrix</span>(board)
+  <span class="kw">return</span> cnn_model.<span class="fn">predict</span>(board_matrix)</pre>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-green">
+        <h3>📈 יתרונות CNN על פני מילון בלבד</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:0.5rem">
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center">
+            <div style="font-size:1.5rem">🎯</div>
+            <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.3rem">הכללה למצבים חדשים</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center">
+            <div style="font-size:1.5rem">💾</div>
+            <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.3rem">זיכרון קבוע ולא גדל</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center">
+            <div style="font-size:1.5rem">🔄</div>
+            <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.3rem">לומד דפוסים מרחביים</div>
+          </div>
+          <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center">
+            <div style="font-size:1.5rem">🚀</div>
+            <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.3rem">מהיר ב-inference</div>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top:1rem">
+          <p>💡 ה-CNN <strong>לומד</strong> מהמילון שיצרנו — הנתונים שלנו הם data לאימון!</p>
+        </div>
+      </div>
+      <div class="quiz-container" style="margin-top:1rem">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 9 מתוך 13</span>
+          מה היתרון של CNN על פני חיפוש רגיל במילון כשנתקלים במצב לוח חדש?
+        </div>
+        <div class="options" id="q9-options">
+          <button class="option-btn" onclick="answerQ(9,'a')"><span class="option-letter">א</span> CNN תמיד מהירה יותר</button>
+          <button class="option-btn" onclick="answerQ(9,'b')"><span class="option-letter">ב</span> CNN יכולה לחזות ניקוד למצבים שלא נראו, בהתבסס על דפוסים דומים</button>
+          <button class="option-btn" onclick="answerQ(9,'c')"><span class="option-letter">ג</span> CNN תמיד מדויקת יותר ממילון</button>
+          <button class="option-btn" onclick="answerQ(9,'d')"><span class="option-letter">ד</span> CNN לא דורשת נתוני אימון</button>
+        </div>
+        <div class="quiz-feedback" id="q9-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 10: TRAINING ===== -->
+<div class="slide" id="slide-10">
+  <div class="slide-tag">// אימון המודל</div>
+  <h2 class="slide-title">איך ה-CNN <span>לומדת</span> מהנתונים?</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🔄 מחזור האימון</h3>
+        <div style="display:flex; flex-direction:column; gap:0.5rem">
+          <div style="display:flex; align-items:flex-start; gap:1rem; padding:0.5rem; border-right:3px solid var(--accent); padding-right:1rem">
+            <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--accent); min-width:24px">01</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem">Forward Pass</div>
+              <div style="font-size:0.82rem; color:var(--text-dim)">הלוח עובר דרך הרשת → ניקוד חזוי</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:1rem; padding:0.5rem; border-right:3px solid var(--accent2); padding-right:1rem">
+            <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--accent2); min-width:24px">02</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem">Loss Calculation</div>
+              <div style="font-size:0.82rem; color:var(--text-dim)">MSE / Cross-Entropy: כמה טעינו?</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:1rem; padding:0.5rem; border-right:3px solid var(--accent3); padding-right:1rem">
+            <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:#a78bfa; min-width:24px">03</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem">Backpropagation</div>
+              <div style="font-size:0.82rem; color:var(--text-dim)">חישוב הגרדיאנט לכל משקולת</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:1rem; padding:0.5rem; border-right:3px solid var(--accent4); padding-right:1rem">
+            <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--accent4); min-width:24px">04</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem">Weight Update (Adam)</div>
+              <div style="font-size:0.82rem; color:var(--text-dim)">עדכון הפילטרים להפחתת השגיאה</div>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top:1rem">
+          <p>🔁 חוזרים <strong>epochs</strong> פעמים על כל הנתונים עד ההתכנסות</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-orange">
+        <h3>📋 הכנת הנתונים לאימון</h3>
+        <pre class="code-block">
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># המילון שלנו: board → score</span>
+<span class="cm"># X_train: מטריצות 3x3x1</span>
+<span class="cm"># y_train: ניצחון=0, תיקו=1, הפסד=2</span>
+
+X_train = np.<span class="fn">array</span>([
+  board_to_matrix(b) 
+  <span class="kw">for</span> b <span class="kw">in</span> dictionary.keys()
+])
+
+y_train = np.<span class="fn">array</span>([
+  score_to_label(s) 
+  <span class="kw">for</span> s <span class="kw">in</span> dictionary.values()
+])
+
+<span class="cm"># normalize: 3x3 → 3x3x1</span>
+X_train = X_train.<span class="fn">reshape</span>(-<span class="num">1</span>, <span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>)</pre>
+      </div>
+      <div class="quiz-container" style="margin-top:1rem">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 10 מתוך 13</span>
+          מה עושה ה-Backpropagation באימון CNN?
+        </div>
+        <div class="options" id="q10-options">
+          <button class="option-btn" onclick="answerQ(10,'a')"><span class="option-letter">א</span> בודק אם הלוח תקין</button>
+          <button class="option-btn" onclick="answerQ(10,'b')"><span class="option-letter">ב</span> מחשב גרדיאנטים ומעדכן משקלות הפילטרים כדי להפחית שגיאה</button>
+          <button class="option-btn" onclick="answerQ(10,'c')"><span class="option-letter">ג</span> מוחק את הנתונים הגרועים</button>
+          <button class="option-btn" onclick="answerQ(10,'d')"><span class="option-letter">ד</span> מוסיף פילטרים חדשים לרשת</button>
+        </div>
+        <div class="quiz-feedback" id="q10-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 11: ADVANTAGES ===== -->
+<div class="slide" id="slide-11">
+  <div class="slide-tag">// יתרונות CNN</div>
+  <h2 class="slide-title">למה CNN <span>מנצחת</span> FC לנתוני לוח?</h2>
+  <div class="content-grid cols-3">
+    <div class="card">
+      <h3>📍 מיקום משנה</h3>
+      <p>ב-Fully Connected, X בפינה שמאלית שקול ל-X בפינה ימנית — הרשת לא יודעת שהם שכנים. CNN <strong style="color:var(--accent)">מכבדת מבנה מרחבי.</strong></p>
+    </div>
+    <div class="card accent-orange">
+      <h3>🔁 שיתוף פרמטרים</h3>
+      <p>אותו פילטר "שורה" פועל על כל השורות. פחות פרמטרים = <strong style="color:var(--accent2)">פחות overfitting</strong> ואימון מהיר יותר.</p>
+    </div>
+    <div class="card accent-purple">
+      <h3>🎯 עמידות להזזה</h3>
+      <p>שלושה X ברצף — הפילטר יזהה זאת גם אם הם בשורה 1 או שורה 3. <strong style="color:#a78bfa">אינוואריאנטי למיקום.</strong></p>
+    </div>
+    <div class="card accent-green">
+      <h3>🧠 היררכיה</h3>
+      <p>שכבה 1 לומדת תבניות פשוטות (זוגות), שכבה 2 לומדת שלשות, שכבה 3 לומדת <strong style="color:var(--accent4)">אסטרטגיות שלמות.</strong></p>
+    </div>
+    <div class="card">
+      <h3>⚡ יעילות</h3>
+      <div style="margin-top:0.5rem">
+        <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin:0.3rem 0">
+          <span>FC (3×3=9 neurons):</span>
+          <span style="color:var(--accent2)">~1,000 פרמטרים</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin:0.3rem 0">
+          <span>CNN (8 filters 3×3):</span>
+          <span style="color:var(--accent4)">~80 פרמטרים</span>
+        </div>
+      </div>
+    </div>
+    <div class="card accent-orange">
+      <h3>🌍 הכללה</h3>
+      <p>CNN שלמדה על XO 3×3 יכולה — עם שינוי קל — לפעול על 4 בשורה. <strong style="color:var(--accent2)">ידע ניתן להעברה.</strong></p>
+    </div>
+  </div>
+
+  <div class="quiz-container" style="margin-top:0.75rem">
+    <div class="quiz-question">
+      <span class="q-num">// שאלה 11 מתוך 13</span>
+      מה הכוונה ב"שיתוף פרמטרים" ב-CNN?
+    </div>
+    <div class="options" id="q11-options">
+      <button class="option-btn" onclick="answerQ(11,'a')"><span class="option-letter">א</span> כל שני תלמידים חולקים את אותו מודל</button>
+      <button class="option-btn" onclick="answerQ(11,'b')"><span class="option-letter">ב</span> אותו פילטר משמש לסריקת כל האזורים בקלט — לא נדרשים פרמטרים נפרדים לכל מיקום</button>
+      <button class="option-btn" onclick="answerQ(11,'c')"><span class="option-letter">ג</span> שתי שכבות שיתוף אותם נוירונים</button>
+      <button class="option-btn" onclick="answerQ(11,'d')"><span class="option-letter">ד</span> מסד הנתונים שיתופי בין כל ה-epochs</button>
+    </div>
+    <div class="quiz-feedback" id="q11-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 12: KERNEL INIT ===== -->
+<div class="slide" id="slide-12">
+  <div class="slide-tag">// אתחול</div>
+  <h2 class="slide-title">אתחול <span>Kernel</span> — נקודת ההתחלה חשובה</h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🎲 Random Initialization</h3>
+        <p>כל פילטר מאותחל בערכים אקראיים קטנים (ממוצע 0). למה?</p>
+        <ul style="margin-top:0.75rem">
+          <li>מונע symmetry breaking — אם כולם זהים, כולם ילמדו אותו דבר</li>
+          <li>ממוצע 0 מונע ערכים שמתפוצצים</li>
+          <li>הרשת "מחפשת" תבניות שונות מנקודות שונות</li>
+        </ul>
+      </div>
+      <div class="card accent-purple" style="margin-top:1rem">
+        <h3>✨ Smart Initialization</h3>
+        <p>אפשר לאתחל עם פילטרים שיודעים לזהות שורות/עמודות ידנית!</p>
+        <pre class="code-block" style="margin-top:0.5rem; font-size:0.75rem">
+<span class="kw">import</span> tensorflow <span class="kw">as</span> tf
+
+<span class="cm"># פילטר "שורה ראשונה"</span>
+row_filter = [[<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>],[<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>],[<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>]]
+
+<span class="kw">def</span> <span class="fn">custom_init</span>(shape, dtype=<span class="kw">None</span>):
+  filters = np.<span class="fn">zeros</span>(shape)
+  filters[:,:,<span class="num">0</span>,<span class="num">0</span>] = row_filter  
+  <span class="kw">return</span> tf.<span class="fn">constant</span>(filters, dtype=dtype)
+
+<span class="cls">Conv2D</span>(<span class="num">1</span>, (<span class="num">3</span>,<span class="num">3</span>), 
+       kernel_initializer=custom_init)</pre>
+      </div>
+    </div>
+    <div>
+      <div class="card accent-orange">
+        <h3>🏁 He / Glorot Initialization</h3>
+        <p>שיטות אתחול מתקדמות שמתחשבות בגודל הרשת:</p>
+        <ul style="margin-top:0.75rem">
+          <li><strong style="color:var(--accent2)">Glorot (Xavier)</strong>: לפונקציות סיגמואיד/tanh</li>
+          <li><strong style="color:var(--accent2)">He initialization</strong>: לפונקציית ReLU — הכי נפוצה</li>
+        </ul>
+        <pre class="code-block" style="margin-top:0.75rem">
+<span class="cls">Conv2D</span>(<span class="num">8</span>, (<span class="num">3</span>,<span class="num">3</span>),
+  kernel_initializer=<span class="str">'he_normal'</span>)</pre>
+      </div>
+      <div class="quiz-container" style="margin-top:1rem">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 12 מתוך 13</span>
+          מדוע לא מאתחלים את כל הפילטרים בערך 0?
+        </div>
+        <div class="options" id="q12-options">
+          <button class="option-btn" onclick="answerQ(12,'a')"><span class="option-letter">א</span> כי 0 לא מספר חוקי בפייתון</button>
+          <button class="option-btn" onclick="answerQ(12,'b')"><span class="option-letter">ב</span> כי כולם ילמדו את אותו הדבר ולא תהיה חלוקת עבודה בין הפילטרים</button>
+          <button class="option-btn" onclick="answerQ(12,'c')"><span class="option-letter">ג</span> כי 0 גורם לאובר-פיטינג</button>
+          <button class="option-btn" onclick="answerQ(12,'d')"><span class="option-letter">ד</span> כי Keras לא תומך בזה</button>
+        </div>
+        <div class="quiz-feedback" id="q12-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 13: COMPLETE WORKFLOW ===== -->
+<div class="slide" id="slide-13">
+  <div class="slide-tag">// תהליך שלם</div>
+  <h2 class="slide-title">מ-XO לניקוד — <span>הכל יחד</span></h2>
+  <div class="content-grid cols-2">
+    <div>
+      <div class="card">
+        <h3>🗺️ מפת הדרכים</h3>
+        <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem">
+          <div style="display:flex; gap:0.75rem; align-items:flex-start">
+            <span class="concept-chip">1</span>
+            <div style="font-size:0.9rem">אספו לוחות XO + ניקוד ← <strong style="color:var(--text)">המילון שלכם</strong></div>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:flex-start">
+            <span class="concept-chip">2</span>
+            <div style="font-size:0.9rem">המירו כל לוח למטריצה (0, 1, -1) בצורה (3,3,1)</div>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:flex-start">
+            <span class="concept-chip">3</span>
+            <div style="font-size:0.9rem">הגדירו CNN עם Conv2D + Flatten + Dense</div>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:flex-start">
+            <span class="concept-chip">4</span>
+            <div style="font-size:0.9rem">אמנו על המילון — epochs=50, optimizer='adam'</div>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:flex-start">
+            <span class="concept-chip">5</span>
+            <div style="font-size:0.9rem">בזמן משחק: מילון קודם, CNN לכל שאר</div>
+          </div>
+        </div>
+      </div>
+      <div class="card accent-green" style="margin-top:1rem">
+        <h3>💻 קוד סיכום</h3>
+        <pre class="code-block" style="font-size:0.72rem">
+<span class="cm"># שלב 1: הכנת נתונים</span>
+X = <span class="fn">np.array</span>([boards]) <span class="cm"># (N, 3, 3, 1)</span>
+y = <span class="fn">to_categorical</span>(labels, <span class="num">3</span>)
+
+<span class="cm"># שלב 2: בניית מודל</span>
+model = <span class="cls">Sequential</span>([
+  <span class="cls">Conv2D</span>(<span class="num">8</span>, (<span class="num">3</span>,<span class="num">3</span>), activation=<span class="str">'relu'</span>,
+         input_shape=(<span class="num">3</span>,<span class="num">3</span>,<span class="num">1</span>), padding=<span class="str">'same'</span>),
+  <span class="cls">Flatten</span>(),
+  <span class="cls">Dense</span>(<span class="num">32</span>, activation=<span class="str">'relu'</span>),
+  <span class="cls">Dense</span>(<span class="num">3</span>, activation=<span class="str">'softmax'</span>)
+])
+
+<span class="cm"># שלב 3: אימון</span>
+model.<span class="fn">compile</span>(optimizer=<span class="str">'adam'</span>,
+              loss=<span class="str">'categorical_crossentropy'</span>)
+model.<span class="fn">fit</span>(X, y, epochs=<span class="num">50</span>, validation_split=<span class="num">0.2</span>)</pre>
+      </div>
+    </div>
+    <div>
+      <div class="quiz-container">
+        <div class="quiz-question">
+          <span class="q-num">// שאלה 13 מתוך 13</span>
+          מה ה-input_shape הנכון של CNN ל-XO 3×3 עם ערוץ אחד?
+        </div>
+        <div class="options" id="q13-options">
+          <button class="option-btn" onclick="answerQ(13,'a')"><span class="option-letter">א</span> (9,)</button>
+          <button class="option-btn" onclick="answerQ(13,'b')"><span class="option-letter">ב</span> (3, 3)</button>
+          <button class="option-btn" onclick="answerQ(13,'c')"><span class="option-letter">ג</span> (3, 3, 1)</button>
+          <button class="option-btn" onclick="answerQ(13,'d')"><span class="option-letter">ד</span> (1, 3, 3)</button>
+        </div>
+        <div class="quiz-feedback" id="q13-feedback"></div>
+      </div>
+      <div class="card accent-purple" style="margin-top:1rem">
+        <h3>🏆 מושגים שלמדנו</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem">
+          <span class="concept-chip">Kernel/Filter</span>
+          <span class="concept-chip">Convolution</span>
+          <span class="concept-chip">Feature Map</span>
+          <span class="concept-chip">Padding</span>
+          <span class="concept-chip">Stride</span>
+          <span class="concept-chip">Max Pooling</span>
+          <span class="concept-chip">Flatten</span>
+          <span class="concept-chip">Dense Layer</span>
+          <span class="concept-chip">Softmax</span>
+          <span class="concept-chip">ReLU</span>
+          <span class="concept-chip">Backprop</span>
+          <span class="concept-chip">Weight Init</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 14: COMPLETION ===== -->
+<div class="slide" id="slide-14">
+  <div class="completion">
+    <div class="completion-icon">🏆</div>
+    <h2>סיימת את המצגת!</h2>
+    <p style="font-size:1.1rem; color:var(--text-dim); max-width:500px; text-align:center; line-height:1.8">
+      עכשיו אתה מבין איך CNN רואה לוח XO, למדת על פילטרים, קונבולוציה, Pooling וארכיטקטורה מלאה.
+    </p>
+    <div class="score-badge" style="font-size:1.1rem; padding:0.75rem 2rem">
+      ✅ ניקוד: <span id="final-score" style="color:var(--accent4); font-size:1.4rem; margin-right:0.5rem">0</span> / 13 שאלות
+    </div>
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; margin-top:1rem">
+      <button class="big-start-btn" onclick="goToSlide(1)" style="font-size:0.95rem; padding:0.75rem 2rem">🔄 חזור להתחלה</button>
+      <button class="big-start-btn" onclick="goToSlide(8)" style="background:linear-gradient(135deg,var(--accent4),var(--accent)); font-size:0.95rem; padding:0.75rem 2rem">🏗️ שוב לארכיטקטורה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div id="nav">
+  <button class="nav-btn" id="prev-btn" onclick="prevSlide()" disabled>→ הקודם</button>
+  <span id="slide-counter">1 / 14</span>
+  <button class="nav-btn" id="next-btn" onclick="nextSlide()">הבא ←</button>
+</div>
+
+<script>
+  // ===== STATE =====
+  let currentSlide = 1;
+  const totalSlides = 14;
+  let score = 0;
+  let answered = {};
+
+  // Board state
+  let boardState = Array(9).fill(0); // 0=empty, 1=X, -1=O
+  let boardTurn = 1; // 1=X, -1=O
+
+  let filterBoardState = Array(9).fill(0);
+  let filterTurn = 1;
+  let filterValues = Array(9).fill(0);
+
+  // Quiz answers
+  const answers = {
+    1: 'c', 2: 'c', 3: 'c', 4: 'b', 5: 'b',
+    6: 'c', 7: 'b', 8: 'b', 9: 'b', 10: 'b',
+    11: 'b', 12: 'b', 13: 'c'
+  };
+
+  const feedbacks = {
+    1: { c: '✅ נכון! מילון יכול לחפש רק מצבים שנראו בעבר. מצבים חדשים יחזירו "לא נמצא" ללא יכולת הכללה.', wrong: '❌ לא בדיוק. הבעיה היא שמילון לא יכול לנחש מצבים שלא הוכנסו אליו — אין הכללה.' },
+    2: { c: '✅ נכון! O מקבל -1, X מקבל 1, ריק מקבל 0. כך הרשת מבינה את ה"קוטביות" של שחקנים שונים.', wrong: '❌ לא. הקידוד המקובל הוא: X=1, O=-1, ריק=0. כך ניצחון X = סכום חיובי, ניצחון O = שלילי.' },
+    3: { c: '✅ נכון! [1×1, 0×0, 0×0] = [1,0,0] → סכום = 1. כשיש התאמה חלקית, מקבלים ציון חלקי.', wrong: '❌ [1,0,0] × [1,0,0] = [1×1, 0×0, 0×0] = [1,0,0] → סכום = 1.' },
+    4: { b: '✅ מצוין! פילטר [1,1,1] על שורה של שלושה X יחזיר 1×1+1×1+1×1 = 3. זה סיגנל ניצחון!', wrong: '❌ הכפלה איבר-באיבר: 1×1+1×1+1×1 = 3. התשובה היא 3.' },
+    5: { b: '✅ נכון! Padding מוסיף שורות ועמודות של אפסים בגבולות, כך שהפלט יכול להיות באותו גודל כמו הקלט.', wrong: '❌ Padding = ריפוד = הוספת אפסים לשוליים כדי לשמר את גודל מפת התכונות.' },
+    6: { c: '✅ מצוין! Max Pooling לוקח את הערך הגבוה ביותר: max(3,8,1,5) = 8.', wrong: '❌ Max Pooling = מקסימום. max(3,8,1,5) = 8.' },
+    7: { b: '✅ נכון! Flatten הופך מטריצה 2D לוקטור 1D כדי שיוכל להיכנס לשכבת Dense.', wrong: '❌ Flatten = שיטוח. הוא הופך מפות תכונות ממימד גבוה לוקטור אחד.' },
+    8: { b: '✅ מדויק! Softmax מייצרת הסתברויות: P(ניצחון)+P(הפסד)+P(תיקו)=1. ReLU לא יכולה לתת הסתברויות.', wrong: '❌ Softmax מתאימה לסיווג מרובה מחלקות כי היא מייצרת הסתברויות שסכומן הוא 1.' },
+    9: { b: '✅ נכון! CNN לומדת דפוסים כלליים — שורה של X, עמודה של O — ומשתמשת בהם גם למצבים שלא ראתה.', wrong: '❌ היתרון של CNN הוא הכללה: היא לומדת דפוסים כלליים ולא רק שינון.' },
+    10: { b: '✅ נכון! Backpropagation מחשב את הנגזרת של השגיאה לגבי כל משקולת ומעדכן בהתאם.', wrong: '❌ Backpropagation = גרדיאנטים + עדכון משקלות (כולל ערכי הפילטרים!) לכיוון המפחית שגיאה.' },
+    11: { b: '✅ מצוין! Parameter sharing = אותו פילטר סורק את כל הלוח. זה מפחית אלפי פרמטרים לעשרות.', wrong: '❌ שיתוף פרמטרים: פילטר אחד (9 ערכים) סורק את כל הלוח — לא פרמטרים נפרדים לכל מיקום.' },
+    12: { b: '✅ בדיוק! אם כולם מתחילים מ-0, גרדיאנטים זהים → כולם מתעדכנים אותו הדבר → ה-8 פילטרים נשארים זהים לנצח.', wrong: '❌ הבעיה: symmetry. פילטרים זהים לומדים את אותו הדבר. אתחול אקראי שובר את הסימטריה.' },
+    13: { c: '✅ נכון! לוח 3×3 עם ערוץ צבע אחד = (3, 3, 1). CNN ב-Keras מצפה ל-(height, width, channels).', wrong: '❌ input_shape = (גובה, רוחב, ערוצים) = (3, 3, 1). הממד השלישי הוא ערוצי צבע (כאן ערוץ 1).' }
+  };
+
+  // ===== NAVIGATION =====
+  function goToSlide(n) {
+    document.getElementById(`slide-${currentSlide}`).classList.remove('active');
+    currentSlide = n;
+    document.getElementById(`slide-${currentSlide}`).classList.add('active');
+    updateNav();
+    if (n === 14) document.getElementById('final-score').textContent = score;
+  }
+
+  function nextSlide() { if (currentSlide < totalSlides) goToSlide(currentSlide + 1); }
+  function prevSlide() { if (currentSlide > 1) goToSlide(currentSlide - 1); }
+
+  function updateNav() {
+    const fill = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+    document.getElementById('progress-fill').style.width = fill + '%';
+    document.getElementById('slide-counter').textContent = `${currentSlide} / ${totalSlides}`;
+    document.getElementById('prev-btn').disabled = currentSlide === 1;
+    document.getElementById('next-btn').disabled = currentSlide === totalSlides;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') nextSlide();
+    if (e.key === 'ArrowRight') prevSlide();
+  });
+
+  // ===== QUIZ =====
+  function answerQ(qNum, choice) {
+    if (answered[qNum]) return;
+    answered[qNum] = choice;
+    document.getElementById(`score-total`).textContent = Object.keys(answered).length;
+
+    const opts = document.querySelectorAll(`#q${qNum}-options .option-btn`);
+    const letters = ['a','b','c','d'];
+    opts.forEach((btn, i) => {
+      btn.disabled = true;
+      if (letters[i] === answers[qNum]) btn.classList.add('correct');
+      else if (letters[i] === choice && choice !== answers[qNum]) btn.classList.add('wrong');
+    });
+
+    const fb = document.getElementById(`q${qNum}-feedback`);
+    const isCorrect = choice === answers[qNum];
+    if (isCorrect) { score++; document.getElementById('score-val').textContent = score; }
+
+    const fData = feedbacks[qNum];
+    fb.textContent = isCorrect ? fData[answers[qNum]] : (fData.wrong || `❌ התשובה הנכונה היא "${answers[qNum]}".`);
+    fb.className = `quiz-feedback show ${isCorrect ? 'correct' : 'wrong'}`;
+  }
+
+  // ===== BOARD DEMO =====
+  function toggleCell(idx) {
+    if (boardState[idx] !== 0) { boardState[idx] = 0; boardTurn = 1; }
+    else { boardState[idx] = boardTurn; boardTurn = boardTurn === 1 ? -1 : 1; }
+    renderBoard();
+  }
+
+  function renderBoard() {
+    const cells = document.querySelectorAll('#demo-board .xo-cell');
+    cells.forEach((c, i) => {
+      c.className = 'xo-cell';
+      c.textContent = boardState[i] === 1 ? '✕' : boardState[i] === -1 ? '○' : '';
+      if (boardState[i] === 1) c.classList.add('X', 'taken');
+      if (boardState[i] === -1) c.classList.add('O', 'taken');
+    });
+    boardState.forEach((v, i) => {
+      const mc = document.getElementById(`mc${i}`);
+      mc.textContent = v;
+      mc.className = 'matrix-cell' + (v === 1 ? ' x' : v === -1 ? ' o' : '');
+    });
+  }
+
+  function resetBoard() { boardState = Array(9).fill(0); boardTurn = 1; renderBoard(); }
+
+  // ===== CONVOLUTION DEMO =====
+  const inputGrid = [[2,7,9,4],[6,9,7,9],[4,8,3,9],[7,2,6,2]];
+  const filterDem = [[1,0],[1,0]];
+
+  function runConvDemo() {
+    const results = [];
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        let sum = 0;
+        for (let ki = 0; ki < 2; ki++)
+          for (let kj = 0; kj < 2; kj++)
+            sum += inputGrid[i+ki][j+kj] * filterDem[ki][kj];
+        results.push(sum);
+      }
+    }
+    results.forEach((v, i) => {
+      const el = document.getElementById(`conv-r${i}`);
+      el.textContent = v;
+      el.className = 'matrix-cell' + (v > 10 ? ' highlight' : '');
+    });
+  }
+
+  // ===== FILTER BUILDER =====
+  function cycleFilter(idx) {
+    const vals = [0, 1, -1];
+    filterValues[idx] = vals[(vals.indexOf(filterValues[idx]) + 1) % 3];
+    const el = document.getElementById(`fb${idx}`);
+    el.textContent = filterValues[idx];
+    el.className = `filter-cell-input val-${filterValues[idx] === -1 ? 'neg1' : filterValues[idx]}`;
+  }
+
+  function toggleFilterCell(idx) {
+    if (filterBoardState[idx] !== 0) { filterBoardState[idx] = 0; filterTurn = 1; }
+    else { filterBoardState[idx] = filterTurn; filterTurn = filterTurn === 1 ? -1 : 1; }
+    const cells = document.querySelectorAll('#filter-test-board .xo-cell');
+    cells.forEach((c, i) => {
+      c.className = 'xo-cell';
+      c.style.cssText = 'width:52px;height:52px;font-size:1.3rem';
+      c.textContent = filterBoardState[i] === 1 ? '✕' : filterBoardState[i] === -1 ? '○' : '';
+      if (filterBoardState[i] === 1) c.classList.add('X', 'taken');
+      if (filterBoardState[i] === -1) c.classList.add('O', 'taken');
+    });
+  }
+
+  function applyFilterDemo() {
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += filterValues[i] * filterBoardState[i];
+    const el = document.getElementById('filter-result-display');
+    el.textContent = sum;
+    el.style.color = sum > 0 ? 'var(--accent4)' : sum < 0 ? '#f87171' : 'var(--accent)';
+    el.style.borderColor = sum > 0 ? 'var(--accent4)' : sum < 0 ? '#ef4444' : 'var(--accent)';
+  }
+
+  // ===== HYPERPARAMETERS =====
+  function updateParam(type, val) {
+    document.getElementById(`pv-${type}`).textContent = val;
+    const descs = {
+      f: { 1: 'פילטר 1: ילמד דפוס אחד בלבד. מינימלי.', 8: '8 פילטרים: סביר מאוד עבור XO.', 16: '16 פילטרים: מגזים לבעיה פשוטה, אך אפשרי.', 32: '32 פילטרים: הרבה מדי ל-XO — סיכוי לoverfitting!' },
+      k: { 2: 'kernel 2×2: רק זוגות תאים סמוכים. מפספס שלשות.', 3: 'kernel 3×3: מושלם ל-XO! מכסה את כל השורה/עמודה.', 4: 'kernel 4×4: גדול מלוח ה-XO — לא שימושי.', 5: 'kernel 5×5: גדול מדי ל-XO 3×3.' },
+      s: { 1: 'stride=1: כל תא נבחן — דיוק מקסימלי.', 2: 'stride=2: קפיצות — מפספסים מידע בלוח קטן.', 3: 'stride=3: גדול מדי ל-XO.' },
+      p: { 0: 'padding=0: פלט קטן יותר מהקלט.', 1: 'padding=1: פלט = גודל קלט. שימושי לשמירת ממד.', 2: 'padding=2: פלט גדול מהקלט.' },
+      e: v => v < 20 ? `${v} epochs: מעט מדי — underfitting.` : v > 80 ? `${v} epochs: הרבה — סיכוי לoverfitting.` : `${v} epochs: מאוזן טוב.`
+    };
+    const desc = type === 'e' ? descs.e(parseInt(val)) : (descs[type][parseInt(val)] || '');
+    document.getElementById(`pd-${type}`).textContent = desc || document.getElementById(`pd-${type}`).textContent;
+    updateOutputSize();
+  }
+
+  function updateOutputSize() {
+    const inp = 3, k = parseInt(document.getElementById('pv-k').textContent),
+          p = parseInt(document.getElementById('pv-p').textContent),
+          s = parseInt(document.getElementById('pv-s').textContent);
+    const out = Math.floor((inp - k + 2*p) / s) + 1;
+    const valid = out > 0;
+    document.getElementById('calc-output').textContent = valid ? `${out}×${out}` : 'לא תקין!';
+    document.getElementById('calc-output').style.color = valid ? 'var(--accent)' : '#f87171';
+  }
+
+  // ===== POOL DEMO =====
+  function runPoolDemo() {
+    const regions = [[2,7,6,3],[9,4,1,8],[5,4,1,9],[6,2,3,7]];
+    const maxVals = regions.map(r => Math.max(...r));
+    const ids = ['pool-r0','pool-r1','pool-r2','pool-r3'];
+    const colors = ['var(--accent)','var(--accent2)','#a78bfa','var(--accent4)'];
+    ids.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.textContent = maxVals[i];
+      el.style.color = colors[i];
+      el.classList.add('max-val');
+    });
+  }
+
+  // ===== ARCHITECTURE TOOLTIPS =====
+  const archTips = {
+    input: '<strong>Input Layer</strong>: הלוח שלנו בגודל 3×3 עם ערוץ אחד. כל תא = פיקסל עם ערך 1, 0, או -1.',
+    conv1: '<strong>Conv2D(8, (3,3))</strong>: 8 פילטרים שכל אחד בגודל 3×3. כל פילטר מחפש דפוס אחר. סה"כ 8×(9+1)=80 פרמטרים.',
+    relu: '<strong>ReLU</strong>: max(0, x). מבטלת ערכים שליליים — מוסיפה אי-לינאריות לרשת.',
+    flat: '<strong>Flatten</strong>: הופך מפות תכונות לוקטור 1D. אם Conv2D נתנה (1,1,8) → וקטור של 8 ערכים.',
+    dense1: '<strong>Dense(32, ReLU)</strong>: שכבה מחוברת לחלוטין עם 32 נוירונים. לומדת קומבינציות של התכונות.',
+    output: '<strong>Dense(3, Softmax)</strong>: 3 יחידות פלט: ניצחון, הפסד, תיקו. Softmax מוציאה הסתברויות שסכומן 1.'
+  };
+
+  function showArchTip(key) {
+    const el = document.getElementById('arch-tooltip');
+    el.innerHTML = archTips[key];
+    el.classList.add('show');
+  }
+</script>
+</body>
+</html>

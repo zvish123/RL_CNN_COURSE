@@ -18,6 +18,7 @@
   --orange: #f59e0b;
   --red: #ef4444;
   --pink: #ec4899;
+  --pink: #ec4899;
   --text: #e2e8f0;
   --muted: #64748b;
   --code-bg: #080a10;
@@ -211,6 +212,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:18px;background:var(--surf
     <span class="htag">Session</span>
     <span class="htag">Column</span>
     <span class="htag">query()</span>
+    <span class="htag">filter_by()</span>
     <span class="htag">SQLite</span>
     <span class="htag">CRUD</span>
   </div>
@@ -618,6 +620,142 @@ count = session.<span class="fn">execute</span>(count_stmt).<span class="fn">sca
 book = session.<span class="fn">execute</span>(stmt).<span class="fn">scalar_one</span>()
       </pre>
     </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 5b — QUERY FILTER_BY ═════════════════════════════ -->
+<section class="slide" id="s5b">
+  <div class="slide-num">05b — query() ו-filter_by()</div>
+  <h2 class="slide-title"><span style="color:var(--pink)">query()</span> — סגנון ישן ונפוץ</h2>
+  <div class="slide-sub">שיטת query() היא ה-API הקלאסי של SQLAlchemy — עדיין נפוץ מאוד בקוד קיים ובדוגמאות באינטרנט</div>
+
+  <div class="g2">
+    <div>
+      <h3>filter_by() — חיפוש לפי שדה</h3>
+      <pre class="cb" style="border-right:3px solid var(--pink)">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># חיפוש משתמש לפי username</span>
+    existing_user = (
+        session
+        .<span class="fn">query</span>(<span class="cl">User</span>)
+        .<span class="fn">filter_by</span>(username=username)
+        .<span class="fn">first</span>()
+    )
+
+    <span class="kw">if</span> existing_user:
+        <span class="fn">print</span>(<span class="st">"שם משתמש תפוס!"</span>)
+        <span class="kw">return False</span>
+    <span class="kw">else</span>:
+        <span class="cm"># המשתמש לא קיים — אפשר להירשם</span>
+        <span class="fn">register</span>(username, password)
+      </pre>
+
+      <div class="co" style="border-right-color:var(--pink);background:rgba(236,72,153,.05)">
+        <strong>filter_by()</strong> מקבל <strong>שמות שדות</strong> כ-keyword arguments — קצר ונוח לתנאי שוויון פשוטים
+      </div>
+
+      <h3>filter() — תנאים מורכבים</h3>
+      <pre class="cb" style="border-right:3px solid var(--pink)">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># filter() מקבל ביטויי Python</span>
+    user = (
+        session
+        .<span class="fn">query</span>(<span class="cl">User</span>)
+        .<span class="fn">filter</span>(<span class="cl">User</span>.username == username)
+        .<span class="fn">first</span>()
+    )
+
+    <span class="cm"># תנאים מרובים (AND אוטומטי)</span>
+    users = (
+        session
+        .<span class="fn">query</span>(<span class="cl">User</span>)
+        .<span class="fn">filter</span>(
+            <span class="cl">User</span>.age > <span class="nm">18</span>,
+            <span class="cl">User</span>.is_active == <span class="kw">True</span>
+        )
+        .<span class="fn">all</span>()
+    )
+      </pre>
+    </div>
+
+    <div>
+      <h3>שיטות החזרה — first / all / one</h3>
+      <pre class="cb teal">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="cm"># .first() → אובייקט אחד או None</span>
+    user = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+            .<span class="fn">filter_by</span>(username=<span class="st">"avi"</span>)
+            .<span class="fn">first</span>())
+    <span class="cm"># user = &lt;User&gt; או None ← הכי נפוץ!</span>
+
+    <span class="cm"># .all() → רשימה של objects</span>
+    admins = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+              .<span class="fn">filter_by</span>(role=<span class="st">"admin"</span>)
+              .<span class="fn">all</span>())
+    <span class="cm"># admins = [&lt;User&gt;, &lt;User&gt;, ...]</span>
+
+    <span class="cm"># .count() → כמות תוצאות</span>
+    n = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+         .<span class="fn">filter_by</span>(is_active=<span class="kw">True</span>)
+         .<span class="fn">count</span>())
+    <span class="cm"># n = 42</span>
+
+    <span class="cm"># .one() → בדיוק אחד — raise אם 0 או 2+</span>
+    user = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+            .<span class="fn">filter_by</span>(email=<span class="st">"x@y.com"</span>)
+            .<span class="fn">one</span>())
+      </pre>
+
+      <h3>שימושים נפוצים — תרחישים אמיתיים</h3>
+      <pre class="cb" style="border-right:3px solid var(--pink)">
+<span class="cm"># ── LOGIN: בדוק שם משתמש + סיסמה ──</span>
+user = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+        .<span class="fn">filter_by</span>(username=uname,
+                   password=hashed_pw)
+        .<span class="fn">first</span>())
+<span class="kw">if</span> user:
+    <span class="fn">grant_access</span>(user)
+
+<span class="cm"># ── REGISTER: בדוק כפילות ──</span>
+taken = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+         .<span class="fn">filter_by</span>(username=username)
+         .<span class="fn">first</span>())
+<span class="kw">if</span> taken:
+    <span class="kw">return</span> <span class="st">"שם משתמש תפוס"</span>
+
+<span class="cm"># ── חיפוש מוצר לפי קטגוריה ──</span>
+items = (session.<span class="fn">query</span>(<span class="cl">Product</span>)
+         .<span class="fn">filter_by</span>(category=<span class="st">"ספרים"</span>)
+         .<span class="fn">all</span>())
+
+<span class="cm"># ── האם המייל קיים? ──</span>
+exists = (session.<span class="fn">query</span>(<span class="cl">User</span>)
+          .<span class="fn">filter_by</span>(email=email)
+          .<span class="fn">first</span>()) <span class="kw">is not None</span>
+      </pre>
+    </div>
+  </div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3 style="margin-bottom:12px">query() לעומת select() — מה להשתמש?</h3>
+  <div class="g2" style="margin:0">
+    <div class="card" style="border-color:rgba(236,72,153,.3);background:rgba(236,72,153,.04)">
+      <div class="ctitle" style="color:var(--pink)">🕰️ query() — סגנון קלאסי (Legacy)</div>
+      <pre class="cb" style="margin:8px 0;font-size:18px;border:none;padding:10px">session.<span class="fn">query</span>(<span class="cl">User</span>).<span class="fn">filter_by</span>(username=<span class="st">"avi"</span>).<span class="fn">first</span>()</pre>
+      <p style="font-size:18px;color:var(--muted)">✅ קצר ונוח לתנאים פשוטים<br>✅ נפוץ מאוד בקוד ישן ובאינטרנט<br>⚠️ נחשב legacy ב-SQLAlchemy 2.0</p>
+    </div>
+    <div class="card teal">
+      <div class="ctitle t">🆕 select() — סגנון מודרני (2.0)</div>
+      <pre class="cb" style="margin:8px 0;font-size:18px;border:none;padding:10px">session.<span class="fn">execute</span>(<span class="fn">select</span>(<span class="cl">User</span>).<span class="fn">where</span>(<span class="cl">User</span>.username==<span class="st">"avi"</span>)).<span class="fn">scalar_one_or_none</span>()</pre>
+      <p style="font-size:18px;color:var(--muted)">✅ הסטנדרט החדש — SQLAlchemy 2.0<br>✅ גמיש יותר לשאילתות מורכבות<br>✅ מומלץ לקוד חדש</p>
+    </div>
+  </div>
+  <div class="co g" style="margin-top:16px">
+    <strong>💡 מסקנה:</strong> שתי השיטות עובדות. חשוב לזהות את שתיהן — <code>query().filter_by()</code> תראו הרבה בקוד קיים, תיעוד ישן, ו-Stack Overflow. <code>select().where()</code> הוא הסטנדרט לקוד חדש.
   </div>
 </section>
 

@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה — SQLAlchemy ORM</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c10;
+  --surface: #10131a;
+  --surface2: #161b26;
+  --border: #1e2638;
+  --accent: #7c3aed;
+  --accent-glow: rgba(124,58,237,0.2);
+  --teal: #0ea5e9;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --pink: #ec4899;
+  --text: #e2e8f0;
+  --muted: #4a5568;
+  --code-bg: #06080d;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Heebo',sans-serif;
+  font-size:18px;
+  line-height:1.7;
+  min-height:100vh;
+}
+
+/* grid noise */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(124,58,237,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,58,237,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+.wrapper{max-width:900px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}
+
+/* ── HEADER ── */
+.page-header{
+  text-align:center;
+  padding:48px 24px 40px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:40px;
+  position:relative;
+}
+.page-header::after{
+  content:'';
+  position:absolute;
+  bottom:-1px; left:50%; transform:translateX(-50%);
+  width:120px; height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--teal));
+}
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:5px;
+  color:var(--accent);
+  text-transform:uppercase;
+  margin-bottom:14px;
+  opacity:.8;
+}
+.page-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(22px,4vw,38px);
+  font-weight:700;
+  line-height:1.15;
+  margin-bottom:14px;
+}
+.hl{color:var(--accent)}
+.hl2{color:var(--teal)}
+.page-meta{
+  display:flex;
+  gap:20px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+.meta-tag{
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:5px 14px;
+  border-radius:2px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  color:var(--muted);
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+/* ── PROGRESS ── */
+.progress-strip{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:18px 22px;
+  margin-bottom:32px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+.prog-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:3px;
+  color:var(--muted);
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.prog-track{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.prog-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--teal),var(--green));
+  border-radius:3px;
+  transition:width .6s cubic-bezier(.34,1.56,.64,1);
+  width:0%;
+}
+.prog-score{
+  font-family:'JetBrains Mono',monospace;
+  font-size:20px;
+  font-weight:700;
+  color:var(--accent);
+  white-space:nowrap;
+  min-width:52px;
+  text-align:left;
+}
+
+/* ── SECTION DIVIDER ── */
+.section-head{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:36px 0 18px;
+}
+.sh-line{flex:1;height:1px;background:var(--border)}
+.sh-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:4px;
+  color:var(--muted);
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.sh-icon{font-size:16px}
+
+/* ── TASK CARD ── */
+.task{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin-bottom:20px;
+  overflow:hidden;
+  transition:border-color .2s;
+}
+.task:hover{border-color:rgba(124,58,237,.35)}
+.task-header{
+  padding:18px 22px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+}
+.task-num{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:3px;
+  color:var(--accent);
+  text-transform:uppercase;
+  flex-shrink:0;
+  padding-top:3px;
+}
+.task-q{
+  font-size:18px;
+  font-weight:500;
+  line-height:1.55;
+  flex:1;
+}
+.task-body{padding:18px 22px}
+
+/* ── CODE SNIPPET ── */
+.cb{
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-radius:5px;
+  padding:14px 18px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  line-height:1.9;
+  overflow-x:auto;
+  margin:10px 0;
+  direction:ltr;
+}
+.cb.accent{border-right:3px solid var(--accent)}
+.cb.teal{border-right:3px solid var(--teal)}
+.cb.green{border-right:3px solid var(--green)}
+.cb.orange{border-right:3px solid var(--orange)}
+.cb.red{border-right:3px solid var(--red)}
+.kw{color:#c084fc}.fn{color:#60a5fa}.cl{color:#34d399}.st{color:#86efac}.nm{color:#fb923c}.cm{color:#334155;font-style:italic}
+
+/* ── MCQ ── */
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opt{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:11px 15px;
+  cursor:pointer;
+  transition:all .18s;
+  font-size:18px;
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+  font-weight:300;
+  user-select:none;
+}
+.opt:hover:not(.disabled){
+  border-color:rgba(124,58,237,.5);
+  background:rgba(124,58,237,.06);
+  transform:translateX(-2px);
+}
+.opt.correct{background:rgba(16,185,129,.09);border-color:rgba(16,185,129,.5);color:var(--green)}
+.opt.wrong{background:rgba(239,68,68,.09);border-color:rgba(239,68,68,.4);color:var(--red)}
+.opt.disabled{pointer-events:none;opacity:.55}
+.olet{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  color:var(--muted);
+  flex-shrink:0;
+  padding-top:3px;
+  width:18px;
+}
+
+/* ── FEEDBACK ── */
+.fb{display:none;margin-top:13px;padding:12px 16px;border-radius:4px;font-size:18px;line-height:1.6;font-weight:300}
+.fb.show{display:block}
+.fb.ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#6ee7b7}
+.fb.fail{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+
+/* ── FILL IN ── */
+.fill-row{display:flex;gap:10px;align-items:flex-start;margin-top:12px;flex-wrap:wrap}
+.fill-input{
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-bottom:2px solid var(--accent);
+  color:var(--green);
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  padding:7px 13px;
+  border-radius:3px;
+  outline:none;
+  transition:border .2s, box-shadow .2s;
+  width:220px;
+}
+.fill-input:focus{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.fill-input:disabled{opacity:.5}
+.check-btn{
+  background:transparent;
+  border:1px solid var(--orange);
+  color:var(--orange);
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  padding:7px 18px;
+  border-radius:3px;
+  cursor:pointer;
+  letter-spacing:2px;
+  transition:all .2s;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.check-btn:hover{background:rgba(245,158,11,.12)}
+.check-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── OPEN QUESTION ── */
+.open-area{
+  width:100%;
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-radius:5px;
+  color:var(--text);
+  font-family:'Heebo',sans-serif;
+  font-size:18px;
+  padding:13px 16px;
+  margin-top:10px;
+  min-height:90px;
+  resize:vertical;
+  outline:none;
+  transition:border-color .2s;
+  line-height:1.7;
+}
+.open-area:focus{border-color:rgba(124,58,237,.5)}
+.open-hint{
+  font-size:18px;
+  color:var(--muted);
+  margin-top:6px;
+  font-weight:300;
+  font-style:italic;
+}
+.show-hint-btn{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  padding:5px 14px;
+  border-radius:3px;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all .2s;
+  margin-top:10px;
+  text-transform:uppercase;
+}
+.show-hint-btn:hover{border-color:var(--teal);color:var(--teal)}
+.hint-box{
+  display:none;
+  background:rgba(14,165,233,.05);
+  border:1px solid rgba(14,165,233,.25);
+  border-radius:4px;
+  padding:12px 15px;
+  margin-top:10px;
+  font-size:18px;
+  color:#7dd3fc;
+  font-weight:300;
+  line-height:1.6;
+}
+.hint-box.show{display:block}
+
+/* ── CALLOUT ── */
+.co{
+  border-right:3px solid var(--accent);
+  padding:12px 16px;
+  background:rgba(124,58,237,.06);
+  border-radius:0 4px 4px 0;
+  margin:10px 0;
+  font-size:18px;
+  font-weight:300;
+  line-height:1.6;
+}
+.co.t{border-right-color:var(--teal);background:rgba(14,165,233,.05)}
+.co.g{border-right-color:var(--green);background:rgba(16,185,129,.05)}
+.co.o{border-right-color:var(--orange);background:rgba(245,158,11,.05)}
+strong{color:var(--orange);font-weight:700}
+code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  background:var(--surface2);
+  padding:1px 7px;
+  border-radius:3px;
+  color:var(--teal);
+  direction:ltr;
+  display:inline-block;
+}
+
+/* ── SUMMARY CARD ── */
+.summary-card{
+  background:var(--surface);
+  border:1px solid rgba(124,58,237,.4);
+  border-radius:8px;
+  padding:28px;
+  text-align:center;
+  margin-top:40px;
+}
+.summary-score{
+  font-family:'JetBrains Mono',monospace;
+  font-size:52px;
+  font-weight:700;
+  color:var(--accent);
+  margin-bottom:8px;
+}
+.summary-label{
+  font-size:18px;
+  color:var(--muted);
+  font-weight:300;
+}
+.summary-msg{
+  margin-top:18px;
+  font-size:18px;
+  padding:12px 20px;
+  border-radius:5px;
+  font-weight:300;
+}
+
+/* ── TIMER ── */
+.timer-bar{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(10,12,16,.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:10px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.timer-left{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:3px;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.timer-display{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  font-weight:700;
+  color:var(--teal);
+  letter-spacing:2px;
+  transition:color .3s;
+}
+.timer-display.warn{color:var(--orange)}
+.timer-display.urgent{color:var(--red);animation:blink .8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.timer-right{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:2px;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+@media(max-width:600px){
+  .fill-input{width:100%}
+  .fill-row{flex-direction:column}
+}
+
+/* ── SUBMIT SECTION ── */
+.submit-section{
+  background:var(--surface);
+  border:1px solid rgba(124,58,237,.4);
+  border-radius:8px;
+  padding:28px 32px;
+  margin-top:40px;
+  margin-bottom:40px;
+}
+.submit-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  letter-spacing:4px;
+  color:var(--accent);
+  text-transform:uppercase;
+  margin-bottom:18px;
+}
+.name-row{
+  display:flex;
+  gap:14px;
+  align-items:center;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.name-label{
+  font-size:18px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.name-input{
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-bottom:2px solid var(--accent);
+  color:var(--text);
+  font-family:'Heebo',sans-serif;
+  font-size:18px;
+  padding:7px 14px;
+  border-radius:3px;
+  outline:none;
+  flex:1;
+  min-width:200px;
+  transition:border-color .2s, box-shadow .2s;
+}
+.name-input:focus{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.class-input{
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-bottom:2px solid var(--teal);
+  color:var(--text);
+  font-family:'Heebo',sans-serif;
+  font-size:18px;
+  padding:7px 14px;
+  border-radius:3px;
+  outline:none;
+  width:110px;
+  transition:border-color .2s;
+}
+.class-input:focus{border-color:var(--teal);box-shadow:0 0 12px rgba(14,165,233,0.2)}
+.submit-btn{
+  width:100%;
+  padding:14px 24px;
+  background:linear-gradient(135deg, var(--accent), #9333ea);
+  border:none;
+  border-radius:5px;
+  color:#fff;
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:all .25s;
+  box-shadow:0 0 20px var(--accent-glow);
+}
+.submit-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 32px rgba(124,58,237,0.45);
+}
+.submit-btn:active{transform:translateY(0)}
+.submit-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.submit-warn{
+  font-size:18px;
+  color:var(--muted);
+  margin-top:12px;
+  text-align:center;
+  font-weight:300;
+}
+.submit-warn.err{color:var(--red)}
+.submit-ok{
+  display:none;
+  background:rgba(16,185,129,.08);
+  border:1px solid rgba(16,185,129,.3);
+  border-radius:5px;
+  padding:14px 18px;
+  margin-top:14px;
+  color:#6ee7b7;
+  font-size:18px;
+  text-align:center;
+  line-height:1.6;
+}
+.submit-ok.show{display:block}
+
+
+.opt.selected{
+  border-color:rgba(124,58,237,.7);
+  background:rgba(124,58,237,.10);
+  color:var(--text);
+}
+.opt.selected .olet{color:var(--accent)}
+
+</style>
+</head>
+<body>
+
+<!-- sticky timer -->
+<div class="timer-bar">
+  <div class="timer-left">⏱ זמן שנותר</div>
+  <div class="timer-display" id="timerDisplay">30:00</div>
+  <div class="timer-right">SQLAlchemy ORM</div>
+</div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="eyebrow">דף עבודה אסינכרוני</div>
+    <div class="page-title">
+      <span class="hl">SQLAlchemy</span> — <span class="hl2">ORM בפייתון</span>
+    </div>
+    <div style="font-size:18px;color:var(--muted);font-weight:300;margin-top:10px">
+      עברו על המצגת לפני מילוי הדף. אין לסייע לחברים — זמן: <strong style="color:var(--text)">30 דקות</strong>
+    </div>
+    <div class="page-meta">
+      <span class="meta-tag">שם: ___________________</span>
+      <span class="meta-tag">כיתה: _______</span>
+      <span class="meta-tag">תאריך: ___________</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION A — הבנת מושגים
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-head">
+    <div class="sh-line"></div>
+    <div class="sh-icon">🧠</div>
+    <div class="sh-label">חלק א׳ — הבנת מושגים</div>
+    <div class="sh-line"></div>
+  </div>
+
+  <!-- Q1 -->
+  <div class="task" id="t1">
+    <div class="task-header">
+      <div class="task-num">Q01</div>
+      <div class="task-q">מה עושה ORM (Object Relational Mapping)?</div>
+    </div>
+    <div class="task-body">
+      <div class="opts" id="opts1"></div>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="task" id="t2">
+    <div class="task-header">
+      <div class="task-num">Q02</div>
+      <div class="task-q">מה ההבדל בין <code>Session.add()</code> ל-<code>Session.commit()</code>?</div>
+    </div>
+    <div class="task-body">
+      <div class="opts" id="opts2"></div>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="task" id="t3">
+    <div class="task-header">
+      <div class="task-num">Q03</div>
+      <div class="task-q">איזה מהבאים <strong>אינו</strong> יתרון של שימוש ב-ORM?</div>
+    </div>
+    <div class="task-body">
+      <div class="opts" id="opts3"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION B — קריאת קוד
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-head">
+    <div class="sh-line"></div>
+    <div class="sh-icon">🔍</div>
+    <div class="sh-label">חלק ב׳ — קריאת קוד</div>
+    <div class="sh-line"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="task" id="t4">
+    <div class="task-header">
+      <div class="task-num">Q04</div>
+      <div class="task-q">מה יודפס אחרי הרצת הקוד הבא?</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb teal">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    book = <span class="cl">Book</span>(title=<span class="st">"דיונה"</span>, author=<span class="st">"Herbert"</span>, price=<span class="nm">64.0</span>)
+    session.<span class="fn">add</span>(book)
+    <span class="fn">print</span>(book.id)   <span class="cm"># ← שורה זו</span>
+    session.<span class="fn">commit</span>()
+    <span class="fn">print</span>(book.id)   <span class="cm"># ← ושורה זו</span></pre>
+      <div class="opts" id="opts4"></div>
+    </div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="task" id="t5">
+    <div class="task-header">
+      <div class="task-num">Q05</div>
+      <div class="task-q">הקוד הבא אמור לשלוף את כל הספרים שמחירם מעל 50 ש"ח. מה הבעיה בו?</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb red">
+stmt = <span class="fn">select</span>(<span class="cl">Book</span>).<span class="fn">where</span>(<span class="st">"price > 50"</span>)
+results = session.<span class="fn">execute</span>(stmt).<span class="fn">scalars</span>().<span class="fn">all</span>()</pre>
+      <div class="opts" id="opts5"></div>
+    </div>
+  </div>
+
+  <!-- Q6 — fill in -->
+  <div class="task" id="t6">
+    <div class="task-header">
+      <div class="task-num">Q06</div>
+      <div class="task-q">השלימו: שליפת ספר לפי Primary Key עם id=5</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb accent">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    book = session.<span class="fn">________</span>(<span class="cl">Book</span>, <span class="nm">5</span>)</pre>
+      <div class="fill-row">
+        <input type="text" class="fill-input" id="ans6" placeholder="השלימו כאן..." />
+      </div>
+    </div>
+  </div>
+
+  <!-- Q7 — fill in -->
+  <div class="task" id="t7">
+    <div class="task-header">
+      <div class="task-num">Q07</div>
+      <div class="task-q">השלימו: עדכון מחיר ספר ב-ORM — מה חסר בשורה האחרונה?</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb orange">
+<span class="kw">with</span> <span class="cl">Session</span>(engine) <span class="kw">as</span> session:
+    book = session.<span class="fn">get</span>(<span class="cl">Book</span>, <span class="nm">1</span>)
+    book.price = <span class="nm">99.90</span>
+    session.<span class="fn">________</span>()</pre>
+      <div class="fill-row">
+        <input type="text" class="fill-input" id="ans7" placeholder="השלימו כאן..." />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION C — תרחישים
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-head">
+    <div class="sh-line"></div>
+    <div class="sh-icon">🧩</div>
+    <div class="sh-label">חלק ג׳ — תרחישים מעשיים</div>
+    <div class="sh-line"></div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="task" id="t8">
+    <div class="task-header">
+      <div class="task-num">Q08</div>
+      <div class="task-q">בשרת הצ'אט, פונקציית הרישום לא סוגרת את ה-Session. מה הסיכון?</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb red">
+<span class="kw">def</span> <span class="fn">register</span>(username, password):
+    session = <span class="cl">Session</span>(engine)
+    <span class="kw">if</span> session.<span class="fn">query</span>(<span class="cl">User</span>).<span class="fn">filter_by</span>(username=username).<span class="fn">first</span>():
+        <span class="kw">return False</span>   <span class="cm"># ← Session לא נסגר כאן!</span>
+    session.<span class="fn">add</span>(<span class="cl">User</span>(username=username, password=password))
+    session.<span class="fn">commit</span>()
+    <span class="kw">return True</span></pre>
+      <div class="opts" id="opts8"></div>
+    </div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="task" id="t9">
+    <div class="task-header">
+      <div class="task-num">Q09</div>
+      <div class="task-q">מה ההבדל בין <code>filter_by(username="avi")</code> לבין <code>filter(User.username == "avi")</code>?</div>
+    </div>
+    <div class="task-body">
+      <div class="opts" id="opts9"></div>
+    </div>
+  </div>
+
+  <!-- Q10 -->
+  <div class="task" id="t10">
+    <div class="task-header">
+      <div class="task-num">Q10</div>
+      <div class="task-q">מה יקרה אם נריץ את הקוד הבא פעמיים ברציפות (על DB ריק)?</div>
+    </div>
+    <div class="task-body">
+      <pre class="cb accent">
+Base.metadata.<span class="fn">create_all</span>(engine)</pre>
+      <div class="opts" id="opts10"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION D — שאלות פתוחות
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-head">
+    <div class="sh-line"></div>
+    <div class="sh-icon">✍️</div>
+    <div class="sh-label">חלק ד׳ — שאלות פתוחות (לא נבדקות אוטומטית)</div>
+    <div class="sh-line"></div>
+  </div>
+
+  <!-- Q11 open -->
+  <div class="task" id="t11">
+    <div class="task-header">
+      <div class="task-num">Q11</div>
+      <div class="task-q">הסבירו בלשונכם: מה ההבדל בין <strong>Soft Delete</strong> ל-<strong>Hard Delete</strong>? מתי תעדיפו כל אחת?</div>
+    </div>
+    <div class="task-body">
+      <textarea class="open-area" id="open11" placeholder="כתבו תשובה כאן..."></textarea>
+      <button class="show-hint-btn" onclick="toggleHint('h11')">💡 רמז</button>
+      <div class="hint-box" id="h11">
+        חשבו על: מה קורה לנתונים בכל מקרה? האם אפשר לשחזר? מה יקרה אם לקוח מוחק חשבון אבל צריכים לשמור היסטוריה?
+      </div>
+    </div>
+  </div>
+
+  <!-- Q12 open -->
+  <div class="task" id="t12">
+    <div class="task-header">
+      <div class="task-num">Q12</div>
+      <div class="task-q">כתבו את הקוד (Python + SQLAlchemy) להוספת 3 ספרים בבת אחת לטבלה <code>Book</code>. השתמשו ב-<code>add_all()</code>.</div>
+    </div>
+    <div class="task-body">
+      <div class="co t">הניחו שמחלקת <code>Book</code> ו-<code>Session</code> ו-<code>engine</code> כבר מוגדרים.</div>
+      <textarea class="open-area" id="open12" placeholder="כתבו קוד Python כאן..." style="font-family:'JetBrains Mono',monospace;font-size:18px;min-height:130px"></textarea>
+      <button class="show-hint-btn" onclick="toggleHint('h12')">💡 רמז</button>
+      <div class="hint-box" id="h12">
+        <code>session.add_all([...])</code> מקבל רשימה של objects. אל תשכחו <code>commit()</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- Q13 open -->
+  <div class="task" id="t13">
+    <div class="task-header">
+      <div class="task-num">Q13</div>
+      <div class="task-q">מדוע SQLAlchemy מגן מ-SQL Injection? הסבירו בקצרה עם דוגמה לניגוד.</div>
+    </div>
+    <div class="task-body">
+      <textarea class="open-area" id="open13" placeholder="כתבו תשובה כאן..."></textarea>
+      <button class="show-hint-btn" onclick="toggleHint('h13')">💡 רמז</button>
+      <div class="hint-box" id="h13">
+        בגישה הישנה (SQL ידני), ניתן להזריק קוד SQL דרך קלט משתמש. ORM משתמש ב-parameterized queries — הפרמטרים לא מוזרקים ישירות למחרוזת ה-SQL.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- SUBMIT -->
+  <div class="submit-section">
+    <div class="submit-title">📤 הגשת דף עבודה</div>
+    <div class="name-row">
+      <span class="name-label">שם מלא:</span>
+      <input type="text" class="name-input" id="studentName" placeholder="שם פרטי ושם משפחה" />
+      <span class="name-label">כיתה:</span>
+      <input type="text" class="class-input" id="studentClass" placeholder="י׳2" />
+    </div>
+    <button class="submit-btn" onclick="submitAnswers()">⬇ הורד קובץ תשובות</button>
+    <div class="submit-warn" id="submitWarn">יש למלא שם וכיתה לפני ההגשה</div>
+    <div class="submit-ok" id="submitOk">
+      ✅ הקובץ הורד בהצלחה!<br>
+      <span style="font-size:18px;opacity:.7">שלחו את הקובץ למורה לפי ההוראות</span>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────
+const QUESTIONS = {
+  1: {
+    opts:[
+      {t:'מאפשר לכתוב שאילתות SQL מהירות יותר מ-Python רגיל', ok:false},
+      {t:'גשר בין Python objects (מחלקות) לבין טבלאות SQL — מאפשר לעבוד עם DB כאילו הוא Python', ok:true},
+      {t:'מאגר נתונים in-memory מהיר כמו Redis שעובד בפייתון', ok:false},
+      {t:'תוסף שמוסיף type hints אוטומטיים לפייתון', ok:false},
+    ]
+  },
+  2: {
+    opts:[
+      {t:'<code>add()</code> שומר לדיסק מיד; <code>commit()</code> רק מאמת את הנתונים', ok:false},
+      {t:'שניהם זהים — שניהם שומרים לדיסק', ok:false},
+      {t:'<code>add()</code> מוסיף object ל-Session (בזיכרון); <code>commit()</code> כותב את כל השינויים ל-DB', ok:true},
+      {t:'<code>add()</code> לכתיבה; <code>commit()</code> לקריאה', ok:false},
+    ]
+  },
+  3: {
+    opts:[
+      {t:'ORM מגן מ-SQL Injection אוטומטית', ok:false},
+      {t:'אותו קוד Python עובד עם SQLite, PostgreSQL ו-MySQL', ok:false},
+      {t:'ביצועים תמיד מהירים יותר מ-SQL ידני', ok:true},
+      {t:'עבודה עם Python objects במקום מחרוזות SQL', ok:false},
+    ]
+  },
+  4: {
+    opts:[
+      {t:'None — ואז מספר כלשהו (כמו 1)', ok:true},
+      {t:'0 — ואז 1', ok:false},
+      {t:'1 — ואז 1 (אותו id)', ok:false},
+      {t:'שגיאה — לא ניתן לגשת ל-id לפני commit()', ok:false},
+    ]
+  },
+  5: {
+    opts:[
+      {t:'חסר <code>session</code> — צריך <code>session.select(Book)</code>', ok:false},
+      {t:'עוברים מחרוזת SQL ל-<code>where()</code> — זה מסוכן ועלול לגרום ל-SQL Injection', ok:true},
+      {t:'חסר <code>.order_by()</code> — בלעדיו הקוד ייכשל', ok:false},
+      {t:'<code>scalars().all()</code> לא עובד עם <code>where()</code>', ok:false},
+    ]
+  },
+  8: {
+    opts:[
+      {t:'לא קורה כלום — Python סוגר Sessions אוטומטית עם garbage collection', ok:false},
+      {t:'צבירת connections פתוחים (resource leak) — השרת יתמלא ב-connections ויקרוס', ok:true},
+      {t:'הנתונים לא יישמרו — Session שלא נסגר מבטל את ה-commit', ok:false},
+      {t:'שגיאת הרשאות — DB מגביל מספר Sessions למשתמש', ok:false},
+    ]
+  },
+  9: {
+    opts:[
+      {t:'אין הבדל — שתי הגישות מייצרות אותה שאילתה SQL בדיוק', ok:false},
+      {t:'<code>filter_by()</code> — keyword args קצר לשוויון בלבד; <code>filter()</code> — ביטויי Python גמישים (<, >, !=, or_, and_)', ok:true},
+      {t:'<code>filter()</code> הוא חדש יותר ומחליף את <code>filter_by()</code> לחלוטין', ok:false},
+      {t:'<code>filter_by()</code> עובד רק עם String; <code>filter()</code> עובד עם כל טיפוס', ok:false},
+    ]
+  },
+  10: {
+    opts:[
+      {t:'שגיאה — לא ניתן לקרוא ל-create_all() פעמיים', ok:false},
+      {t:'הפעם השנייה תמחק ותיצור מחדש את כל הטבלאות (DROP + CREATE)', ok:false},
+      {t:'הפעם השנייה לא תעשה כלום — create_all() בודק אם הטבלה קיימת ומדלג', ok:true},
+      {t:'שגיאה — הטבלה כבר קיימת וה-DB יחזיר IntegrityError', ok:false},
+    ]
+  },
+};
+
+const MCQ_IDS = [1,2,3,4,5,8,9,10];
+const FILL_IDS = [6,7];
+const LETTERS = ['א','ב','ג','ד'];
+
+// map: question number → selected option text (for JSON export)
+const selections = {};   // MCQ: {qNum: optionText}
+const fillAnswers = {};  // Fill: {qNum: inputValue}
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+// ── שמור סדר הערבוב לצורך JSON ──
+const renderedOrder = {};
+
+// render MCQ — ללא פידבק
+MCQ_IDS.forEach(n=>{
+  const q=QUESTIONS[n];
+  if(!q) return;
+  const container=document.getElementById('opts'+n);
+  if(!container) return;
+  const shuffled = shuffle(q.opts);
+  renderedOrder[n] = shuffled.map(o => o.t);
+  shuffled.forEach((opt,i)=>{
+    const d=document.createElement('div');
+    d.className='opt';
+    d.innerHTML=`<span class="olet">${LETTERS[i]}</span><span>${opt.t}</span>`;
+    d.dataset.text = opt.t;
+    d.onclick=()=>selectOpt(n, d);
+    container.appendChild(d);
+  });
+});
+
+function selectOpt(n, el){
+  // הסר סימון קודם
+  document.getElementById('opts'+n)
+    .querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  selections[n] = el.dataset.text;
+}
+
+function toggleHint(id){
+  const el=document.getElementById(id);
+  el.classList.toggle('show');
+}
+
+// ── SUBMIT ──────────────────────────────────────────────────
+function submitAnswers(){
+  const name  = document.getElementById('studentName').value.trim();
+  const klass = document.getElementById('studentClass').value.trim();
+  const warn  = document.getElementById('submitWarn');
+  const okEl  = document.getElementById('submitOk');
+
+  if(!name || !klass){
+    warn.textContent = !name ? 'חובה למלא שם מלא לפני ההגשה' : 'חובה למלא כיתה לפני ההגשה';
+    warn.className = 'submit-warn err';
+    return;
+  }
+  warn.className = 'submit-warn';
+  warn.textContent = '';
+
+  // אסוף תשובות שאלות פתוחות
+  const open_answers = {
+    11: document.getElementById('open11')?.value.trim() || '',
+    12: document.getElementById('open12')?.value.trim() || '',
+    13: document.getElementById('open13')?.value.trim() || '',
+  };
+
+  // אסוף fill-in
+  const fill_collected = {};
+  FILL_IDS.forEach(n => {
+    const inp = document.getElementById('ans'+n);
+    fill_collected[n] = inp ? inp.value.trim() : '';
+  });
+
+  const timeLeft = document.getElementById('timerDisplay').textContent;
+
+  const payload = {
+    meta: {
+      subject:      'SQLAlchemy ORM',
+      student_name: name,
+      class:        klass,
+      submitted_at: new Date().toLocaleString('he-IL'),
+      time_remaining: timeLeft,
+    },
+    mcq: {},
+    fill_in: fill_collected,
+    open: open_answers,
+  };
+
+  // MCQ — שמור את טקסט התשובה שנבחרה (ללא ציון נכון/שגוי)
+  MCQ_IDS.forEach(n => {
+    payload.mcq[`q${n}`] = selections[n] || null;
+  });
+
+  const blob = new Blob(
+    [JSON.stringify(payload, null, 2)],
+    { type: 'application/json' }
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  // שם קובץ: answers_<שם>_<כיתה>.json
+  const safeName = name.replace(/\s+/g,'_').replace(/[^\w\u0590-\u05FF]/g,'');
+  const safeClass = klass.replace(/[^\w\u0590-\u05FF]/g,'');
+  a.href = url;
+  a.download = `answers_${safeName}_${safeClass}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  okEl.classList.add('show');
+  document.querySelector('.submit-btn').disabled = true;
+}
+
+// ── TIMER ──────────────────────────────────────────────────
+let seconds=30*60;
+const timerEl=document.getElementById('timerDisplay');
+function tick(){
+  if(seconds<=0){
+    timerEl.textContent='00:00';
+    timerEl.className='timer-display urgent';
+    clearInterval(timerInterval);
+    // auto-alert when time is up
+    const warn = document.getElementById('submitWarn');
+    warn.textContent = '⏰ הזמן נגמר! הגישו את התשובות עכשיו.';
+    warn.className = 'submit-warn err';
+    return;
+  }
+  seconds--;
+  const m=Math.floor(seconds/60);
+  const s=seconds%60;
+  timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  if(seconds<=300) timerEl.className='timer-display urgent';
+  else if(seconds<=600) timerEl.className='timer-display warn';
+  else timerEl.className='timer-display';
+}
+const timerInterval=setInterval(tick,1000);
+
+</script>
+</body>
+</html>

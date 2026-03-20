@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מדריך: מהמילון ל-CNN</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #070a0f;
+  --bg2:     #0c1018;
+  --card:    #111620;
+  --card2:   #161d2a;
+  --border:  #1e2d45;
+  --border2: #2a3f5f;
+  --c1: #00e5ff;   /* cyan */
+  --c2: #7c3aed;   /* violet */
+  --c3: #10b981;   /* green */
+  --c4: #f59e0b;   /* amber */
+  --c5: #ef4444;   /* red */
+  --text:  #dde6f0;
+  --text2: #7a97b8;
+  --text3: #3d5573;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  line-height: 1.75;
+  direction: rtl;
+  overflow-x: hidden;
+}
+
+/* grid bg */
+body::before {
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+
+/* ── HERO ── */
+.hero {
+  position:relative;
+  min-height:88vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:5rem 2rem 4rem;
+  z-index:1;
+  overflow:hidden;
+}
+.hero-orb {
+  position:absolute;
+  width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,.18) 0%,transparent 65%);
+  top:50%;left:50%;transform:translate(-50%,-58%);
+  pointer-events:none;
+  animation:orb 6s ease-in-out infinite;
+}
+@keyframes orb{0%,100%{opacity:.7;transform:translate(-50%,-58%) scale(1)}50%{opacity:1;transform:translate(-50%,-58%) scale(1.08)}}
+
+.badge {
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:rgba(0,229,255,.07);
+  border:1px solid rgba(0,229,255,.2);
+  color:var(--c1);padding:.35rem 1.2rem;border-radius:2rem;
+  font-size: 1.2rem;letter-spacing:.14em;font-weight:700;
+  text-transform:uppercase;margin-bottom:2rem;
+  font-family:var(--mono);
+}
+.hero h1 {
+  font-size:clamp(2.4rem,6.5vw,4.8rem);
+  font-weight:900;line-height:1.08;margin-bottom:1.5rem;
+  background:linear-gradient(135deg,#fff 0%,var(--c1) 45%,var(--c2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub {
+  font-size: 1.2rem;color:var(--text2);
+  max-width:580px;margin:0 auto 3rem;
+}
+.hero-pills {
+  display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;
+}
+.pill {
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border2);
+  color:var(--text2);padding:.4rem 1rem;
+  border-radius:2rem;font-size: 1.2rem;font-family:var(--mono);
+}
+.pill span {color:var(--c1);}
+
+/* ── STICKY NAV ── */
+nav.toc {
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,10,15,.88);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:.7rem 2rem;
+  display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;
+}
+nav.toc a {
+  color:var(--text2);text-decoration:none;
+  font-size: 1.2rem;font-weight:700;
+  padding:.3rem .85rem;border-radius:.45rem;
+  transition:all .2s;white-space:nowrap;
+}
+nav.toc a:hover{color:var(--c1);background:rgba(0,229,255,.07);}
+
+/* ── SECTIONS ── */
+.wrap {max-width:920px;margin:0 auto;padding:5rem 2rem;position:relative;z-index:1;}
+.sec-head {display:flex;align-items:center;gap:1rem;margin-bottom:2.5rem;}
+.sec-num {
+  font-family:var(--mono);font-size: 1.2rem;color:var(--c2);
+  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);
+  padding:.28rem .7rem;border-radius:.4rem;white-space:nowrap;
+}
+.wrap h2{font-size:clamp(1.55rem,3.5vw,2.1rem);font-weight:900;}
+.wrap h3{font-size: 1.2rem;font-weight:700;color:var(--c1);margin:2.2rem 0 .8rem;}
+.wrap p{color:var(--text2);margin-bottom:1rem;}
+
+.divider{max-width:920px;margin:0 auto;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+
+/* ── CARDS ── */
+.card {
+  background:var(--card);border:1px solid var(--border);
+  border-radius:.9rem;padding:1.4rem;margin-bottom:1.2rem;
+  position:relative;overflow:hidden;transition:border-color .25s;
+}
+.card:hover{border-color:var(--border2);}
+.card::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(124,58,237,.03),transparent 60%);pointer-events:none;}
+.card-title{font-size: 1.2rem;font-weight:700;color:var(--text);margin-bottom:.45rem;display:flex;align-items:center;gap:.6rem;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;}
+@media(max-width:680px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+/* ── CODE ── */
+.code-block{
+  background:rgba(0,0,0,.55);
+  border:1px solid var(--border);
+  border-radius:.8rem;overflow:hidden;margin:1.3rem 0;direction:ltr;
+}
+.code-top{
+  background:rgba(255,255,255,.03);
+  border-bottom:1px solid var(--border);
+  padding:.45rem 1rem;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.dots{display:flex;gap:.35rem;}
+.dot{width:10px;height:10px;border-radius:50%;}
+.dr{background:#ff5f57;}.dy{background:#febc2e;}.dg{background:#28c840;}
+.lang{font-family:var(--mono);font-size: 1.2rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+pre{padding:1.2rem 1.4rem;overflow-x:auto;font-family:var(--mono);font-size: 1.2rem;line-height:1.7;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}
+.num{color:#f78c6c;}.cmt{color:#4a6070;font-style:italic;}
+.cls{color:#ffcb6b;}.prm{color:var(--c1);}
+
+/* ── HIGHLIGHTS ── */
+.hl{border-right:3px solid var(--c1);padding:1rem 1.2rem;background:rgba(0,229,255,.04);border-radius:0 .6rem .6rem 0;margin:1.2rem 0;color:var(--text2);}
+.hl.warn{border-color:var(--c4);background:rgba(245,158,11,.04);}
+.hl.ok{border-color:var(--c3);background:rgba(16,185,129,.04);}
+.hl.tip{border-color:var(--c2);background:rgba(124,58,237,.04);}
+.hl.err{border-color:var(--c5);background:rgba(239,68,68,.04);}
+
+/* ── XO board ── */
+.board-wrap{display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;padding:1.2rem;
+  background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:.8rem;margin:1.2rem 0;direction:ltr;}
+.board{display:grid;grid-template-columns:repeat(3,42px);gap:3px;}
+.bcell{
+  width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+  border-radius:.35rem;font-family:var(--mono);font-size: 1.2rem;font-weight:700;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text2);
+}
+.bx{background:rgba(0,229,255,.12);border-color:var(--c1);color:var(--c1);}
+.bo{background:rgba(239,68,68,.12);border-color:var(--c5);color:var(--c5);}
+.bop{color:var(--text3);}
+.barrow{font-size:1.6rem;color:var(--text3);}
+.blabel{font-family:var(--mono);font-size: 1.2rem;color:var(--text3);text-align:center;margin-top:.4rem;}
+
+/* ── PIPELINE ── */
+.pipeline{display:flex;align-items:center;gap:.4rem;overflow-x:auto;padding:.5rem 0;direction:ltr;margin:1.4rem 0;}
+.pipe-box{
+  flex:1;min-width:100px;
+  background:var(--card2);border:1px solid var(--border);border-radius:.7rem;
+  padding:.9rem .7rem;text-align:center;transition:border-color .25s;
+}
+.pipe-box:hover{border-color:var(--c1);}
+.pipe-icon{font-size:1.5rem;margin-bottom:.3rem;}
+.pipe-name{font-size: 1.2rem;font-weight:700;color:var(--text);}
+.pipe-desc{font-size: 1.2rem;color:var(--text3);margin-top:.15rem;}
+.pipe-arr{color:var(--text3);font-size: 1.2rem;flex-shrink:0;}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size: 1.2rem;}
+.tbl th{background:rgba(124,58,237,.1);color:rgba(200,170,255,.9);padding:.65rem 1rem;
+  text-align:right;font-weight:700;font-size: 1.2rem;text-transform:uppercase;letter-spacing:.06em;}
+.tbl td{padding:.65rem 1rem;border-bottom:1px solid var(--border);color:var(--text2);}
+.tbl tr:hover td{background:rgba(255,255,255,.02);}
+.tbl code{font-family:var(--mono);color:var(--c1);font-size: 1.2rem;
+  background:rgba(0,229,255,.07);padding:.12rem .4rem;border-radius:.3rem;}
+
+/* ── SCORE BAR ── */
+.score-row{display:flex;align-items:center;gap:.8rem;margin:.5rem 0;}
+.score-bar{flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.06);}
+.score-fill{height:100%;border-radius:5px;transition:width .4s;}
+.sf-win{background:linear-gradient(90deg,var(--c3),var(--c1));}
+.sf-mid{background:linear-gradient(90deg,var(--c4),rgba(245,158,11,.5));}
+.sf-los{background:linear-gradient(90deg,var(--c5),rgba(239,68,68,.5));}
+.score-val{font-family:var(--mono);font-size: 1.2rem;color:var(--text2);min-width:46px;text-align:left;}
+.score-lbl{font-size: 1.2rem;color:var(--text3);min-width:90px;text-align:right;}
+
+/* ── STEPS LIST ── */
+.steps{counter-reset:s;list-style:none;margin:1rem 0;}
+.steps li{counter-increment:s;display:flex;align-items:flex-start;gap:1rem;
+  padding:.8rem 0;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text2);}
+.steps li::before{
+  content:counter(s);min-width:1.8rem;height:1.8rem;
+  background:linear-gradient(135deg,var(--c2),var(--c1));border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:#000;
+  flex-shrink:0;margin-top:.18rem;
+}
+
+/* ── tags ── */
+.tag{display:inline-block;font-family:var(--mono);font-size: 1.2rem;
+  padding:.13rem .5rem;border-radius:.3rem;margin:.12rem;
+  background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--c1);}
+.tag.v{background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.25);color:#c4b5fd;}
+.tag.g{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:var(--c3);}
+.tag.a{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.25);color:var(--c4);}
+.tag.r{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--c5);}
+
+/* ── FOOTER ── */
+footer{border-top:1px solid var(--border);text-align:center;padding:2.5rem;
+  color:var(--text3);font-size: 1.2rem;position:relative;z-index:1;}
+
+/* ── scrollbar ── */
+::-webkit-scrollbar{width:7px;height:7px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--c2);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.wrap{animation:fadeUp .5s ease both;}
+</style>
+</head>
+<body>
+
+<!-- ══════ HERO ══════ -->
+<section class="hero">
+  <div class="hero-orb"></div>
+  <div class="badge">🎮 מדריך תלמיד · Monte Carlo → CNN</div>
+  <h1>המילון החסר<br>וה-CNN שמשלים אותו</h1>
+  <p class="hero-sub">
+    מונטה קרלו יצר מילון של מצבי לוח — אך הוא חלקי.
+    כיצד CNN לומדת מהמה שיש, ומנבאת מה שאין
+  </p>
+  <div class="hero-pills">
+    <div class="pill"><span>~255K</span> לוחות אפשריים</div>
+    <div class="pill"><span>4,636</span> נצפו בלבד</div>
+    <div class="pill"><span>Monte Carlo</span> → CNN</div>
+    <div class="pill"><span>הכללה</span> ≠ שינון</div>
+  </div>
+</section>
+
+<!-- ══════ NAV ══════ -->
+<nav class="toc">
+  <a href="#problem">🧩 הבעיה</a>
+  <a href="#data">📦 מבנה הנתונים</a>
+  <a href="#convert">🔄 המרה</a>
+  <a href="#weight">⚖️ sample_weight</a>
+  <a href="#model">🧠 מודל CNN</a>
+  <a href="#predict">🎯 חיזוי לוחות חדשים</a>
+  <a href="#decision">🕹️ בחירת מהלך</a>
+  <a href="#full">💻 קוד מלא</a>
+</nav>
+
+<!-- ══════ 0. THE PROBLEM ══════ -->
+<div class="wrap" id="problem">
+  <div class="sec-head"><span class="sec-num">00</span><h2>הבעיה — מאיפה המילון בא ומה חסר בו</h2></div>
+
+  <p>
+    לפני שמבינים את CNN, צריך להבין <strong>מדוע בכלל צריך אותה</strong>.
+    הכל מתחיל בשאלה: כיצד מחשב לומד לשחק XO?
+  </p>
+
+  <h3>שלב א׳ — Monte Carlo + DQN יוצרים את המילון</h3>
+
+  <div class="card">
+    <div class="card-title">🎲 כיצד מונטה קרלו צובר ניסיון</div>
+    <p style="font-size: 1.2rem;margin-bottom:.8rem;">
+      המודל משחק <strong>מאות אלפי משחקים</strong> נגד עצמו. בכל משחק הוא מגיע לרצף של מצבי לוח.
+      בסוף כל משחק הוא מקבל ציון (ניצחון = +1, הפסד = -0.3, תיקו = 0).
+      הציון הזה מתפשט <em>אחורה</em> לכל הלוחות שדרכם עבר — כך כל לוח צובר
+      <code style="font-family:var(--mono);color:var(--c1);">accumulated_score</code> ו-<code style="font-family:var(--mono);color:var(--c1);">count</code>.
+    </p>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size: 1.2rem;direction:ltr;justify-content:center;padding:.5rem 0;">
+      <div style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);border-radius:.4rem;padding:.4rem .8rem;color:#c4b5fd;">משחק 1 → ניצחון</div>
+      <div style="color:var(--text3);">→</div>
+      <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:.4rem;padding:.4rem .8rem;color:var(--c3);">כל לוח בדרך: score += 1.0</div>
+      <div style="color:var(--text3);">→</div>
+      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:.4rem;padding:.4rem .8rem;color:var(--c5);">משחק 2 → הפסד: score += -0.3</div>
+      <div style="color:var(--text3);">→</div>
+      <div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);border-radius:.4rem;padding:.4rem .8rem;color:var(--c1);">ממוצע = accumulated_score</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — לוגיקת צבירת הניקוד (מונטה קרלו)</span></div>
+    <pre><span class="cmt"># פסאודו-קוד: כך המילון נבנה במהלך האימון</span>
+learning_dict = {}   <span class="cmt"># המילון שלנו</span>
+
+<span class="kw">for</span> game <span class="kw">in</span> range(<span class="num">1_000_000</span>):            <span class="cmt"># מיליון משחקים</span>
+    trajectory = []                        <span class="cmt"># רצף הלוחות במשחק</span>
+
+    <span class="kw">while not</span> game_over:
+        board_str = <span class="fn">board_to_string</span>(board)
+        trajectory.<span class="fn">append</span>(board_str)
+        action = <span class="fn">dqn_choose_action</span>(board)   <span class="cmt"># DQN בוחר מהלך</span>
+        board = <span class="fn">apply_action</span>(board, action)
+
+    final_score = <span class="fn">get_game_result</span>()         <span class="cmt"># +1 / -0.3 / 0</span>
+
+    <span class="cmt"># עדכון כל הלוחות שנראו במשחק זה</span>
+    <span class="kw">for</span> board_str <span class="kw">in</span> trajectory:
+        <span class="kw">if</span> board_str <span class="kw">not in</span> learning_dict:
+            learning_dict[board_str] = {<span class="str">'accumulated_score'</span>: <span class="num">0</span>, <span class="str">'count'</span>: <span class="num">0</span>}
+
+        learning_dict[board_str][<span class="str">'accumulated_score'</span>] += final_score
+        learning_dict[board_str][<span class="str">'count'</span>]             += <span class="num">1</span>
+
+<span class="cmt"># בסוף: ממצעים את הציון</span>
+<span class="kw">for</span> key <span class="kw">in</span> learning_dict:
+    entry = learning_dict[key]
+    entry[<span class="str">'accumulated_score'</span>] /= entry[<span class="str">'count'</span>]</pre>
+  </div>
+
+  <h3>שלב ב׳ — הבעיה: המילון חלקי מאוד</h3>
+
+  <p>למרות מיליוני משחקים, המילון <strong>לעולם לא יהיה מלא</strong>. הנה הנתונים:</p>
+
+  <div class="grid3">
+    <div class="card" style="border-color:var(--c4);border-top:3px solid var(--c4);">
+      <div class="card-title" style="color:var(--c4);">🎲 סה"כ לוחות XO אפשריים</div>
+      <div style="font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--text);margin:.5rem 0;">~255,168</div>
+      <p style="font-size: 1.2rem;">לוחות חוקיים תוך כדי משחק (לא כולל מצבים בלתי אפשריים)</p>
+    </div>
+    <div class="card" style="border-color:var(--c1);border-top:3px solid var(--c1);">
+      <div class="card-title" style="color:var(--c1);">📦 לוחות במילון שלנו</div>
+      <div style="font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--text);margin:.5rem 0;">4,636</div>
+      <p style="font-size: 1.2rem;">מצבים שנצפו בפועל — רק <strong style="color:var(--c1);">1.8%</strong> מהמרחב</p>
+    </div>
+    <div class="card" style="border-color:var(--c5);border-top:3px solid var(--c5);">
+      <div class="card-title" style="color:var(--c5);">❓ לוחות ללא ניקוד</div>
+      <div style="font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--text);margin:.5rem 0;">~250K</div>
+      <p style="font-size: 1.2rem;">מצבים אפשריים שהמודל מעולם לא נתקל בהם</p>
+    </div>
+  </div>
+
+  <div class="hl err" style="margin-top:1.5rem;">
+    <strong>❌ הבעיה המרכזית:</strong> כאשר השחקן מגיע ללוח שאינו במילון —
+    אין ציון, ואין מידע. המודל עיוור. הוא לא יכול להחליט על המהלך הבא.
+  </div>
+
+  <h3>שלב ג׳ — למה המילון תמיד יהיה חלקי?</h3>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">🔀 מרחב מצבים אקספוננציאלי</div>
+      <p style="font-size: 1.2rem;">
+        בכל תא ב-9 תאים יש 3 אפשרויות (X, O, ריק). 3⁹ = 19,683 קומבינציות.
+        אחרי סינון למצבים חוקיים — עדיין מאות אלפים. גם מיליוני משחקים
+        לא יכסו את כולם — חלק מהמצבים נדירים מאוד.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 DQN מנחה לאסטרטגיות ספציפיות</div>
+      <p style="font-size: 1.2rem;">
+        מודל DQN לומד לנגן <em>טוב</em> — כלומר הוא מגיע פעמים רבות
+        לאותם מצבים "טובים". מצבים של שחקן חלש — לוחות עם מהלכים גרועים —
+        נצפים נדירות, כי ה-DQN נמנע מהם.
+      </p>
+    </div>
+  </div>
+
+  <h3>הפתרון — CNN כ"מרחיב" המילון</h3>
+
+  <p>
+    כאן נכנסת ה-CNN. במקום לחפש לוח במילון, אנחנו <strong>מאמנים רשת נוירונים</strong>
+    על הלוחות שכן יש לנו — ומבקשים ממנה ללמוד <em>את הכלל הכללי</em>
+    שמחבר בין מבנה הלוח לניקוד. אחר כך היא יכולה לנבא גם ללוחות שלא ראתה.
+  </p>
+
+  <div class="card" style="border-color:var(--c3);">
+    <div class="card-title" style="color:var(--c3);">💡 מדוע CNN מתאימה בדיוק לבעיה הזו?</div>
+    <ul class="steps">
+      <li>
+        <strong>לוח XO הוא "תמונה" מרחבית</strong> — CNN תוכננה לזהות תבניות מרחביות.
+        שלוש X בשורה היא תבנית — בדיוק כמו קצה בתמונה.
+      </li>
+      <li>
+        <strong>תבנית ניצחון לא תלויה במיקום</strong> — שורה עליונה ושורה תחתונה שתיהן שוות.
+        CNN עם אותו פילטר "רואה" שתיהן — זה נקרא equivariance.
+      </li>
+      <li>
+        <strong>הרשת לומדת כלל, לא שינון</strong> — "שלוש X בשורה = ניצחון" תמיד נכון,
+        גם ללוח שמעולם לא הופיע בנתוני האימון.
+      </li>
+      <li>
+        <strong>המילון החלקי מספיק לאימון</strong> — 4,636 דוגמאות עם 578,763 ביקורים
+        מכילות מספיק מידע כדי שהרשת תלמד את הכלל.
+      </li>
+    </ul>
+  </div>
+
+  <div style="margin:2rem 0;padding:1.5rem;background:rgba(0,229,255,.03);border:1px solid var(--border);border-radius:.9rem;">
+    <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--text3);margin-bottom:1rem;text-align:center;">זרימת הפתרון המלאה</div>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center;direction:ltr;font-size: 1.2rem;">
+      <div style="text-align:center;padding:.6rem .9rem;background:var(--card2);border:1px solid var(--border);border-radius:.6rem;min-width:90px;">
+        <div style="font-size:1.2rem;margin-bottom:.2rem;">🎮</div>
+        <div style="font-weight:700;color:var(--text);">DQN</div>
+        <div style="color:var(--text3);font-size: 1.2rem;">משחק</div>
+      </div>
+      <div style="color:var(--text3);font-size: 1.2rem;">→</div>
+      <div style="text-align:center;padding:.6rem .9rem;background:var(--card2);border:1px solid var(--border);border-radius:.6rem;min-width:90px;">
+        <div style="font-size:1.2rem;margin-bottom:.2rem;">🎲</div>
+        <div style="font-weight:700;color:var(--text);">Monte Carlo</div>
+        <div style="color:var(--text3);font-size: 1.2rem;">צבירת ניקוד</div>
+      </div>
+      <div style="color:var(--text3);font-size: 1.2rem;">→</div>
+      <div style="text-align:center;padding:.6rem .9rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:.6rem;min-width:90px;">
+        <div style="font-size:1.2rem;margin-bottom:.2rem;">📦</div>
+        <div style="font-weight:700;color:var(--c4);">מילון חלקי</div>
+        <div style="color:var(--text3);font-size: 1.2rem;">4,636 לוחות</div>
+      </div>
+      <div style="color:var(--text3);font-size: 1.2rem;">→</div>
+      <div style="text-align:center;padding:.6rem .9rem;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);border-radius:.6rem;min-width:90px;">
+        <div style="font-size:1.2rem;margin-bottom:.2rem;">🧠</div>
+        <div style="font-weight:700;color:#c4b5fd;">CNN אימון</div>
+        <div style="color:var(--text3);font-size: 1.2rem;">לומדת כלל</div>
+      </div>
+      <div style="color:var(--text3);font-size: 1.2rem;">→</div>
+      <div style="text-align:center;padding:.6rem .9rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:.6rem;min-width:90px;">
+        <div style="font-size:1.2rem;margin-bottom:.2rem;">🎯</div>
+        <div style="font-weight:700;color:var(--c3);">חיזוי מלא</div>
+        <div style="color:var(--text3);font-size: 1.2rem;">כל ~255K לוחות</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 1. DATA STRUCTURE ══════ -->
+<div class="wrap" id="data">
+  <div class="sec-head"><span class="sec-num">01</span><h2>מבנה קובץ הנתונים — מה המילון מכיל</h2></div>
+
+  <p>
+    קובץ <code style="color:var(--c1);font-family:var(--mono);">tournament_learning.json</code>
+    הוא מילון Python שנוצר בתהליך <strong>Reinforcement Learning</strong>.
+    כל מפתח הוא לוח XO, וכל ערך מכיל שני שדות: ניקוד מצטבר ומספר ביקורים.
+  </p>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">json — מבנה המילון</span></div>
+    <pre>{
+  <span class="str">"O X X X O"</span>: {
+    <span class="str">"accumulated_score"</span>: <span class="num">1.0</span>,   <span class="cmt">// ניקוד ממוצע מכל המשחקים שעברו דרך לוח זה</span>
+    <span class="str">"count"</span>: <span class="num">2551</span>             <span class="cmt">// כמה פעמים הגיעו בדיוק למצב הזה</span>
+  },
+  <span class="str">"    X    "</span>: {
+    <span class="str">"accumulated_score"</span>: <span class="num">0.6007948053465093</span>,
+    <span class="str">"count"</span>: <span class="num">86575</span>            <span class="cmt">// הלוח הנפוץ ביותר — X במרכז בתחילת משחק</span>
+  },
+  <span class="str">"X XOXXOOO"</span>: {
+    <span class="str">"accumulated_score"</span>: <span class="num">-0.2999999999999999</span>,  <span class="cmt">// ציון שלילי = הפסד</span>
+    <span class="str">"count"</span>: <span class="num">21</span>
+  }
+}</pre>
+  </div>
+
+  <h3>קריאת המפתח: מחרוזת → לוח</h3>
+  <p>כל מפתח הוא <strong>מחרוזת של 9 תווים</strong> המייצגת לוח 3×3 — שורה אחרי שורה, משמאל לימין. רווח = תא ריק.</p>
+
+  <div class="board-wrap">
+    <div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--c1);margin-bottom:.5rem;">"O X X X O"</div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--text3);margin-bottom:.8rem;">תווים 0–8</div>
+      <div class="board">
+        <div class="bcell bo">O</div><div class="bcell bop"> </div><div class="bcell bx">X</div>
+        <div class="bcell bx">X</div><div class="bcell bx">X</div><div class="bcell bop"> </div>
+        <div class="bcell bo">O</div><div class="bcell bop"> </div><div class="bcell bop"> </div>
+      </div>
+      <div class="blabel">X ניצח בשורה אמצעית</div>
+    </div>
+    <div class="barrow">→</div>
+    <div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--text3);margin-bottom:.5rem;">מיקום בלוח</div>
+      <table style="border-collapse:collapse;font-family:var(--mono);font-size: 1.2rem;">
+        <tr>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--c5);">תו 0 = O</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--text3);">תו 1 = רווח</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--c1);">תו 2 = X</td>
+        </tr>
+        <tr>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--c1);">תו 3 = X</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--c1);">תו 4 = X</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--text3);">תו 5 = רווח</td>
+        </tr>
+        <tr>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--c5);">תו 6 = O</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--text3);">תו 7 = רווח</td>
+          <td style="padding:.25rem .6rem;border:1px solid var(--border);color:var(--text3);">תו 8 = רווח</td>
+        </tr>
+      </table>
+    </div>
+    <div class="barrow">→</div>
+    <div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--text3);margin-bottom:.5rem;">ערכים מספריים</div>
+      <div class="board">
+        <div class="bcell bo">-1</div><div class="bcell bop" style="font-size: 1.2rem;">0</div><div class="bcell bx">1</div>
+        <div class="bcell bx">1</div><div class="bcell bx">1</div><div class="bcell bop" style="font-size: 1.2rem;">0</div>
+        <div class="bcell bo">-1</div><div class="bcell bop" style="font-size: 1.2rem;">0</div><div class="bcell bop" style="font-size: 1.2rem;">0</div>
+      </div>
+      <div class="blabel">X=1, O=-1, ריק=0</div>
+    </div>
+  </div>
+
+  <h3>מה מספר הביקורים אומר לנו?</h3>
+  <p>ה-<code style="color:var(--c1);font-family:var(--mono);">count</code> משקף <strong>כמה ניסיון</strong> הרשת הלומדת צברה עבור מצב זה. לוח נפוץ = ניקוד אמין; לוח נדיר = ציון מבוסס על מעט ראיות.</p>
+
+  <div style="margin:1.2rem 0;">
+    <div class="score-row"><span class="score-lbl">86,575 ביקורים</span><div class="score-bar"><div class="score-fill sf-win" style="width:100%"></div></div><span class="score-val" style="color:var(--c3);">אמין מאוד</span></div>
+    <div class="score-row"><span class="score-lbl">2,551 ביקורים</span><div class="score-bar"><div class="score-fill sf-win" style="width:72%"></div></div><span class="score-val" style="color:var(--c3);">אמין</span></div>
+    <div class="score-row"><span class="score-lbl">109 ביקורים</span><div class="score-bar"><div class="score-fill sf-mid" style="width:32%"></div></div><span class="score-val" style="color:var(--c4);">בינוני</span></div>
+    <div class="score-row"><span class="score-lbl">1 ביקור</span><div class="score-bar"><div class="score-fill sf-los" style="width:4%"></div></div><span class="score-val" style="color:var(--c5);">לא אמין</span></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 2. CONVERSION ══════ -->
+<div class="wrap" id="convert">
+  <div class="sec-head"><span class="sec-num">02</span><h2>המרת הנתונים לאימון CNN</h2></div>
+
+  <p>CNN מצפה לקבל <strong>tensor תלת-ממדי</strong> כקלט ו<strong>וקטור one-hot</strong> כתווית. צריך לבצע שלושה צעדי המרה.</p>
+
+  <div class="pipeline">
+    <div class="pipe-box"><div class="pipe-icon">📄</div><div class="pipe-name">JSON key</div><div class="pipe-desc">מחרוזת 9 תווים</div></div>
+    <div class="pipe-arr">→</div>
+    <div class="pipe-box"><div class="pipe-icon">🔢</div><div class="pipe-name">מערך מספרי</div><div class="pipe-desc">[−1,0,1,…] × 9</div></div>
+    <div class="pipe-arr">→</div>
+    <div class="pipe-box"><div class="pipe-icon">📦</div><div class="pipe-name">Tensor 3D</div><div class="pipe-desc">(3,3,1)</div></div>
+    <div class="pipe-arr">→</div>
+    <div class="pipe-box"><div class="pipe-icon">🏷️</div><div class="pipe-name">One-Hot y</div><div class="pipe-desc">[1,0,0]</div></div>
+    <div class="pipe-arr">→</div>
+    <div class="pipe-box"><div class="pipe-icon">⚖️</div><div class="pipe-name">weight</div><div class="pipe-desc">count value</div></div>
+  </div>
+
+  <h3>צעד א׳ — מפתח למטריצה מספרית</h3>
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python</span></div>
+    <pre><span class="kw">import</span> json
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cmt"># מיפוי תו → מספר</span>
+CHAR_MAP = {<span class="str">'X'</span>: <span class="num">1</span>, <span class="str">'O'</span>: <span class="num">-1</span>, <span class="str">' '</span>: <span class="num">0</span>}
+
+<span class="kw">def</span> <span class="fn">board_str_to_matrix</span>(board_str):
+    <span class="str">"""
+    "O X X X O" → numpy array צורה (3,3,1)
+    """</span>
+    values = [CHAR_MAP[c] <span class="kw">for</span> c <span class="kw">in</span> board_str]  <span class="cmt"># רשימה של 9 מספרים</span>
+    matrix = np.<span class="fn">array</span>(values, dtype=<span class="str">'float32'</span>)
+    matrix = matrix.<span class="fn">reshape</span>(<span class="num">3</span>, <span class="num">3</span>)                <span class="cmt"># מטריצה 3×3</span>
+    matrix = matrix[..., np.newaxis]             <span class="cmt"># מוסיף ממד ערוץ → (3,3,1)</span>
+    <span class="kw">return</span> matrix
+
+<span class="cmt"># דוגמה:</span>
+board = <span class="fn">board_str_to_matrix</span>(<span class="str">"O X X X O"</span>)
+<span class="fn">print</span>(board.shape)   <span class="cmt"># (3, 3, 1)</span>
+<span class="fn">print</span>(board[:,:,<span class="num">0</span>])  <span class="cmt"># [[-1  0  1]  [ 1  1  0]  [-1  0  0]]</span></pre>
+  </div>
+
+  <h3>צעד ב׳ — accumulated_score לתווית one-hot</h3>
+
+  <div class="hl tip">
+    <strong>מדוע one-hot ולא הציון הגולמי?</strong> המודל שלנו מבצע <em>סיווג</em> — הוא מנסה לסווג כל לוח לאחת משלוש קטגוריות. אם נרצה לנבא את הציון המדויק, נשתמש ב-Regression עם <code style="font-family:var(--mono);">Dense(1)</code> ו-<code style="font-family:var(--mono);">loss='mse'</code>.
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>טווח ציון</th><th>משמעות</th><th>one-hot</th><th>דוגמה</th></tr></thead>
+    <tbody>
+      <tr><td>≥ 0.7</td><td>ניצחון / לוח מנצח</td><td><code>[1, 0, 0]</code></td><td>score = 1.0, 0.85</td></tr>
+      <tr><td>0.3 – 0.7</td><td>ביניים / לא חד-משמעי</td><td><code>[0, 1, 0]</code></td><td>score = 0.60, 0.55</td></tr>
+      <tr><td>< 0.3</td><td>הפסד / לוח גרוע</td><td><code>[0, 0, 1]</code></td><td>score = -0.30, 0.10</td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python</span></div>
+    <pre><span class="kw">def</span> <span class="fn">score_to_label</span>(score, win_thresh=<span class="num">0.7</span>, loss_thresh=<span class="num">0.3</span>):
+    <span class="str">"""
+    ממיר ציון רציף לתווית קטגורית (one-hot).
+    win_thresh / loss_thresh הם היפר-פרמטרים שניתן לשנות.
+    """</span>
+    <span class="kw">if</span> score >= win_thresh:
+        <span class="kw">return</span> [<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>]   <span class="cmt"># ניצחון</span>
+    <span class="kw">elif</span> score < loss_thresh:
+        <span class="kw">return</span> [<span class="num">0</span>, <span class="num">0</span>, <span class="num">1</span>]   <span class="cmt"># הפסד</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> [<span class="num">0</span>, <span class="num">1</span>, <span class="num">0</span>]   <span class="cmt"># ביניים</span></pre>
+  </div>
+
+  <h3>צעד ג׳ — טעינת כל המילון לרשימות</h3>
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — load_data.py</span></div>
+    <pre><span class="kw">import</span> json
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">load_tournament_data</span>(json_path, win_thresh=<span class="num">0.7</span>, loss_thresh=<span class="num">0.3</span>):
+    <span class="str">"""
+    טוען את tournament_learning.json ומחזיר X, y, weights מוכנים לאימון.
+
+    מחזיר:
+        X       : numpy (N, 3, 3, 1)  — לוחות כ-tensor
+        y       : numpy (N, 3)         — תוויות one-hot
+        weights : numpy (N,)           — count של כל לוח
+    """</span>
+    <span class="kw">with</span> <span class="fn">open</span>(json_path, <span class="str">'r'</span>, encoding=<span class="str">'utf-8'</span>) <span class="kw">as</span> f:
+        data = json.<span class="fn">load</span>(f)
+
+    X_list, y_list, w_list = [], [], []
+
+    <span class="kw">for</span> board_str, entry <span class="kw">in</span> data.<span class="fn">items</span>():
+        score = entry[<span class="str">'accumulated_score'</span>]
+        count = entry[<span class="str">'count'</span>]
+
+        <span class="cmt"># X: מחרוזת לוח → tensor (3,3,1)</span>
+        values = [CHAR_MAP[c] <span class="kw">for</span> c <span class="kw">in</span> board_str]
+        board_arr = np.<span class="fn">array</span>(values, dtype=<span class="str">'float32'</span>).<span class="fn">reshape</span>(<span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>)
+        X_list.<span class="fn">append</span>(board_arr)
+
+        <span class="cmt"># y: ציון → one-hot</span>
+        label = <span class="fn">score_to_label</span>(score, win_thresh, loss_thresh)
+        y_list.<span class="fn">append</span>(label)
+
+        <span class="cmt"># weight: count (כמה פעמים ראינו את הלוח)</span>
+        w_list.<span class="fn">append</span>(<span class="fn">float</span>(count))
+
+    X       = np.<span class="fn">array</span>(X_list)          <span class="cmt"># (4636, 3, 3, 1)</span>
+    y       = np.<span class="fn">array</span>(y_list, dtype=<span class="str">'float32'</span>)  <span class="cmt"># (4636, 3)</span>
+    weights = np.<span class="fn">array</span>(w_list, dtype=<span class="str">'float32'</span>)  <span class="cmt"># (4636,)</span>
+
+    <span class="cmt"># נרמול המשקלים — אופציונלי אך מומלץ</span>
+    weights = weights / weights.<span class="fn">max</span>()           <span class="cmt"># ל-[0, 1]</span>
+
+    <span class="fn">print</span>(<span class="str">f"טעינה הושלמה: {len(X)} מצבי לוח"</span>)
+    <span class="fn">print</span>(<span class="str">f"X.shape = {X.shape}, y.shape = {y.shape}"</span>)
+    <span class="fn">print</span>(<span class="str">f"התפלגות תוויות: ניצחון={y[:,0].sum():.0f}, ביניים={y[:,1].sum():.0f}, הפסד={y[:,2].sum():.0f}"</span>)
+
+    <span class="kw">return</span> X, y, weights
+
+
+<span class="cmt"># שימוש:</span>
+X, y, weights = <span class="fn">load_tournament_data</span>(<span class="str">'tournament_learning.json'</span>)</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 3. SAMPLE WEIGHT ══════ -->
+<div class="wrap" id="weight">
+  <div class="sec-head"><span class="sec-num">03</span><h2>sample_weight — למה זה חשוב?</h2></div>
+
+  <p>
+    בלי <code style="color:var(--c1);font-family:var(--mono);">sample_weight</code>, המודל מתייחס לכל לוח באופן שווה.
+    אבל לוח שנראה 86,575 פעמים אמין הרבה יותר מלוח שנראה פעם אחת!
+  </p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">❌ ללא sample_weight</div>
+      <p style="font-size: 1.2rem;">
+        שגיאה על לוח עם count=1 זוכה לאותו "עונש" כמו שגיאה על לוח עם count=86,575.
+        המודל עשוי להיות מבולבל מלוחות נדירים עם ציון לא מייצג.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title">✅ עם sample_weight</div>
+      <p style="font-size: 1.2rem;">
+        שגיאה על לוח נפוץ "שוקלת" הרבה יותר בחישוב ה-loss.
+        המודל לומד בעיקר מהלוחות שנצפו הרבה — הנתונים האמינים.
+      </p>
+    </div>
+  </div>
+
+  <div class="hl ok" style="margin-top:1.5rem;">
+    <strong>אנלוגיה:</strong> דמיין שאתה לומד ממבחנים. 86,575 מבחנים אומרים "X במרכז = טוב" — לעומת מבחן אחד שאומר משהו שונה. את מי תאמין?
+  </div>
+
+  <h3>נרמול המשקלים</h3>
+  <p>
+    ערכי count נעים בין 1 ל-86,575 — פער עצום. Keras יתקשה אם משקל אחד גדול פי 86,000 מאחר.
+    נרמול ל-[0,1] שומר על היחסים אך מוריד את הקפיצות הקיצוניות.
+  </p>
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python</span></div>
+    <pre><span class="cmt"># אפשרות א׳ — נרמול ל-[0,1]</span>
+weights_norm = weights / weights.<span class="fn">max</span>()
+
+<span class="cmt"># אפשרות ב׳ — שורש (מרכך קיצוניות)</span>
+weights_sqrt = np.<span class="fn">sqrt</span>(weights)
+weights_sqrt = weights_sqrt / weights_sqrt.<span class="fn">max</span>()
+
+<span class="cmt"># אפשרות ג׳ — log (מרכך עוד יותר)</span>
+weights_log = np.<span class="fn">log1p</span>(weights)   <span class="cmt"># log(1+x) מונע log(0)</span>
+weights_log = weights_log / weights_log.<span class="fn">max</span>()</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 4. MODEL ══════ -->
+<div class="wrap" id="model">
+  <div class="sec-head"><span class="sec-num">04</span><h2>מודל ה-CNN — שכבה אחרי שכבה</h2></div>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — model_build.py</span></div>
+    <pre><span class="kw">from</span> tensorflow.keras.models <span class="kw">import</span> Sequential
+<span class="kw">from</span> tensorflow.keras.layers <span class="kw">import</span> Conv2D, Flatten, Dense, Dropout
+<span class="kw">from</span> tensorflow.keras.optimizers <span class="kw">import</span> Adam
+<span class="kw">from</span> tensorflow.keras.initializers <span class="kw">import</span> Constant
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+
+<span class="cmt"># ── custom_initializer: 8 פילטרים ידועים כנקודת התחלה ──────</span>
+<span class="cmt"># הפילטרים מייצגים תבניות ניצחון: שורות, עמודות, אלכסונות</span>
+initial_kernels = np.<span class="fn">zeros</span>((<span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>, <span class="num">8</span>), dtype=<span class="str">'float32'</span>)
+
+<span class="cmt"># פילטר 0 — שורה עליונה [1,1,1 / 0,0,0 / 0,0,0]</span>
+initial_kernels[<span class="num">0</span>, :, <span class="num">0</span>, <span class="num">0</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 1 — שורה אמצעית</span>
+initial_kernels[<span class="num">1</span>, :, <span class="num">0</span>, <span class="num">1</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 2 — שורה תחתונה</span>
+initial_kernels[<span class="num">2</span>, :, <span class="num">0</span>, <span class="num">2</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 3 — עמודה שמאל</span>
+initial_kernels[:, <span class="num">0</span>, <span class="num">0</span>, <span class="num">3</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 4 — עמודה אמצע</span>
+initial_kernels[:, <span class="num">1</span>, <span class="num">0</span>, <span class="num">4</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 5 — עמודה ימין</span>
+initial_kernels[:, <span class="num">2</span>, <span class="num">0</span>, <span class="num">5</span>] = [<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>]
+<span class="cmt"># פילטר 6 — אלכסון ראשי (שמאל-עליון לימין-תחתון)</span>
+<span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>): initial_kernels[i, i, <span class="num">0</span>, <span class="num">6</span>] = <span class="num">1</span>
+<span class="cmt"># פילטר 7 — אלכסון משני (ימין-עליון לשמאל-תחתון)</span>
+<span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>): initial_kernels[i, <span class="num">2</span>-i, <span class="num">0</span>, <span class="num">7</span>] = <span class="num">1</span>
+
+custom_initializer = <span class="cls">Constant</span>(initial_kernels)
+
+
+<span class="cmt"># ── בניית המודל ──────────────────────────────────────────────</span>
+model = <span class="cls">Sequential</span>([
+    <span class="cmt"># שכבת קונבולוציה: 8 פילטרים 3×3 מאותחלים מידנית</span>
+    <span class="cls">Conv2D</span>(<span class="prm">8</span>, kernel_size=(<span class="prm">3</span>, <span class="prm">3</span>),
+           activation=<span class="str">'relu'</span>,
+           input_shape=(<span class="prm">3</span>, <span class="prm">3</span>, <span class="prm">1</span>),
+           kernel_initializer=custom_initializer,
+           padding=<span class="str">'same'</span>),   <span class="cmt"># שומר על ממדי הלוח</span>
+
+    <span class="cmt"># שיטוח 3D → 1D</span>
+    <span class="cls">Flatten</span>(),
+
+    <span class="cmt"># שכבה נסתרת: 32 נוירונים</span>
+    <span class="cls">Dense</span>(<span class="prm">32</span>, activation=<span class="str">'relu'</span>),
+    <span class="cls">Dropout</span>(<span class="prm">0.3</span>),   <span class="cmt"># מניעת Overfitting</span>
+
+    <span class="cmt"># שכבת פלט: 3 מחלקות + softmax</span>
+    <span class="cls">Dense</span>(units=<span class="prm">3</span>, activation=<span class="str">'softmax'</span>)
+])
+
+model.<span class="fn">compile</span>(
+    optimizer=<span class="cls">Adam</span>(learning_rate=<span class="num">0.001</span>),
+    loss=<span class="str">'categorical_crossentropy'</span>,
+    metrics=[<span class="str">'accuracy'</span>]
+)
+
+model.<span class="fn">summary</span>()</pre>
+  </div>
+
+  <h3>הסבר כל שכבה בהקשר XO</h3>
+  <table class="tbl">
+    <thead><tr><th>שכבה</th><th>קלט</th><th>פלט</th><th>מה היא עושה עם לוח XO</th></tr></thead>
+    <tbody>
+      <tr><td><code>Conv2D(8, (3,3))</code></td><td>(3,3,1)</td><td>(3,3,8)</td><td>8 פילטרים בודקים: האם יש שורה מנצחת? עמודה? אלכסון?</td></tr>
+      <tr><td><code>Flatten()</code></td><td>(3,3,8)</td><td>(72,)</td><td>פושט 72 ערכי ה-feature maps לוקטור אחד</td></tr>
+      <tr><td><code>Dense(32)</code></td><td>(72,)</td><td>(32,)</td><td>לומד שילובים: "פילטר שורה + פילטר X = ניצחון X"</td></tr>
+      <tr><td><code>Dense(3, softmax)</code></td><td>(32,)</td><td>(3,)</td><td>מחזיר [P(ניצחון), P(ביניים), P(הפסד)]</td></tr>
+    </tbody>
+  </table>
+
+  <div class="hl warn">
+    <strong>⚠️ מדוע padding='same'?</strong> ללא padding, פילטר 3×3 על לוח 3×3 ייתן פלט 1×1 — ניקוד בודד אחד. עם <code style="font-family:var(--mono);">padding='same'</code> הפלט נשאר 3×3, כך שה-Flatten מקבל 3×3×8=72 ערכים עשירים במידע במקום 1×1×8=8.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 5. PREDICT ══════ -->
+<div class="wrap" id="predict">
+  <div class="sec-head"><span class="sec-num">05</span><h2>חיזוי לוחות שאינם במילון</h2></div>
+
+  <p>
+    <strong>זו בדיוק נקודת הכוח של CNN</strong> — בניגוד לחיפוש במילון, המודל למד
+    <em>כללים כלליים</em> מהנתונים. הוא יכול לנבא ניקוד ללוח שמעולם לא ראה,
+    כי הוא מזהה תבניות — לא שינון.
+  </p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📚 חיפוש במילון</div>
+      <ul class="steps">
+        <li>עובד רק על לוחות <strong>שכבר ראינו</strong></li>
+        <li>לוח חדש = אין תשובה</li>
+        <li>לא מספק הכללה</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🧠 CNN</div>
+      <ul class="steps">
+        <li>עובד על <strong>כל לוח</strong>, כולל חדשים</li>
+        <li>מזהה תבניות כלליות</li>
+        <li>ניתן לשפר עם נתונים נוספים</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>קוד חיזוי ללוח חדש</h3>
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — predict.py</span></div>
+    <pre><span class="kw">def</span> <span class="fn">predict_board</span>(model, board_str):
+    <span class="str">"""
+    מקבל מחרוזת לוח ומחזיר ניבוי.
+    עובד גם אם הלוח לא קיים במילון!
+    """</span>
+    <span class="cmt"># 1. המרה לטנסור</span>
+    board_tensor = <span class="fn">board_str_to_matrix</span>(board_str)
+    board_tensor = board_tensor[np.newaxis, ...]   <span class="cmt"># (1, 3, 3, 1) — batch של 1</span>
+
+    <span class="cmt"># 2. ניבוי</span>
+    probs = model.<span class="fn">predict</span>(board_tensor, verbose=<span class="num">0</span>)[<span class="num">0</span>]
+
+    <span class="cmt"># 3. פירוש</span>
+    class_names = [<span class="str">'ניצחון'</span>, <span class="str">'ביניים'</span>, <span class="str">'הפסד'</span>]
+    predicted = class_names[probs.<span class="fn">argmax</span>()]
+    confidence = probs.<span class="fn">max</span>()
+
+    <span class="fn">print</span>(<span class="str">f"לוח: {board_str}"</span>)
+    <span class="fn">print</span>(<span class="str">f"ניבוי: {predicted} (בטחון {confidence:.1%})"</span>)
+    <span class="fn">print</span>(<span class="str">f"הסתברויות: ניצחון={probs[0]:.3f} | ביניים={probs[1]:.3f} | הפסד={probs[2]:.3f}"</span>)
+    <span class="kw">return</span> probs
+
+<span class="cmt"># לוחות לדוגמה:</span>
+<span class="fn">predict_board</span>(model, <span class="str">"XXX      "</span>)  <span class="cmt"># X ניצח בשורה עליונה — לוח ברור</span>
+<span class="fn">predict_board</span>(model, <span class="str">"XO X  O  "</span>) <span class="cmt"># לוח חדש שאינו במילון</span>
+<span class="fn">predict_board</span>(model, <span class="str">"OOOXX    "</span>) <span class="cmt"># O ניצח בשורה עליונה</span></pre>
+  </div>
+
+  <h3>השוואת חיזוי CNN מול מילון</h3>
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python</span></div>
+    <pre><span class="kw">def</span> <span class="fn">compare_dict_vs_cnn</span>(data, model, board_str):
+    <span class="str">"""משווה בין הציון במילון לבין ניבוי ה-CNN"""</span>
+    <span class="kw">if</span> board_str <span class="kw">in</span> data:
+        entry = data[board_str]
+        <span class="fn">print</span>(<span class="str">f"מילון: score={entry['accumulated_score']:.3f}, count={entry['count']}"</span>)
+    <span class="kw">else</span>:
+        <span class="fn">print</span>(<span class="str">"לוח זה אינו קיים במילון — CNN בלבד!"</span>)
+
+    <span class="fn">predict_board</span>(model, board_str)
+
+<span class="cmt"># לוח שקיים:</span>
+<span class="fn">compare_dict_vs_cnn</span>(data, model, <span class="str">"    X    "</span>)
+
+<span class="cmt"># לוח שאינו קיים — CNN עונה, מילון לא יכול:</span>
+<span class="fn">compare_dict_vs_cnn</span>(data, model, <span class="str">"X OX O   "</span>)</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 5b. DECISION — 5 MOVES ══════ -->
+<div class="wrap" id="decision">
+  <div class="sec-head"><span class="sec-num">05b</span><h2>דוגמה מלאה — 5 מהלכים אפשריים, רק 2 במילון</h2></div>
+
+  <p>
+    זו הסיטואציה הנפוצה ביותר במשחק: השחקן עומד בפני כמה מהלכים אפשריים,
+    חלקם מוכרים מהמילון וחלקם לא. <strong>כיצד מקבלים החלטה?</strong>
+  </p>
+
+  <!-- Step 1 visual -->
+  <h3>שלב 1 — מיפוי 5 המהלכים האפשריים</h3>
+  <p>מהמצב הנוכחי ניתן לשחק בחמישה תאים פנויים שונים. לכל מהלך מתאים לוח-יעד אחד:</p>
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem;margin:1.2rem 0;direction:ltr;">
+
+    <div style="background:var(--card);border:2px solid var(--c3);border-radius:.8rem;padding:1rem .7rem;text-align:center;">
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--c3);margin-bottom:.5rem;font-weight:700;">לוח A</div>
+      <div style="display:grid;grid-template-columns:repeat(3,28px);gap:2px;justify-content:center;margin-bottom:.5rem;">
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(239,68,68,.1);border:1px solid var(--c5);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c5);">O</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.25);border:2px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+      </div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--c3);font-weight:700;">במילון</div>
+      <div style="font-size: 1.2rem;color:var(--text2);margin-top:.2rem;">score = 0.91</div>
+      <div style="font-size: 1.2rem;color:var(--text3);">count = 2,551</div>
+    </div>
+
+    <div style="background:var(--card);border:2px solid var(--c5);border-radius:.8rem;padding:1rem .7rem;text-align:center;">
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--c5);margin-bottom:.5rem;font-weight:700;">לוח B</div>
+      <div style="display:grid;grid-template-columns:repeat(3,28px);gap:2px;justify-content:center;margin-bottom:.5rem;">
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(239,68,68,.1);border:1px solid var(--c5);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c5);">O</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.25);border:2px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--c3);font-weight:700;">במילון</div>
+      <div style="font-size: 1.2rem;color:var(--text2);margin-top:.2rem;">score = 0.38</div>
+      <div style="font-size: 1.2rem;color:var(--text3);">count = 394</div>
+    </div>
+
+    <div style="background:var(--card);border:2px solid var(--c2);border-radius:.8rem;padding:1rem .7rem;text-align:center;">
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;margin-bottom:.5rem;font-weight:700;">לוח C</div>
+      <div style="display:grid;grid-template-columns:repeat(3,28px);gap:2px;justify-content:center;margin-bottom:.5rem;">
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(239,68,68,.1);border:1px solid var(--c5);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c5);">O</div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.25);border:2px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;font-weight:700;">לא במילון</div>
+      <div style="font-size: 1.2rem;color:#c4b5fd;margin-top:.2rem;font-weight:700;">CNN → 0.74</div>
+      <div style="font-size: 1.2rem;color:var(--text3);">ניחוש מושכל</div>
+    </div>
+
+    <div style="background:var(--card);border:2px solid var(--c2);border-radius:.8rem;padding:1rem .7rem;text-align:center;">
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;margin-bottom:.5rem;font-weight:700;">לוח D</div>
+      <div style="display:grid;grid-template-columns:repeat(3,28px);gap:2px;justify-content:center;margin-bottom:.5rem;">
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(239,68,68,.1);border:1px solid var(--c5);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c5);">O</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.25);border:2px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;font-weight:700;">לא במילון</div>
+      <div style="font-size: 1.2rem;color:#c4b5fd;margin-top:.2rem;font-weight:700;">CNN → 0.82</div>
+      <div style="font-size: 1.2rem;color:var(--text3);">ניחוש מושכל</div>
+    </div>
+
+    <div style="background:var(--card);border:2px solid var(--c2);border-radius:.8rem;padding:1rem .7rem;text-align:center;">
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;margin-bottom:.5rem;font-weight:700;">לוח E</div>
+      <div style="display:grid;grid-template-columns:repeat(3,28px);gap:2px;justify-content:center;margin-bottom:.5rem;">
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(239,68,68,.1);border:1px solid var(--c5);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c5);">O</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.12);border:1px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(0,229,255,.25);border:2px solid var(--c1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size: 1.2rem;font-weight:700;color:var(--c1);">X</div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+        <div style="width:28px;height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:3px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;font-weight:700;">לא במילון</div>
+      <div style="font-size: 1.2rem;color:#c4b5fd;margin-top:.2rem;font-weight:700;">CNN → 0.51</div>
+      <div style="font-size: 1.2rem;color:var(--text3);">ניחוש מושכל</div>
+    </div>
+
+  </div>
+
+  <div style="display:flex;gap:.6rem;margin:.5rem 0 1.2rem;flex-wrap:wrap;">
+    <span class="tag g">ירוק = במילון</span>
+    <span class="tag v">סגול = CNN חוזה</span>
+    <span style="font-size: 1.2rem;color:var(--text3);align-self:center;">גבול כחול = המהלך החדש שהוסף</span>
+  </div>
+
+  <!-- Step 2: all scored -->
+  <h3>שלב 2 — כל 5 הלוחות מקבלים ניקוד אחיד</h3>
+  <p>
+    CNN מועברת על כל 5 הלוחות ומחזירה ניקוד לכל אחד.
+    לוחות A ו-B קיבלו ניקוד מהמילון (אפשר לנרמל דרך CNN לסקאלה אחידה).
+    לוחות C, D, E — CNN מחשבת עבורם:
+  </p>
+
+  <!-- ranking bars -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:.8rem;padding:1.3rem 1.5rem;margin:1rem 0;">
+    <div style="font-family:var(--mono);font-size: 1.2rem;color:var(--text3);margin-bottom:1rem;">דירוג לפי ניקוד CNN — מהגבוה לנמוך</div>
+
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem;">
+      <span style="font-family:var(--mono);font-size: 1.2rem;color:var(--c3);min-width:70px;text-align:right;">לוח A — 0.89</span>
+      <div style="flex:1;height:22px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+        <div style="width:89%;height:100%;background:var(--c3);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-left:.4rem;">
+          <span style="font-family:var(--mono);font-size: 1.2rem;color:#000;font-weight:700;">0.89</span>
+        </div>
+      </div>
+      <span class="tag g" style="font-size: 1.2rem;min-width:50px;text-align:center;">מילון</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem;">
+      <span style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;min-width:70px;text-align:right;">לוח D — 0.82</span>
+      <div style="flex:1;height:22px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+        <div style="width:82%;height:100%;background:var(--c2);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-left:.4rem;">
+          <span style="font-family:var(--mono);font-size: 1.2rem;color:#fff;font-weight:700;">0.82</span>
+        </div>
+      </div>
+      <span class="tag v" style="font-size: 1.2rem;min-width:50px;text-align:center;">CNN</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem;">
+      <span style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;min-width:70px;text-align:right;">לוח C — 0.74</span>
+      <div style="flex:1;height:22px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+        <div style="width:74%;height:100%;background:var(--c2);opacity:.8;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-left:.4rem;">
+          <span style="font-family:var(--mono);font-size: 1.2rem;color:#fff;font-weight:700;">0.74</span>
+        </div>
+      </div>
+      <span class="tag v" style="font-size: 1.2rem;min-width:50px;text-align:center;">CNN</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem;">
+      <span style="font-family:var(--mono);font-size: 1.2rem;color:#c4b5fd;min-width:70px;text-align:right;">לוח E — 0.51</span>
+      <div style="flex:1;height:22px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+        <div style="width:51%;height:100%;background:var(--c2);opacity:.6;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-left:.4rem;">
+          <span style="font-family:var(--mono);font-size: 1.2rem;color:#fff;font-weight:700;">0.51</span>
+        </div>
+      </div>
+      <span class="tag v" style="font-size: 1.2rem;min-width:50px;text-align:center;">CNN</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:.8rem;">
+      <span style="font-family:var(--mono);font-size: 1.2rem;color:var(--c4);min-width:70px;text-align:right;">לוח B — 0.38</span>
+      <div style="flex:1;height:22px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;">
+        <div style="width:38%;height:100%;background:var(--c4);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-left:.4rem;">
+          <span style="font-family:var(--mono);font-size: 1.2rem;color:#000;font-weight:700;">0.38</span>
+        </div>
+      </div>
+      <span class="tag g" style="font-size: 1.2rem;min-width:50px;text-align:center;">מילון</span>
+    </div>
+  </div>
+
+  <!-- winner -->
+  <div style="background:rgba(16,185,129,.08);border:2px solid var(--c3);border-radius:.8rem;padding:1.2rem 1.5rem;margin:1rem 0;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">
+    <div style="font-size:2rem;">✓</div>
+    <div>
+      <div style="font-size: 1.2rem;font-weight:700;color:var(--c3);margin-bottom:.2rem;">בחר: לוח A — ניקוד 0.89</div>
+      <div style="font-size: 1.2rem;color:var(--text2);">מקור: מילון · count=2,551 · הגבוה ביותר מכל 5 המהלכים</div>
+    </div>
+    <div style="margin-right:auto;font-family:var(--mono);font-size: 1.2rem;color:var(--text3);">
+      max(scores, key=scores.get)
+    </div>
+  </div>
+
+  <!-- Step 3: Two strategies -->
+  <h3>שלב 3 — שתי אסטרטגיות לשילוב</h3>
+
+  <div class="grid2">
+    <div class="card" style="border-top:3px solid var(--c2);">
+      <div class="card-title" style="color:#c4b5fd;">גישה א׳ — CNN לכולם</div>
+      <p style="font-size: 1.2rem;">מעבירים את כל 5 הלוחות דרך CNN. מתעלמים מהמילון לחלוטין.</p>
+      <div style="margin-top:.5rem;">
+        <span class="tag g">✓ השוואה הוגנת — אותה סקאלה</span>
+        <span class="tag r" style="margin-top:.3rem;display:inline-block;">✗ מבזבזים מידע אמין</span>
+      </div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--c3);">
+      <div class="card-title" style="color:var(--c3);">גישה ב׳ — שילוב משוקלל</div>
+      <p style="font-size: 1.2rem;">count גבוה → סמוך על המילון. count נמוך / חסר → CNN מחליטה.</p>
+      <div style="margin-top:.5rem;">
+        <span class="tag g">✓ מנצל מידע אמין</span>
+        <span class="tag a" style="margin-top:.3rem;display:inline-block;">⚠ מורכב יותר לממש</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>קוד — בחירת המהלך הטוב ביותר</h3>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — choose_best_move.py</span></div>
+    <pre><span class="kw">def</span> <span class="fn">score_one_board</span>(board_str, board_tensor, model, data, trust=<span class="num">100</span>):
+    <span class="str">"""
+    מחזיר ניקוד ללוח אחד.
+    אם קיים במילון עם count >= trust → ניקוד המילון.
+    אחרת → CNN חוזה.
+    """</span>
+    <span class="kw">if</span> board_str <span class="kw">in</span> data <span class="kw">and</span> data[board_str][<span class="str">'count'</span>] >= trust:
+        <span class="kw">return</span> data[board_str][<span class="str">'accumulated_score'</span>]    <span class="cmt"># מהמילון הישר</span>
+
+    <span class="cmt"># לא במילון (או count נמוך) — CNN</span>
+    t     = board_tensor[np.newaxis, ...]               <span class="cmt"># (1,3,3,1)</span>
+    probs = model.<span class="fn">predict</span>(t, verbose=<span class="num">0</span>)[<span class="num">0</span>]
+    <span class="kw">return</span> <span class="fn">float</span>(probs[<span class="num">0</span>])                             <span class="cmt"># הסתברות לניצחון</span>
+
+
+<span class="kw">def</span> <span class="fn">choose_best_move</span>(current_board, model, data, trust=<span class="num">100</span>):
+    <span class="str">"""
+    מקבל לוח נוכחי, בונה את 5 המהלכים האפשריים,
+    מנקד כל אחד, ומחזיר את הלוח הטוב ביותר.
+    """</span>
+    empty_cells = [i <span class="kw">for</span> i, c <span class="kw">in</span> <span class="fn">enumerate</span>(current_board) <span class="kw">if</span> c == <span class="str">' '</span>]
+    scores = {}
+
+    <span class="kw">for</span> cell <span class="kw">in</span> empty_cells:
+        <span class="cmt"># מהלך: שים X בתא הפנוי</span>
+        new_board_str = (
+            current_board[:cell] + <span class="str">'X'</span> + current_board[cell+<span class="num">1</span>:]
+        )
+        tensor = <span class="fn">board_to_tensor</span>(new_board_str)
+        scores[new_board_str] = <span class="fn">score_one_board</span>(
+            new_board_str, tensor, model, data, trust
+        )
+
+    <span class="cmt"># החזר את הלוח עם הניקוד הגבוה ביותר</span>
+    best = <span class="fn">max</span>(scores, key=scores.get)
+    <span class="fn">print</span>(<span class="str">f"בחרנו: '{best}' עם ניקוד {scores[best]:.3f}"</span>)
+    <span class="kw">return</span> best
+
+
+<span class="cmt"># דוגמה מהשיחה:</span>
+current = <span class="str">"XO X     "</span>   <span class="cmt"># מצב הלוח הנוכחי (5 תאים פנויים)</span>
+best_move = <span class="fn">choose_best_move</span>(current, model, data)
+
+<span class="cmt"># פלט לדוגמה:</span>
+<span class="cmt"># לוח A:  score=0.91 (מילון, count=2551)</span>
+<span class="cmt"># לוח B:  score=0.38 (מילון, count=394)</span>
+<span class="cmt"># לוח C:  score=0.74 (CNN)</span>
+<span class="cmt"># לוח D:  score=0.82 (CNN)  ← שני בגודלו</span>
+<span class="cmt"># לוח E:  score=0.51 (CNN)</span>
+<span class="cmt"># בחרנו: לוח A — ניקוד 0.89 (הגבוה ביותר)</span></pre>
+  </div>
+
+  <div class="hl ok">
+    <strong>💡 מסקנה:</strong> CNN לא "מחליפה" את המילון — היא <em>משלימה</em> אותו.
+    עם CNN, כל מהלך אפשרי מקבל ניקוד, ללא קשר לאם הלוח נצפה בעבר.
+    המשחק אף פעם לא "נתקע" בגלל לוח לא מוכר.
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ 6. FULL CODE ══════ -->
+<div class="wrap" id="full">
+  <div class="sec-head"><span class="sec-num">06</span><h2>קוד מלא — מהמילון עד לחיזוי</h2></div>
+
+  <div class="code-block">
+    <div class="code-top"><div class="dots"><span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span></div><span class="lang">python — xo_cnn_full.py</span></div>
+    <pre><span class="cmt">"""
+xo_cnn_full.py
+==============
+טוען tournament_learning.json, מכין נתונים, מאמן CNN,
+ומדגים חיזוי ללוחות חדשים.
+"""</span>
+
+<span class="kw">import</span> json
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> tensorflow.keras.models <span class="kw">import</span> Sequential
+<span class="kw">from</span> tensorflow.keras.layers <span class="kw">import</span> Conv2D, Flatten, Dense, Dropout
+<span class="kw">from</span> tensorflow.keras.optimizers <span class="kw">import</span> Adam
+<span class="kw">from</span> tensorflow.keras.callbacks <span class="kw">import</span> EarlyStopping
+<span class="kw">from</span> tensorflow.keras.initializers <span class="kw">import</span> Constant
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> classification_report
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 1. קבועים
+# ═══════════════════════════════════════════════════</span>
+CHAR_MAP    = {<span class="str">'X'</span>: <span class="num">1.0</span>, <span class="str">'O'</span>: <span class="num">-1.0</span>, <span class="str">' '</span>: <span class="num">0.0</span>}
+WIN_THRESH  = <span class="num">0.7</span>   <span class="cmt"># מעל → ניצחון</span>
+LOSS_THRESH = <span class="num">0.3</span>   <span class="cmt"># מתחת → הפסד</span>
+CLASS_NAMES = [<span class="str">'ניצחון'</span>, <span class="str">'ביניים'</span>, <span class="str">'הפסד'</span>]
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 2. המרת נתונים
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">def</span> <span class="fn">board_to_tensor</span>(s):
+    <span class="str">"""מחרוזת 9 תווים → numpy (3,3,1)"""</span>
+    arr = np.<span class="fn">array</span>([CHAR_MAP[c] <span class="kw">for</span> c <span class="kw">in</span> s], dtype=<span class="str">'float32'</span>)
+    <span class="kw">return</span> arr.<span class="fn">reshape</span>(<span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>)
+
+<span class="kw">def</span> <span class="fn">score_to_onehot</span>(score):
+    <span class="str">"""ציון רציף → one-hot [ניצחון, ביניים, הפסד]"""</span>
+    <span class="kw">if</span> score >= WIN_THRESH:  <span class="kw">return</span> [<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>]
+    <span class="kw">if</span> score < LOSS_THRESH:  <span class="kw">return</span> [<span class="num">0</span>, <span class="num">0</span>, <span class="num">1</span>]
+    <span class="kw">return</span>                            [<span class="num">0</span>, <span class="num">1</span>, <span class="num">0</span>]
+
+<span class="kw">def</span> <span class="fn">load_data</span>(path):
+    <span class="str">"""טוען JSON ומחזיר X, y, weights"""</span>
+    <span class="kw">with</span> <span class="fn">open</span>(path, encoding=<span class="str">'utf-8'</span>) <span class="kw">as</span> f:
+        data = json.<span class="fn">load</span>(f)
+
+    X, y, w = [], [], []
+    <span class="kw">for</span> board_str, entry <span class="kw">in</span> data.<span class="fn">items</span>():
+        X.<span class="fn">append</span>(<span class="fn">board_to_tensor</span>(board_str))
+        y.<span class="fn">append</span>(<span class="fn">score_to_onehot</span>(entry[<span class="str">'accumulated_score'</span>]))
+        w.<span class="fn">append</span>(<span class="fn">float</span>(entry[<span class="str">'count'</span>]))
+
+    X = np.<span class="fn">array</span>(X)                     <span class="cmt"># (N, 3, 3, 1)</span>
+    y = np.<span class="fn">array</span>(y, dtype=<span class="str">'float32'</span>)   <span class="cmt"># (N, 3)</span>
+    w = np.<span class="fn">array</span>(w, dtype=<span class="str">'float32'</span>)
+    w = np.<span class="fn">sqrt</span>(w) / np.<span class="fn">sqrt</span>(w).<span class="fn">max</span>()   <span class="cmt"># נרמול שורש</span>
+
+    <span class="fn">print</span>(<span class="str">f"נטענו {len(X)} לוחות | X:{X.shape} y:{y.shape}"</span>)
+    <span class="kw">return</span> data, X, y, w
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 3. פילטרים מאותחלים
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">def</span> <span class="fn">make_initial_kernels</span>():
+    <span class="str">"""יוצר 8 פילטרים ידועים: שורות, עמודות, אלכסונות"""</span>
+    k = np.<span class="fn">zeros</span>((<span class="num">3</span>, <span class="num">3</span>, <span class="num">1</span>, <span class="num">8</span>), dtype=<span class="str">'float32'</span>)
+    <span class="kw">for</span> row <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>): k[row, :, <span class="num">0</span>, row]   = <span class="num">1</span>  <span class="cmt"># שורות 0-2</span>
+    <span class="kw">for</span> col <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>): k[:, col, <span class="num">0</span>, col+<span class="num">3</span>] = <span class="num">1</span>  <span class="cmt"># עמודות 3-5</span>
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>):   k[i, i,   <span class="num">0</span>, <span class="num">6</span>]     = <span class="num">1</span>  <span class="cmt"># אלכסון ראשי</span>
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">3</span>):   k[i, <span class="num">2</span>-i, <span class="num">0</span>, <span class="num">7</span>]     = <span class="num">1</span>  <span class="cmt"># אלכסון משני</span>
+    <span class="kw">return</span> <span class="cls">Constant</span>(k)
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 4. בניית מודל
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">def</span> <span class="fn">build_model</span>():
+    model = <span class="cls">Sequential</span>([
+        <span class="cls">Conv2D</span>(<span class="num">8</span>, (<span class="num">3</span>,<span class="num">3</span>), activation=<span class="str">'relu'</span>, padding=<span class="str">'same'</span>,
+               input_shape=(<span class="num">3</span>,<span class="num">3</span>,<span class="num">1</span>), kernel_initializer=<span class="fn">make_initial_kernels</span>()),
+        <span class="cls">Flatten</span>(),
+        <span class="cls">Dense</span>(<span class="num">32</span>, activation=<span class="str">'relu'</span>),
+        <span class="cls">Dropout</span>(<span class="num">0.3</span>),
+        <span class="cls">Dense</span>(<span class="num">3</span>, activation=<span class="str">'softmax'</span>)
+    ])
+    model.<span class="fn">compile</span>(
+        optimizer=<span class="cls">Adam</span>(<span class="num">0.001</span>),
+        loss=<span class="str">'categorical_crossentropy'</span>,
+        metrics=[<span class="str">'accuracy'</span>]
+    )
+    <span class="kw">return</span> model
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 5. אימון
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">def</span> <span class="fn">train_model</span>(model, X, y, w):
+    X_tr, X_val, y_tr, y_val, w_tr, _ = train_test_split(
+        X, y, w, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>
+    )
+    es = <span class="cls">EarlyStopping</span>(monitor=<span class="str">'val_loss'</span>, patience=<span class="num">12</span>,
+                        restore_best_weights=<span class="cls">True</span>)
+
+    history = model.<span class="fn">fit</span>(
+        X_tr, y_tr,
+        sample_weight=w_tr,        <span class="cmt"># ← המשקלים לפי count</span>
+        validation_data=(X_val, y_val),
+        epochs=<span class="num">150</span>,
+        batch_size=<span class="num">32</span>,
+        callbacks=[es],
+        verbose=<span class="num">1</span>
+    )
+    <span class="kw">return</span> history
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 6. חיזוי
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">def</span> <span class="fn">predict_board</span>(model, board_str):
+    <span class="str">"""ניבוי לכל לוח — כולל לוחות שאינם במילון"""</span>
+    t     = <span class="fn">board_to_tensor</span>(board_str)[np.newaxis, ...]
+    probs = model.<span class="fn">predict</span>(t, verbose=<span class="num">0</span>)[<span class="num">0</span>]
+    idx   = probs.<span class="fn">argmax</span>()
+    <span class="fn">print</span>(<span class="str">f"לוח '{board_str}' → {CLASS_NAMES[idx]} ({probs[idx]:.1%})"</span>)
+    <span class="fn">print</span>(<span class="str">f"  ניצחון:{probs[0]:.3f}  ביניים:{probs[1]:.3f}  הפסד:{probs[2]:.3f}"</span>)
+    <span class="kw">return</span> probs
+
+<span class="cmt"># ═══════════════════════════════════════════════════
+# 7. הרצה ראשית
+# ═══════════════════════════════════════════════════</span>
+<span class="kw">if</span> __name__ == <span class="str">'__main__'</span>:
+    <span class="cmt"># טעינה והכנה</span>
+    data, X, y, w = <span class="fn">load_data</span>(<span class="str">'tournament_learning.json'</span>)
+
+    <span class="cmt"># בניה + אימון</span>
+    model = <span class="fn">build_model</span>()
+    <span class="fn">train_model</span>(model, X, y, w)
+
+    <span class="cmt"># הערכה</span>
+    _, X_test, _, y_test, _, _ = train_test_split(
+        X, y, w, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>)
+    y_pred = model.<span class="fn">predict</span>(X_test).argmax(axis=<span class="num">1</span>)
+    y_true = y_test.argmax(axis=<span class="num">1</span>)
+    <span class="fn">print</span>(<span class="fn">classification_report</span>(y_true, y_pred, target_names=CLASS_NAMES))
+
+    <span class="cmt"># חיזוי לוחות — כולל חדשים שאינם במילון!</span>
+    <span class="fn">predict_board</span>(model, <span class="str">"XXX      "</span>)  <span class="cmt"># ניצחון ברור</span>
+    <span class="fn">predict_board</span>(model, <span class="str">"OOOXX    "</span>)  <span class="cmt"># הפסד ברור</span>
+    <span class="fn">predict_board</span>(model, <span class="str">"XO X  O  "</span>)  <span class="cmt"># לוח חדש</span>
+    <span class="fn">predict_board</span>(model, <span class="str">"X   O    "</span>)  <span class="cmt"># שלב מוקדם</span></pre>
+  </div>
+
+  <h3>סיכום — מה CNN עושה שמילון לא יכול</h3>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title" style="color:var(--c5);">📚 מילון בלבד — מגבלות</div>
+      <ul class="steps">
+        <li>רק 4,636 לוחות ידועים — אבל יש ~255,168 לוחות XO חוקיים אפשריים</li>
+        <li>לוח חדש שלא נצפה = אין תשובה</li>
+        <li>לא לומד כלל כללי, רק שינון</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--c3);">🧠 CNN — יתרונות</div>
+      <ul class="steps">
+        <li>לומדת מהנתונים: "שלוש X בשורה = ניצחון" — ומכלילה</li>
+        <li>עונה לכל לוח, כולל לוחות שלא ראתה</li>
+        <li>ניתן לשפר על ידי הוספת נתונים</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="hl ok" style="margin-top:1.5rem;">
+    <strong>🎯 הגישה המומלצת:</strong> השתמש ב-<code style="font-family:var(--mono);">sample_weight=counts</code> כי לוחות שנצפו פעמים רבות ב-RL מכילים ידע אמין יותר. תן למודל ללמוד מהניסיון הצבור — לא רק מהקיום.
+  </div>
+</div>
+
+<footer>
+  <p>מדריך תלמיד — CNN × tournament_learning.json · בלי"ח רמת גן · תשפ"ה</p>
+  <p style="margin-top:.4rem;color:var(--text3);">מהמילון לרשת נוירונים — הכל מחובר</p>
+</footer>
+
+</body>
+</html>

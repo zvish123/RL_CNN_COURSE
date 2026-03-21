@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פרוטוקול צ'אט — שלב 5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --panel: #090f18;
+    --panel2: #0d1520;
+    --border: #1a3a5c;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --accent4: #bd00ff;
+    --text: #c8dff0;
+    --text-dim: #5a7a9a;
+    --code-bg: #03080e;
+    --keyword: #ff6b35;
+    --string: #39ff14;
+    --comment: #3a6a4a;
+    --func: #00d4ff;
+    --cls: #bd00ff;
+    --num: #ffd700;
+    --slide-w: 100vw;
+    --slide-h: 100vh;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* ===== GRID BACKGROUND ===== */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== SLIDESHOW ===== */
+  .slides-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 48px 24px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  /* ===== HEADER ===== */
+  .slide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    flex-shrink: 0;
+  }
+  .slide-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    letter-spacing: 1px;
+  }
+  .slide-num {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    font-size: 1.2rem;
+  }
+  .tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid;
+    letter-spacing: 1px;
+  }
+  .tag-protocol { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.07); }
+  .tag-code { color: var(--accent2); border-color: var(--accent2); background: rgba(255,107,53,0.07); }
+  .tag-flow { color: var(--accent3); border-color: var(--accent3); background: rgba(57,255,20,0.07); }
+  .tag-arch { color: var(--accent4); border-color: var(--accent4); background: rgba(189,0,255,0.07); }
+
+  /* ===== BODY LAYOUT ===== */
+  .slide-body {
+    flex: 1;
+    display: flex;
+    gap: 20px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .col { display: flex; flex-direction: column; flex: 1; gap: 14px; min-width: 0; }
+  .col-40 { flex: 0 0 40%; }
+  .col-50 { flex: 0 0 50%; }
+  .col-55 { flex: 0 0 55%; }
+  .col-45 { flex: 0 0 45%; }
+  .col-60 { flex: 0 0 60%; }
+
+  /* ===== PANELS ===== */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+  .panel.accent2::before { background: linear-gradient(90deg, transparent, var(--accent2), transparent); }
+  .panel.accent3::before { background: linear-gradient(90deg, transparent, var(--accent3), transparent); }
+  .panel.accent4::before { background: linear-gradient(90deg, transparent, var(--accent4), transparent); }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .panel.accent2 .panel-title { color: var(--accent2); }
+  .panel.accent3 .panel-title { color: var(--accent3); }
+  .panel.accent4 .panel-title { color: var(--accent4); }
+
+  /* ===== CODE BLOCKS ===== */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid #0d2035;
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    line-height: 1.7;
+    overflow-y: auto;
+    flex: 1;
+    white-space: pre;
+    direction: ltr;
+    text-align: left;
+  }
+  .code-block::-webkit-scrollbar { width: 4px; }
+  .code-block::-webkit-scrollbar-track { background: var(--code-bg); }
+  .code-block::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .kw { color: var(--keyword); }
+  .st { color: var(--string); }
+  .cm { color: var(--comment); }
+  .fn { color: var(--func); }
+  .cl { color: var(--cls); }
+  .nm { color: var(--num); }
+  .op { color: #7ab8d4; }
+  .at { color: #ffd700; }
+  .de { color: #bd00ff; }
+
+  /* ===== EXPLANATION ITEMS ===== */
+  .explain-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .explain-list li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 1.2rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .explain-list li .icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .explain-list li strong { color: var(--accent); }
+  .explain-list.accent2 li strong { color: var(--accent2); }
+  .explain-list.accent3 li strong { color: var(--accent3); }
+  .explain-list.accent4 li strong { color: var(--accent4); }
+
+  /* ===== HIGHLIGHT BOX ===== */
+  .highlight-box {
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 1.2rem;
+    line-height: 1.6;
+  }
+  .hb-cyan { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.25); color: var(--text); }
+  .hb-orange { background: rgba(255,107,53,0.06); border: 1px solid rgba(255,107,53,0.25); }
+  .hb-green { background: rgba(57,255,20,0.06); border: 1px solid rgba(57,255,20,0.25); }
+  .hb-purple { background: rgba(189,0,255,0.06); border: 1px solid rgba(189,0,255,0.25); }
+
+  .hb-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .hb-cyan .hb-title { color: var(--accent); }
+  .hb-orange .hb-title { color: var(--accent2); }
+  .hb-green .hb-title { color: var(--accent3); }
+  .hb-purple .hb-title { color: var(--accent4); }
+
+  /* ===== FLOW DIAGRAM ===== */
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+  }
+  .flow-node {
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    text-align: center;
+    min-width: 200px;
+    border: 1px solid;
+  }
+  .fn-client { background: rgba(0,212,255,0.1); border-color: var(--accent); color: var(--accent); }
+  .fn-proto { background: rgba(189,0,255,0.1); border-color: var(--accent4); color: var(--accent4); }
+  .fn-server { background: rgba(255,107,53,0.1); border-color: var(--accent2); color: var(--accent2); }
+  .fn-db { background: rgba(57,255,20,0.1); border-color: var(--accent3); color: var(--accent3); }
+  .flow-arrow {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    height: 14px;
+    line-height: 14px;
+  }
+  .flow-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* ===== DIAGRAM BOXES ===== */
+  .diagram-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .d-box {
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    border: 1px solid;
+    min-width: 90px;
+  }
+  .d-box .d-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .d-box .d-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+  }
+  .d-cyan { background: rgba(0,212,255,0.07); border-color: var(--accent); }
+  .d-cyan .d-title { color: var(--accent); }
+  .d-orange { background: rgba(255,107,53,0.07); border-color: var(--accent2); }
+  .d-orange .d-title { color: var(--accent2); }
+  .d-green { background: rgba(57,255,20,0.07); border-color: var(--accent3); }
+  .d-green .d-title { color: var(--accent3); }
+  .d-purple { background: rgba(189,0,255,0.07); border-color: var(--accent4); }
+  .d-purple .d-title { color: var(--accent4); }
+
+  .d-arrow { color: var(--text-dim); font-size: 1.2rem; }
+
+  /* ===== TITLE SLIDE ===== */
+  .title-slide-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    gap: 20px;
+    position: relative;
+  }
+  .big-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent4));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    line-height: 1.2;
+    letter-spacing: 2px;
+  }
+  .big-subtitle {
+    font-family: 'Heebo', sans-serif;
+    font-size: 1.3rem;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+  .badge-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: 1px;
+  }
+  .badge-c { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.07); }
+  .badge-o { color: var(--accent2); border-color: var(--accent2); background: rgba(255,107,53,0.07); }
+  .badge-g { color: var(--accent3); border-color: var(--accent3); background: rgba(57,255,20,0.07); }
+  .badge-p { color: var(--accent4); border-color: var(--accent4); background: rgba(189,0,255,0.07); }
+
+  .hex-deco {
+    position: absolute;
+    font-size: 8rem;
+    color: rgba(0,212,255,0.04);
+    font-family: 'Orbitron', monospace;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* ===== FIELD TABLE ===== */
+  .field-table { width: 100%; border-collapse: collapse; font-size: 1.2rem; }
+  .field-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: right;
+  }
+  .field-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(26,58,92,0.4);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .field-table tr:last-child td { border-bottom: none; }
+  .field-name {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .field-type {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent4);
+    font-size: 1.2rem;
+  }
+  .field-desc { color: var(--text); }
+  .field-req {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    text-align: center;
+  }
+  .req-yes { color: var(--accent2); }
+  .req-no { color: var(--text-dim); }
+
+  /* ===== MESSAGE EXAMPLES ===== */
+  .msg-example {
+    background: var(--code-bg);
+    border: 1px solid;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    direction: ltr;
+    text-align: left;
+  }
+  .msg-example.from-client { border-color: rgba(0,212,255,0.3); }
+  .msg-example.from-server { border-color: rgba(255,107,53,0.3); }
+  .msg-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .msg-label.client { color: var(--accent); }
+  .msg-label.server { color: var(--accent2); }
+
+  /* ===== STEP INDICATOR ===== */
+  .step-list { display: flex; flex-direction: column; gap: 8px; }
+  .step-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 1.2rem;
+    line-height: 1.5;
+  }
+  .step-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid;
+    font-weight: 700;
+  }
+  .sn-c { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.1); }
+  .sn-o { color: var(--accent2); border-color: var(--accent2); background: rgba(255,107,53,0.1); }
+  .sn-g { color: var(--accent3); border-color: var(--accent3); background: rgba(57,255,20,0.1); }
+  .sn-p { color: var(--accent4); border-color: var(--accent4); background: rgba(189,0,255,0.1); }
+
+  /* ===== COMPARE TABLE ===== */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 1.2rem; }
+  .compare-table th {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    padding: 8px 12px;
+    text-align: center;
+    border-bottom: 2px solid var(--border);
+  }
+  .compare-table th.v4 { color: var(--text-dim); }
+  .compare-table th.v5 { color: var(--accent3); }
+  .compare-table th.topic { color: var(--text-dim); text-align: right; }
+  .compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(26,58,92,0.3);
+    line-height: 1.4;
+    text-align: center;
+  }
+  .compare-table td:first-child { text-align: right; color: var(--text-dim); font-size: 1.2rem; }
+  .compare-table td.old { color: #5a6070; font-family: 'Share Tech Mono', monospace; font-size: 1.2rem; }
+  .compare-table td.new { color: var(--accent3); font-family: 'Share Tech Mono', monospace; font-size: 1.2rem; }
+  .compare-table tr:last-child td { border-bottom: none; }
+
+  /* ===== NAVIGATION ===== */
+  .nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 40px;
+    background: linear-gradient(to top, rgba(5,10,15,0.95), transparent);
+    z-index: 100;
+  }
+  .nav-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    padding: 8px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.07); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .progress-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); width: 18px; border-radius: 3px; }
+  .dot:hover { background: var(--text-dim); }
+
+  /* ===== SCROLLABLE AREAS ===== */
+  .scroll-y { overflow-y: auto; flex: 1; min-height: 0; }
+  .scroll-y::-webkit-scrollbar { width: 4px; }
+  .scroll-y::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes pulse-border {
+    0%, 100% { border-color: rgba(0,212,255,0.2); }
+    50% { border-color: rgba(0,212,255,0.6); }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+  .scan-line {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(0,212,255,0.15), transparent);
+    animation: scan 6s linear infinite;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* ===== JSON WIRE FORMAT ANIMATION ===== */
+  .wire-animate {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .wire-packet {
+    background: var(--code-bg);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 4px;
+    padding: 7px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    direction: ltr;
+    text-align: left;
+    color: var(--text-dim);
+  }
+  .wire-packet .j-key { color: var(--accent); }
+  .wire-packet .j-val { color: var(--accent3); }
+  .wire-packet .j-str { color: var(--string); }
+  .wire-packet .j-end { color: var(--text-dim); }
+
+  .two-col-code { display: flex; gap: 10px; }
+  .two-col-code .code-block { flex: 1; }
+
+  /* small helper */
+  .mt-8 { margin-top: 8px; }
+  .mb-4 { margin-bottom: 4px; }
+  .text-sm { font-size: 1.2rem; color: var(--text-dim); line-height: 1.5; }
+  .text-center { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="scan-line"></div>
+
+<div class="slides-container" id="slides">
+
+  <!-- ========== SLIDE 0: TITLE ========== -->
+  <div class="slide active" data-index="0">
+    <div class="slide-header">
+      <span class="slide-title">CHAT PROTOCOL</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-protocol">PROTOCOL</span>
+        <span class="slide-num">01 / 09</span>
+      </div>
+    </div>
+    <div class="title-slide-inner">
+      <div class="hex-deco" style="top:-40px;right:-60px;">⬡</div>
+      <div class="hex-deco" style="bottom:-60px;left:-40px;font-size:12rem;">⬡</div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size: 1.2rem;letter-spacing:4px;color:var(--text-dim)">// שלב 5 — ארכיטקטורת תוכנה</div>
+        <div class="big-title">מחלקת<br>פרוטוקול</div>
+        <div class="big-subtitle">ChatProtocol &amp; ProtocolMessage</div>
+      </div>
+
+      <div class="badge-row">
+        <span class="badge badge-c">ProtocolMessage</span>
+        <span class="badge badge-p">ChatProtocol</span>
+        <span class="badge badge-o">SQLAlchemy</span>
+        <span class="badge badge-g">Threading</span>
+      </div>
+
+      <div style="max-width:520px;text-align:center;color:var(--text-dim);font-size: 1.2rem;line-height:1.7;margin-top:8px">
+        במקום לפזר <span style="color:var(--accent);font-family:'Share Tech Mono',monospace">json.loads</span>,
+        <span style="color:var(--accent);font-family:'Share Tech Mono',monospace">json.dumps</span>,
+        delimiter ו־buffer בכל קובץ —<br>
+        עוטפים הכל במחלקה אחת ייעודית
+      </div>
+
+      <div class="diagram-row" style="margin-top:10px">
+        <div class="d-box d-cyan"><div class="d-title">CLIENT</div><div class="d-sub">client_chat_v5</div></div>
+        <div class="d-arrow">⟷</div>
+        <div class="d-box d-purple"><div class="d-title">PROTOCOL</div><div class="d-sub">protocol.py</div></div>
+        <div class="d-arrow">⟷</div>
+        <div class="d-box d-orange"><div class="d-title">SERVER</div><div class="d-sub">server_chat_v5</div></div>
+        <div class="d-arrow">⟷</div>
+        <div class="d-box d-green"><div class="d-title">DATABASE</div><div class="d-sub">SQLite / ORM</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 1: PROBLEM ========== -->
+  <div class="slide" data-index="1">
+    <div class="slide-header">
+      <span class="slide-title">הבעיה — קוד מפוזר</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-arch">ARCH</span>
+        <span class="slide-num">02 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-50">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">❌ שלב 4 — לוגיקת JSON מפוזרת</div>
+          <div class="code-block" style="flex:1">
+<span class="cm"># בכל פעולה — json ידני</span>
+<span class="kw">def</span> <span class="fn">send_json</span>(sock, data_dict):
+    message = json.<span class="fn">dumps</span>(data_dict) + <span class="st">"\n"</span>
+    sock.<span class="fn">sendall</span>(message.<span class="fn">encode</span>(<span class="st">"utf-8"</span>))
+
+<span class="kw">def</span> <span class="fn">recv_json_lines</span>(sock, buffer):
+    data = sock.<span class="fn">recv</span>(<span class="nm">1024</span>)
+    buffer += data.<span class="fn">decode</span>(<span class="st">"utf-8"</span>)
+    <span class="cm"># פיצול ידני ע"פ \n...</span>
+
+<span class="cm"># בתוך handle_client — שוב ושוב:</span>
+<span class="fn">send_json</span>(sock, {
+    <span class="st">"status"</span>: <span class="st">"error"</span>,
+    <span class="st">"message"</span>: <span class="st">"User already exists"</span>
+})
+<span class="fn">send_json</span>(sock, {
+    <span class="st">"action"</span>: <span class="st">"broadcast"</span>,
+    <span class="st">"from"</span>: sender,
+    <span class="st">"message"</span>: message_text
+})
+<span class="cm"># ... אותו קוד שוב בקליינט...</span></div>
+        </div>
+      </div>
+      <div class="col col-50">
+        <div class="panel accent3" style="flex:0 0 auto">
+          <div class="panel-title">⚠️ הבעיות</div>
+          <ul class="explain-list accent3">
+            <li><span class="icon">🔁</span><div><strong>כפילות קוד</strong> — אותו json.dumps בשרת ובקליינט, באותו עיצוב</div></li>
+            <li><span class="icon">💥</span><div><strong>שגיאות קלות</strong> — שכחת מפתח? שגיאת typo ב-"from"/"from_user"?</div></li>
+            <li><span class="icon">🔀</span><div><strong>Buffer מפוזר</strong> — המשתנה buffer מועבר ידנית כל הזמן</div></li>
+            <li><span class="icon">🧩</span><div><strong>ולידציה מפוזרת</strong> — בדיקת שדות חובה בכל action בנפרד</div></li>
+            <li><span class="icon">📦</span><div><strong>אין טיפוס מוגדר</strong> — dict פשוט, לא ברור מה המבנה</div></li>
+          </ul>
+        </div>
+        <div class="panel accent2" style="flex:1">
+          <div class="panel-title">✅ שלב 5 — הפתרון</div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num sn-c">1</div>
+              <div><strong style="color:var(--accent)">ProtocolMessage</strong> — dataclass שמייצג הודעה</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-p">2</div>
+              <div><strong style="color:var(--accent4)">ChatProtocol</strong> — מחלקה שמנהלת encode/decode/validate</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">3</div>
+              <div><strong style="color:var(--accent3)">protocol.py</strong> — קובץ משותף, נטען גם ב-server וגם ב-client</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-o">4</div>
+              <div><strong style="color:var(--accent2)">Buffer פרטי</strong> — כל חיבור מקבל instance נפרד של ChatProtocol</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 2: ProtocolMessage ========== -->
+  <div class="slide" data-index="2">
+    <div class="slide-header">
+      <span class="slide-title">ProtocolMessage — מבנה הנתונים</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-protocol">DATACLASS</span>
+        <span class="slide-num">03 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-55">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">📦 ProtocolMessage — dataclass</div>
+          <div class="code-block">
+<span class="de">@dataclass</span>
+<span class="kw">class</span> <span class="cl">ProtocolMessage</span>:
+    action:    <span class="cl">str</span>                    <span class="cm"># חובה תמיד</span>
+    username:  <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># register/login</span>
+    password:  <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># register/login</span>
+    message:   <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># שליחת הודעה</span>
+    status:    <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># "ok" / "error"</span>
+    error:     <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># טקסט שגיאה</span>
+    from_user: <span class="cl">Optional</span>[<span class="cl">str</span>] = <span class="kw">None</span>  <span class="cm"># broadcast</span>
+
+    <span class="kw">def</span> <span class="fn">to_dict</span>(<span class="kw">self</span>) -> <span class="cl">dict</span>:
+        <span class="cm"># כולל רק שדות שאינם None</span>
+        data = {<span class="st">"action"</span>: <span class="kw">self</span>.action}
+        <span class="kw">if</span> <span class="kw">self</span>.username <span class="kw">is not None</span>:
+            data[<span class="st">"username"</span>] = <span class="kw">self</span>.username
+        <span class="cm"># ... שאר השדות...</span>
+        <span class="kw">return</span> data
+
+    <span class="de">@classmethod</span>
+    <span class="kw">def</span> <span class="fn">from_dict</span>(cls, data: <span class="cl">dict</span>) -> <span class="st">"ProtocolMessage"</span>:
+        <span class="cm"># בנייה מ-dict (בא מ-JSON)</span>
+        <span class="kw">return</span> cls(
+            action=data.<span class="fn">get</span>(<span class="st">"action"</span>, <span class="st">""</span>),
+            username=data.<span class="fn">get</span>(<span class="st">"username"</span>),
+            from_user=data.<span class="fn">get</span>(<span class="st">"from"</span>),  <span class="cm"># שים לב!</span>
+            <span class="cm"># ...</span>
+        )</div>
+        </div>
+      </div>
+      <div class="col col-45">
+        <div class="panel accent4">
+          <div class="panel-title">📋 שדות ותפקידיהם</div>
+          <table class="field-table">
+            <tr>
+              <th>שדה</th>
+              <th>טיפוס</th>
+              <th>נדרש</th>
+              <th>מטרה</th>
+            </tr>
+            <tr>
+              <td class="field-name">action</td>
+              <td class="field-type">str</td>
+              <td class="field-req req-yes">✓</td>
+              <td class="field-desc">register/login/message/logout/broadcast</td>
+            </tr>
+            <tr>
+              <td class="field-name">username</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">שם משתמש (register/login)</td>
+            </tr>
+            <tr>
+              <td class="field-name">password</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">סיסמה (register/login)</td>
+            </tr>
+            <tr>
+              <td class="field-name">message</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">תוכן הודעה / תשובה מהשרת</td>
+            </tr>
+            <tr>
+              <td class="field-name">status</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">"ok" או "error"</td>
+            </tr>
+            <tr>
+              <td class="field-name">error</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">טקסט שגיאה מהשרת</td>
+            </tr>
+            <tr>
+              <td class="field-name">from_user</td>
+              <td class="field-type">str?</td>
+              <td class="field-req req-no">—</td>
+              <td class="field-desc">שולח ב-broadcast</td>
+            </tr>
+          </table>
+        </div>
+        <div class="highlight-box hb-cyan mt-8">
+          <div class="hb-title">💡 למה dataclass?</div>
+          במקום dict רגיל — הכי קריא, יש השלמת קוד ב-IDE,
+          ברור מה השדות האפשריים, ולא ניתן "לשכוח" שדה.
+          <br><strong>from_user ↔ "from"</strong> — ההמרה נעשית פעם אחת ב-<code style="color:var(--accent)">from_dict</code> בלבד.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 3: ChatProtocol ========== -->
+  <div class="slide" data-index="3">
+    <div class="slide-header">
+      <span class="slide-title">ChatProtocol — מנוע הפרוטוקול</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-protocol">CLASS</span>
+        <span class="slide-num">04 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-55">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">⚙️ ChatProtocol — מתודות</div>
+          <div class="code-block">
+<span class="kw">class</span> <span class="cl">ChatProtocol</span>:
+    DELIMITER = <span class="st">"\n"</span>   <span class="cm"># מפריד הודעות</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>.buffer = <span class="st">""</span>  <span class="cm"># buffer פרטי לכל instance</span>
+
+    <span class="kw">def</span> <span class="fn">encode</span>(<span class="kw">self</span>, msg: <span class="cl">ProtocolMessage</span>) -> <span class="cl">bytes</span>:
+        <span class="cm"># ProtocolMessage → JSON bytes עם \n</span>
+        raw = json.<span class="fn">dumps</span>(msg.<span class="fn">to_dict</span>()) + <span class="kw">self</span>.DELIMITER
+        <span class="kw">return</span> raw.<span class="fn">encode</span>(<span class="st">"utf-8"</span>)
+
+    <span class="kw">def</span> <span class="fn">feed_data</span>(<span class="kw">self</span>, raw_data: <span class="cl">bytes</span>) -> <span class="cl">List</span>[<span class="cl">ProtocolMessage</span>]:
+        <span class="cm"># bytes → רשימת ProtocolMessage</span>
+        <span class="kw">self</span>.buffer += raw_data.<span class="fn">decode</span>(<span class="st">"utf-8"</span>)
+        messages = []
+        <span class="kw">while</span> <span class="kw">self</span>.DELIMITER <span class="kw">in</span> <span class="kw">self</span>.buffer:
+            line, <span class="kw">self</span>.buffer = <span class="kw">self</span>.buffer.<span class="fn">split</span>(<span class="kw">self</span>.DELIMITER, <span class="nm">1</span>)
+            <span class="kw">if</span> line.<span class="fn">strip</span>():
+                msg = <span class="cl">ProtocolMessage</span>.<span class="fn">from_dict</span>(json.<span class="fn">loads</span>(line))
+                messages.<span class="fn">append</span>(msg)
+        <span class="kw">return</span> messages
+
+    <span class="kw">def</span> <span class="fn">validate</span>(<span class="kw">self</span>, msg) -> <span class="cl">Optional</span>[<span class="cl">str</span>]:
+        <span class="kw">if not</span> msg.action:
+            <span class="kw">return</span> <span class="st">"Missing action"</span>
+        <span class="kw">if</span> msg.action <span class="kw">in</span> (<span class="st">"register"</span>, <span class="st">"login"</span>):
+            <span class="kw">if not</span> msg.username: <span class="kw">return</span> <span class="st">"Missing username"</span>
+            <span class="kw">if not</span> msg.password: <span class="kw">return</span> <span class="st">"Missing password"</span>
+        <span class="kw">if</span> msg.action == <span class="st">"message"</span>:
+            <span class="kw">if not</span> msg.message: <span class="kw">return</span> <span class="st">"Missing message"</span>
+        <span class="kw">return None</span>  <span class="cm"># תקין</span></div>
+        </div>
+      </div>
+      <div class="col col-45">
+        <div class="panel accent2">
+          <div class="panel-title">🏭 Factory Methods (static)</div>
+          <div class="code-block" style="flex:0 0 auto">
+<span class="de">@staticmethod</span>
+<span class="kw">def</span> <span class="fn">make_ok</span>(action, text):
+    <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+        action=action, status=<span class="st">"ok"</span>,
+        message=text
+    )
+
+<span class="de">@staticmethod</span>
+<span class="kw">def</span> <span class="fn">make_error</span>(action, error_text):
+    <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+        action=action, status=<span class="st">"error"</span>,
+        error=error_text
+    )
+
+<span class="de">@staticmethod</span>
+<span class="kw">def</span> <span class="fn">make_broadcast</span>(from_user, text):
+    <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+        action=<span class="st">"broadcast"</span>,
+        from_user=from_user, message=text
+    )</div>
+        </div>
+        <div class="highlight-box hb-orange mt-8">
+          <div class="hb-title">💡 Factory Methods</div>
+          במקום לבנות dict ידנית בכל מקום — קוראים לפונקציה
+          בעלת שם תיאורי. <strong>make_ok, make_error, make_broadcast</strong>
+          זה <em>Factory Pattern</em> — דפוס עיצוב קלאסי.
+        </div>
+        <div class="highlight-box hb-purple mt-8">
+          <div class="hb-title">💡 instance per connection</div>
+          <code style="color:var(--accent)">protocol = ChatProtocol()</code> נוצר בתוך <code style="color:var(--accent2)">handle_client()</code> —
+          כל לקוח מקבל buffer משלו. אין race condition!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 4: WIRE FORMAT ========== -->
+  <div class="slide" data-index="4">
+    <div class="slide-header">
+      <span class="slide-title">Wire Format — JSON על הסוקט</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-flow">FLOW</span>
+        <span class="slide-num">05 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-50">
+        <div class="panel" style="flex:0 0 auto">
+          <div class="panel-title">📤 הודעות מהלקוח לשרת</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div>
+              <div class="msg-label client">▶ REGISTER</div>
+              <div class="msg-example from-client">{"action": "register", "username": "alice", "password": "1234"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+            <div>
+              <div class="msg-label client">▶ LOGIN</div>
+              <div class="msg-example from-client">{"action": "login", "username": "alice", "password": "1234"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+            <div>
+              <div class="msg-label client">▶ MESSAGE</div>
+              <div class="msg-example from-client">{"action": "message", "message": "שלום לכולם!"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+            <div>
+              <div class="msg-label client">▶ LOGOUT</div>
+              <div class="msg-example from-client">{"action": "logout"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-box hb-purple mt-8">
+          <div class="hb-title">⚡ Delimiter — \n</div>
+          כל הודעה מסתיימת ב-<strong>\n</strong>. זה מאפשר לשלוח כמה הודעות
+          ב-recv אחד ולפצל אותן נכון ב-<code style="color:var(--accent)">feed_data()</code>.
+        </div>
+      </div>
+      <div class="col col-50">
+        <div class="panel accent2" style="flex:0 0 auto">
+          <div class="panel-title">📥 תשובות מהשרת ללקוח</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div>
+              <div class="msg-label server">◀ OK RESPONSE</div>
+              <div class="msg-example from-server">{"action": "login", "status": "ok", "message": "Login successful"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+            <div>
+              <div class="msg-label server">◀ ERROR RESPONSE</div>
+              <div class="msg-example from-server">{"action": "login", "status": "error", "error": "Invalid username or password"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+            <div>
+              <div class="msg-label server">◀ BROADCAST</div>
+              <div class="msg-example from-server">{"action": "broadcast", "from": "bob", "message": "היי!"}<span style="color:var(--accent4);background:rgba(189,0,255,0.2);padding:1px 4px;border-radius:2px">\n</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-box hb-green mt-8">
+          <div class="hb-title">💡 Buffer — הבעיה והפתרון</div>
+          <strong>הבעיה:</strong> TCP לא מבטיח שכל recv() יחזיר הודעה שלמה.<br>
+          <strong>הפתרון:</strong> <code style="color:var(--accent)">feed_data()</code> צובר bytes ב-buffer, ורק
+          כשנמצא <code>\n</code> — מוציא הודעה שלמה.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 5: DATA FLOW ========== -->
+  <div class="slide" data-index="5">
+    <div class="slide-header">
+      <span class="slide-title">זרימת מידע — שליחת הודעה</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-flow">DATA FLOW</span>
+        <span class="slide-num">06 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-45">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">👤 צד הלקוח (client_chat_v5)</div>
+          <div class="code-block">
+<span class="cm"># שלב 1 — משתמש כותב פקודה</span>
+action = <span class="fn">input</span>(<span class="st">"Action: "</span>)  <span class="cm"># "message"</span>
+text   = <span class="fn">input</span>(<span class="st">"Message: "</span>)
+
+<span class="cm"># שלב 2 — בניית ProtocolMessage</span>
+msg = <span class="cl">ProtocolMessage</span>(
+    action=<span class="st">"message"</span>,
+    message=text
+)
+
+<span class="cm"># שלב 3 — encode → bytes</span>
+<span class="cm"># {"action":"message","message":"היי"}\n</span>
+sock.<span class="fn">sendall</span>(send_protocol.<span class="fn">encode</span>(msg))
+
+<span class="cm"># ===== Thread נפרד — מאזין =====</span>
+<span class="kw">def</span> <span class="fn">listen_to_server</span>(sock, protocol):
+    raw = sock.<span class="fn">recv</span>(<span class="nm">1024</span>)
+    msgs = protocol.<span class="fn">feed_data</span>(raw)
+    <span class="kw">for</span> m <span class="kw">in</span> msgs:
+        <span class="kw">if</span> m.action == <span class="st">"broadcast"</span>:
+            <span class="fn">print</span>(<span class="fn">f</span><span class="st">"[CHAT] {m.from_user}: {m.message}"</span>)</div>
+        </div>
+      </div>
+      <div class="col" style="flex:0 0 auto;width:70px;justify-content:center;align-items:center">
+        <div class="flow-container" style="height:100%">
+          <div style="writing-mode:vertical-rl;text-orientation:mixed;color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size: 1.2rem;letter-spacing:2px;transform:rotate(180deg)">NETWORK SOCKET</div>
+          <div style="flex:1;width:2px;background:linear-gradient(to bottom,var(--accent),var(--accent4));margin:8px auto;position:relative">
+            <div style="position:absolute;top:30%;left:-6px;color:var(--accent);font-size: 1.2rem;">▶</div>
+            <div style="position:absolute;top:60%;left:-6px;color:var(--accent2);font-size: 1.2rem;">◀</div>
+          </div>
+        </div>
+      </div>
+      <div class="col col-45">
+        <div class="panel accent2" style="flex:1">
+          <div class="panel-title">🖥️ צד השרת (server_chat_v5)</div>
+          <div class="code-block">
+<span class="kw">def</span> <span class="fn">handle_client</span>(client_socket, addr):
+    <span class="cm"># instance נפרד לכל לקוח</span>
+    protocol = <span class="cl">ChatProtocol</span>()
+
+    <span class="kw">while True</span>:
+        <span class="cm"># שלב 4 — קבלת bytes</span>
+        raw_data = client_socket.<span class="fn">recv</span>(<span class="nm">1024</span>)
+
+        <span class="cm"># שלב 5 — feed_data → הודעות</span>
+        msgs = protocol.<span class="fn">feed_data</span>(raw_data)
+
+        <span class="kw">for</span> req <span class="kw">in</span> msgs:
+            <span class="cm"># שלב 6 — ולידציה מרכזית</span>
+            err = protocol.<span class="fn">validate</span>(req)
+            <span class="kw">if</span> err:
+                client_socket.<span class="fn">sendall</span>(protocol.<span class="fn">encode</span>(
+                    <span class="cl">ChatProtocol</span>.<span class="fn">make_error</span>(req.action, err)
+                ))
+                <span class="kw">continue</span>
+
+            <span class="cm"># שלב 7 — טיפול לפי action</span>
+            <span class="kw">if</span> req.action == <span class="st">"message"</span>:
+                <span class="fn">broadcast</span>(
+                    <span class="cl">ChatProtocol</span>.<span class="fn">make_broadcast</span>(
+                        sender, req.message
+                    )
+                )</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 6: LOGIN FLOW ========== -->
+  <div class="slide" data-index="6">
+    <div class="slide-header">
+      <span class="slide-title">זרימה מלאה — Login + Message</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-flow">SEQUENCE</span>
+        <span class="slide-num">07 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body">
+      <div class="col col-50">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">🔐 תהליך Login עם DB</div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num sn-c">1</div>
+              <div>לקוח שולח <code style="color:var(--accent)">ProtocolMessage(action="login", username="alice", password="1234")</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-p">2</div>
+              <div><code style="color:var(--accent4)">encode()</code> → <code style="color:var(--accent3)">{"action":"login","username":"alice","password":"1234"}\n</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-c">3</div>
+              <div>שרת מקבל bytes, <code style="color:var(--accent)">feed_data()</code> → ProtocolMessage</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-p">4</div>
+              <div><code style="color:var(--accent4)">validate()</code> — בודק שיש username ו-password</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-o">5</div>
+              <div>שאילתת DB: <code style="color:var(--accent2)">session.query(User).filter_by(...).first()</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">6</div>
+              <div>מוסיף ללקוחות: <code style="color:var(--accent3)">clients.append({"socket":..., "username":...})</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-c">7</div>
+              <div>שרת שולח <code style="color:var(--accent)">make_ok("login", "Login successful")</code> → קליינט</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col col-50">
+        <div class="panel accent3" style="flex:0 0 auto">
+          <div class="panel-title">💬 תהליך Broadcast</div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num sn-g">1</div>
+              <div>alice שולחת <code style="color:var(--accent3)">action="message", message="היי!"</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">2</div>
+              <div>שרת מחפש username של הסוקט: <code style="color:var(--accent3)">get_username_by_socket()</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">3</div>
+              <div>שולח ל-alice אישור: <code style="color:var(--accent3)">make_ok("message", "Message received")</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">4</div>
+              <div>קורא ל-<code style="color:var(--accent3)">broadcast(make_broadcast("alice","היי!"), exclude_sock=alice)</code></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num sn-g">5</div>
+              <div>כל שאר הלקוחות מקבלים: <code style="color:var(--accent3)">{"action":"broadcast","from":"alice","message":"היי!"}</code></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel accent4 mt-8" style="flex:1">
+          <div class="panel-title">⚡ כוח הפרוטוקול — ולידציה מרכזית</div>
+          <div class="code-block" style="flex:0 0 auto">
+<span class="cm"># V4 — ולידציה בכל action בנפרד:</span>
+<span class="kw">if not</span> username <span class="kw">or not</span> password:
+    <span class="fn">send_json</span>(sock, {<span class="st">"status"</span>: <span class="st">"error"</span>, ...})
+
+<span class="cm"># V5 — פעם אחת לפני הכל:</span>
+err = protocol.<span class="fn">validate</span>(req)
+<span class="kw">if</span> err:
+    sock.<span class="fn">sendall</span>(protocol.<span class="fn">encode</span>(
+        <span class="cl">ChatProtocol</span>.<span class="fn">make_error</span>(req.action, err)
+    ))
+    <span class="kw">continue</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 7: COMPARE V4 vs V5 ========== -->
+  <div class="slide" data-index="7">
+    <div class="slide-header">
+      <span class="slide-title">השוואה — V4 מול V5</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-arch">COMPARE</span>
+        <span class="slide-num">08 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body" style="flex-direction:column;gap:16px">
+      <div style="display:flex;gap:16px;flex:1;min-height:0">
+        <div class="panel" style="flex:1">
+          <div class="panel-title">📊 השוואת קוד</div>
+          <table class="compare-table">
+            <tr>
+              <th class="topic">נושא</th>
+              <th class="v4">V4</th>
+              <th class="v5">✅ V5</th>
+            </tr>
+            <tr>
+              <td>שליחת JSON</td>
+              <td class="old">send_json(sock, dict)</td>
+              <td class="new">sock.sendall(protocol.encode(msg))</td>
+            </tr>
+            <tr>
+              <td>קבלת JSON</td>
+              <td class="old">recv_json_lines(sock, buffer)</td>
+              <td class="new">protocol.feed_data(raw_data)</td>
+            </tr>
+            <tr>
+              <td>Buffer</td>
+              <td class="old">פרמטר ידני בכל קריאה</td>
+              <td class="new">self.buffer בתוך instance</td>
+            </tr>
+            <tr>
+              <td>ולידציה</td>
+              <td class="old">if not username: ... (מפוזר)</td>
+              <td class="new">protocol.validate(req)</td>
+            </tr>
+            <tr>
+              <td>בניית תשובת OK</td>
+              <td class="old">{"status":"ok","message":"..."}</td>
+              <td class="new">ChatProtocol.make_ok(...)</td>
+            </tr>
+            <tr>
+              <td>בניית Broadcast</td>
+              <td class="old">{"action":"broadcast","from":...}</td>
+              <td class="new">ChatProtocol.make_broadcast(...)</td>
+            </tr>
+            <tr>
+              <td>מבנה נתונים</td>
+              <td class="old">dict רגיל</td>
+              <td class="new">ProtocolMessage (dataclass)</td>
+            </tr>
+            <tr>
+              <td>שיתוף קוד</td>
+              <td class="old">אין — כפילות בין client/server</td>
+              <td class="new">protocol.py — קובץ משותף</td>
+            </tr>
+          </table>
+        </div>
+        <div class="col col-40">
+          <div class="panel accent3">
+            <div class="panel-title">🏗️ עקרונות תכנה שמיישמים</div>
+            <ul class="explain-list accent3">
+              <li><span class="icon">🎯</span><div><strong>SRP</strong> — Single Responsibility: ChatProtocol אחראי רק לפרוטוקול</div></li>
+              <li><span class="icon">🔒</span><div><strong>Encapsulation</strong>: buffer נסתר בתוך המחלקה</div></li>
+              <li><span class="icon">♻️</span><div><strong>DRY</strong>: Don't Repeat Yourself — קוד משותף ב-protocol.py</div></li>
+              <li><span class="icon">🏭</span><div><strong>Factory Pattern</strong>: make_ok/make_error/make_broadcast</div></li>
+              <li><span class="icon">📦</span><div><strong>Type Safety</strong>: dataclass עם שדות מוגדרים במקום dict</div></li>
+            </ul>
+          </div>
+          <div class="highlight-box hb-cyan">
+            <div class="hb-title">📁 מבנה הפרויקט</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size: 1.2rem;line-height:1.8;direction:ltr;text-align:left">
+              <span style="color:var(--accent4)">protocol.py</span>       <span style="color:var(--text-dim)">← משותף</span><br>
+              <span style="color:var(--accent2)">server_chat_v5.py</span> <span style="color:var(--text-dim)">← שרת</span><br>
+              <span style="color:var(--accent)">client_chat_v5.py</span> <span style="color:var(--text-dim)">← קליינט</span><br>
+              <span style="color:var(--accent3)">chat.db</span>           <span style="color:var(--text-dim)">← SQLite</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 8: SUMMARY ========== -->
+  <div class="slide" data-index="8">
+    <div class="slide-header">
+      <span class="slide-title">סיכום — מה למדנו?</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag tag-protocol">SUMMARY</span>
+        <span class="slide-num">09 / 09</span>
+      </div>
+    </div>
+    <div class="slide-body" style="flex-direction:column;gap:14px">
+      <div style="display:flex;gap:14px;flex:1;min-height:0">
+        <div class="col col-50">
+          <div class="panel" style="flex:1">
+            <div class="panel-title">🧠 רעיונות מרכזיים</div>
+            <ul class="explain-list" style="gap:14px">
+              <li><span class="icon">📦</span><div><strong>dataclass</strong> — מגדיר מבנה נתונים עם שדות, ברירות מחדל, ותיעוד ברור. עדיף על dict רגיל כשהמבנה קבוע ומוכר מראש.</div></li>
+              <li><span class="icon">⚙️</span><div><strong>Buffer Pattern</strong> — TCP הוא stream ללא גבולות הודעות. buffer + delimiter (כמו \n) פותרים את הבעיה.</div></li>
+              <li><span class="icon">🎯</span><div><strong>Separation of Concerns</strong> — השרת לא יודע על JSON. הוא עובד עם ProtocolMessage. ChatProtocol הוא "מתורגמן" בין Python לרשת.</div></li>
+              <li><span class="icon">🏭</span><div><strong>Factory Methods</strong> — במקום לבנות אובייקט ידנית, קוראים לפונקציה בעלת שם תיאורי. make_broadcast("alice","היי") ברור יותר מ-dict.</div></li>
+              <li><span class="icon">♻️</span><div><strong>קוד משותף</strong> — protocol.py מיובא גם בשרת וגם בקליינט. שינוי אחד מתפשט לשניהם אוטומטית.</div></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col col-50">
+          <div class="panel accent2" style="flex:0 0 auto">
+            <div class="panel-title">🚀 מה הייתה הדרך?</div>
+            <div class="diagram-row" style="justify-content:flex-start;gap:6px;flex-wrap:nowrap">
+              <div class="d-box d-purple" style="min-width:70px;padding:8px">
+                <div class="d-title" style="font-size: 1.2rem;">V1</div>
+                <div class="d-sub">socket בסיסי</div>
+              </div>
+              <div class="d-arrow">→</div>
+              <div class="d-box d-purple" style="min-width:70px;padding:8px">
+                <div class="d-title" style="font-size: 1.2rem;">V2</div>
+                <div class="d-sub">multi-client</div>
+              </div>
+              <div class="d-arrow">→</div>
+              <div class="d-box d-purple" style="min-width:70px;padding:8px">
+                <div class="d-title" style="font-size: 1.2rem;">V3</div>
+                <div class="d-sub">JSON + auth</div>
+              </div>
+              <div class="d-arrow">→</div>
+              <div class="d-box d-orange" style="min-width:70px;padding:8px">
+                <div class="d-title" style="font-size: 1.2rem;">V4</div>
+                <div class="d-sub">SQLAlchemy</div>
+              </div>
+              <div class="d-arrow">→</div>
+              <div class="d-box d-green" style="min-width:70px;padding:8px">
+                <div class="d-title" style="font-size: 1.2rem;">V5 ★</div>
+                <div class="d-sub">Protocol</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel accent4" style="flex:1">
+            <div class="panel-title">💡 שאלות לחשיבה</div>
+            <ul class="explain-list accent4" style="gap:12px">
+              <li><span class="icon">🤔</span><div>מה היתרון של Buffer פרטי לכל לקוח? מה קורה אם buffer יהיה גלובלי?</div></li>
+              <li><span class="icon">🤔</span><div>למה <code style="color:var(--accent)">from_user</code> בקוד Python אבל <code style="color:var(--accent4)">"from"</code> ב-JSON?</div></li>
+              <li><span class="icon">🤔</span><div>אילו שדות נוספים היית מוסיף ל-ProtocolMessage עבור פיצ'ר "קבוצות"?</div></li>
+              <li><span class="icon">🤔</span><div>איך תוסיף הצפנת סיסמה (bcrypt) לתהליך ה-register ב-V5?</div></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /slides -->
+
+<!-- ===== NAVIGATION ===== -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled>▶ הקודם</button>
+  <div class="progress-dots" id="dots"></div>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">הבא ◀</button>
+</div>
+
+<script>
+  const total = 9;
+  let current = 0;
+
+  const slides = document.querySelectorAll('.slide');
+  const dotsContainer = document.getElementById('dots');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  // Build dots
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsContainer.appendChild(d);
+  }
+
+  function goTo(index) {
+    if (index < 0 || index >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current - (index > current ? 0 : 0)].classList.remove('exit'), 400);
+
+    const prev = current;
+    current = index;
+
+    setTimeout(() => {
+      slides[prev].classList.remove('exit');
+    }, 400);
+
+    slides[current].classList.add('active');
+
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === total - 1;
+  }
+
+  function navigate(dir) {
+    goTo(current + dir);
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') navigate(-1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') navigate(1);
+  });
+</script>
+</body>
+</html>

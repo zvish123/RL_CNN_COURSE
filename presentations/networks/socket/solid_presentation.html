@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שלב 6 — SOLID & ארכיטקטורה מודולרית</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #04080d;
+  --panel: #080f18;
+  --panel2: #0b1520;
+  --border: #152a42;
+  --accent:  #00d4ff;
+  --accent2: #ff6b35;
+  --accent3: #39ff14;
+  --accent4: #bd00ff;
+  --accent5: #ffd700;
+  --text: #c2daf0;
+  --text-dim: #4a6a8a;
+  --code-bg: #02060b;
+  --kw: #ff6b35;
+  --st: #39ff14;
+  --cm: #2a5a38;
+  --fn: #00d4ff;
+  --cl: #bd00ff;
+  --nm: #ffd700;
+  --de: #e040fb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif}
+
+/* grid bg */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+
+/* scanline */
+.scan{position:fixed;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.12),transparent);
+  animation:scan 7s linear infinite;z-index:9;pointer-events:none}
+@keyframes scan{0%{transform:translateY(0)}100%{transform:translateY(100vh)}}
+
+/* ── SLIDES ── */
+#deck{position:relative;width:100vw;height:100vh;z-index:1}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:28px 44px 20px;opacity:0;transform:translateX(70px);
+  transition:opacity .4s ease,transform .4s ease;pointer-events:none;overflow:hidden}
+.slide.active{opacity:1;transform:none;pointer-events:all}
+.slide.exit{opacity:0;transform:translateX(-70px);transition:opacity .3s,transform .3s}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:18px;flex-shrink:0}
+.htitle{font-family:'Orbitron',monospace;font-size:1.3rem;font-weight:700;
+  color:var(--accent);text-shadow:0 0 18px rgba(0,212,255,.4);letter-spacing:1px}
+.hright{display:flex;gap:8px;align-items:center}
+.tag{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;padding:3px 9px;
+  border-radius:3px;border:1px solid;letter-spacing:1px}
+.t1{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,.06)}
+.t2{color:var(--accent2);border-color:var(--accent2);background:rgba(255,107,53,.06)}
+.t3{color:var(--accent3);border-color:var(--accent3);background:rgba(57,255,20,.06)}
+.t4{color:var(--accent4);border-color:var(--accent4);background:rgba(189,0,255,.06)}
+.t5{color:var(--accent5);border-color:var(--accent5);background:rgba(255,215,0,.06)}
+.snum{font-family:'Share Tech Mono',monospace;color:var(--text-dim);font-size: 1.2rem;}
+
+/* ── BODY ── */
+.body{flex:1;display:flex;gap:16px;min-height:0;overflow:hidden}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.c40{flex:0 0 40%}.c45{flex:0 0 45%}.c50{flex:0 0 50%}.c55{flex:0 0 55%}.c60{flex:0 0 60%}.cfull{flex:1}
+
+/* ── PANELS ── */
+.pan{background:var(--panel);border:1px solid var(--border);border-radius:7px;
+  padding:14px 16px;position:relative;overflow:hidden}
+.pan::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.35}
+.pan.p2::before{background:linear-gradient(90deg,transparent,var(--accent2),transparent)}
+.pan.p3::before{background:linear-gradient(90deg,transparent,var(--accent3),transparent)}
+.pan.p4::before{background:linear-gradient(90deg,transparent,var(--accent4),transparent)}
+.pan.p5::before{background:linear-gradient(90deg,transparent,var(--accent5),transparent)}
+.ptit{font-family:'Orbitron',monospace;font-size: 1.2rem;letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:10px;color:var(--accent)}
+.pan.p2 .ptit{color:var(--accent2)}.pan.p3 .ptit{color:var(--accent3)}
+.pan.p4 .ptit{color:var(--accent4)}.pan.p5 .ptit{color:var(--accent5)}
+
+/* ── CODE ── */
+.code{background:var(--code-bg);border:1px solid #0a1d30;border-radius:5px;
+  padding:12px 14px;font-family:'Share Tech Mono',monospace;font-size: 1.2rem;
+  line-height:1.75;white-space:pre;overflow-y:auto;flex:1;direction:ltr;text-align:left}
+.code::-webkit-scrollbar{width:3px}.code::-webkit-scrollbar-thumb{background:var(--border)}
+.kw{color:var(--kw)}.st{color:var(--st)}.cm{color:var(--cm)}.fn{color:var(--fn)}
+.cl{color:var(--cl)}.nm{color:var(--nm)}.de{color:var(--de)}.op{color:#5a9abf}
+.dim{color:#3a5a78}.hl{color:var(--accent5);font-weight:bold}
+
+/* ── LISTS ── */
+.xlist{list-style:none;display:flex;flex-direction:column;gap:9px}
+.xlist li{display:flex;gap:10px;align-items:flex-start;font-size: 1.2rem;line-height:1.5}
+.xlist li .ic{flex-shrink:0;font-size: 1.2rem;margin-top:2px}
+.xlist li strong{color:var(--accent)}
+.xlist.l2 li strong{color:var(--accent2)}.xlist.l3 li strong{color:var(--accent3)}
+.xlist.l4 li strong{color:var(--accent4)}.xlist.l5 li strong{color:var(--accent5)}
+
+/* ── STEPS ── */
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;align-items:flex-start;font-size: 1.2rem;line-height:1.5}
+.sn{width:22px;height:22px;border-radius:50%;border:1px solid;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size: 1.2rem;font-weight:700}
+.sn1{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,.1)}
+.sn2{color:var(--accent2);border-color:var(--accent2);background:rgba(255,107,53,.1)}
+.sn3{color:var(--accent3);border-color:var(--accent3);background:rgba(57,255,20,.1)}
+.sn4{color:var(--accent4);border-color:var(--accent4);background:rgba(189,0,255,.1)}
+.sn5{color:var(--accent5);border-color:var(--accent5);background:rgba(255,215,0,.1)}
+
+/* ── HBOX ── */
+.hbox{border-radius:5px;padding:10px 14px;font-size: 1.2rem;line-height:1.6}
+.hc{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2)}
+.ho{background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2)}
+.hg{background:rgba(57,255,20,.05);border:1px solid rgba(57,255,20,.2)}
+.hp{background:rgba(189,0,255,.05);border:1px solid rgba(189,0,255,.2)}
+.hy{background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2)}
+.hbt{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:5px}
+.hc .hbt{color:var(--accent)}.ho .hbt{color:var(--accent2)}.hg .hbt{color:var(--accent3)}
+.hp .hbt{color:var(--accent4)}.hy .hbt{color:var(--accent5)}
+
+/* ── DIAGRAM ── */
+.drow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.dbox{border-radius:6px;padding:8px 12px;text-align:center;border:1px solid;min-width:80px}
+.dbox .dt{font-family:'Orbitron',monospace;font-size: 1.2rem;letter-spacing:1.5px;margin-bottom:3px}
+.dbox .ds{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;color:var(--text-dim)}
+.dc{background:rgba(0,212,255,.07);border-color:var(--accent)}.dc .dt{color:var(--accent)}
+.do{background:rgba(255,107,53,.07);border-color:var(--accent2)}.do .dt{color:var(--accent2)}
+.dg{background:rgba(57,255,20,.07);border-color:var(--accent3)}.dg .dt{color:var(--accent3)}
+.dp{background:rgba(189,0,255,.07);border-color:var(--accent4)}.dp .dt{color:var(--accent4)}
+.dy{background:rgba(255,215,0,.07);border-color:var(--accent5)}.dy .dt{color:var(--accent5)}
+.darr{color:var(--text-dim);font-size: 1.2rem;}
+
+/* ── SOLID TABLE ── */
+.solid-table{width:100%;border-collapse:collapse;font-size: 1.2rem;}
+.solid-table th{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border);padding:6px 10px;text-align:right}
+.solid-table td{padding:9px 10px;border-bottom:1px solid rgba(21,42,66,.5);line-height:1.4;vertical-align:top}
+.solid-table tr:last-child td{border-bottom:none}
+.solid-letter{font-family:'Orbitron',monospace;font-size: 1.2rem;font-weight:900;text-align:center}
+.sl-s{color:var(--accent)}.sl-o{color:var(--accent3)}.sl-l{color:var(--accent4)}
+.sl-i{color:var(--accent2)}.sl-d{color:var(--accent5)}
+.solid-name{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;}
+.solid-impl{color:var(--text-dim);font-size: 1.2rem;}
+.solid-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size: 1.2rem;
+  padding:2px 7px;border-radius:10px;border:1px solid;margin-top:3px}
+
+/* ── TITLE SLIDE ── */
+.title-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:16px;text-align:center;position:relative}
+.btitle{font-family:'Orbitron',monospace;font-size:2.6rem;font-weight:900;
+  background:linear-gradient(135deg,var(--accent3),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;letter-spacing:2px}
+.bsub{color:var(--text-dim);font-size: 1.2rem;font-weight:300}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.badge{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;padding:5px 13px;
+  border-radius:20px;border:1px solid;letter-spacing:1px}
+
+/* ── COMPARE TABLE ── */
+.ctab{width:100%;border-collapse:collapse;font-size: 1.2rem;}
+.ctab th{font-family:'Orbitron',monospace;font-size: 1.2rem;letter-spacing:1.5px;padding:7px 10px;
+  text-align:center;border-bottom:2px solid var(--border)}
+.ctab th.old{color:var(--text-dim)}.ctab th.new{color:var(--accent3)}.ctab th.topic{text-align:right;color:var(--text-dim)}
+.ctab td{padding:7px 10px;border-bottom:1px solid rgba(21,42,66,.3);text-align:center}
+.ctab td:first-child{text-align:right;color:var(--text-dim);font-size: 1.2rem;}
+.ctab td.old{color:#3a5070;font-family:'Share Tech Mono',monospace;font-size: 1.2rem;}
+.ctab td.new{color:var(--accent3);font-family:'Share Tech Mono',monospace;font-size: 1.2rem;}
+.ctab tr:last-child td{border-bottom:none}
+
+/* ── FILE TREE ── */
+.ftree{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;;line-height:2;
+  direction:ltr;text-align:left}
+.ft-dir{color:var(--accent5)}
+.ft-file{color:var(--accent)}
+.ft-file.f2{color:var(--accent2)}.ft-file.f3{color:var(--accent3)}.ft-file.f4{color:var(--accent4)}
+.ft-cm{color:var(--text-dim)}
+
+/* ── SCROLL ── */
+.scroll{overflow-y:auto;flex:1;min-height:0}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* ── NAV ── */
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;
+  justify-content:center;gap:14px;padding:10px;
+  background:linear-gradient(to top,rgba(4,8,13,.97),transparent);z-index:100}
+.nbtn{font-family:'Share Tech Mono',monospace;font-size: 1.2rem;padding:7px 18px;
+  border-radius:4px;border:1px solid var(--border);background:var(--panel);
+  color:var(--text);cursor:pointer;transition:all .2s;letter-spacing:1px}
+.nbtn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.06)}
+.nbtn:disabled{opacity:.3;cursor:not-allowed}
+.dots{display:flex;gap:5px;align-items:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s}
+.dot.on{background:var(--accent);box-shadow:0 0 7px var(--accent);width:16px;border-radius:3px}
+.dot:hover{background:var(--text-dim)}
+
+.mt8{margin-top:8px}.mt4{margin-top:4px}
+.fs{font-size: 1.2rem;;color:var(--text-dim);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="scan"></div>
+<div id="deck">
+
+<!-- ═══════════════════ SLIDE 0 — TITLE ═══════════════════ -->
+<div class="slide active" data-i="0">
+  <div class="hdr">
+    <span class="htitle">SOLID — ארכיטקטורה מודולרית</span>
+    <div class="hright"><span class="tag t3">SOLID</span><span class="snum">01 / 11</span></div>
+  </div>
+  <div class="title-inner">
+    <div style="font-family:'Share Tech Mono',monospace;font-size: 1.2rem;letter-spacing:4px;color:var(--text-dim)">// שלב 6 — refactoring לעקרונות תכנה</div>
+    <div class="btitle">שרת הצ׳אט<br>הופך SOLID</div>
+    <div class="bsub">מ-if/elif ארוך — למערכת מודולרית שקל לתחזק ולהרחיב</div>
+    <div class="badges">
+      <span class="badge t1">Single Responsibility</span>
+      <span class="badge t3">Open / Closed</span>
+      <span class="badge t4">Dependency Injection</span>
+      <span class="badge t2">Command Pattern</span>
+      <span class="badge t5">Repository Pattern</span>
+    </div>
+    <div class="drow mt8">
+      <div class="dbox dp"><div class="dt">protocol.py</div><div class="ds">ChatProtocol</div></div>
+      <div class="darr">→</div>
+      <div class="dbox do"><div class="dt">command_handlers</div><div class="ds">BaseCommandHandler</div></div>
+      <div class="darr">→</div>
+      <div class="dbox dc"><div class="dt">server.py</div><div class="ds">ChatServer</div></div>
+      <div class="darr">→</div>
+      <div class="dbox dg"><div class="dt">repositories</div><div class="ds">IUserRepository</div></div>
+      <div class="darr">→</div>
+      <div class="dbox dy"><div class="dt">client_manager</div><div class="ds">ClientManager</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 1 — PROBLEM ═══════════════════ -->
+<div class="slide" data-i="1">
+  <div class="hdr">
+    <span class="htitle">הבעיה — if/elif הענק</span>
+    <div class="hright"><span class="tag t2">PROBLEM</span><span class="snum">02 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan" style="flex:1">
+        <div class="ptit">❌ שלב 5 — כל הלוגיקה בפונקציה אחת</div>
+        <div class="code">
+<span class="cm"># handle_client — 100+ שורות</span>
+<span class="kw">def</span> <span class="fn">handle_client</span>(sock, addr):
+    <span class="kw">while True</span>:
+        msgs = protocol.<span class="fn">feed_data</span>(...)
+
+        <span class="kw">for</span> req <span class="kw">in</span> msgs:
+            action = req.action
+
+            <span class="kw">if</span> action == <span class="st">"register"</span>:
+                <span class="cm"># 15 שורות של לוגיקת register</span>
+                session = <span class="fn">SessionLocal</span>()
+                existing = session.<span class="fn">query</span>(User)...
+                <span class="kw">if</span> existing: ...
+                session.<span class="fn">add</span>(user)
+                session.<span class="fn">commit</span>()
+                <span class="fn">send_json</span>(sock, ...)
+
+            <span class="kw">elif</span> action == <span class="st">"login"</span>:
+                <span class="cm"># 15 שורות של לוגיקת login</span>
+                user = session.<span class="fn">query</span>(User)...
+                <span class="kw">if not</span> user: ...
+                clients.<span class="fn">append</span>(...)
+                <span class="fn">send_json</span>(sock, ...)
+
+            <span class="kw">elif</span> action == <span class="st">"message"</span>:
+                <span class="cm"># 10 שורות</span>
+                sender = <span class="fn">get_username</span>(sock)
+                <span class="fn">broadcast</span>(...)
+
+            <span class="kw">elif</span> action == <span class="st">"logout"</span>: ...
+            <span class="kw">elif</span> action == <span class="st">"list_users"</span>: ...
+            <span class="cm"># ... עוד ועוד ...</span></div>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan p2" style="flex:0 0 auto">
+        <div class="ptit">⚠️ למה זה בעייתי?</div>
+        <ul class="xlist l2">
+          <li><span class="ic">📏</span><div><strong>פונקציה ענקית</strong> — 150+ שורות, קשה לקרוא ולהבין</div></li>
+          <li><span class="ic">🔗</span><div><strong>Coupling גבוה</strong> — הכל שלוב: DB, רשת, לוגיקה עסקית</div></li>
+          <li><span class="ic">🧪</span><div><strong>בלתי ניתן לבדיקה</strong> — אי אפשר לבדוק register בנפרד</div></li>
+          <li><span class="ic">➕</span><div><strong>קשה להרחיב</strong> — כל פקודה חדשה = לפתוח את handle_client ולהוסיף elif</div></li>
+          <li><span class="ic">💥</span><div><strong>סכנת שבירה</strong> — שינוי קטן עלול לשבור פקודות אחרות</div></li>
+        </ul>
+      </div>
+      <div class="pan p3 mt8" style="flex:1">
+        <div class="ptit">✅ הפתרון — הפרדת אחריות</div>
+        <div class="steps">
+          <div class="step"><div class="sn sn3">1</div><div>כל פקודה — מחלקה נפרדת (<strong style="color:var(--accent3)">SRP</strong>)</div></div>
+          <div class="step"><div class="sn sn3">2</div><div>הוספת פקודה = קובץ חדש, לא שינוי קיים (<strong style="color:var(--accent3)">OCP</strong>)</div></div>
+          <div class="step"><div class="sn sn3">3</div><div>ניהול משתמשים — Repository נפרד (<strong style="color:var(--accent3)">DIP</strong>)</div></div>
+          <div class="step"><div class="sn sn3">4</div><div>ניהול חיבורים — ClientManager נפרד (<strong style="color:var(--accent3)">SRP</strong>)</div></div>
+          <div class="step"><div class="sn sn3">5</div><div>השרת רק מתאם — לא מכיל לוגיקה (<strong style="color:var(--accent3)">SRP</strong>)</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 2 — SOLID TABLE ═══════════════════ -->
+<div class="slide" data-i="2">
+  <div class="hdr">
+    <span class="htitle">עקרונות SOLID בפרויקט</span>
+    <div class="hright"><span class="tag t3">SOLID</span><span class="snum">03 / 11</span></div>
+  </div>
+  <div class="body" style="flex-direction:column;gap:12px">
+    <div class="pan" style="flex:0 0 auto">
+      <table class="solid-table">
+        <tr>
+          <th>עיקרון</th><th>שם</th><th>משמעות</th><th>יישום בפרויקט</th>
+        </tr>
+        <tr>
+          <td class="solid-letter sl-s">S</td>
+          <td class="solid-name">Single<br>Responsibility</td>
+          <td style="font-size: 1.2rem;">כל מחלקה — אחריות אחת בלבד</td>
+          <td>
+            <span class="solid-badge t1">ChatServer</span> — מתאם בלבד<br>
+            <span class="solid-badge t2">ClientManager</span> — ניהול חיבורים<br>
+            <span class="solid-badge t5">UserRepository</span> — ניהול משתמשים<br>
+            <span class="solid-badge t4">RegisterHandler</span> — לוגיקת register
+          </td>
+        </tr>
+        <tr>
+          <td class="solid-letter sl-o">O</td>
+          <td class="solid-name">Open / Closed</td>
+          <td style="font-size: 1.2rem;">פתוח להרחבה, סגור לשינוי</td>
+          <td>
+            <span class="solid-badge t3">ChatServer</span> — לא משתנה בהוספת פקודה<br>
+            <span class="solid-badge t3">הוספת handler</span> — רק מחלקה חדשה
+          </td>
+        </tr>
+        <tr>
+          <td class="solid-letter sl-l">L</td>
+          <td class="solid-name">Liskov<br>Substitution</td>
+          <td style="font-size: 1.2rem;">מחלקה בת חייבת להחליף אב</td>
+          <td>
+            <span class="solid-badge t4">BaseCommandHandler</span> — כל handler מחליף Base<br>
+            <span class="solid-badge t4">IUserRepository</span> — כל impl תקינה
+          </td>
+        </tr>
+        <tr>
+          <td class="solid-letter sl-i">I</td>
+          <td class="solid-name">Interface<br>Segregation</td>
+          <td style="font-size: 1.2rem;">ממשקים קטנים וממוקדים</td>
+          <td>
+            <span class="solid-badge t2">IUserRepository</span> — register, validate, exists בלבד<br>
+            <span class="solid-badge t2">BaseCommandHandler</span> — can_handle + handle בלבד
+          </td>
+        </tr>
+        <tr>
+          <td class="solid-letter sl-d">D</td>
+          <td class="solid-name">Dependency<br>Inversion</td>
+          <td style="font-size: 1.2rem;">תלות בהפשטות, לא בממשים</td>
+          <td>
+            <span class="solid-badge t5">ChatServer</span> מקבל <code>IUserRepository</code> לא <code>InMemoryUserRepository</code><br>
+            <span class="solid-badge t5">CommandContext</span> — מזריק dependencies
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;flex:1;min-height:0">
+      <div class="hbox hg" style="flex:1">
+        <div class="hbt">💡 מה זה אומר מבחינה מעשית?</div>
+        רוצה להחליף InMemory ב-SQLite? מחלפים רק את <code style="color:var(--accent3)">InMemoryUserRepository</code> ב-<code style="color:var(--accent3)">SQLUserRepository</code>.
+        <strong>שום שינוי לא נדרש ב-ChatServer, ב-handlers, ב-ClientManager.</strong>
+      </div>
+      <div class="hbox ho" style="flex:1">
+        <div class="hbt">💡 למה זה חשוב?</div>
+        מערכת שמיישמת SOLID קלה יותר ל<strong>בדיקה</strong> (unit tests),
+        ל<strong>הרחבה</strong> (פיצ'רים חדשים), ול<strong>תחזוקה</strong> (מציאת באגים).
+        זה ההבדל בין קוד "שעובד" לקוד "שמתוכנן".
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 3 — FILE STRUCTURE ═══════════════════ -->
+<div class="slide" data-i="3">
+  <div class="hdr">
+    <span class="htitle">מבנה הפרויקט ומחלקות</span>
+    <div class="hright"><span class="tag t1">ARCHITECTURE</span><span class="snum">04 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c45">
+      <div class="pan" style="flex:1">
+        <div class="ptit">📁 מבנה הקבצים</div>
+        <pre class="ftree">
+<span class="ft-dir">stage6/</span>
+├── <span class="ft-file f4">protocol.py</span>        <span class="ft-cm">← V5 ללא שינוי</span>
+├── <span class="ft-file">models.py</span>          <span class="ft-cm">← ConnectedClient</span>
+├── <span class="ft-file f3">repositories.py</span>   <span class="ft-cm">← IUserRepository</span>
+├── <span class="ft-file f2">client_manager.py</span> <span class="ft-cm">← ClientManager</span>
+├── <span class="ft-file f5">command_handlers.py</span> <span class="ft-cm">← כל handlers</span>
+├── <span class="ft-file">server.py</span>          <span class="ft-cm">← ChatServer</span>
+└── <span class="ft-file f3">client.py</span>         <span class="ft-cm">← client</span>
+        </pre>
+      </div>
+      <div class="pan p5 mt8" style="flex:0 0 auto">
+        <div class="ptit">⚡ יחסי תלות (Dependencies)</div>
+        <div class="drow" style="flex-direction:column;gap:5px;align-items:flex-start">
+          <div style="font-family:'Share Tech Mono',monospace;font-size: 1.2rem;direction:ltr;text-align:left;line-height:1.8">
+            <span style="color:var(--accent)">server.py</span>           → <span style="color:var(--accent2)">client_manager, repositories,</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent5)">command_handlers, protocol</span><br>
+            <span style="color:var(--accent5)">command_handlers.py</span> → <span style="color:var(--accent4)">protocol, models</span><br>
+            <span style="color:var(--accent2)">client_manager.py</span>   → <span style="color:var(--accent4)">protocol, models</span><br>
+            <span style="color:var(--accent3)">repositories.py</span>     → <span style="color:var(--text-dim)">ללא תלות חיצונית</span><br>
+            <span style="color:var(--accent4)">models.py</span>           → <span style="color:var(--accent4)">protocol</span><br>
+            <span style="color:var(--accent4)">protocol.py</span>         → <span style="color:var(--text-dim)">ללא תלות חיצונית</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col cfull">
+      <div class="pan p2" style="flex:1">
+        <div class="ptit">🗺️ דיאגרמת מחלקות</div>
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;justify-content:space-around">
+          <div class="drow">
+            <div class="dbox dc" style="min-width:120px">
+              <div class="dt">ChatServer</div>
+              <div class="ds">host, port<br>user_repo, client_manager<br>handlers[ ]<br>─────<br>start()<br>handle_client()<br>get_handler()</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+              <div class="darr">→ uses →</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="dbox do" style="min-width:130px">
+                <div class="dt">CommandContext</div>
+                <div class="ds">user_repo<br>client_manager</div>
+              </div>
+              <div class="dbox dp" style="min-width:130px">
+                <div class="dt">BaseCommandHandler</div>
+                <div class="ds">«ABC»<br>can_handle(action)<br>handle(msg,sock,...)</div>
+              </div>
+            </div>
+          </div>
+          <div class="drow" style="gap:6px">
+            <div class="dbox dg" style="min-width:100px;font-size: 1.2rem;">
+              <div class="dt" style="font-size: 1.2rem;">RegisterHandler</div>
+              <div class="ds">can_handle()<br>handle()</div>
+            </div>
+            <div class="dbox dg" style="min-width:100px;font-size: 1.2rem;">
+              <div class="dt" style="font-size: 1.2rem;">LoginHandler</div>
+              <div class="ds">can_handle()<br>handle()</div>
+            </div>
+            <div class="dbox dg" style="min-width:100px;font-size: 1.2rem;">
+              <div class="dt" style="font-size: 1.2rem;">MessageHandler</div>
+              <div class="ds">can_handle()<br>handle()</div>
+            </div>
+            <div class="dbox dg" style="min-width:100px;font-size: 1.2rem;">
+              <div class="dt" style="font-size: 1.2rem;">PrivateMsgHandler</div>
+              <div class="ds">can_handle()<br>handle()</div>
+            </div>
+            <div class="dbox dg" style="min-width:100px;font-size: 1.2rem;">
+              <div class="dt" style="font-size: 1.2rem;">LogoutHandler</div>
+              <div class="ds">can_handle()<br>handle()</div>
+            </div>
+          </div>
+          <div class="drow">
+            <div class="dbox dy" style="min-width:130px">
+              <div class="dt">IUserRepository</div>
+              <div class="ds">«ABC»<br>register_user()<br>validate_user()<br>user_exists()</div>
+            </div>
+            <div class="darr">→ impl →</div>
+            <div class="dbox dg" style="min-width:140px">
+              <div class="dt">InMemoryUserRepo</div>
+              <div class="ds">_users: dict<br>register_user()<br>validate_user()</div>
+            </div>
+            <div class="darr" style="opacity:.4">→ future →</div>
+            <div class="dbox" style="border-color:var(--text-dim);opacity:.4;min-width:120px">
+              <div class="dt" style="color:var(--text-dim)">SQLUserRepo</div>
+              <div class="ds">SQLAlchemy<br>register_user()<br>validate_user()</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 4 — BaseCommandHandler ═══════════════════ -->
+<div class="slide" data-i="4">
+  <div class="hdr">
+    <span class="htitle">BaseCommandHandler — מחלקת בסיס</span>
+    <div class="hright"><span class="tag t4">COMMAND PATTERN</span><span class="snum">05 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan p4" style="flex:1">
+        <div class="ptit">🧱 מחלקת בסיס אבסטרקטית</div>
+        <div class="code">
+<span class="kw">from</span> abc <span class="kw">import</span> ABC, abstractmethod
+
+<span class="kw">class</span> <span class="cl">BaseCommandHandler</span>(ABC):
+
+    <span class="de">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action: <span class="cl">str</span>) -> <span class="cl">bool</span>:
+        <span class="st">"""האם המחלקה מסוגלת לטפל בפעולה?"""</span>
+        <span class="kw">pass</span>
+
+    <span class="de">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>,
+             msg: <span class="cl">ProtocolMessage</span>,
+             client_socket,
+             protocol: <span class="cl">ChatProtocol</span>,
+             context: <span class="cl">CommandContext</span>
+    ) -> <span class="cl">ProtocolMessage</span>:
+        <span class="st">"""בצע את הפעולה ומחזיר תשובה"""</span>
+        <span class="kw">pass</span>
+
+
+<span class="cm"># ─── שימוש בשרת ───</span>
+<span class="kw">def</span> <span class="fn">get_handler</span>(<span class="kw">self</span>, action: <span class="cl">str</span>):
+    <span class="kw">for</span> handler <span class="kw">in</span> <span class="kw">self</span>.handlers:
+        <span class="kw">if</span> handler.<span class="fn">can_handle</span>(action):
+            <span class="kw">return</span> handler
+    <span class="kw">return</span> <span class="cl">UnknownCommandHandler</span>()</div>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan" style="flex:0 0 auto">
+        <div class="ptit">💡 למה ABC ו-@abstractmethod?</div>
+        <ul class="xlist">
+          <li><span class="ic">🔒</span><div><strong>ABC</strong> — מונע יצירת instance ישירות של BaseCommandHandler</div></li>
+          <li><span class="ic">📋</span><div><strong>@abstractmethod</strong> — מחייב כל תת-מחלקה לממש את המתודות. שכחת? Python זורק שגיאה בטעינה</div></li>
+          <li><span class="ic">🔌</span><div><strong>Polymorphism</strong> — השרת קורא <code style="color:var(--accent)">handler.handle()</code> בלי לדעת איזה handler זה</div></li>
+        </ul>
+      </div>
+      <div class="pan p3 mt8" style="flex:0 0 auto">
+        <div class="ptit">✅ דוגמה — RegisterCommandHandler</div>
+        <div class="code" style="flex:0 0 auto">
+<span class="kw">class</span> <span class="cl">RegisterCommandHandler</span>(<span class="cl">BaseCommandHandler</span>):
+
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action) -> <span class="cl">bool</span>:
+        <span class="kw">return</span> action == <span class="st">"register"</span>
+
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>, msg, socket, protocol, ctx):
+        <span class="kw">if not</span> msg.username <span class="kw">or not</span> msg.password:
+            <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+                action=<span class="st">"register"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"Missing username or password"</span>)
+
+        success = ctx.user_repo.<span class="fn">register_user</span>(
+            msg.username, msg.password)
+
+        <span class="kw">if not</span> success:
+            <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+                action=<span class="st">"register"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"User already exists"</span>)
+
+        <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+            action=<span class="st">"register"</span>, status=<span class="st">"ok"</span>,
+            message=<span class="st">"Registered successfully"</span>)</div>
+      </div>
+      <div class="hbox hg mt8">
+        <div class="hbt">💡 תשומת לב</div>
+        <code style="color:var(--accent3)">handle()</code> לא שולחת לסוקט — היא <strong>מחזירה ProtocolMessage</strong>.
+        השרת אחראי לשלוח. הפרדת האחריות!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 5 — ChatServer ═══════════════════ -->
+<div class="slide" data-i="5">
+  <div class="hdr">
+    <span class="htitle">ChatServer — המתאם</span>
+    <div class="hright"><span class="tag t1">SERVER</span><span class="snum">06 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c55">
+      <div class="pan" style="flex:1">
+        <div class="ptit">🖥️ server.py — רק תיאום, אפס לוגיקה עסקית</div>
+        <div class="code">
+<span class="kw">class</span> <span class="cl">ChatServer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, host, port):
+        <span class="kw">self</span>.host = host
+        <span class="kw">self</span>.port = port
+        <span class="cm"># ─── Dependency Injection ───</span>
+        <span class="kw">self</span>.user_repo      = <span class="cl">InMemoryUserRepository</span>()
+        <span class="kw">self</span>.client_manager = <span class="cl">ClientManager</span>()
+        <span class="kw">self</span>.context = <span class="cl">CommandContext</span>(
+            <span class="kw">self</span>.user_repo,
+            <span class="kw">self</span>.client_manager
+        )
+        <span class="cm"># ─── רשימת handlers ───</span>
+        <span class="kw">self</span>.handlers = [
+            <span class="cl">RegisterCommandHandler</span>(),
+            <span class="cl">LoginCommandHandler</span>(),
+            <span class="cl">MessageCommandHandler</span>(),
+            <span class="cl">ListUsersCommandHandler</span>(),
+            <span class="cl">WhoAmICommandHandler</span>(),
+            <span class="cl">PrivateMessageCommandHandler</span>(),
+            <span class="cl">HelpCommandHandler</span>(),
+            <span class="cl">LogoutCommandHandler</span>(),
+            <span class="cl">UnknownCommandHandler</span>(),  <span class="cm"># ← תמיד אחרון!</span>
+        ]
+
+    <span class="kw">def</span> <span class="fn">handle_client</span>(<span class="kw">self</span>, sock, addr):
+        protocol = <span class="cl">ChatProtocol</span>()  <span class="cm"># instance פרטי</span>
+
+        <span class="kw">while True</span>:
+            raw = sock.<span class="fn">recv</span>(<span class="nm">1024</span>)
+            msgs = protocol.<span class="fn">feed_data</span>(raw)
+
+            <span class="kw">for</span> msg <span class="kw">in</span> msgs:
+                <span class="hl">handler = <span class="kw">self</span>.<span class="fn">get_handler</span>(msg.action)</span>
+                <span class="hl">response = handler.<span class="fn">handle</span>(</span>
+                <span class="hl">    msg, sock, protocol, <span class="kw">self</span>.context)</span>
+                sock.<span class="fn">sendall</span>(protocol.<span class="fn">encode</span>(response))</div>
+      </div>
+    </div>
+    <div class="col c45">
+      <div class="pan p2" style="flex:0 0 auto">
+        <div class="ptit">🔑 CommandContext — מזריק תלויות</div>
+        <div class="code" style="flex:0 0 auto">
+<span class="kw">class</span> <span class="cl">CommandContext</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, user_repo, client_manager):
+        <span class="kw">self</span>.user_repo      = user_repo
+        <span class="kw">self</span>.client_manager = client_manager</div>
+        <div class="hbox ho mt8">
+          <div class="hbt">💡 Dependency Injection</div>
+          Handler לא יוצר UserRepository בעצמו —
+          הוא מקבל אותו מה-Context.
+          כך ניתן להחליף DB ללא שינוי ב-handlers.
+        </div>
+      </div>
+      <div class="pan p5 mt8" style="flex:1">
+        <div class="ptit">🔄 זרימת בקשה ב-ChatServer</div>
+        <div class="steps">
+          <div class="step"><div class="sn sn1">1</div><div>recv() ← bytes מהסוקט</div></div>
+          <div class="step"><div class="sn sn4">2</div><div><code style="color:var(--accent4)">protocol.feed_data()</code> → ProtocolMessage</div></div>
+          <div class="step"><div class="sn sn5">3</div><div><code style="color:var(--accent5)">get_handler(action)</code> → מוצא את ה-handler המתאים</div></div>
+          <div class="step"><div class="sn sn3">4</div><div><code style="color:var(--accent3)">handler.handle(msg, context)</code> → ProtocolMessage</div></div>
+          <div class="step"><div class="sn sn1">5</div><div><code style="color:var(--accent)">protocol.encode(response)</code> → sendall()</div></div>
+        </div>
+        <div class="hbox hg mt8">
+          <div class="hbt">שים לב</div>
+          <code style="color:var(--accent3)">get_handler</code> מבצע <strong>Polymorphism</strong>:
+          הוא לא יודע איזה handler מחזיר — רק שיש לו <code>can_handle</code> ו-<code>handle</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 6 — ClientManager ═══════════════════ -->
+<div class="slide" data-i="6">
+  <div class="hdr">
+    <span class="htitle">ClientManager — ניהול חיבורים</span>
+    <div class="hright"><span class="tag t2">CLIENT MANAGER</span><span class="snum">07 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan p2" style="flex:1">
+        <div class="ptit">👥 client_manager.py</div>
+        <div class="code">
+<span class="kw">class</span> <span class="cl">ClientManager</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>._clients: <span class="cl">List</span>[<span class="cl">ConnectedClient</span>] = []
+        <span class="kw">self</span>._lock = threading.<span class="cl">Lock</span>()
+
+    <span class="kw">def</span> <span class="fn">add_client</span>(<span class="kw">self</span>, client: <span class="cl">ConnectedClient</span>) -> <span class="kw">None</span>:
+        <span class="kw">with self</span>._lock:
+            <span class="cm"># מונע הוספה כפולה</span>
+            <span class="kw">for</span> c <span class="kw">in</span> <span class="kw">self</span>._clients:
+                <span class="kw">if</span> c.socket_obj == client.socket_obj:
+                    <span class="kw">return</span>
+            <span class="kw">self</span>._clients.<span class="fn">append</span>(client)
+
+    <span class="kw">def</span> <span class="fn">get_client_by_socket</span>(<span class="kw">self</span>, sock):
+        <span class="kw">with self</span>._lock:
+            <span class="kw">for</span> c <span class="kw">in</span> <span class="kw">self</span>._clients:
+                <span class="kw">if</span> c.socket_obj == sock: <span class="kw">return</span> c
+        <span class="kw">return None</span>
+
+    <span class="kw">def</span> <span class="fn">broadcast</span>(<span class="kw">self</span>, msg, exclude_sock=<span class="kw">None</span>):
+        <span class="kw">with self</span>._lock:
+            clients = <span class="kw">self</span>._clients[:]  <span class="cm"># copy!</span>
+        <span class="kw">for</span> client <span class="kw">in</span> clients:
+            <span class="kw">if</span> client.socket_obj == exclude_sock:
+                <span class="kw">continue</span>
+            client.socket_obj.<span class="fn">sendall</span>(
+                client.protocol.<span class="fn">encode</span>(msg))</div>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan" style="flex:0 0 auto">
+        <div class="ptit">📦 models.py — ConnectedClient</div>
+        <div class="code" style="flex:0 0 auto">
+<span class="de">@dataclass</span>
+<span class="kw">class</span> <span class="cl">ConnectedClient</span>:
+    socket_obj: socket.<span class="cl">socket</span>
+    username:   <span class="cl">str</span>
+    protocol:   <span class="cl">ChatProtocol</span>
+
+<span class="cm"># כל לקוח שומר את הפרוטוקול שלו —</span>
+<span class="cm"># כך broadcast יכול להשתמש ב-encode</span>
+<span class="cm"># של כל לקוח בנפרד</span></div>
+      </div>
+      <div class="pan p5 mt8" style="flex:1">
+        <div class="ptit">🔐 Thread Safety</div>
+        <ul class="xlist l5">
+          <li><span class="ic">🔒</span><div><strong>threading.Lock()</strong> — מגן על הרשימה משינויים מקבילים</div></li>
+          <li><span class="ic">📋</span><div><strong>copy before iterate</strong> — <code style="color:var(--accent5)">self._clients[:]</code> ב-broadcast מונע crash אם לקוח מתנתק תוך כדי שליחה</div></li>
+          <li><span class="ic">🧩</span><div><strong>SRP</strong> — ClientManager אחראי רק לחיבורים. לא יודע על DB, פרוטוקול JSON, או לוגיקת פקודות</div></li>
+          <li><span class="ic">🔄</span><div><strong>protocol פרטי לכל לקוח</strong> — כל ConnectedClient נושא <code style="color:var(--accent5)">ChatProtocol</code> משלו עם buffer פרטי</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 7 — Repository Pattern ═══════════════════ -->
+<div class="slide" data-i="7">
+  <div class="hdr">
+    <span class="htitle">Repository Pattern — ניהול משתמשים</span>
+    <div class="hright"><span class="tag t5">REPOSITORY</span><span class="snum">08 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan p5" style="flex:1">
+        <div class="ptit">🗄️ repositories.py</div>
+        <div class="code">
+<span class="cm"># ─── ממשק (interface) ───</span>
+<span class="kw">class</span> <span class="cl">IUserRepository</span>(ABC):
+
+    <span class="de">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">register_user</span>(<span class="kw">self</span>, username, password) -> <span class="cl">bool</span>:
+        <span class="kw">pass</span>
+
+    <span class="de">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">validate_user</span>(<span class="kw">self</span>, username, password) -> <span class="cl">bool</span>:
+        <span class="kw">pass</span>
+
+    <span class="de">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">user_exists</span>(<span class="kw">self</span>, username) -> <span class="cl">bool</span>:
+        <span class="kw">pass</span>
+
+
+<span class="cm"># ─── מימוש: זיכרון ───</span>
+<span class="kw">class</span> <span class="cl">InMemoryUserRepository</span>(<span class="cl">IUserRepository</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>._users = {}  <span class="cm"># {username: password}</span>
+
+    <span class="kw">def</span> <span class="fn">register_user</span>(<span class="kw">self</span>, username, password):
+        <span class="kw">if</span> username <span class="kw">in self</span>._users:
+            <span class="kw">return False</span>
+        <span class="kw">self</span>._users[username] = password
+        <span class="kw">return True</span>
+
+    <span class="kw">def</span> <span class="fn">validate_user</span>(<span class="kw">self</span>, username, password):
+        <span class="kw">return self</span>._users.<span class="fn">get</span>(username) == password</div>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan" style="flex:0 0 auto">
+        <div class="ptit">🚀 מימושים עתידיים — DIP בפעולה</div>
+        <div class="code" style="flex:0 0 auto">
+<span class="cm"># ─── שלב 7: SQLAlchemy ───</span>
+<span class="kw">class</span> <span class="cl">SQLUserRepository</span>(<span class="cl">IUserRepository</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, session_factory):
+        <span class="kw">self</span>.Session = session_factory
+
+    <span class="kw">def</span> <span class="fn">register_user</span>(<span class="kw">self</span>, username, password):
+        session = <span class="kw">self</span>.<span class="fn">Session</span>()
+        <span class="cm"># ... SQLAlchemy ...</span>
+
+<span class="cm"># ─── שלב 8: bcrypt ───</span>
+<span class="kw">class</span> <span class="cl">SecureUserRepository</span>(<span class="cl">IUserRepository</span>):
+    <span class="kw">def</span> <span class="fn">register_user</span>(<span class="kw">self</span>, username, password):
+        hashed = bcrypt.<span class="fn">hashpw</span>(password.<span class="fn">encode</span>(), ...)
+        <span class="cm"># ...</span>
+
+<span class="cm"># ─── שינוי בשרת — שורה אחת! ───</span>
+<span class="cm"># לפני:</span>
+<span class="kw">self</span>.user_repo = <span class="cl">InMemoryUserRepository</span>()
+<span class="cm"># אחרי:</span>
+<span class="kw">self</span>.user_repo = <span class="cl">SQLUserRepository</span>(SessionLocal)</div>
+      </div>
+      <div class="hbox hy mt8">
+        <div class="hbt">💡 DIP — Dependency Inversion Principle</div>
+        <code>ChatServer</code> תלוי ב-<strong>IUserRepository</strong> (הפשטה) —
+        לא ב-<strong>InMemoryUserRepository</strong> (מימוש).
+        שינוי ה-DB לא משפיע על שום קוד אחר.
+      </div>
+      <div class="hbox hc mt8">
+        <div class="hbt">📚 Repository Pattern</div>
+        דפוס עיצוב שמסתיר את פרטי ה-storage מאחורי ממשק אחיד.
+        הקוד שמשתמש ב-repository לא יודע אם הנתונים בזיכרון, SQLite, MongoDB, או Redis.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 8 — NEW COMMANDS ═══════════════════ -->
+<div class="slide" data-i="8">
+  <div class="hdr">
+    <span class="htitle">פקודות חדשות — OCP בפעולה</span>
+    <div class="hright"><span class="tag t3">OPEN/CLOSED</span><span class="snum">09 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan p3" style="flex:1">
+        <div class="ptit">💬 PrivateMessageCommandHandler</div>
+        <div class="code">
+<span class="kw">class</span> <span class="cl">PrivateMessageCommandHandler</span>(<span class="cl">BaseCommandHandler</span>):
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action):
+        <span class="kw">return</span> action == <span class="st">"private_message"</span>
+
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>, msg, sock, protocol, ctx):
+        sender = ctx.client_manager.<span class="fn">get_client_by_socket</span>(sock)
+        <span class="kw">if</span> sender <span class="kw">is None</span>:
+            <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+                action=<span class="st">"private_message"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"You must login first"</span>)
+
+        target = ctx.client_manager.<span class="fn">get_client_by_username</span>(
+            msg.target)
+        <span class="kw">if</span> target <span class="kw">is None</span>:
+            <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+                action=<span class="st">"private_message"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"Target user is not connected"</span>)
+
+        <span class="cm"># שולח לtarget ישירות</span>
+        private = <span class="cl">ProtocolMessage</span>(
+            action=<span class="st">"private_message"</span>,
+            from_user=sender.username,
+            message=msg.message)
+        target.socket_obj.<span class="fn">sendall</span>(
+            target.protocol.<span class="fn">encode</span>(private))
+
+        <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+            action=<span class="st">"private_message"</span>, status=<span class="st">"ok"</span>,
+            message=<span class="st">"Private message sent"</span>)</div>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan" style="flex:0 0 auto">
+        <div class="ptit">📋 ListUsersCommandHandler</div>
+        <div class="code" style="flex:0 0 auto">
+<span class="kw">class</span> <span class="cl">ListUsersCommandHandler</span>(<span class="cl">BaseCommandHandler</span>):
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action): <span class="kw">return</span> action == <span class="st">"list_users"</span>
+
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>, msg, sock, protocol, ctx):
+        sender = ctx.client_manager.<span class="fn">get_client_by_socket</span>(sock)
+        <span class="kw">if</span> sender <span class="kw">is None</span>:
+            <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+                action=<span class="st">"list_users"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"You must login first"</span>)
+
+        users = ctx.client_manager.<span class="fn">list_usernames</span>()
+        <span class="kw">return</span> <span class="cl">ProtocolMessage</span>(
+            action=<span class="st">"list_users"</span>, status=<span class="st">"ok"</span>,
+            users=users)</div>
+      </div>
+      <div class="hbox hg mt8">
+        <div class="hbt">✅ OCP — Open/Closed Principle</div>
+        שתי הפקודות החדשות נוספו <strong>ללא שינוי שורה אחת</strong> ב-<code>server.py</code>, ב-<code>ChatProtocol</code>, ב-<code>ClientManager</code>.
+        רק <strong>הוספנו</strong> — לא <strong>שינינו</strong>.
+      </div>
+      <div class="pan p2 mt8" style="flex:0 0 auto">
+        <div class="ptit">🏗️ הוספת פקודה חדשה — 3 צעדים בלבד</div>
+        <div class="steps">
+          <div class="step"><div class="sn sn2">1</div><div>כתוב מחלקה שיורשת מ-<code style="color:var(--accent2)">BaseCommandHandler</code></div></div>
+          <div class="step"><div class="sn sn2">2</div><div>הגדר <code style="color:var(--accent2)">can_handle()</code> ו-<code style="color:var(--accent2)">handle()</code></div></div>
+          <div class="step"><div class="sn sn2">3</div><div>הוסף instance ל-<code style="color:var(--accent2)">self.handlers</code> ב-ChatServer</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 9 — COMPARE V5 vs V6 ═══════════════════ -->
+<div class="slide" data-i="9">
+  <div class="hdr">
+    <span class="htitle">השוואה — V5 מול V6</span>
+    <div class="hright"><span class="tag t1">COMPARE</span><span class="snum">10 / 11</span></div>
+  </div>
+  <div class="body" style="flex-direction:column;gap:12px">
+    <div class="pan" style="flex:0 0 auto">
+      <table class="ctab">
+        <tr>
+          <th class="topic">היבט</th>
+          <th class="old">V5 — לפני</th>
+          <th class="new">V6 — אחרי ✅</th>
+        </tr>
+        <tr>
+          <td>ניהול פקודות</td>
+          <td class="old">if/elif ב-handle_client</td>
+          <td class="new">BaseCommandHandler + handlers[]</td>
+        </tr>
+        <tr>
+          <td>הוספת פקודה</td>
+          <td class="old">פותחים handle_client ומוסיפים elif</td>
+          <td class="new">מחלקה חדשה + שורה בhandlers[]</td>
+        </tr>
+        <tr>
+          <td>ניהול לקוחות</td>
+          <td class="old">clients = [] גלובלי עם Lock ידני</td>
+          <td class="new">ClientManager מחלקה עם lock פנימי</td>
+        </tr>
+        <tr>
+          <td>ניהול משתמשים</td>
+          <td class="old">dict ב-server / SQLAlchemy ב-server</td>
+          <td class="new">IUserRepository (InMemory / SQL)</td>
+        </tr>
+        <tr>
+          <td>לקוח מחובר</td>
+          <td class="old">{"socket":..., "username":...} dict</td>
+          <td class="new">ConnectedClient dataclass</td>
+        </tr>
+        <tr>
+          <td>תלויות</td>
+          <td class="old">פונקציות גלובליות (get_username_by_socket)</td>
+          <td class="new">CommandContext — DI מסודר</td>
+        </tr>
+        <tr>
+          <td>בדיקות unit</td>
+          <td class="old">כמעט בלתי אפשרי</td>
+          <td class="new">כל handler ניתן לבדיקה בנפרד</td>
+        </tr>
+        <tr>
+          <td>גודל handle_client</td>
+          <td class="old">150+ שורות</td>
+          <td class="new">~25 שורות (תיאום בלבד)</td>
+        </tr>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;flex:1;min-height:0">
+      <div class="hbox hc" style="flex:1">
+        <div class="hbt">🎯 מה השתפר ב-maintainability?</div>
+        כל קובץ עכשיו קטן וממוקד. אם יש באג ב-login — פותחים רק את
+        <code style="color:var(--accent)">LoginCommandHandler</code>.
+        אם רוצים לשנות את ה-DB — משנים רק את ה-Repository.
+      </div>
+      <div class="hbox hg" style="flex:1">
+        <div class="hbt">🚀 מה השתפר ב-extensibility?</div>
+        הוספת group_chat, user_status, file_transfer — כל אחד מהם
+        הוא מחלקה נפרדת. <strong>לא נוגעים בקוד קיים</strong>.
+        פחות סיכון לשבור דברים.
+      </div>
+      <div class="hbox hp" style="flex:1">
+        <div class="hbt">🧪 מה השתפר ב-testability?</div>
+        ניתן כעת לכתוב: <code style="color:var(--accent4)">handler.handle(msg, mock_socket, protocol, mock_context)</code>
+        — mock קל ל-context. בעבר זה דרש socket אמיתי ו-DB.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLIDE 10 — SUMMARY + TASKS ═══════════════════ -->
+<div class="slide" data-i="10">
+  <div class="hdr">
+    <span class="htitle">סיכום + משימות</span>
+    <div class="hright"><span class="tag t3">SUMMARY</span><span class="snum">11 / 11</span></div>
+  </div>
+  <div class="body">
+    <div class="col c50">
+      <div class="pan" style="flex:1">
+        <div class="ptit">🧠 מה למדנו</div>
+        <ul class="xlist" style="gap:12px">
+          <li><span class="ic">S</span><div><strong>SRP</strong> — כל מחלקה אחריות אחת: Server מתאם, Manager מנהל, Repository שומר, Handler מבצע</div></li>
+          <li><span class="ic">O</span><div><strong>OCP</strong> — להוסיף handler חדש ללא שינוי בשרת</div></li>
+          <li><span class="ic">L</span><div><strong>LSP</strong> — כל Handler מחליף BaseCommandHandler, כל Repository מחליף IUserRepository</div></li>
+          <li><span class="ic">I</span><div><strong>ISP</strong> — ממשקים קטנים: IUserRepository (3 מתודות), BaseCommandHandler (2 מתודות)</div></li>
+          <li><span class="ic">D</span><div><strong>DIP</strong> — ChatServer תלוי ב-Interface, CommandContext מזריק תלויות</div></li>
+          <li><span class="ic">🏭</span><div><strong>Command Pattern</strong> — פעולות כמחלקות עם ממשק אחיד</div></li>
+          <li><span class="ic">🗄️</span><div><strong>Repository Pattern</strong> — הסתרת פרטי storage מאחורי ממשק</div></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col c50">
+      <div class="pan p2" style="flex:0 0 auto">
+        <div class="ptit">📋 משימה להגשה</div>
+        <div class="ftree" style="line-height:1.9">
+<span class="ft-dir">stage6/</span>
+├── <span class="ft-file f4">protocol.py</span>         <span class="ft-cm">← V5</span>
+├── <span class="ft-file">models.py</span>
+├── <span class="ft-file f3">repositories.py</span>
+├── <span class="ft-file f2">client_manager.py</span>
+├── <span class="ft-file f5">command_handlers.py</span>
+├── <span class="ft-file">server.py</span>
+├── <span class="ft-file f3">client.py</span>
+└── <span class="ft-cm">output.txt</span>           <span class="ft-cm">← פלט הרצה</span>
+        </div>
+      </div>
+      <div class="pan p3 mt8" style="flex:1">
+        <div class="ptit">🚀 אתגרים למתקדמים</div>
+        <ul class="xlist l3" style="gap:10px">
+          <li><span class="ic">⭐</span><div><strong>group_chat</strong> — GroupMessageCommandHandler. קבוצות עם שמות, הצטרפות, שליחה לקבוצה</div></li>
+          <li><span class="ic">⭐⭐</span><div><strong>user_status</strong> — StatusCommandHandler. "נוכח / עסוק / לא מפריע" עם broadcast לכולם</div></li>
+          <li><span class="ic">⭐⭐</span><div><strong>SQLUserRepository</strong> — מממש IUserRepository עם SQLAlchemy. ChatServer לא משתנה!</div></li>
+          <li><span class="ic">⭐⭐⭐</span><div><strong>bcrypt passwords</strong> — SecureUserRepository שמצפין סיסמאות לפני שמירה</div></li>
+        </ul>
+        <div class="hbox hg mt8">
+          <div class="hbt">💡 שאלות לחשיבה</div>
+          <span style="font-size: 1.2rem;">מה יקרה אם שני לקוחות שולחים הודעה בו-זמנית? מדוע copy ב-broadcast חשוב?
+          איך תממש <code>HistoryCommandHandler</code> שמחזיר 10 ההודעות האחרונות?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nbtn" id="prev" onclick="go(-1)" disabled>▶ הקודם</button>
+  <div class="dots" id="dots"></div>
+  <button class="nbtn" id="next" onclick="go(1)">הבא ◀</button>
+</div>
+
+<script>
+const N = 11;
+let cur = 0;
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+const prevB  = document.getElementById('prev');
+const nextB  = document.getElementById('next');
+
+for(let i=0;i<N;i++){
+  const d = document.createElement('div');
+  d.className = 'dot'+(i===0?' on':'');
+  d.onclick = ()=>goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(idx){
+  if(idx<0||idx>=N) return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('exit');
+  const prev=cur; cur=idx;
+  setTimeout(()=>slides[prev].classList.remove('exit'),350);
+  slides[cur].classList.add('active');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+  prevB.disabled=cur===0; nextB.disabled=cur===N-1;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown') go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowUp') go(-1);
+});
+</script>
+</body>
+</html>

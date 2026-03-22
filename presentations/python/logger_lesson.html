@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger — שיעור זום אינטראקטיבי</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080C10;
+  --panel:   #0F1620;
+  --panel2:  #141C28;
+  --border:  #1E2A3A;
+  --cyan:    #00D9F5;
+  --green:   #00E676;
+  --orange:  #FF9D00;
+  --red:     #FF3B3B;
+  --yellow:  #FFE03A;
+  --white:   #E8F0F8;
+  --muted:   #5A7080;
+  --purple:  #B06EFF;
+  --pink:    #FF5CB4;
+  --blue:    #4EA8FF;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-heb:  'Heebo', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  font-family: var(--font-heb);
+  color: var(--white);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ── SCANLINES OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,217,245,0.012) 2px,
+    rgba(0,217,245,0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 500;
+  height: 52px;
+  background: rgba(8,12,16,0.96);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+}
+
+.nav-logo {
+  font-family: var(--font-mono);
+  font-size:18px;
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-logo::before {
+  content: '▶';
+  color: var(--green);
+  font-size:18px;
+  animation: blink 1.2s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.nav-dots { display: flex; gap: 5px; flex-wrap: wrap; max-width: 60%; }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); cursor: pointer;
+  transition: all .25s; border: 1px solid transparent;
+  flex-shrink: 0;
+}
+.dot:hover { background: var(--muted); transform: scale(1.4); }
+.dot.active { background: var(--cyan); border-color: rgba(0,217,245,0.4); box-shadow: 0 0 6px var(--cyan); }
+.dot.quiz-dot.active { background: var(--yellow); border-color: rgba(255,224,58,0.4); box-shadow: 0 0 6px var(--yellow); }
+.dot.activity-dot.active { background: var(--green); border-color: rgba(0,230,118,0.4); box-shadow: 0 0 6px var(--green); }
+
+.nav-controls { display: flex; align-items: center; gap: 8px; }
+.nav-counter {
+  font-family: var(--font-mono);
+  font-size:18px;
+  color: var(--muted);
+  min-width: 50px;
+  text-align: center;
+}
+.nav-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size:18px;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-btn:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,217,245,0.05); }
+
+/* ── SLIDES CONTAINER ── */
+.slides-wrap {
+  margin-top: 52px;
+  height: calc(100vh - 52px);
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: none;
+  padding: 2rem 2.5rem 1.5rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  animation: fadeUp .3s ease;
+}
+.slide.active { display: flex; flex-direction: column; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SLIDE ACCENT LINE ── */
+.accent-line {
+  position: absolute;
+  top: 52px; left: 0; right: 0;
+  height: 3px;
+}
+
+/* ── SLIDE TYPES ── */
+.slide-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size:18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  margin-bottom: .8rem;
+  border: 1px solid;
+}
+.type-lecture  { color: var(--cyan);   border-color: rgba(0,217,245,.3);  background: rgba(0,217,245,.05); }
+.type-quiz     { color: var(--yellow); border-color: rgba(255,224,58,.3); background: rgba(255,224,58,.05); }
+.type-activity { color: var(--green);  border-color: rgba(0,230,118,.3);  background: rgba(0,230,118,.05); }
+.type-summary  { color: var(--purple); border-color: rgba(176,110,255,.3);background: rgba(176,110,255,.05); }
+
+/* ── TYPOGRAPHY ── */
+h1 { font-family: var(--font-mono); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; line-height: 1.1; }
+h2 { font-family: var(--font-mono); font-size: clamp(1.4rem, 2.5vw, 2rem); font-weight: 700; }
+h3 { font-family: var(--font-mono); font-size:18px; font-weight: 600; }
+.sub { font-size:18px; color: var(--muted); margin-top: .3rem; line-height: 1.6; }
+
+/* ── GRID HELPERS ── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8rem; }
+.g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: .8rem; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+}
+.card-cyan   { border-color: rgba(0,217,245,.4); }
+.card-green  { border-color: rgba(0,230,118,.4); }
+.card-yellow { border-color: rgba(255,224,58,.4); }
+.card-red    { border-color: rgba(255,59,59,.4); }
+.card-orange { border-color: rgba(255,157,0,.4); }
+.card-purple { border-color: rgba(176,110,255,.4); }
+
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: .6rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── CODE BLOCK ── */
+.code {
+  background: #050810;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  line-height: 1.75;
+  margin: .6rem 0;
+}
+.code-bar {
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  font-size: 1.2rem;
+  color: var(--muted);
+  display: flex; justify-content: space-between; align-items: center;
+  direction: ltr;
+}
+.code-dots { display: flex; gap: 5px; }
+.code-dots span { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.code-body {
+  padding: .8rem 1rem;
+  direction: ltr; text-align: left;
+  overflow-x: auto;
+}
+.line { display: block; white-space: pre; }
+
+.c-cyan   { color: var(--cyan); }
+.c-green  { color: var(--green); }
+.c-orange { color: var(--orange); }
+.c-red    { color: var(--red); }
+.c-yellow { color: var(--yellow); }
+.c-purple { color: var(--purple); }
+.c-pink   { color: var(--pink); }
+.c-blue   { color: var(--blue); }
+.c-muted  { color: var(--muted); }
+.c-white  { color: var(--white); }
+
+/* ── LEVEL BADGE ── */
+.lvl-badge {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  display: inline-block;
+}
+
+/* ── LEVEL ROW ── */
+.lvl-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr;
+  align-items: center;
+  gap: .8rem;
+  background: var(--panel);
+  border-radius: 8px;
+  padding: .65rem 1rem;
+  border-right: 3px solid;
+  margin-bottom: .6rem;
+}
+.lvl-desc { font-size: 1.2rem; }
+.lvl-code { font-family: var(--font-mono); font-size: 1.2rem; color: var(--muted); direction: ltr; text-align: left; }
+
+/* ── QUIZ STYLES ── */
+.quiz-question {
+  font-size:18px;
+  font-weight: 600;
+  line-height: 1.6;
+  margin-bottom: 1.2rem;
+  padding: 1rem 1.2rem;
+  background: var(--panel2);
+  border-radius: 10px;
+  border-right: 3px solid var(--yellow);
+}
+
+.quiz-options {
+  display: grid;
+  gap: .6rem;
+}
+.quiz-opt {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .85rem 1.1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .2s;
+  font-size: 1.2rem;
+  line-height: 1.4;
+  text-align: right;
+  position: relative;
+  overflow: hidden;
+}
+.quiz-opt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity .2s;
+  background: rgba(0,217,245,.06);
+}
+.quiz-opt:hover:not(.revealed) { border-color: var(--cyan); transform: translateX(-3px); }
+.quiz-opt:hover:not(.revealed)::before { opacity: 1; }
+
+.opt-letter {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  color: var(--muted);
+}
+.quiz-opt:hover:not(.revealed) .opt-letter {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0,217,245,.1);
+}
+
+.quiz-opt.correct {
+  border-color: var(--green) !important;
+  background: rgba(0,230,118,.08) !important;
+  animation: correctPop .4s ease;
+}
+.quiz-opt.correct .opt-letter {
+  background: var(--green) !important;
+  color: #000 !important;
+  border-color: var(--green) !important;
+}
+.quiz-opt.wrong {
+  border-color: var(--red) !important;
+  background: rgba(255,59,59,.08) !important;
+  opacity: .6;
+}
+.quiz-opt.wrong .opt-letter {
+  background: rgba(255,59,59,.2) !important;
+  border-color: var(--red) !important;
+  color: var(--red) !important;
+}
+.quiz-opt.revealed { cursor: default; }
+
+@keyframes correctPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.02) translateX(-3px); }
+  100% { transform: scale(1) translateX(-3px); }
+}
+
+.quiz-reveal-btn {
+  margin-top: 1rem;
+  padding: .7rem 2rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--yellow);
+  background: rgba(255,224,58,.08);
+  color: var(--yellow);
+  transition: all .2s;
+  display: block;
+}
+.quiz-reveal-btn:hover { background: rgba(255,224,58,.15); box-shadow: 0 0 12px rgba(255,224,58,.2); }
+.quiz-reveal-btn:disabled { opacity: .4; cursor: default; }
+
+.quiz-explanation {
+  margin-top: .8rem;
+  padding: .8rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0,230,118,.3);
+  background: rgba(0,230,118,.05);
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: var(--green);
+  display: none;
+}
+.quiz-explanation.show { display: block; animation: fadeUp .3s ease; }
+
+/* ── SCORE TRACKER ── */
+.score-bar {
+  position: fixed;
+  top: 52px; left: 0; right: 0;
+  height: 2px;
+  background: var(--border);
+  z-index: 400;
+}
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  transition: width .4s ease;
+}
+
+/* ── ACTIVITY BLOCKS ── */
+.activity-box {
+  border: 1px dashed rgba(0,230,118,.4);
+  border-radius: 12px;
+  padding: 1.2rem 1.5rem;
+  background: rgba(0,230,118,.03);
+  margin: .8rem 0;
+}
+.activity-header {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin-bottom: .8rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--green);
+}
+.activity-icon {
+  font-size: 1.2rem;
+}
+.activity-task {
+  font-size: 1.2rem;
+  line-height: 1.8;
+  color: var(--white);
+}
+.activity-task li {
+  margin: .3rem 0;
+  margin-right: 1rem;
+}
+
+.chat-prompt {
+  background: var(--panel2);
+  border: 1px solid rgba(78,168,255,.3);
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  color: var(--blue);
+  margin-top: .6rem;
+  direction: ltr;
+  text-align: left;
+}
+
+/* ── TIMER ── */
+.timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  padding: .4rem .9rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,157,0,.4);
+  background: rgba(255,157,0,.06);
+  color: var(--orange);
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: .6rem;
+}
+.timer-box:hover { background: rgba(255,157,0,.12); }
+.timer-count { font-weight: 800; font-size:18px; min-width: 28px; }
+
+/* ── PROGRESS INDICATOR ── */
+.progress-wrap {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8,12,16,.9);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: .4rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  color: var(--muted);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+.progress-slide { color: var(--cyan); font-weight: 700; }
+
+/* ── TITLE SLIDE ── */
+.title-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 75vh;
+  position: relative;
+}
+.title-bg-word {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: clamp(8rem, 20vw, 16rem);
+  font-weight: 900;
+  color: var(--cyan);
+  opacity: .04;
+  left: -1rem;
+  top: 50%;
+  transform: translateY(-55%);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+.title-badge {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  letter-spacing: 3px;
+  color: var(--green);
+  border: 1px solid rgba(0,230,118,.3);
+  padding: 3px 12px;
+  border-radius: 3px;
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+.title-main {
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 900;
+  letter-spacing: 4px;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+.title-sub {
+  font-size:18px;
+  color: var(--muted);
+  margin-top: .8rem;
+  position: relative;
+  z-index: 1;
+}
+.title-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+  margin: 1.2rem 0;
+  position: relative;
+  z-index: 1;
+}
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .8rem;
+  position: relative;
+  z-index: 1;
+}
+.pillar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .9rem;
+  text-align: center;
+  transition: border-color .3s;
+}
+.pillar:hover { border-color: var(--cyan); }
+.pillar-icon { font-size: 1.5rem; margin-bottom: .3rem; }
+.pillar-label { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; }
+
+/* ── SUMMARY GRID ── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .8rem;
+}
+.sum-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  transition: all .3s;
+  cursor: default;
+}
+.sum-card:hover {
+  transform: translateY(-3px);
+  border-color: currentColor;
+}
+.sum-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+.sum-concept { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 800; }
+.sum-detail { font-family: var(--font-mono); font-size: 1.2rem; color: var(--muted); margin-top: .3rem; }
+
+/* ── INFO BOX ── */
+.info-box {
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  border: 1px solid;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  margin-top: .7rem;
+}
+
+/* ── FLOW DIAGRAM ── */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: .8rem 0;
+}
+.flow-box {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .8rem .6rem;
+  text-align: center;
+}
+.flow-arrow {
+  color: var(--muted);
+  font-size: 1.3rem;
+  padding: 0 .4rem;
+  flex-shrink: 0;
+}
+.flow-label { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; margin-bottom: .2rem; }
+.flow-sub { font-size: 1.2rem; color: var(--muted); }
+
+/* ── KEYBOARD HINT ── */
+.kb-hint {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.kb-key {
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 1.2rem;
+}
+
+/* ── SCORE DISPLAY ── */
+.score-display {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  color: var(--yellow);
+  border: 1px solid rgba(255,224,58,.25);
+  padding: 2px 10px;
+  border-radius: 4px;
+  background: rgba(255,224,58,.05);
+}
+
+/* ── CLOSING SLIDE ── */
+.closing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 70vh;
+  position: relative;
+}
+.closing-bg-text {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: clamp(6rem, 18vw, 14rem);
+  font-weight: 900;
+  opacity: .035;
+  color: var(--green);
+  user-select: none;
+  pointer-events: none;
+}
+.next-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .7rem;
+  margin-top: 1.5rem;
+}
+.next-step {
+  background: var(--panel);
+  border: 1px solid rgba(176,110,255,.3);
+  border-radius: 8px;
+  padding: .7rem;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  color: var(--purple);
+  text-align: center;
+}
+
+/* ── SCROLL BAR ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="score-bar"><div class="score-fill" id="scoreFill" style="width:0%"></div></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">LOGGER.PY</div>
+  <div class="nav-dots" id="navDots"></div>
+  <div class="nav-controls">
+    <div class="score-display" id="scoreDisplay">⭐ 0/0</div>
+    <span class="nav-counter" id="slideCounter">1 / 20</span>
+    <button class="nav-btn" onclick="go(cur-1)">‹</button>
+    <button class="nav-btn" onclick="go(cur+1)">›</button>
+  </div>
+</nav>
+
+<div class="slides-wrap" id="slidesWrap">
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+═══════════════════════════════════════════════ -->
+<div class="slide active" data-type="lecture">
+  <div class="title-hero">
+    <div class="title-bg-word">LOG</div>
+    <div class="title-badge">שיעור זום — פרויקט גמר</div>
+    <h1 class="title-main c-cyan">LOGGER<span class="c-muted">.</span><span style="color:var(--green)">PY</span></h1>
+    <p class="title-sub">תיעוד חכם לפרויקטים — מה, למה, ואיך כותבים Logger מקצועי</p>
+    <div class="title-divider"></div>
+    <div class="pillars">
+      <div class="pillar">
+        <div class="pillar-icon">📦</div>
+        <div class="pillar-label c-cyan">logging module</div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">🎚</div>
+        <div class="pillar-label c-yellow">רמות לוג</div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">🛡</div>
+        <div class="pillar-label c-purple">Context Manager</div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">✨</div>
+        <div class="pillar-label c-pink">Decorator</div>
+      </div>
+    </div>
+    <div style="margin-top:1.5rem; display:flex; gap:.8rem; align-items:center;">
+      <div class="kb-hint">
+        <span class="kb-key">←</span><span class="kb-key">→</span> ניווט
+        &nbsp;|&nbsp;
+        <span class="kb-key">Space</span> הבא
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2 — מוטיבציה
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>למה בכלל <span class="c-cyan">Logger</span>?</h2>
+  <p class="sub">השוו: מה קורה כשהפרויקט רץ בלי עיניים</p>
+
+  <div class="g2" style="margin-top:1rem;">
+    <div class="card card-red">
+      <div class="card-title c-red">❌ בלי Logger</div>
+      <ul style="font-size: 1.2rem;line-height:2;margin-right:1rem;">
+        <li>שגיאה קורית — איפה? מתי?</li>
+        <li>תלוי ב-<code style="color:var(--orange)">print()</code> שנשאר בקוד</li>
+        <li>אין היסטוריה של מה קרה</li>
+        <li>לא עובד ב-Production</li>
+        <li>המשתמש לא יכול לדווח בדיוק</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <div class="card-title c-green">✅ עם Logger</div>
+      <ul style="font-size: 1.2rem;line-height:2;margin-right:1rem;">
+        <li>כל אירוע מתועד עם timestamp</li>
+        <li>שמור בקובץ אוטומטית</li>
+        <li>רמות — DEBUG עד ERROR</li>
+        <li>Production-ready מהיום הראשון</li>
+        <li>ניתן לנתח מה קרה בדיוק</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code" style="margin-top:1rem;">
+    <div class="code-bar">
+      <span>app.log — דוגמה לפלט Logger</span>
+      <div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div>
+    </div>
+    <div class="code-body">
+<span class="line"><span class="c-muted">2024-01-15 09:32:01</span> <span class="c-cyan">[INFO]</span>    <span class="c-white">שרת עלה בהצלחה על פורט 8080</span></span>
+<span class="line"><span class="c-muted">2024-01-15 09:32:45</span> <span class="c-yellow">[WARNING]</span> <span class="c-white">קובץ config.yaml לא נמצא — משתמש בברירת מחדל</span></span>
+<span class="line"><span class="c-muted">2024-01-15 09:33:12</span> <span class="c-red">[ERROR]</span>   <span class="c-white">חיבור ל-DB נכשל: Connection refused (127.0.0.1:5432)</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3 — שאלת פתיחה (QUIZ)
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 1</span>
+  <h2>בדקו את עצמכם</h2>
+
+  <div class="quiz-question">
+    פרויקט הגמר שלכם רץ על מחשב של משתמש אחר ומתרסק לפעמים. לא ניתן לחבר debugger. איזו גישה <strong>הכי נכונה</strong>?
+  </div>
+
+  <div class="quiz-options" id="q1-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q1', 1)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q1-exp">
+    ✅ Logger כותב לקובץ אוטומטית עם timestamp — גם כשאין גישה למחשב. print() נעלם מהמסך ואין היסטוריה. Debugger דורש גישה ישירה למחשב.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4 — ספריית logging
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>ספריית <span class="c-cyan">logging</span> המובנית</h2>
+  <p class="sub">Python מגיע עם ספרייה מלאה — לא צריך להתקין כלום</p>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div>
+      <div class="code">
+        <div class="code-bar"><span>basic_setup.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line"><span class="c-purple">import</span> logging</span>
+<span class="line"></span>
+<span class="line">logging.<span class="c-green">basicConfig</span>(</span>
+<span class="line">  level=logging.<span class="c-yellow">DEBUG</span>,</span>
+<span class="line">  format=<span class="c-cyan">"%(asctime)s [%(levelname)s] %(message)s"</span>,</span>
+<span class="line">  handlers=[</span>
+<span class="line">    logging.<span class="c-green">FileHandler</span>(<span class="c-cyan">"app.log"</span>),</span>
+<span class="line">    logging.<span class="c-green">StreamHandler</span>()   <span class="c-muted"># גם למסך</span></span>
+<span class="line">  ]</span>
+<span class="line">)</span>
+        </div>
+      </div>
+
+      <div class="card card-orange" style="margin-top:.7rem;">
+        <div class="card-title c-orange">print() vs logging</div>
+        <table style="width:100%;font-family:var(--font-mono);font-size: 1.2rem;border-collapse:collapse;">
+          <tr style="color:var(--muted);"><td style="padding:.3rem .5rem;">print()</td><td style="padding:.3rem .5rem;">logging</td></tr>
+          <tr><td class="c-red" style="padding:.25rem .5rem;">💬 מסך בלבד</td><td class="c-green" style="padding:.25rem .5rem;">📁 קובץ + מסך</td></tr>
+          <tr><td class="c-red" style="padding:.25rem .5rem;">⛔ ללא רמה</td><td class="c-green" style="padding:.25rem .5rem;">🎚 DEBUG→ERROR</td></tr>
+          <tr><td class="c-red" style="padding:.25rem .5rem;">⛔ ללא זמן</td><td class="c-green" style="padding:.25rem .5rem;">⏱ Timestamp אוטו</td></tr>
+          <tr><td class="c-red" style="padding:.25rem .5rem;">⛔ לא Production</td><td class="c-green" style="padding:.25rem .5rem;">✅ Production-ready</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--muted);margin-bottom:.5rem;">מרכיבי הספרייה:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+        <div class="card card-cyan"><div class="card-title c-cyan" style="font-size: 1.2rem;">Logger</div><div style="font-size: 1.2rem;color:var(--muted);">אובייקט מרכזי — שולח הודעות</div></div>
+        <div class="card card-green"><div class="card-title c-green" style="font-size: 1.2rem;">Handler</div><div style="font-size: 1.2rem;color:var(--muted);">לאן שולחים — קובץ / מסך</div></div>
+        <div class="card card-yellow"><div class="card-title c-yellow" style="font-size: 1.2rem;">Formatter</div><div style="font-size: 1.2rem;color:var(--muted);">איך ייראה הפלט</div></div>
+        <div class="card card-orange"><div class="card-title c-orange" style="font-size: 1.2rem;">Filter</div><div style="font-size: 1.2rem;color:var(--muted);">אילו הודעות לסנן</div></div>
+        <div class="card card-purple"><div class="card-title c-purple" style="font-size: 1.2rem;">RotatingHandler</div><div style="font-size: 1.2rem;color:var(--muted);">קובץ מתחלף לפי גודל</div></div>
+        <div class="card card-cyan" style="border-color:rgba(255,92,180,.4)"><div class="card-title c-pink" style="font-size: 1.2rem;">config</div><div style="font-size: 1.2rem;color:var(--muted);">הגדרות מ-JSON/YAML</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5 — רמות לוג
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>רמות לוג</h2>
+  <p class="sub">כל רמה = מידת חשיבות. חמור יותר → ערך גבוה יותר</p>
+
+  <div style="margin-top:.8rem;">
+    <div class="lvl-row" style="border-color:var(--yellow);">
+      <div><span class="lvl-badge c-yellow">0 · DEBUG</span></div>
+      <div class="lvl-desc">מידע פיתוח — ערכים, מצבים פנימיים</div>
+      <div class="lvl-code">log.debug(f"x = {x}")</div>
+    </div>
+    <div class="lvl-row" style="border-color:var(--cyan);">
+      <div><span class="lvl-badge c-cyan">1 · INFO</span></div>
+      <div class="lvl-desc">אירועים רגילים — המערכת עובדת כשורה</div>
+      <div class="lvl-code">log.info("שרת עלה בהצלחה")</div>
+    </div>
+    <div class="lvl-row" style="border-color:var(--orange);">
+      <div><span class="lvl-badge c-orange">2 · WARNING</span></div>
+      <div class="lvl-desc">חריג אבל המערכת ממשיכה</div>
+      <div class="lvl-code">log.warning("קובץ חסר, ברירת מחדל")</div>
+    </div>
+    <div class="lvl-row" style="border-color:var(--red);">
+      <div><span class="lvl-badge c-red">3 · ERROR</span></div>
+      <div class="lvl-desc">שגיאה — חלק מהמערכת נכשל</div>
+      <div class="lvl-code">log.error("חיבור נכשל!")</div>
+    </div>
+  </div>
+
+  <div class="info-box" style="border-color:rgba(176,110,255,.4);background:rgba(176,110,255,.05);margin-top:.8rem;">
+    <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+      💡 <strong>Development:</strong> min_level = DEBUG &nbsp;|&nbsp; <strong>Production:</strong> min_level = WARNING
+    </span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6 — QUIZ רמות לוג
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 2</span>
+  <h2>רמות לוג — מה הנכון?</h2>
+
+  <div class="quiz-question">
+    משתמש מנסה להתחבר עם סיסמה שגויה <strong>פעמיים ברצף</strong>. בשלישייה — החשבון ננעל. איזו רמת לוג מתאימה לניסיון השגוי?
+  </div>
+
+  <div class="quiz-options" id="q2-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q2', 2)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q2-exp">
+    ✅ WARNING — המערכת ממשיכה לפעול, אבל משהו חריג קורה שכדאי לשים לב אליו. ERROR יהיה מוגזם כי המערכת לא נכשלה. INFO לא מספיק דרמטי לאירוע ביטחוני.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7 — עיצוב הכיתה
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>עיצוב כיתת <span class="c-green">Logger</span></h2>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div>
+      <div class="card card-green" style="margin-bottom:.7rem;">
+        <div class="card-title c-green">__init__ — פרמטרים</div>
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;line-height:2.1;">
+          <div><span class="c-cyan">filepath</span><span class="c-muted">: str = </span><span class="c-yellow">"app.log"</span></div>
+          <div><span class="c-cyan">to_screen</span><span class="c-muted">: bool = </span><span class="c-yellow">True</span></div>
+          <div><span class="c-cyan">to_file</span><span class="c-muted">: bool = </span><span class="c-yellow">True</span></div>
+          <div><span class="c-cyan">min_level</span><span class="c-muted">: int = </span><span class="c-yellow">DEBUG (0)</span></div>
+        </div>
+      </div>
+
+      <div class="g4">
+        <div class="card card-yellow" style="text-align:center;padding:.6rem;">
+          <div style="font-size: 1.2rem;color:var(--yellow)">LV 0</div>
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">debug()</div>
+        </div>
+        <div class="card card-cyan" style="text-align:center;padding:.6rem;">
+          <div style="font-size: 1.2rem;color:var(--cyan)">LV 1</div>
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">info()</div>
+        </div>
+        <div class="card card-orange" style="text-align:center;padding:.6rem;">
+          <div style="font-size: 1.2rem;color:var(--orange)">LV 2</div>
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">warning()</div>
+        </div>
+        <div class="card card-red" style="text-align:center;padding:.6rem;">
+          <div style="font-size: 1.2rem;color:var(--red)">LV 3</div>
+          <div style="font-family:var(--font-mono);font-size: 1.2rem;font-weight:700;">error()</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="code">
+        <div class="code-bar"><span>logger_class.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line"><span class="c-cyan">class</span> <span class="c-green">Logger</span>:</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__init__</span>(self, filepath=<span class="c-yellow">"app.log"</span>,</span>
+<span class="line">               to_screen=<span class="c-yellow">True</span>, to_file=<span class="c-yellow">True</span>,</span>
+<span class="line">               min_level=<span class="c-yellow">0</span>):</span>
+<span class="line">    self._filepath   = filepath</span>
+<span class="line">    self._to_screen  = to_screen</span>
+<span class="line">    self._to_file    = to_file</span>
+<span class="line">    self._min_level  = min_level</span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">debug</span>(self, msg):   self.<span class="c-purple">_log</span>(<span class="c-yellow">0</span>, msg)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">info</span>(self, msg):    self.<span class="c-purple">_log</span>(<span class="c-yellow">1</span>, msg)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">warning</span>(self, msg): self.<span class="c-purple">_log</span>(<span class="c-yellow">2</span>, msg)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">error</span>(self, msg):   self.<span class="c-purple">_log</span>(<span class="c-yellow">3</span>, msg)</span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-purple">_log</span>(self, level, msg):  <span class="c-muted"># פרטי!</span></span>
+<span class="line">    <span class="c-cyan">if</span> level >= self._min_level:</span>
+<span class="line">      <span class="c-muted"># ... כתוב timestamp + הודעה</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box" style="border-color:rgba(176,110,255,.4);background:rgba(176,110,255,.05);">
+    <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+      🔒 _log() פרטי — Encapsulation: המתודה הפנימית נסתרת מהמשתמש
+    </span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8 — QUIZ Encapsulation
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 3</span>
+  <h2>Encapsulation</h2>
+
+  <div class="quiz-question">
+    בכיתת Logger, המתודה <code style="color:var(--purple)">_log()</code> מוגדרת עם קו תחתון. מה המשמעות?
+  </div>
+
+  <div class="quiz-options" id="q3-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q3', 0)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q3-exp">
+    ✅ קו תחתון אחד = מוסכמה ב-Python שהמתודה פרטית (Private). זה חלק ממושג Encapsulation — מסתירים את הלוגיקה הפנימית. Python לא אוכף זאת בכוח, אבל זה signal למפתחים לא להשתמש בה ישירות.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 9 — Context Manager
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>Context Manager — <span class="c-purple">with Logger()</span></h2>
+  <p class="sub">מבטיח שהקובץ ייסגר תמיד — גם אם יש Exception</p>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div>
+      <div class="code">
+        <div class="code-bar"><span>context_manager.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line"><span class="c-cyan">class</span> <span class="c-green">Logger</span>:</span>
+<span class="line">  <span class="c-muted"># ... __init__ וכו'</span></span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__enter__</span>(self):</span>
+<span class="line">    self._file = <span class="c-green">open</span>(self._filepath, <span class="c-cyan">"a"</span>)</span>
+<span class="line">    <span class="c-cyan">return</span> self       <span class="c-muted"># מחזיר את עצמו</span></span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__exit__</span>(self, *args):</span>
+<span class="line">    self._file.<span class="c-red">close</span>()  <span class="c-muted"># תמיד!</span></span>
+<span class="line">    <span class="c-cyan">return</span> <span class="c-yellow">False</span></span>
+<span class="line"></span>
+<span class="line"><span class="c-muted"># שימוש:</span></span>
+<span class="line"><span class="c-cyan">with</span> <span class="c-green">Logger</span>(<span class="c-cyan">"app.log"</span>) <span class="c-cyan">as</span> log:</span>
+<span class="line">  log.<span class="c-cyan">info</span>(<span class="c-cyan">"מתחיל..."</span>)</span>
+<span class="line">  risky_operation()   <span class="c-muted"># גם אם נכשל</span></span>
+<span class="line"><span class="c-muted"># קובץ נסגר אוטומטית ✓</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flow" style="flex-direction:column;gap:.5rem;align-items:stretch;">
+        <div class="flow-box" style="border-color:rgba(0,217,245,.4);">
+          <div class="flow-label c-cyan">with Logger() as log:</div>
+          <div class="flow-sub">קורא ל-__enter__</div>
+        </div>
+        <div style="text-align:center;color:var(--muted);font-size:1.2rem;">↓</div>
+        <div class="flow-box" style="border-color:rgba(0,230,118,.4);">
+          <div class="flow-label c-green">הבלוק מתבצע</div>
+          <div class="flow-sub">log.info() / error() ...</div>
+        </div>
+        <div style="text-align:center;color:var(--muted);font-size:1.2rem;">↓ (גם אם Exception!)</div>
+        <div class="flow-box" style="border-color:rgba(255,59,59,.4);">
+          <div class="flow-label c-red">__exit__ נקרא</div>
+          <div class="flow-sub">file.close() — תמיד</div>
+        </div>
+      </div>
+
+      <div class="info-box" style="border-color:rgba(0,217,245,.4);background:rgba(0,217,245,.04);margin-top:.7rem;">
+        <span class="c-cyan" style="font-family:var(--font-mono);font-size: 1.2rem;">
+          🔍 אותו עיקרון בדיוק כמו: <code>with open("file.txt") as f:</code>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 10 — QUIZ Context Manager
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 4</span>
+  <h2>Context Manager</h2>
+
+  <div class="quiz-question">
+    בקוד: <code style="color:var(--cyan)">with Logger("app.log") as log:</code>
+    <br>מה קורה אם בתוך הבלוק נזרקת <strong>Exception</strong>?
+  </div>
+
+  <div class="quiz-options" id="q4-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q4', 3)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q4-exp">
+    ✅ __exit__ נקרא תמיד — זה הסוד של Context Manager! גם אם יש Exception, הקובץ ייסגר. זה מבטיח שאין "דליפת משאבים" (Resource Leak). ה-Exception עצמה עדיין תיזרק (כי __exit__ מחזיר False).
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 11 — פעילות חדרים #1
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="activity">
+  <span class="slide-type type-activity">🏠 פעילות בחדרים — 10 דקות</span>
+  <h2>Logger Detective — <span class="c-green">איזו רמה?</span></h2>
+
+  <div class="activity-box">
+    <div class="activity-header">
+      <div class="activity-icon">🔍</div>
+      <span>המשימה: בחרו רמת לוג לכל אירוע ונמקו</span>
+    </div>
+    <div class="activity-task">
+      <ol style="margin-right:1.2rem;line-height:2.2;">
+        <li>משתמש התחבר בהצלחה לפעם הראשונה היום</li>
+        <li>קובץ <code style="color:var(--orange)">config.yaml</code> לא נמצא — המערכת ממשיכה עם ברירת מחדל</li>
+        <li>חיבור ל-Database נכשל לגמרי אחרי 3 ניסיונות</li>
+        <li>ערך משתנה בתוך לולאה: <code style="color:var(--yellow)">counter = 42</code></li>
+        <li>ניסיון גישה לא מורשית לנתיב <code style="color:var(--red)">/admin/delete</code></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div class="activity-box" style="border-color:rgba(0,217,245,.3);">
+      <div class="activity-header" style="color:var(--cyan);">
+        <span>❓ גם דונו:</span>
+      </div>
+      <div class="activity-task">
+        באיזה <code style="color:var(--purple)">min_level</code> תגדירו את ה-Logger שלכם:
+        <br>א. בזמן פיתוח?
+        <br>ב. ב-Production?
+      </div>
+    </div>
+    <div>
+      <div class="timer-box" id="timer1" onclick="startTimer('timer1', 600)">
+        <span>⏱</span> <span class="timer-count">10:00</span> <span>לחצו להתחיל</span>
+      </div>
+      <div class="chat-prompt" style="margin-top:.7rem;">
+# הדביקו בצ'אט את התשובות שלכם:
+# אירוע 1: _____
+# אירוע 2: _____
+# אירוע 3: _____
+# אירוע 4: _____
+# אירוע 5: _____
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 12 — Facade Pattern
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>Facade Pattern — <span class="c-pink">מעטפת מעל logging</span></h2>
+  <p class="sub">מסתירים את המורכבות — ממשק פשוט לספרייה מורכבת</p>
+
+  <div style="margin-top:.8rem;display:grid;grid-template-columns:1fr 60px 1fr 60px 1fr;gap:0;align-items:center;">
+    <div class="card" style="text-align:center;border-color:rgba(0,217,245,.4);">
+      <div style="font-size:1.3rem;margin-bottom:.3rem;">👤</div>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--cyan);">הקוד שלך</div>
+      <div style="font-size: 1.2rem;color:var(--muted);margin-top:.3rem;">log.info("msg")</div>
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:1.5rem;">→</div>
+    <div class="card" style="text-align:center;border-color:rgba(255,92,180,.4);">
+      <div style="font-size:1.3rem;margin-bottom:.3rem;">🎭</div>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--pink);">Logger (Facade)</div>
+      <div style="font-size: 1.2rem;color:var(--muted);margin-top:.3rem;">class Logger</div>
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:1.5rem;">→</div>
+    <div class="card" style="text-align:center;border-color:rgba(176,110,255,.4);">
+      <div style="font-size:1.3rem;margin-bottom:.3rem;">⚙️</div>
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--purple);">logging module</div>
+      <div style="font-size: 1.2rem;color:var(--muted);margin-top:.3rem;">Handler, Formatter...</div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div class="code">
+      <div class="code-bar"><span>facade_logger.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+      <div class="code-body">
+<span class="line"><span class="c-cyan">class</span> <span class="c-green">Logger</span>:  <span class="c-muted"># Facade</span></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">__init__</span>(self, name=<span class="c-cyan">"app"</span>):</span>
+<span class="line">    self._logger = logging.<span class="c-green">getLogger</span>(name)</span>
+<span class="line">    self._setup_handlers()</span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">info</span>(self, msg):</span>
+<span class="line">    self._logger.<span class="c-cyan">info</span>(msg)</span>
+<span class="line"></span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-purple">_setup_handlers</span>(self):</span>
+<span class="line">    <span class="c-muted"># כל המורכבות כאן — פנימי</span></span>
+<span class="line">    fh = logging.<span class="c-green">FileHandler</span>(<span class="c-cyan">"app.log"</span>)</span>
+<span class="line">    fmt = logging.<span class="c-green">Formatter</span>(<span class="c-cyan">"%(asctime)s %(message)s"</span>)</span>
+<span class="line">    fh.<span class="c-green">setFormatter</span>(fmt)</span>
+<span class="line">    self._logger.<span class="c-green">addHandler</span>(fh)</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="info-box" style="border-color:rgba(255,92,180,.4);background:rgba(255,92,180,.05);">
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--pink);margin-bottom:.4rem;">🎭 למה Facade?</div>
+        <ul style="font-size: 1.2rem;line-height:1.9;margin-right:1rem;color:var(--white);">
+          <li>ממשק פשוט: רק <code>log.info()</code></li>
+          <li>המורכבות מוסתרת בפנים</li>
+          <li>קל להחליף ספרייה בעתיד</li>
+          <li>Design Pattern מוכר בתעשייה</li>
+        </ul>
+      </div>
+      <div class="info-box" style="border-color:rgba(0,217,245,.3);background:rgba(0,217,245,.04);margin-top:.6rem;">
+        <span class="c-cyan" style="font-family:var(--font-mono);font-size: 1.2rem;">
+          💡 דוגמה מוכרת: <code>requests.get(url)</code> — Facade מעל HTTP
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 13 — QUIZ Facade
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 5</span>
+  <h2>Facade Pattern</h2>
+
+  <div class="quiz-question">
+    Facade Pattern מציע: "ספק ממשק פשוט לתת-מערכת מורכבת". מה <strong>עיקר היתרון</strong> של זה בפרויקט גמר?
+  </div>
+
+  <div class="quiz-options" id="q5-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q5', 2)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q5-exp">
+    ✅ אם מחר תרצו לעבור מ-logging המובנה ל-loguru או כל ספרייה אחרת — תשנו רק את ה-Facade (הכיתה), לא את כל הקוד שמשתמש ב-log.info(). זה עיקר עוצמת ה-Facade.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 14 — Decorator
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-lecture">📡 הרצאה</span>
+  <h2>Decorator — <span class="c-purple">@log_calls</span></h2>
+  <p class="sub">במקום להוסיף log בכל פונקציה — עוטפים אותה פעם אחת</p>
+
+  <div class="g2" style="margin-top:.8rem;">
+    <div>
+      <div class="code">
+        <div class="code-bar"><span>decorator.py</span><div class="code-dots"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div></div>
+        <div class="code-body">
+<span class="line"><span class="c-purple">import</span> functools, logging</span>
+<span class="line">log = logging.<span class="c-green">getLogger</span>(<span class="c-cyan">"app"</span>)</span>
+<span class="line"></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-purple">log_calls</span>(func):</span>
+<span class="line">  <span class="c-green">@functools.wraps</span>(func)</span>
+<span class="line">  <span class="c-cyan">def</span> <span class="c-green">wrapper</span>(*args, **kwargs):</span>
+<span class="line">    log.<span class="c-cyan">info</span>(f<span class="c-yellow">"▶ {func.__name__}() נקרא"</span>)</span>
+<span class="line">    <span class="c-cyan">try</span>:</span>
+<span class="line">      result = func(*args, **kwargs)</span>
+<span class="line">      log.<span class="c-cyan">info</span>(f<span class="c-yellow">"✓ {func.__name__}() הסתיים"</span>)</span>
+<span class="line">      <span class="c-cyan">return</span> result</span>
+<span class="line">    <span class="c-cyan">except</span> Exception <span class="c-cyan">as</span> e:</span>
+<span class="line">      log.<span class="c-red">error</span>(f<span class="c-yellow">"✗ {func.__name__}(): {e}"</span>)</span>
+<span class="line">      <span class="c-cyan">raise</span></span>
+<span class="line">  <span class="c-cyan">return</span> wrapper</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="code" style="border-color:rgba(176,110,255,.4);">
+        <div class="code-bar" style="background:#1A1A2A;"><span class="c-purple">שימוש — שורה אחת!</span></div>
+        <div class="code-body">
+<span class="line"><span class="c-purple">@log_calls</span>  <span class="c-muted"># ← זהו!</span></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">load_data</span>(filepath):</span>
+<span class="line">  <span class="c-muted"># קוד רגיל...</span></span>
+<span class="line">  <span class="c-cyan">return</span> data</span>
+<span class="line"></span>
+<span class="line"><span class="c-purple">@log_calls</span></span>
+<span class="line"><span class="c-cyan">def</span> <span class="c-green">connect_db</span>(host):</span>
+<span class="line">  <span class="c-muted"># ...</span></span>
+        </div>
+      </div>
+
+      <div class="code" style="border-color:rgba(0,230,118,.4);margin-top:.5rem;">
+        <div class="code-bar" style="background:#0A1A0A;"><span class="c-green">פלט אוטומטי</span></div>
+        <div class="code-body">
+<span class="line c-cyan">▶ load_data() נקרא</span>
+<span class="line c-green">✓ load_data() הסתיים</span>
+<span class="line c-cyan">▶ connect_db() נקרא</span>
+<span class="line c-red">✗ connect_db(): Connection refused</span>
+        </div>
+      </div>
+
+      <div class="info-box" style="border-color:rgba(176,110,255,.4);background:rgba(176,110,255,.05);">
+        <span class="c-purple" style="font-family:var(--font-mono);font-size: 1.2rem;">
+          🎯 Separation of Concerns — לא נוגעים בקוד הפנימי של הפונקציה
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 15 — QUIZ Decorator
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 6</span>
+  <h2>Decorator @log_calls</h2>
+
+  <div class="quiz-question">
+    יש לכם 20 פונקציות בפרויקט ואתם רוצים לוג בכניסה וביציאה מכל פונקציה. בלי Decorator, כמה שורות לוג תצטרכו להוסיף <strong>לכל הפחות</strong>?
+  </div>
+
+  <div class="quiz-options" id="q6-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q6', 1)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q6-exp">
+    ✅ לפחות 40 שורות — שורת log בכניסה ושורת log ביציאה לכל אחת מ-20 הפונקציות. עם @log_calls? רק 21 שורות: הגדרת ה-Decorator פעם אחת + @log_calls מעל כל פונקציה. כוח ה-DRY — Don't Repeat Yourself!
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 16 — פעילות חדרים #2
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="activity">
+  <span class="slide-type type-activity">🏠 פעילות בחדרים — 12 דקות</span>
+  <h2>בניה + Code Review</h2>
+
+  <div class="g2">
+    <div>
+      <div class="activity-box">
+        <div class="activity-header">
+          <span class="activity-icon">🎭</span>
+          <span>חלק א: Facade with JSON (6 דק')</span>
+        </div>
+        <div class="activity-task">
+          הוסיפו ל-Logger שלכם מתודה <code style="color:var(--pink)">info_json()</code> שמדפיסה:
+        </div>
+        <div class="chat-prompt" style="margin-top:.5rem;">
+{"time": "2024-01-15 09:32", "level": "INFO", "msg": "..."}
+        </div>
+      </div>
+
+      <div class="activity-box" style="margin-top:.7rem;border-color:rgba(176,110,255,.3);">
+        <div class="activity-header" style="color:var(--purple)">
+          <span class="activity-icon">✨</span>
+          <span>חלק ב: Decorator עם מונה (6 דק')</span>
+        </div>
+        <div class="activity-task">
+          שנו את <code style="color:var(--purple)">@log_calls</code> כך שיספור כמה פעמים נקראה כל פונקציה ויוסיף לפלט:
+        </div>
+        <div class="chat-prompt" style="margin-top:.5rem;">
+▶ load_data() נקרא [קריאה #3]
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="activity-box" style="border-color:rgba(0,217,245,.3);">
+        <div class="activity-header" style="color:var(--cyan)">
+          <span class="activity-icon">👁</span>
+          <span>Code Review — הצגה (3 דק' לחדר)</span>
+        </div>
+        <div class="activity-task">
+          <ol style="margin-right:1.2rem;line-height:2.2;">
+            <li>Share screen — הצגת הקוד</li>
+            <li>כל כיתה כותבת בצ'אט:<br><strong style="color:var(--green)">⭐ חיובי אחד</strong> + <strong style="color:var(--yellow)">❓ שאלה אחת</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="timer-box" id="timer2" onclick="startTimer('timer2', 720)" style="margin-top:.7rem;">
+        <span>⏱</span> <span class="timer-count">12:00</span> <span>לחצו להתחיל</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 17 — QUIZ סיכום כללי
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 7</span>
+  <h2>Design Patterns — סיכום</h2>
+
+  <div class="quiz-question">
+    בפרויקט גמר, יצרנו <code style="color:var(--pink)">class Logger</code> שעוטפת את מודול <code style="color:var(--cyan)">logging</code> ומספקת ממשק פשוט של <code>log.info()</code>, <code>log.error()</code>. איזה Design Pattern זה?
+  </div>
+
+  <div class="quiz-options" id="q7-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q7', 0)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q7-exp">
+    ✅ Facade — מספק ממשק פשוט לתת-מערכת מורכבת. Decorator הוא @log_calls שמוסיף התנהגות. Singleton מבטיח מופע אחד. Observer מודיע על שינויים.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 18 — QUIZ מתקדם
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="quiz">
+  <span class="slide-type type-quiz">⚡ שאלה 8</span>
+  <h2>שאלת בונוס — מתקדם</h2>
+
+  <div class="quiz-question">
+    נניח שהפרויקט יוצר כמה מופעים של Logger: <code style="color:var(--cyan)">log1 = Logger("a.log")</code> ו-<code style="color:var(--cyan)">log2 = Logger("b.log")</code>. איזה Pattern נוסף נרצה לממש כדי לוודא שיש רק Logger אחד בכל הפרויקט?
+  </div>
+
+  <div class="quiz-options" id="q8-opts"></div>
+  <button class="quiz-reveal-btn" onclick="revealQuiz('q8', 3)">גלה תשובה ✦</button>
+  <div class="quiz-explanation" id="q8-exp">
+    ✅ Singleton — מבטיח שנוצר מופע אחד בלבד של הכיתה. כל קריאה ל-Logger() מחזירה את אותו האובייקט. זה הנושא הבא שלנו!
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 19 — סיכום
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <span class="slide-type type-summary">🎓 סיכום</span>
+  <h2>מה למדנו?</h2>
+
+  <div class="summary-grid" style="margin-top:.8rem;">
+    <div class="sum-card c-cyan">
+      <div class="sum-icon">🔒</div>
+      <div class="sum-concept">Encapsulation</div>
+      <div class="sum-detail">_log() פרטי — מוסתר מהחוץ</div>
+    </div>
+    <div class="sum-card c-green">
+      <div class="sum-icon">⚙️</div>
+      <div class="sum-concept">Default Params</div>
+      <div class="sum-detail">min_level=DEBUG, to_file=True</div>
+    </div>
+    <div class="sum-card c-purple">
+      <div class="sum-icon">🛡</div>
+      <div class="sum-concept">Context Manager</div>
+      <div class="sum-detail">__enter__ / __exit__</div>
+    </div>
+    <div class="sum-card c-orange">
+      <div class="sum-icon">📁</div>
+      <div class="sum-concept">File I/O</div>
+      <div class="sum-detail">open / write / close</div>
+    </div>
+    <div class="sum-card c-pink">
+      <div class="sum-icon">🎭</div>
+      <div class="sum-concept">Facade Pattern</div>
+      <div class="sum-detail">Wrapper מעל logging</div>
+    </div>
+    <div class="sum-card c-yellow">
+      <div class="sum-icon">✨</div>
+      <div class="sum-concept">Decorator</div>
+      <div class="sum-detail">@log_calls — DRY</div>
+    </div>
+  </div>
+
+  <div class="info-box" style="border-color:rgba(0,217,245,.3);background:rgba(0,217,245,.04);margin-top:.8rem;">
+    <div style="font-family:var(--font-mono);font-size: 1.2rem;">
+      <span class="c-cyan">💡 לפרויקט גמר:</span>
+      <span class="c-white"> Logger הוא אחד הרכיבים הראשונים שכותבים — לפני שאר הקוד!</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 20 — CLOSING
+═══════════════════════════════════════════════ -->
+<div class="slide" data-type="lecture">
+  <div class="closing-hero">
+    <div class="closing-bg-text">✓LOG</div>
+    <div style="position:relative;z-index:1;width:100%;max-width:700px;margin:0 auto;">
+      <div style="font-size:3rem;margin-bottom:.5rem;">🚀</div>
+      <h1 style="font-size:clamp(2rem,5vw,3.5rem);color:var(--green)">Logger מוכן!</h1>
+      <p style="color:var(--muted);font-size: 1.2rem;margin-top:.5rem;margin-bottom:1.5rem;">
+        תיעדתם, זיהיתם, ועזרתם לאתר באגים כמו מקצוענים
+      </p>
+
+      <!-- SCORE SUMMARY -->
+      <div id="finalScore" class="card" style="margin-bottom:1.5rem;border-color:rgba(255,224,58,.3);background:rgba(255,224,58,.05);text-align:center;">
+        <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--muted);margin-bottom:.4rem;">הניקוד שלך</div>
+        <div id="finalScoreNum" style="font-family:var(--font-mono);font-size:2rem;font-weight:800;color:var(--yellow);">0 / 8</div>
+        <div id="finalScoreMsg" style="font-size: 1.2rem;margin-top:.3rem;color:var(--muted);">ענו על השאלות תוך כדי השיעור</div>
+      </div>
+
+      <div style="font-family:var(--font-mono);font-size: 1.2rem;color:var(--cyan);margin-bottom:.7rem;">שלבים הבאים:</div>
+      <div class="next-steps">
+        <div class="next-step">Singleton Pattern</div>
+        <div class="next-step">ANSI צבעים בטרמינל</div>
+        <div class="next-step">logging.config (YAML)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /slides-wrap -->
+
+<!-- PROGRESS INDICATOR -->
+<div class="progress-wrap">
+  <span class="progress-slide" id="progSlide">1</span>
+  <span style="color:var(--border)">|</span>
+  <span id="progType" style="color:var(--muted);font-size: 1.2rem;font-family:var(--font-mono);">LECTURE</span>
+  <span style="color:var(--border)">|</span>
+  <div class="kb-hint">
+    <span class="kb-key">←</span><span class="kb-key">→</span>
+    <span>ניווט</span>
+  </div>
+</div>
+
+<script>
+// ─── QUIZ DATA ───────────────────────────────────────────────────────────────
+const quizzes = {
+  q1: {
+    correctIdx: 1,
+    answers: [
+      "להשתמש ב-print() בלבד — מסך תמיד עובד",
+      "להוסיף Logger שכותב לקובץ עם timestamp",
+      "להריץ debugger מרחוק על מחשב המשתמש",
+      "לבקש מהמשתמש לצלם את המסך בעת התרסקות"
+    ]
+  },
+  q2: {
+    correctIdx: 2,
+    answers: [
+      "DEBUG — כי אנחנו בודקים מה קורה",
+      "INFO — זה אירוע רגיל שקורה לכולם",
+      "WARNING — חריג אבל המערכת ממשיכה",
+      "ERROR — זה כשל אבטחתי חמור"
+    ]
+  },
+  q3: {
+    correctIdx: 0,
+    answers: [
+      "מוסכמה שהמתודה פרטית — לא מיועדת לשימוש חיצוני",
+      "Python אוסר בחוץ גישה — זה כמו private בג'אווה",
+      "המתודה רצה מהר יותר בזכות הקו התחתון",
+      "מסמן שהמתודה סטטית — לא צריך self"
+    ]
+  },
+  q4: {
+    correctIdx: 3,
+    answers: [
+      "הקובץ נשאר פתוח — __exit__ לא נקרא בשגיאה",
+      "Python מחכה שהתוכנית תגמור לפני שסוגר",
+      "Exception נבלעת ולא מגיעה לקוד הקורא",
+      "__exit__ נקרא תמיד — הקובץ נסגר בוודאות"
+    ]
+  },
+  q5: {
+    correctIdx: 2,
+    answers: [
+      "הקוד רץ מהר יותר כי יש פחות שורות",
+      "קל לכתוב Unit Tests לכיתה עטופה",
+      "ניתן להחליף ספרייה בלי לשנות שימושים קיימים",
+      "Python דורש Facade כדי לייבא ספריות מובנות"
+    ]
+  },
+  q6: {
+    correctIdx: 1,
+    answers: [
+      "20 שורות — רק בכניסה לפונקציות",
+      "40 שורות — כניסה + יציאה × 20 פונקציות",
+      "60 שורות — כניסה, יציאה, וטיפול בשגיאה",
+      "1 שורה — Python יוסיף אוטומטית"
+    ]
+  },
+  q7: {
+    correctIdx: 0,
+    answers: [
+      "Facade — ממשק פשוט לתת-מערכת מורכבת",
+      "Decorator — מוסיף התנהגות לפונקציה",
+      "Singleton — מבטיח מופע אחד בלבד",
+      "Observer — מודיע על שינויים בזמן אמת"
+    ]
+  },
+  q8: {
+    correctIdx: 3,
+    answers: [
+      "Facade — כי כבר יש לנו Facade",
+      "Decorator — כי הוא שולט על יצירת אובייקטים",
+      "Observer — כי מנוטרים כל יצירות Logger",
+      "Singleton — מבטיח שנוצר מופע אחד בלבד"
+    ]
+  }
+};
+
+// ─── QUIZ STATE ──────────────────────────────────────────────────────────────
+let score = 0;
+let totalAnswered = 0;
+const TOTAL_QUESTIONS = 8;
+const revealed = {};
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuiz(qid) {
+  const q = quizzes[qid];
+  const el = document.getElementById(qid + '-opts');
+  if (!el || el.children.length > 0) return; // already built
+
+  const letters = ['א', 'ב', 'ג', 'ד'];
+  const correctText = q.answers[q.correctIdx];
+
+  // shuffle keeping track of which is correct
+  const shuffled = shuffle(q.answers);
+  const newCorrectIdx = shuffled.indexOf(correctText);
+  quizzes[qid]._shuffledAnswers = shuffled;
+  quizzes[qid]._newCorrectIdx = newCorrectIdx;
+
+  shuffled.forEach((ans, i) => {
+    const opt = document.createElement('div');
+    opt.className = 'quiz-opt';
+    opt.dataset.idx = i;
+    opt.innerHTML = `<span class="opt-letter">${letters[i]}</span><span>${ans}</span>`;
+    opt.onclick = () => selectOpt(qid, i, opt);
+    el.appendChild(opt);
+  });
+}
+
+// pre-build all quizzes
+Object.keys(quizzes).forEach(buildQuiz);
+
+function selectOpt(qid, idx, optEl) {
+  if (revealed[qid]) return;
+  // highlight selection
+  const container = document.getElementById(qid + '-opts');
+  container.querySelectorAll('.quiz-opt').forEach(o => o.classList.remove('selected'));
+  optEl.style.borderColor = 'var(--cyan)';
+  optEl.style.background = 'rgba(0,217,245,.06)';
+  optEl.dataset.selected = '1';
+}
+
+function revealQuiz(qid, originalCorrectIdx) {
+  if (revealed[qid]) return;
+  revealed[qid] = true;
+
+  const q = quizzes[qid];
+  const correctIdx = q._newCorrectIdx;
+  const container = document.getElementById(qid + '-opts');
+  const opts = container.querySelectorAll('.quiz-opt');
+  const btn = container.parentElement.querySelector('.quiz-reveal-btn');
+  const exp = document.getElementById(qid + '-exp');
+
+  let userCorrect = false;
+
+  opts.forEach((opt, i) => {
+    opt.classList.add('revealed');
+    opt.style.borderColor = '';
+    opt.style.background = '';
+
+    if (i === correctIdx) {
+      opt.classList.add('correct');
+    } else if (opt.dataset.selected) {
+      opt.classList.add('wrong');
+      opt.style.borderColor = '';
+    }
+
+    if (opt.dataset.selected && i === correctIdx) {
+      userCorrect = true;
+    }
+  });
+
+  // If no selection made, just show correct
+  totalAnswered++;
+  if (userCorrect) {
+    score++;
+  }
+
+  updateScore();
+  btn.disabled = true;
+  btn.textContent = userCorrect ? '✅ נכון!' : '❌ לא נכון';
+  btn.style.borderColor = userCorrect ? 'var(--green)' : 'var(--red)';
+  btn.style.color = userCorrect ? 'var(--green)' : 'var(--red)';
+  exp.classList.add('show');
+}
+
+function updateScore() {
+  document.getElementById('scoreDisplay').textContent = `⭐ ${score}/${totalAnswered}`;
+  const pct = (score / TOTAL_QUESTIONS) * 100;
+  document.getElementById('scoreFill').style.width = pct + '%';
+  // update final score
+  document.getElementById('finalScoreNum').textContent = `${score} / ${TOTAL_QUESTIONS}`;
+  const msgs = ['המשיכו לנסות!', 'לא רע!', 'טוב מאוד!', 'מצוין! 🏆', 'מושלם! ⭐'];
+  const msgIdx = Math.min(Math.floor((score / TOTAL_QUESTIONS) * 5), 4);
+  document.getElementById('finalScoreMsg').textContent = msgs[msgIdx];
+}
+
+// ─── TIMERS ──────────────────────────────────────────────────────────────────
+const timerIntervals = {};
+
+function startTimer(id, seconds) {
+  const box = document.getElementById(id);
+  if (timerIntervals[id]) {
+    clearInterval(timerIntervals[id]);
+    delete timerIntervals[id];
+    box.querySelector('.timer-count').textContent = formatTime(seconds);
+    box.querySelector('span:last-child').textContent = 'לחצו להתחיל';
+    box.style.borderColor = '';
+    return;
+  }
+
+  let remaining = seconds;
+  box.querySelector('span:last-child').textContent = 'לחצו לעצור';
+
+  timerIntervals[id] = setInterval(() => {
+    remaining--;
+    box.querySelector('.timer-count').textContent = formatTime(remaining);
+
+    if (remaining <= 60) box.style.borderColor = 'rgba(255,59,59,.6)';
+    if (remaining <= 0) {
+      clearInterval(timerIntervals[id]);
+      delete timerIntervals[id];
+      box.querySelector('.timer-count').textContent = '00:00';
+      box.querySelector('span:last-child').textContent = '⏰ הזמן נגמר!';
+    }
+  }, 1000);
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+const TOTAL = slides.length;
+let cur = 0;
+
+const typeLabels = { lecture: 'LECTURE', quiz: 'QUIZ ⚡', activity: 'ACTIVITY 🏠', summary: 'SUMMARY 🎓' };
+const accentColors = { lecture: 'var(--cyan)', quiz: 'var(--yellow)', activity: 'var(--green)', summary: 'var(--purple)' };
+
+// Build nav dots
+const dotsWrap = document.getElementById('navDots');
+slides.forEach((slide, i) => {
+  const t = slide.dataset.type || 'lecture';
+  const d = document.createElement('div');
+  d.className = `dot ${t === 'quiz' ? 'quiz-dot' : t === 'activity' ? 'activity-dot' : ''}`;
+  d.title = `${i+1}`;
+  d.onclick = () => go(i);
+  dotsWrap.appendChild(d);
+});
+
+// Accent line element
+const accentLine = document.createElement('div');
+accentLine.style.cssText = 'position:fixed;top:52px;left:0;right:0;height:3px;z-index:499;transition:background .3s;';
+document.body.appendChild(accentLine);
+
+function go(n) {
+  n = Math.max(0, Math.min(TOTAL - 1, n));
+  slides[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+
+  // dots
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+
+  // counter
+  document.getElementById('slideCounter').textContent = `${cur+1} / ${TOTAL}`;
+
+  // progress
+  document.getElementById('progSlide').textContent = cur + 1;
+  const t = slides[cur].dataset.type || 'lecture';
+  document.getElementById('progType').textContent = typeLabels[t] || 'LECTURE';
+  accentLine.style.background = accentColors[t] || 'var(--cyan)';
+
+  // build quiz if needed
+  const slideEl = slides[cur];
+  const qMatch = slideEl.innerHTML.match(/id="(q\d+)-opts"/);
+  if (qMatch) buildQuiz(qMatch[1]);
+
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    go(cur - 1);
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End')  go(TOTAL - 1);
+});
+
+// Touch
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) go(dx > 0 ? cur - 1 : cur + 1);
+});
+
+go(0);
+</script>
+</body>
+</html>

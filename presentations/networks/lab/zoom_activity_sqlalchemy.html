@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פעילות זום — SQLAlchemy שלב 4</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1f2e;
+  --border: #252d42;
+  --accent: #7c3aed;
+  --accent-glow: rgba(124,58,237,0.25);
+  --teal: #0ea5e9;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --pink: #ec4899;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --code-bg: #080a10;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;font-size:18px;line-height:1.7;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+.slides-wrapper{position:relative;z-index:1}
+
+/* SLIDE BASE */
+.slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 7vw;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.slide::before{content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);pointer-events:none}
+.slide-num{position:absolute;top:24px;right:36px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:4px;text-transform:uppercase}
+.phase-badge{position:absolute;top:24px;left:36px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent);letter-spacing:3px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);padding:4px 12px;border-radius:2px;text-transform:uppercase}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:0}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:6px;color:var(--accent);text-transform:uppercase;margin-bottom:24px;opacity:.8}
+.hero-title{font-family:'JetBrains Mono',monospace;font-size:clamp(28px,5vw,62px);font-weight:700;line-height:1.1;margin-bottom:20px}
+.hero-title .hl{color:var(--accent)}
+.hero-title .hl2{color:var(--teal)}
+.hero-sub{font-size:18px;color:var(--muted);max-width:640px;font-weight:300;line-height:1.8;margin-bottom:36px}
+
+/* TYPOGRAPHY */
+.slide-title{font-family:'JetBrains Mono',monospace;font-size:clamp(18px,3vw,36px);font-weight:700;line-height:1.2;margin-bottom:10px}
+.slide-sub{font-size:18px;color:var(--muted);margin-bottom:28px;font-weight:300}
+h3{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+p{margin-bottom:10px;font-weight:300;font-size:17px}
+strong{color:var(--orange);font-weight:700}
+code{font-family:'JetBrains Mono',monospace;font-size:18px;background:var(--surface2);padding:2px 7px;border-radius:3px;color:var(--teal);direction:ltr;display:inline-block}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:14px 0}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:14px 0}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}.slide{padding:40px 5vw}}
+
+/* CODE BLOCK */
+.cb{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:18px 20px;font-family:'JetBrains Mono',monospace;font-size:18px;line-height:1.9;overflow-x:auto;margin:10px 0;position:relative;direction:ltr}
+.cb.accent{border-right:3px solid var(--accent)}
+.cb.teal{border-right:3px solid var(--teal)}
+.cb.green{border-right:3px solid var(--green)}
+.cb.orange{border-right:3px solid var(--orange)}
+.cb.red{border-right:3px solid var(--red)}
+.cb-label{position:absolute;top:7px;left:12px;font-size:18px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.kw{color:#c084fc}.fn{color:#60a5fa}.cl{color:#34d399}.st{color:#86efac}.cm{color:#475569}.num{color:#fb923c}.op{color:#94a3b8}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:22px 24px}
+.card.accent{border-top:3px solid var(--accent)}
+.card.teal{border-top:3px solid var(--teal)}
+.card.green{border-top:3px solid var(--green)}
+.card.orange{border-top:3px solid var(--orange)}
+.card.red{border-top:3px solid var(--red)}
+.card.pink{border-top:3px solid var(--pink)}
+
+/* TIMELINE */
+.timeline{position:relative;padding-right:32px;margin:10px 0}
+.timeline::before{content:'';position:absolute;right:8px;top:8px;bottom:8px;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:28px;padding-right:28px}
+.tl-item::before{content:'';position:absolute;right:-4px;top:10px;width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.tl-item.done::before{background:var(--green)}
+.tl-item.active::before{background:var(--orange);box-shadow:0 0 10px rgba(245,158,11,.5)}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);letter-spacing:2px;margin-bottom:4px}
+.tl-title{font-weight:700;font-size:18px;color:var(--text);margin-bottom:2px}
+.tl-desc{font-size:18px;color:var(--muted);font-weight:300}
+
+/* PHASE HEADER */
+.phase-header{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.phase-icon{width:56px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.phase-icon.purple{background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3)}
+.phase-icon.teal{background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.3)}
+.phase-icon.green{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3)}
+.phase-icon.orange{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3)}
+
+/* TASK CARD */
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px 26px;position:relative;overflow:hidden}
+.task-card::before{content:'';position:absolute;top:0;right:0;width:100%;height:3px}
+.task-card.a::before{background:linear-gradient(90deg,var(--accent),var(--pink))}
+.task-card.b::before{background:linear-gradient(90deg,var(--teal),var(--green))}
+.task-card.c::before{background:linear-gradient(90deg,var(--orange),var(--red))}
+.task-num{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.task-title{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;margin-bottom:10px}
+.task-title.purple{color:var(--accent)}
+.task-title.teal{color:var(--teal)}
+.task-title.orange{color:var(--orange)}
+
+/* QUIZ */
+.quiz-wrap{margin:16px 0}
+.question{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 24px;margin-bottom:16px}
+.q-text{font-weight:500;font-size:18px;margin-bottom:14px;direction:rtl}
+.options{display:grid;gap:8px}
+.opt{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:11px 16px;cursor:pointer;font-size:18px;transition:all .2s;direction:rtl;text-align:right}
+.opt:hover{border-color:var(--accent);color:var(--accent);transform:translateX(-2px)}
+.opt.correct{background:rgba(16,185,129,.1);border-color:var(--green);color:var(--green)}
+.opt.wrong{background:rgba(239,68,68,.1);border-color:var(--red);color:var(--red)}
+.opt.disabled{cursor:default;pointer-events:none}
+.q-feedback{font-size:18px;margin-top:10px;padding:10px 14px;border-radius:4px;display:none}
+.q-feedback.show{display:block}
+.q-feedback.ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)}
+.q-feedback.bad{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+
+/* DISCUSSION */
+.disc-item{display:flex;gap:14px;margin-bottom:18px;align-items:flex-start}
+.disc-num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent);opacity:.5;flex-shrink:0;line-height:1.3}
+.disc-text{font-size:18px;font-weight:300}
+.disc-text strong{color:var(--teal)}
+
+/* ROOMS */
+.rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}
+.room{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;text-align:center}
+.room-num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;margin-bottom:8px}
+.room-num.purple{color:var(--accent)}
+.room-num.teal{color:var(--teal)}
+.room-num.orange{color:var(--orange)}
+.room-label{font-size:18px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace;letter-spacing:2px;text-transform:uppercase}
+.room-task{font-size:18px;font-weight:500}
+
+/* TIMER */
+.timer-display{font-family:'JetBrains Mono',monospace;font-size:clamp(48px,8vw,96px);font-weight:700;color:var(--accent);text-align:center;letter-spacing:4px;line-height:1;margin:16px 0;text-shadow:0 0 40px var(--accent-glow)}
+.timer-btn{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;padding:10px 24px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;border-radius:4px;text-transform:uppercase;transition:all .2s;margin:4px}
+.timer-btn:hover{background:var(--accent);color:var(--bg)}
+.timer-controls{text-align:center;margin-bottom:12px}
+
+/* CHECKLIST */
+.chk-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:color .2s}
+.chk-item:last-child{border-bottom:none}
+.chk-box{width:20px;height:20px;border:2px solid var(--border);border-radius:3px;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.chk-item.checked .chk-box{background:var(--green);border-color:var(--green);color:var(--bg)}
+.chk-item.checked .chk-label{text-decoration:line-through;color:var(--muted)}
+.chk-label{font-size:18px;}
+
+/* NAV */
+.nav-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:8px;background:rgba(13,15,20,.9);border:1px solid var(--border);border-radius:40px;padding:8px 16px;backdrop-filter:blur(10px)}
+.nav-dot{width:10px;height:10px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s}
+.nav-dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
+.nav-arrows{position:fixed;bottom:24px;right:24px;z-index:100;display:flex;gap:8px}
+.nav-arr{background:var(--surface);border:1px solid var(--border);color:var(--text);width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:18px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.nav-arr:hover{border-color:var(--accent);color:var(--accent)}
+
+/* TAG */
+.tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:18px;padding:3px 10px;border-radius:2px;margin:2px;letter-spacing:1px}
+.tag.purple{background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:var(--accent)}
+.tag.teal{background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.3);color:var(--teal)}
+.tag.green{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)}
+.tag.orange{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--orange)}
+
+/* PROGRESS BAR */
+.prog-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:8px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* ALERT BOX */
+.alert{border-radius:6px;padding:16px 20px;margin:12px 0}
+.alert.info{background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.3);border-right:3px solid var(--teal)}
+.alert.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-right:3px solid var(--orange)}
+.alert.success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-right:3px solid var(--green)}
+.alert.danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-right:3px solid var(--red)}
+.alert-title{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.alert.info .alert-title{color:var(--teal)}
+.alert.warn .alert-title{color:var(--orange)}
+.alert.success .alert-title{color:var(--green)}
+.alert.danger .alert-title{color:var(--red)}
+
+ul.styled{list-style:none;padding:0;margin:0}
+ul.styled li{padding:6px 0;padding-right:20px;position:relative;font-size:18px;font-weight:300}
+ul.styled li::before{content:'▸';position:absolute;right:0;color:var(--accent)}
+ul.styled.teal li::before{color:var(--teal)}
+ul.styled.green li::before{color:var(--green)}
+ul.styled.orange li::before{color:var(--orange)}
+</style>
+</head>
+<body>
+<div class="slides-wrapper">
+
+<!-- ═══════════════════════════════════════════ SLIDE 0: HERO -->
+<section class="slide hero" id="slide-0">
+  <div class="hero-eyebrow">פעילות זום · שלב 4</div>
+  <div class="hero-title">
+    מ־JSON<br>
+    ל<span class="hl">SQLAlchemy</span><br>
+    <span class="hl2">ORM</span>
+  </div>
+  <div class="hero-sub">
+    פעילות זום אינטראקטיבית — שאלות, חדרים, ואתגר קוד<br>
+    כיתה י׳–י״ב · מסלול סייבר ותכנות
+  </div>
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+    <span class="tag purple">SQLAlchemy</span>
+    <span class="tag teal">ORM</span>
+    <span class="tag green">SQLite</span>
+    <span class="tag orange">session</span>
+  </div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);margin-top:32px;letter-spacing:3px;animation:bounce 2s ease-in-out infinite">▼ גללו למטה</div>
+  <style>@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}</style>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 2: WHY NOT JSON -->
+<section class="slide" id="slide-2">
+  <div class="slide-num">02</div>
+  <div class="phase-badge">פתיחה · 5 דקות</div>
+  <div class="phase-header">
+    <div class="phase-icon purple">🧠</div>
+    <div>
+      <div class="slide-title">שאלת פתיחה לכולם</div>
+      <div class="slide-sub">כתבו תשובה בצ׳אט הזום — לא לדבר בקול עדיין</div>
+    </div>
+  </div>
+
+  <div class="card" style="border-right:4px solid var(--accent);margin-bottom:20px">
+    <h3>תרחיש</h3>
+    <p style="font-size:18px">המערכת שבניתם שומרת משתמשים ב־<code>users.json</code>. עכשיו 500 משתמשים רשומים, ו־50 מהם מנסים להתחבר בו־זמנית.</p>
+    <p style="font-size:20px;color:var(--orange);font-weight:700;margin-top:12px">מה יכול להשתבש? 🤔</p>
+  </div>
+
+  <div class="g3">
+    <div class="card teal">
+      <h3>📁 ביצועים</h3>
+      <p>כל חיפוש משתמש = קריאת הקובץ כולו מהדיסק. מה קורה כשהקובץ גדל?</p>
+    </div>
+    <div class="card orange">
+      <h3>⚡ מקביליות</h3>
+      <p>שני users כותבים בו-זמנית — מי מנצח? מה קורה לנתונים?</p>
+    </div>
+    <div class="card red">
+      <h3>🔍 שאילתות</h3>
+      <p>רוצים כל מי שנרשם אחרי תאריך מסוים ויש לו אימייל Gmail — איך עם JSON?</p>
+    </div>
+  </div>
+
+  <div class="alert success" style="margin-top:16px">
+    <div class="alert-title">💡 מסקנה</div>
+    לא כל בעיה דורשת DB מלא — אבל כשהדאטה גדל, מורכב, ומקבילי — צריך כלי מקצועי.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 3: QUICK QUIZ -->
+<section class="slide" id="slide-3">
+  <div class="slide-num">03</div>
+  <div class="phase-badge">בדיקת הבנה · 8 דקות</div>
+  <div class="phase-header">
+    <div class="phase-icon teal">⚡</div>
+    <div>
+      <div class="slide-title">שאלות מהירות</div>
+      <div class="slide-sub">לחצו על התשובה הנכונה</div>
+    </div>
+  </div>
+
+  <div class="quiz-wrap" id="quiz-container">
+    <!-- Questions rendered by JS with shuffled answer positions -->
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 4: ROOMS INTRO -->
+<section class="slide" id="slide-4">
+  <div class="slide-num">04</div>
+  <div class="phase-badge">חדרים · 25 דקות</div>
+  <div class="phase-header">
+    <div class="phase-icon green">🏠</div>
+    <div>
+      <div class="slide-title">אתגרי קידוד בחדרים</div>
+      <div class="slide-sub">3 קבוצות, 3 אתגרים — כל קבוצה משלימה את שלה</div>
+    </div>
+  </div>
+
+  <div class="rooms-grid">
+    <div class="room">
+      <div class="room-num purple">#1</div>
+      <div class="room-label">חדר סגול</div>
+      <div class="room-task">רישום + כניסה בטוחה</div>
+    </div>
+    <div class="room">
+      <div class="room-num teal">#2</div>
+      <div class="room-label">חדר טורקיז</div>
+      <div class="room-task">ניהול משתמשים</div>
+    </div>
+    <div class="room">
+      <div class="room-num orange">#3</div>
+      <div class="room-label">חדר כתום</div>
+      <div class="room-task">דוחות ושאילתות</div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:16px;direction:rtl">
+    <div class="alert info">
+      <div class="alert-title">📋 הוראות לכל החדרים</div>
+      <ul class="styled teal" style="margin-top:6px">
+        <li>צרו קובץ <code>task.py</code> עם קוד שרץ</li>
+        <li>השתמשו ב־SQLite (<code>sqlite:///mydb.db</code>)</li>
+        <li>הוסיפו הערות בעברית על מה שכל פונקציה עושה</li>
+        <li>תכינו להסביר לכיתה בסוף</li>
+      </ul>
+    </div>
+    <div class="alert warn">
+      <div class="alert-title">⏱ ניהול זמן</div>
+      <ul class="styled orange" style="margin-top:6px">
+        <li>10 דקות ראשונות: קוד בסיסי עובד</li>
+        <li>10 דקות אמצע: שיפור + טיפול בשגיאות</li>
+        <li>5 דקות אחרונות: הכנת הסבר קצר</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TIMER -->
+  <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;color:var(--muted);margin-bottom:8px;text-transform:uppercase">טיימר חדרים</div>
+    <div class="timer-display" id="timer-rooms">25:00</div>
+    <div class="timer-controls">
+      <button class="timer-btn" onclick="startTimer('rooms',25*60)">▶ התחל</button>
+      <button class="timer-btn" onclick="stopTimer('rooms')">⏸ עצור</button>
+      <button class="timer-btn" onclick="resetTimer('rooms',25*60)">↺ אפס</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 5: ROOM 1 -->
+<section class="slide" id="slide-5">
+  <div class="slide-num">05</div>
+  <div class="phase-badge">חדר 1 · סגול</div>
+  <div class="task-card a">
+    <div class="task-num">חדר 1 מתוך 3</div>
+    <div class="task-title purple">🔐 רישום וכניסה בטוחה</div>
+    <p style="color:var(--muted);font-size:18px;">בנו מערכת register/login מלאה עם SQLAlchemy</p>
+  </div>
+
+  <div class="g2" style="margin-top:16px;direction:rtl">
+    <div>
+      <div class="card accent">
+        <h3>מה לבנות</h3>
+        <ul class="styled">
+          <li>מודל <code>User</code> עם <code>id, username, password</code></li>
+          <li>פונקציה <code>register(username, password)</code></li>
+          <li>פונקציה <code>login(username, password)</code></li>
+          <li>טיפול במקרה שיוזר כבר קיים</li>
+          <li>✨ בונוס: הוסיפו שדה <code>created_at</code> עם timestamp אוטומטי</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="cb teal">
+        <div class="cb-label">STARTER CODE</div>
+        <br>
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine, Column, Integer, String<br>
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> declarative_base, sessionmaker<br><br>
+Base = <span class="fn">declarative_base</span>()<br>
+engine = <span class="fn">create_engine</span>(<span class="st">'sqlite:///users.db'</span>)<br><br>
+<span class="kw">class</span> <span class="cl">User</span>(Base):<br>
+&nbsp;&nbsp;<span class="fn">__tablename__</span> = <span class="st">'users'</span><br>
+&nbsp;&nbsp;id = <span class="fn">Column</span>(Integer, primary_key=<span class="kw">True</span>)<br>
+&nbsp;&nbsp;<span class="cm"># TODO: הוסיפו username ו-password</span><br><br>
+<span class="cm"># TODO: צרו את הטבלה</span><br>
+<span class="cm"># TODO: פונקציות register ו-login</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert info" style="margin-top:12px">
+    <div class="alert-title">💡 טיפ לקבוצה</div>
+    שאלו את עצמכם: מה קורה אם מנסים לרשום username שכבר קיים? האם הקוד שלכם מטפל בזה בצורה ידידותית?
+  </div>
+
+  <div style="margin-top:16px">
+    <h3>צ׳קליסט סיום</h3>
+    <div id="chk1">
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">מודל User הוגדר עם כל השדות</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">הטבלה נוצרת אוטומטית ב-<code>create_all()</code></div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">register() מוסיף משתמש ומבצע commit</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">login() מחזיר True/False בהתאם</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">יש try/except עם rollback</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 6: ROOM 2 -->
+<section class="slide" id="slide-6">
+  <div class="slide-num">06</div>
+  <div class="phase-badge">חדר 2 · טורקיז</div>
+  <div class="task-card b">
+    <div class="task-num">חדר 2 מתוך 3</div>
+    <div class="task-title teal">👥 ניהול משתמשים</div>
+    <p style="color:var(--muted);font-size:18px;">בנו פאנל ניהול בסיסי — CRUD מלא על משתמשים</p>
+  </div>
+
+  <div class="g2" style="margin-top:16px;direction:rtl">
+    <div>
+      <div class="card teal">
+        <h3>מה לבנות</h3>
+        <ul class="styled teal">
+          <li>פונקציה <code>get_all_users()</code> — מחזירה רשימה</li>
+          <li>פונקציה <code>update_password(username, new_pass)</code></li>
+          <li>פונקציה <code>delete_user(username)</code></li>
+          <li>פונקציה <code>user_exists(username)</code> → bool</li>
+          <li>✨ בונוס: <code>search_users(query)</code> — חיפוש חלקי ב-username</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="cb green">
+        <div class="cb-label">HINTS</div>
+        <br>
+<span class="cm"># שאילתה בסיסית</span><br>
+users = session.<span class="fn">query</span>(User).<span class="fn">all</span>()<br><br>
+<span class="cm"># עדכון</span><br>
+user = session.<span class="fn">query</span>(User)\<br>
+&nbsp;&nbsp;.<span class="fn">filter_by</span>(username=name).<span class="fn">first</span>()<br>
+<span class="kw">if</span> user:<br>
+&nbsp;&nbsp;user.password = new_pass<br>
+&nbsp;&nbsp;session.<span class="fn">commit</span>()<br><br>
+<span class="cm"># חיפוש חלקי (בונוס)</span><br>
+<span class="cm"># .filter(User.username.contains(q))</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert warn" style="margin-top:12px">
+    <div class="alert-title">🤔 שאלת מחשבה לקבוצה</div>
+    מה ההבדל בין <code>.first()</code> ל־<code>.one()</code> ל-<code>.all()</code>? מתי משתמשים בכל אחד? נסו!
+  </div>
+
+  <div style="margin-top:16px">
+    <h3>צ׳קליסט סיום</h3>
+    <div id="chk2">
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>get_all_users()</code> עובד ומדפיס בצורה נקייה</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>update_password()</code> מעדכן ושומר</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>delete_user()</code> מטפל במקרה שיוזר לא קיים</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">בדקתם את כל הפונקציות עם נתוני דוגמה</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 7: ROOM 3 -->
+<section class="slide" id="slide-7">
+  <div class="slide-num">07</div>
+  <div class="phase-badge">חדר 3 · כתום</div>
+  <div class="task-card c">
+    <div class="task-num">חדר 3 מתוך 3</div>
+    <div class="task-title orange">📊 דוחות ושאילתות מתקדמות</div>
+    <p style="color:var(--muted);font-size:18px;">חקרו את יכולות השאילתות של SQLAlchemy</p>
+  </div>
+
+  <div class="g2" style="margin-top:16px;direction:rtl">
+    <div>
+      <div class="card orange">
+        <h3>מה לבנות</h3>
+        <ul class="styled orange">
+          <li>הוסיפו שדה <code>role</code> (admin/user/guest)</li>
+          <li>הוסיפו שדה <code>login_count</code> (מספר כניסות)</li>
+          <li>פונקציה <code>get_admins()</code></li>
+          <li>פונקציה <code>top_users(n)</code> — הכי פעילים</li>
+          <li>פונקציה <code>count_by_role()</code> — סטטיסטיקה</li>
+          <li>✨ בונוס: <code>get_users_sorted(by='username')</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="cb orange">
+        <div class="cb-label">ADVANCED HINTS</div>
+        <br>
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> func<br><br>
+<span class="cm"># מיון</span><br>
+session.<span class="fn">query</span>(User)\<br>
+&nbsp;&nbsp;.<span class="fn">order_by</span>(User.login_count.<span class="fn">desc</span>())\<br>
+&nbsp;&nbsp;.<span class="fn">limit</span>(n).<span class="fn">all</span>()<br><br>
+<span class="cm"># ספירה מקובצת</span><br>
+session.<span class="fn">query</span>(User.role,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;func.<span class="fn">count</span>(User.id))\<br>
+&nbsp;&nbsp;.<span class="fn">group_by</span>(User.role).<span class="fn">all</span>()
+      </div>
+    </div>
+  </div>
+
+  <div class="alert info" style="margin-top:12px">
+    <div class="alert-title">💡 אתגר נוסף לקבוצה חזקה</div>
+    נסו לייבא את <code>func</code> מ-SQLAlchemy ולחשב את ממוצע ה-login_count של כל ה-users. <code>session.query(func.avg(User.login_count)).scalar()</code>
+  </div>
+
+  <div style="margin-top:16px">
+    <h3>צ׳קליסט סיום</h3>
+    <div id="chk3">
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label">מודל עם role + login_count</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>get_admins()</code> מחזיר רשימת admins בלבד</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>top_users(n)</code> ממוין לפי פעילות</div></div>
+      <div class="chk-item" onclick="toggleChk(this)"><div class="chk-box">✓</div><div class="chk-label"><code>count_by_role()</code> מחזיר dict עם סטטיסטיקה</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 8: DEBRIEF -->
+<section class="slide" id="slide-8">
+  <div class="slide-num">08</div>
+  <div class="phase-badge">הצגה ושיקוף · 10 דקות</div>
+  <div class="phase-header">
+    <div class="phase-icon orange">🎤</div>
+    <div>
+      <div class="slide-title">הצגות קבוצות + דיון</div>
+      <div class="slide-sub">כל קבוצה — 2 דקות הצגה, שאלות מהכיתה</div>
+    </div>
+  </div>
+
+  <div class="g2" style="direction:rtl">
+    <div>
+      <div class="card green">
+        <h3>מה להציג</h3>
+        <ul class="styled green">
+          <li>הדגימו את הקוד שכתבתם (share screen)</li>
+          <li>הריצו את הקוד בזמן אמת</li>
+          <li>הסבירו: <strong>מה למדתם? מה היה קשה?</strong></li>
+          <li>שאלה אחת שעלתה בחדר שרוצים לחלוק</li>
+        </ul>
+      </div>
+
+      <!-- TIMER for debrief -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;color:var(--muted);margin-bottom:6px;text-transform:uppercase">טיימר הצגה</div>
+        <div class="timer-display" id="timer-debrief" style="font-size:clamp(36px,6vw,72px)">02:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" onclick="startTimer('debrief',2*60)">▶ התחל</button>
+          <button class="timer-btn" onclick="stopTimer('debrief')">⏸ עצור</button>
+          <button class="timer-btn" onclick="resetTimer('debrief',2*60)">↺ אפס</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="border-right:3px solid var(--pink)">
+        <h3>שאלות דיון כולל</h3>
+        <div>
+          <div class="disc-item">
+            <div class="disc-num">01</div>
+            <div class="disc-text">מה ה<strong>יתרון הכי גדול</strong> שמצאתם ב-ORM לעומת JSON? מה החיסרון?</div>
+          </div>
+          <div class="disc-item">
+            <div class="disc-num">02</div>
+            <div class="disc-text">בחדר 1 — האם שמרתם <strong>סיסמה כטקסט גלוי</strong>? מה הבעיה בזה?</div>
+          </div>
+          <div class="disc-item">
+            <div class="disc-num">03</div>
+            <div class="disc-text">מה ההבדל בין <code>session.add()</code> ל-<code>session.commit()</code> — <strong>למה שני שלבים?</strong></div>
+          </div>
+          <div class="disc-item">
+            <div class="disc-num">04</div>
+            <div class="disc-text">מה קורה אם <strong>לא נעשה rollback</strong> אחרי שגיאה? נסו!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 8b: STAGE 4 TASK -->
+<section class="slide" id="slide-task4">
+  <div class="slide-num">משימה</div>
+  <div class="phase-badge">חדרים · שלב 4 · 25 דקות</div>
+  <div class="phase-header">
+    <div class="phase-icon purple">🗄️</div>
+    <div>
+      <div class="slide-title">שלב 4 — מעבר לבסיס נתונים</div>
+      <div class="slide-sub">משימת החדרים המרכזית של השיעור</div>
+    </div>
+  </div>
+
+  <div class="g2" style="direction:rtl">
+    <div>
+      <div class="card accent" style="margin-bottom:16px">
+        <h3>🔨 מה נבנה</h3>
+        <p>החלפת <code>users.json</code> בבסיס נתונים SQLite דרך SQLAlchemy.</p>
+        <p>מודל <code>User</code> עם שדות:</p>
+        <ul class="styled" style="margin-top:6px">
+          <li><code>id</code> — מפתח ראשי, אוטומטי</li>
+          <li><code>username</code> — שם משתמש ייחודי</li>
+          <li><code>password</code> — סיסמה (בשלב הזה — טקסט)</li>
+        </ul>
+        <p style="margin-top:10px">פעולות <code>register()</code> ו־<code>login()</code> מול מסד הנתונים.</p>
+      </div>
+
+      <div class="card teal">
+        <h3>🧠 מה נלמד</h3>
+        <ul class="styled teal">
+          <li>למה מערכות אמיתיות לא שומרות נתונים רק בקובץ JSON</li>
+          <li>איך עובדים עם בסיס נתונים דרך Python</li>
+          <li>איך משתמשים ב־ORM בפרויקט אמיתי</li>
+          <li>איך מבצעים שאילתות בצורה מסודרת ובטוחה</li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <div class="card orange" style="margin-bottom:16px">
+        <h3>🏋️ מה נתרגל</h3>
+        <ul class="styled orange">
+          <li><code>SQLAlchemy</code> — הגדרת מודל וטבלה</li>
+          <li><code>session.add()</code> — הוספת רשומה</li>
+          <li><code>filter_by()</code> — חיפוש רשומה</li>
+          <li><code>commit()</code> — שמירת שינויים</li>
+          <li><code>rollback()</code> — ביטול בשגיאה</li>
+          <li>מודלים של טבלאות עם Column</li>
+        </ul>
+      </div>
+
+      <div class="card" style="border-right:3px solid var(--pink)">
+        <h3>💡 הרעיון המרכזי</h3>
+        <p style="font-size:18px;">כאשר מערכת גדלה, צריך שכבת נתונים <strong>מקצועית יותר, אמינה יותר</strong> ונוחה יותר לחיפוש ולעבודה.</p>
+        <div style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted)">
+          <span style="color:var(--red)">users.json</span>
+          <span style="color:var(--muted)"> → </span>
+          <span style="color:var(--green)">SQLite + SQLAlchemy</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cb accent" style="margin-top:16px;direction:ltr">
+    <div class="cb-label">SKELETON</div>
+    <br>
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine, Column, Integer, String<br>
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> declarative_base, sessionmaker<br><br>
+Base = <span class="fn">declarative_base</span>()<br>
+engine = <span class="fn">create_engine</span>(<span class="st">'sqlite:///users.db'</span>)<br><br>
+<span class="kw">class</span> <span class="cl">User</span>(Base):<br>
+&nbsp;&nbsp;<span class="fn">__tablename__</span> = <span class="st">'users'</span><br>
+&nbsp;&nbsp;id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="fn">Column</span>(Integer, primary_key=<span class="kw">True</span>)<br>
+&nbsp;&nbsp;username = <span class="fn">Column</span>(String, unique=<span class="kw">True</span>, nullable=<span class="kw">False</span>)<br>
+&nbsp;&nbsp;password = <span class="fn">Column</span>(String, nullable=<span class="kw">False</span>)<br><br>
+Base.metadata.<span class="fn">create_all</span>(engine)<br>
+Session = <span class="fn">sessionmaker</span>(bind=engine)<br>
+session = <span class="fn">Session</span>()<br><br>
+<span class="kw">def</span> <span class="fn">register</span>(username, password): <span class="op">...</span><br>
+<span class="kw">def</span> <span class="fn">login</span>(username, password): <span class="op">...</span>
+  </div>
+
+  <!-- TIMER -->
+  <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:3px;color:var(--muted);margin-bottom:6px;text-transform:uppercase">טיימר משימה</div>
+    <div class="timer-display" id="timer-task4">25:00</div>
+    <div class="timer-controls">
+      <button class="timer-btn" onclick="startTimer('task4',25*60)">▶ התחל</button>
+      <button class="timer-btn" onclick="stopTimer('task4')">⏸ עצור</button>
+      <button class="timer-btn" onclick="resetTimer('task4',25*60)">↺ אפס</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ SLIDE 9: SUMMARY -->
+<section class="slide" id="slide-9">
+  <div class="slide-num">09</div>
+  <div class="phase-header">
+    <div class="phase-icon purple">🎯</div>
+    <div>
+      <div class="slide-title">סיכום שלב 4</div>
+      <div class="slide-sub">מה בניתם, למה זה חשוב, מה הבא</div>
+    </div>
+  </div>
+
+  <div class="g3" style="direction:rtl">
+    <div class="card green">
+      <h3>✅ מה עשינו</h3>
+      <ul class="styled green">
+        <li>החלפנו JSON ב-SQLite</li>
+        <li>הגדרנו מודל ORM</li>
+        <li>ביצענו CRUD מלא</li>
+        <li>טיפלנו בשגיאות עם rollback</li>
+      </ul>
+    </div>
+    <div class="card teal">
+      <h3>🧠 מה למדנו</h3>
+      <ul class="styled teal">
+        <li>SQLAlchemy + session</li>
+        <li>filter_by / query / all</li>
+        <li>commit / rollback</li>
+        <li>למה DB > JSON בפרויקטים אמיתיים</li>
+      </ul>
+    </div>
+    <div class="card accent">
+      <h3>🚀 מה הבא</h3>
+      <ul class="styled">
+        <li>שלב 5: הצפנת סיסמאות עם bcrypt</li>
+        <li>שלב 6: JWT tokens</li>
+        <li>שלב 7: חיבור ל-Flask/FastAPI</li>
+        <li>פרויקט סיום: מערכת auth מלאה</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cb accent" style="margin-top:20px;direction:ltr">
+    <div class="cb-label">THE BIG PICTURE</div>
+    <br>
+<span class="cm"># מה שבניתם היום — שכבת ה-Data Layer של מערכת אמיתית</span><br><br>
+<span class="cm"># Layer 1 — Presentation (HTTP / Web / CLI)</span><br>
+<span class="cm"># Layer 2 — Business Logic (register, login, permissions)</span><br>
+<span class="cm"># Layer 3 — Data Access ← אתם כאן! (SQLAlchemy)</span><br>
+<span class="cm"># Layer 4 — Storage (SQLite / PostgreSQL / MySQL)</span>
+  </div>
+
+  <div class="alert success" style="margin-top:16px">
+    <div class="alert-title">🎉 כל הכבוד!</div>
+    עברתם ממערכת שמבוססת על קובץ JSON לארכיטקטורה שכמעט זהה למה שחברות כמו GitHub, Spotify ו-Netflix משתמשות בה — אבל בסקייל שלהן.
+  </div>
+</section>
+
+</div> <!-- slides-wrapper -->
+
+<!-- NAV -->
+<nav class="nav-bar" id="nav-dots"></nav>
+<div class="nav-arrows">
+  <button class="nav-arr" onclick="prevSlide()" title="הקודם">↑</button>
+  <button class="nav-arr" onclick="nextSlide()" title="הבא">↓</button>
+</div>
+
+<script>
+// ── QUIZ DATA & RENDER ──
+const quizData = [
+  {
+    id: 'q1',
+    text: '1. מה הוא ORM?',
+    options: [
+      { text: 'שכבה שממפה בין אובייקטים בפייתון לטבלאות SQL', correct: true },
+      { text: 'שפת שאילתות חדשה המחליפה את SQL לחלוטין', correct: false },
+      { text: 'ספרייה לניהול קבצי JSON בצורה מהירה יותר', correct: false },
+      { text: 'סוג מיוחד של בסיס נתונים מסוג NoSQL', correct: false }
+    ],
+    ok: '✅ נכון! ORM = Object Relational Mapper — מגשר בין Python objects ל־SQL tables',
+    bad: '❌ לא בדיוק. ORM = Object Relational Mapper — שכבת תרגום בין Python לטבלאות'
+  },
+  {
+    id: 'q2',
+    text: '2. מה תפקיד <code>session.commit()</code>?',
+    options: [
+      { text: 'שומר סופית את כל השינויים הממתינים לבסיס הנתונים', correct: true },
+      { text: 'פותח חיבור חדש ומאתחל את ה־session מחדש', correct: false },
+      { text: 'מבצע שאילתת SELECT ומחזיר את כל הרשומות', correct: false },
+      { text: 'סוגר את החיבור הפעיל לבסיס הנתונים', correct: false }
+    ],
+    ok: '✅ מצוין! commit() מאשר את הטרנזקציה — בלעדיו השינויים לא נשמרים לדיסק',
+    bad: '❌ לא. commit() = "שמור הכל לדיסק" — מאשר את כל ה-add/delete שביצענו'
+  },
+  {
+    id: 'q3',
+    text: '3. מתי משתמשים ב־<code>session.rollback()</code>?',
+    options: [
+      { text: 'כאשר קרתה שגיאה ורוצים לבטל שינויים מאז ה-commit האחרון', correct: true },
+      { text: 'אחרי כל session.add() כדי לוודא שהנתון נשמר', correct: false },
+      { text: 'כדי לנקות את הטבלה ולמחוק את כל הרשומות שלה', correct: false },
+      { text: 'כדי לעדכן שדה קיים בטבלה לערך חדש', correct: false }
+    ],
+    ok: '✅ בדיוק! rollback() מחזיר את ה-session למצב נקי — חובה בבלוק except',
+    bad: '❌ לא. rollback() = "ביטול" — משתמשים בו בתוך except אחרי שגיאה'
+  },
+  {
+    id: 'q4',
+    text: '4. איזה קוד מוצא משתמש לפי username?',
+    options: [
+      { text: 'session.query(User).filter_by(username="alice").first()', correct: true, code: true },
+      { text: 'session.get(User, username="alice")', correct: false, code: true },
+      { text: 'User.find(username="alice")', correct: false, code: true },
+      { text: 'session.select(User).where(username="alice")', correct: false, code: true }
+    ],
+    ok: '✅ נכון! זו התחביר הסטנדרטי: query() → filter_by() → first()',
+    bad: '❌ לא. הדרך הנכונה: <code>session.query(User).filter_by(username=...).first()</code>'
+  }
+];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderQuiz() {
+  const container = document.getElementById('quiz-container');
+  if (!container) return;
+  container.innerHTML = '';
+  quizData.forEach(q => {
+    const shuffled = shuffle(q.options);
+    const optsHtml = shuffled.map(opt => {
+      const inner = opt.code
+        ? `<code style="font-size:18px;">${opt.text}</code>`
+        : opt.text;
+      return `<div class="opt" onclick="answer(this,'${q.id}',${opt.correct})">${inner}</div>`;
+    }).join('');
+    container.innerHTML += `
+      <div class="question" id="${q.id}">
+        <div class="q-text">${q.text}</div>
+        <div class="options">${optsHtml}</div>
+        <div class="q-feedback ok" id="${q.id}-ok">${q.ok}</div>
+        <div class="q-feedback bad" id="${q.id}-bad">${q.bad}</div>
+      </div>`;
+  });
+}
+renderQuiz();
+
+// ── QUIZ ANSWER ──
+function answer(el, qId, correct) {
+  const q = document.getElementById(qId);
+  const opts = q.querySelectorAll('.opt');
+  opts.forEach(o => o.classList.add('disabled'));
+  if (correct) {
+    el.classList.add('correct');
+    document.getElementById(qId + '-ok').classList.add('show');
+  } else {
+    el.classList.add('wrong');
+    document.getElementById(qId + '-bad').classList.add('show');
+    opts.forEach(o => {
+      if (o.getAttribute('onclick').includes('true')) o.classList.add('correct');
+    });
+  }
+}
+
+// ── CHECKLIST ──
+function toggleChk(el) {
+  el.classList.toggle('checked');
+}
+
+// ── TIMER ──
+const timers = {};
+function startTimer(id, seconds) {
+  if (timers[id]) return;
+  let rem = getRemainingFromDisplay(id, seconds);
+  timers[id] = setInterval(() => {
+    rem--;
+    if (rem <= 0) { rem = 0; clearInterval(timers[id]); delete timers[id]; }
+    updateDisplay(id, rem);
+  }, 1000);
+}
+function stopTimer(id) {
+  clearInterval(timers[id]); delete timers[id];
+}
+function resetTimer(id, seconds) {
+  stopTimer(id);
+  updateDisplay(id, seconds);
+}
+function getRemainingFromDisplay(id, fallback) {
+  const el = document.getElementById('timer-' + id);
+  if (!el) return fallback;
+  const [m, s] = el.textContent.split(':').map(Number);
+  return m * 60 + s;
+}
+function updateDisplay(id, rem) {
+  const el = document.getElementById('timer-' + id);
+  if (!el) return;
+  const m = Math.floor(rem / 60);
+  const s = rem % 60;
+  el.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  if (rem <= 60) el.style.color = 'var(--red)';
+  else if (rem <= 5 * 60) el.style.color = 'var(--orange)';
+  else el.style.color = 'var(--accent)';
+}
+
+// ── NAV ──
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+const navDots = document.getElementById('nav-dots');
+slides.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+  dot.onclick = () => goToSlide(i);
+  navDots.appendChild(dot);
+});
+function goToSlide(i) {
+  slides[i].scrollIntoView({ behavior: 'smooth' });
+  currentSlide = i;
+  document.querySelectorAll('.nav-dot').forEach((d, j) => {
+    d.classList.toggle('active', j === i);
+  });
+}
+function nextSlide() { if (currentSlide < slides.length - 1) goToSlide(currentSlide + 1); }
+function prevSlide() { if (currentSlide > 0) goToSlide(currentSlide - 1); }
+
+// Intersection Observer for nav dots
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const i = Array.from(slides).indexOf(e.target);
+      currentSlide = i;
+      document.querySelectorAll('.nav-dot').forEach((d, j) => d.classList.toggle('active', j === i));
+    }
+  });
+}, { threshold: 0.5 });
+slides.forEach(s => observer.observe(s));
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') nextSlide();
+  if (e.key === 'ArrowUp' || e.key === 'PageUp') prevSlide();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מערך למידה עצמית – Gradio לקריפטוגרפיה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f18;
+    --surface: #141724;
+    --surface2: #1c2035;
+    --border: #252a40;
+    --gold: #c8973a;
+    --gold-light: #e8b84b;
+    --gold-dim: rgba(200,151,58,0.15);
+    --teal: #2ec4b6;
+    --teal-dim: rgba(46,196,182,0.12);
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8890aa;
+    --code-bg: #0a0c14;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 18px;
+    line-height: 1.7;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0d1020 0%, #1a1035 50%, #0d1020 100%);
+    border-bottom: 2px solid var(--gold);
+    padding: 48px 40px 36px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 60px,
+      rgba(200,151,58,0.03) 60px,
+      rgba(200,151,58,0.03) 61px
+    );
+  }
+  .header-badge {
+    display: inline-block;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 4px 16px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  header h1 {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  header h1 span { color: var(--gold); }
+  header p.subtitle {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .meta-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 18px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta-pill .icon { color: var(--gold); font-size: 18px; }
+
+  /* ── LAYOUT ── */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── SECTION HEADERS ── */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 48px 0 20px;
+  }
+  .section-label .num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #000;
+    font-weight: 900;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-label h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to left, transparent, var(--border));
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--gold); }
+
+  .card h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card p { color: var(--text-muted); line-height: 1.75; }
+
+  /* ── GOALS GRID ── */
+  .goals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media(max-width:600px){ .goals-grid { grid-template-columns:1fr; } }
+
+  .goal-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .goal-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .goal-item h4 { font-size: 1.2rem; font-weight: 700; color: var(--teal); margin-bottom: 4px; }
+  .goal-item p { font-size: 1.2rem; color: var(--text-muted); }
+
+  /* ── STEPS (accordion) ── */
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .step-header {
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .step-header:hover { background: var(--surface2); }
+  .step-num {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-title { font-weight: 700; font-size: 1.2rem; color: #fff; flex: 1; }
+  .step-duration {
+    font-size: 18px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 2px 10px;
+  }
+  .step-arrow {
+    color: var(--text-muted);
+    font-size: 18px;
+    transition: transform 0.3s;
+  }
+  .step.open .step-arrow { transform: rotate(180deg); }
+
+  .step-body {
+    display: none;
+    padding: 0 22px 22px;
+    border-top: 1px solid var(--border);
+  }
+  .step.open .step-body { display: block; }
+
+  .step-body ul {
+    padding-right: 20px;
+    margin-top: 14px;
+  }
+  .step-body li {
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .step-body li strong { color: var(--text); }
+
+  /* ── CODE BLOCK ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    font-family: 'Fira Code', monospace;
+    font-size: 18px;
+    line-height: 1.65;
+    direction: ltr;
+  }
+  .kw { color: #bb9af7; }
+  .fn { color: #7dcfff; }
+  .str { color: #9ece6a; }
+  .cmt { color: #565f89; }
+  .var { color: #ff9e64; }
+
+  /* ── ELEMENT REFERENCE ── */
+  .elem-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .elem-tab {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-family: 'Fira Code', monospace;
+  }
+  .elem-tab:hover { border-color: var(--gold); color: var(--gold); }
+  .elem-tab.active {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+
+  .elem-panel { display: none; }
+  .elem-panel.active { display: block; }
+
+  .elem-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .elem-card-head {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .elem-icon-badge {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .elem-icon-badge.teal {
+    background: var(--teal-dim);
+    border-color: var(--teal);
+  }
+  .elem-icon-badge.red {
+    background: rgba(224,92,92,0.12);
+    border-color: var(--red);
+  }
+  .elem-card-head-text h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Fira Code', monospace;
+  }
+  .elem-card-head-text p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .elem-purpose-tag {
+    margin-right: auto;
+    font-size: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+
+  .elem-card-body {
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media(max-width:640px){ .elem-card-body { grid-template-columns: 1fr; } }
+
+  .elem-section h5 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+  }
+  .elem-section.teal h5 { color: var(--teal); }
+
+  .elem-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 6px;
+  }
+  .elem-section ul {
+    padding-right: 16px;
+  }
+  .elem-section li {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    line-height: 1.5;
+  }
+  .elem-section li code, .elem-section p code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 18px;
+    color: var(--teal);
+  }
+
+  .elem-code {
+    grid-column: 1 / -1;
+  }
+  .elem-code pre {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .crypto-use-tag {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 18px;
+    background: rgba(200,151,58,0.12);
+    color: var(--gold);
+    border: 1px solid rgba(200,151,58,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+
+  .layout-diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 18px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    direction: ltr;
+  }
+  .layout-diagram .ld-row { color: var(--gold); }
+  .layout-diagram .ld-col { color: var(--teal); }
+  .layout-diagram .ld-elem { color: var(--text); }
+  .layout-diagram .ld-group { color: #bb9af7; }
+  .layout-diagram .ld-tab { color: #e05c5c; }
+
+  /* ── CIPHER CARDS ── */
+  .cipher-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .cipher-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: default;
+  }
+  .cipher-card:hover {
+    border-color: var(--teal);
+    transform: translateY(-2px);
+  }
+  .cipher-card .cipher-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+  .cipher-card h4 {
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+    font-size: 1.2rem;
+  }
+  .cipher-card p { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 10px; }
+  .cipher-tag {
+    display: inline-block;
+    font-size: 18px;
+    background: var(--teal-dim);
+    color: var(--teal);
+    border: 1px solid rgba(46,196,182,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-top: 2px;
+  }
+  .cipher-tag.hard { background: rgba(224,92,92,0.1); color: var(--red); border-color: rgba(224,92,92,0.3); }
+  .cipher-tag.bonus { background: rgba(200,151,58,0.1); color: var(--gold); border-color: rgba(200,151,58,0.3); }
+
+  /* ── TIP BOX ── */
+  .tip-box {
+    background: var(--teal-dim);
+    border: 1px solid rgba(46,196,182,0.3);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin: 20px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .tip-box .tip-icon { font-size: 22px; flex-shrink: 0; }
+  .tip-box p { color: var(--text-muted); font-size: 1.2rem; }
+  .tip-box strong { color: var(--teal); }
+
+  .warn-box {
+    background: rgba(200,151,58,0.08);
+    border: 1px solid rgba(200,151,58,0.3);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin: 20px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .warn-box .tip-icon { font-size: 22px; flex-shrink: 0; }
+  .warn-box p { color: var(--text-muted); font-size: 1.2rem; }
+  .warn-box strong { color: var(--gold); }
+
+  /* ── CSS EXPLAINER ACCORDION ── */
+  .css-explainer {
+    background: var(--surface2);
+    border: 1.5px solid rgba(46,196,182,0.3);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 18px 0 4px;
+  }
+  .css-explainer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 18px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .css-explainer-header:hover { background: rgba(46,196,182,0.07); }
+  .css-explainer-icon { font-size: 18px; }
+  .css-explainer-title {
+    flex: 1;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--teal);
+  }
+  .css-explainer-arrow {
+    color: var(--teal);
+    font-size: 0.85rem;
+    transition: transform 0.3s;
+  }
+  .css-explainer.open .css-explainer-arrow { transform: rotate(180deg); }
+  .css-explainer-body {
+    display: none;
+    padding: 4px 18px 18px;
+    border-top: 1px solid rgba(46,196,182,0.2);
+  }
+  .css-explainer.open .css-explainer-body { display: block; }
+
+  .css-concept-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  @media(max-width:600px){ .css-concept-grid { grid-template-columns: 1fr; } }
+  .css-concept-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .css-concept-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--gold-light);
+    margin-bottom: 2px;
+  }
+  .css-concept-card code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--teal);
+  }
+
+  /* ── TASK BOX (per-step cipher tasks) ── */
+  .task-box {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 18px 0 10px;
+  }
+  .task-header {
+    background: rgba(200,151,58,0.07);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .task-badge {
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 3px 12px;
+    letter-spacing: 0.5px;
+  }
+  .task-badge.caesar {
+    background: rgba(200,151,58,0.12);
+    color: var(--gold);
+    border: 1px solid rgba(200,151,58,0.35);
+  }
+  .task-badge.zigzag {
+    background: rgba(46,196,182,0.12);
+    color: var(--teal);
+    border: 1px solid rgba(46,196,182,0.35);
+  }
+  .task-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  @media(max-width:600px){ .task-cols { grid-template-columns: 1fr; } }
+  .task-col {
+    padding: 16px 18px;
+  }
+  .task-col.done {
+    border-left: 1px solid var(--border);
+    border-right: 3px solid rgba(200,151,58,0.3);
+  }
+  .task-col.zigzag {
+    border-right: 3px solid rgba(46,196,182,0.4);
+    background: rgba(46,196,182,0.04);
+  }
+  .task-col-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+  }
+  .task-col.done .task-col-title { color: var(--gold); }
+  .task-col.zigzag .task-col-title { color: var(--teal); }
+  .task-col p { font-size: 1rem; color: var(--text-muted); line-height: 1.65; }
+  .task-col li { font-size: 0.92rem; color: var(--text-muted); margin-bottom: 4px; line-height: 1.5; }
+  .task-col code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.88rem;
+    color: var(--teal);
+  }
+
+  /* ── STEP OUTCOME & CONFIRM ── */
+  .step-outcome {
+    background: rgba(46,196,182,0.07);
+    border: 1px solid rgba(46,196,182,0.25);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0 10px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 0.95rem;
+  }
+  .outcome-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .step-outcome strong { color: var(--teal); display: block; margin-bottom: 3px; }
+  .step-outcome div { color: var(--text-muted); line-height: 1.6; }
+  .step-outcome code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.88rem;
+    color: var(--teal);
+  }
+
+  .step-confirm {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+  }
+  .step-confirm:hover { border-color: var(--gold); }
+  .step-confirm.confirmed {
+    background: rgba(46,196,182,0.1);
+    border-color: var(--teal);
+    color: var(--text);
+  }
+  .confirm-check {
+    font-size: 20px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    min-width: 24px;
+    text-align: center;
+  }
+  .step-confirm.confirmed .confirm-check { color: var(--teal); }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '○';
+    color: var(--border);
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── SCHEDULE ── */
+  .schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .sched-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .sched-time {
+    width: 110px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 8px;
+  }
+  .sched-time .time-pill {
+    background: var(--gold-dim);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 18px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sched-time .time-line {
+    flex: 1;
+    width: 2px;
+    background: var(--border);
+    margin-top: 6px;
+  }
+  .sched-content {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    margin-right: 12px;
+  }
+  .sched-content h4 { font-weight: 700; color: #fff; font-size: 1.2rem; margin-bottom: 4px; }
+  .sched-content p { font-size: 1.2rem; color: var(--text-muted); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 32px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 18px;
+  }
+  footer strong { color: var(--gold); }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; color: #000; }
+    header { background: #f5f5f5; border-color: #888; }
+    .step-body { display: block !important; }
+    pre { background: #f8f8f8; border-color: #ccc; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">🔐 קריפטוגרפיה + Gradio</div>
+  <h1>מערך למידה עצמית<br><span>בניית ממשקים לצפנים</span></h1>
+  <p class="subtitle">מדריך שלב-אחר-שלב לבניית אפליקציית Gradio אינטראקטיבית להדגמת צפנים</p>
+<!--  <div class="meta-row">-->
+<!--    <div class="meta-pill"><span class="icon">⏱</span> זמן: 90–120 דק'</div>-->
+<!--    <div class="meta-pill"><span class="icon">🎯</span> רמה: ביניים</div>-->
+<!--    <div class="meta-pill"><span class="icon">🐍</span> Python + Gradio</div>-->
+<!--    <div class="meta-pill"><span class="icon">📁</span> תוצר: קובץ .py</div>-->
+<!--  </div>-->
+</header>
+
+<div class="container">
+
+  <!-- SECTION: MOTIVATION -->
+  <div class="section-label">
+    <div class="num">💡</div>
+    <h2>למה בונים ממשק לצפנים?</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="goals-grid">
+    <div class="goal-item">
+      <div class="goal-icon">🖥</div>
+      <div>
+        <h4>הדגמה חיה</h4>
+        <p>במקום להסביר בקול – מציגים: מזינים טקסט, לוחצים, ורואים את ההצפנה מיד</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">🔬</div>
+      <div>
+        <h4>חקירה אינטראקטיבית</h4>
+        <p>ניתן לשחק עם מפתח=3, 7, 13 ולראות מיד מה קורה לטקסט המוצפן</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">🧩</div>
+      <div>
+        <h4>חיבור תיאוריה לקוד</h4>
+        <p>כל פונקציית הצפנה שכתבנו הופכת לכפתור – מאחד את עולם הקוד ועולם ה-UI</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">🎓</div>
+      <div>
+        <h4>כלי לפרויקט גמר</h4>
+        <p>ממשק מוכן = פרויקט שאפשר להדגים לקהל, לא רק להריץ ב-terminal</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: LEARNING STEPS -->
+  <div class="section-label">
+    <div class="num">1</div>
+    <h2>שלבי הלמידה</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="tip-box">
+    <div class="tip-icon">📌</div>
+    <p><strong>הוראה:</strong> לחצו על כל שלב כדי לפתוח את הפרטים. קראו לפני שאתם מתחילים לכתוב קוד!</p>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step open" onclick="toggleStep(this)">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">התקנה ומבנה בסיסי</div>
+      <div class="step-duration">10 דק'</div>
+      <div class="step-arrow">▼</div>
+    </div>
+    <div dir="rtl" class="step-body">
+      <ul>
+        <li><strong>התקינו Gradio</strong> אם עוד לא:<br>
+          <code style="background:var(--code-bg);padding:2px 8px;border-radius:4px;font-family:'Fira Code',monospace;">pip install gradio</code>
+        </li>
+        <li><strong>הבדל מרכזי:</strong> <code>gr.Interface</code> = ממשק אחד פשוט | <code>gr.Blocks</code> = מסך מלא עם טאבים, שורות, עמודות – זה מה שנשתמש!</li>
+        <li><strong>⚠️ Gradio 6:</strong> ה- <code>theme</code> עובר ל-<code>launch()</code> ולא ל-<code>Blocks()</code>. ו-<code>css</code> נשאר ב-<code>Blocks()</code>.</li>
+        <li><strong>מבנה הסקלטון של הפרויקט שלנו:</strong></li>
+      </ul>
+<pre><span class="kw">import</span> gradio <span class="kw">as</span> gr
+
+<span class="cmt"># CSS – הצמדת טקסט לימין (RTL) + תיקון Slider</span>
+css = <span class="str">"""
+* { direction: rtl; }
+
+.slider-ltr *     { direction: ltr !important; }
+.slider-ltr label { direction: rtl !important; text-align: right !important; }
+"""</span>
+
+<span class="cmt"># כאן תגיעו פונקציות הצפנה שלכם</span>
+
+<span class="cmt"># ✅ Gradio 6: css נשאר ב-Blocks, theme עובר ל-launch()</span>
+<span class="kw">with</span> gr.<span class="fn">Blocks</span>(title=<span class="str">"מעבדת הצפנים"</span>, css=css) <span class="kw">as</span> app:
+    gr.<span class="fn">Markdown</span>(<span class="str">"# 🔐 מעבדת הצפנים"</span>)
+
+    <span class="kw">with</span> gr.<span class="fn">Tabs</span>():
+        <span class="kw">with</span> gr.<span class="fn">TabItem</span>(<span class="str">"🔄 צופן קיסר"</span>):
+            gr.<span class="fn">Markdown</span>(<span class="str">"כאן יגיע ממשק צופן קיסר"</span>)
+        <span class="kw">with</span> gr.<span class="fn">TabItem</span>(<span class="str">"⚡ צופן זיגזג"</span>):
+            gr.<span class="fn">Markdown</span>(<span class="str">"כאן יגיע ממשק זיגזג"</span>)
+
+<span class="cmt"># ✅ Gradio 6: theme עובר לכאן</span>
+app.<span class="fn">launch</span>(theme=gr.themes.<span class="fn">Soft</span>())
+</pre>
+      <ul>
+        <li><strong>הריצו את הקוד</strong> → פתחו <code>http://127.0.0.1:7860</code> בדפדפן ← כך תדעו שהכל עובד</li>
+      </ul>
+
+      <!-- CSS Explainer accordion -->
+      <div class="css-explainer">
+        <div class="css-explainer-header" onclick="toggleCssExplainer(this)">
+          <span class="css-explainer-icon">🎨</span>
+          <span class="css-explainer-title">מה זה CSS ואיך משתמשים בו כאן?</span>
+          <span class="css-explainer-arrow">▼</span>
+        </div>
+        <div class="css-explainer-body">
+          <p style="color:var(--text-muted);margin-bottom:14px;">
+            <strong style="color:var(--teal)">CSS</strong> (Cascading Style Sheets) הוא שפת עיצוב שאומרת לדפדפן <em>איך להציג</em> אלמנטים –
+            צבע, גודל, כיוון, ריווח ועוד. ב-Gradio אפשר להזריק CSS חופשי דרך פרמטר <code>css</code> של <code>gr.Blocks</code>.
+          </p>
+
+          <div class="css-concept-grid">
+            <div class="css-concept-card">
+              <div class="css-concept-title">🔎 מבנה כלל CSS</div>
+<pre style="margin:10px 0 0;font-size:0.82rem;">selector {
+    property: value;
+}</pre>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;">
+                <strong style="color:#fff">selector</strong> – על מה להחיל (תג, מחלקה, id)<br>
+                <strong style="color:#fff">property</strong> – מה לשנות<br>
+                <strong style="color:#fff">value</strong> – לאיזה ערך
+              </p>
+            </div>
+            <div class="css-concept-card">
+              <div class="css-concept-title">📌 שלושת הכללים בקוד שלנו</div>
+              <ul style="padding-right:16px;margin-top:8px;">
+                <li style="color:var(--text-muted);font-size:0.88rem;margin-bottom:6px;"><code>* &#123; direction: rtl; &#125;</code><br><span>כל האלמנטים – טקסט מימין לשמאל (עברית)</span></li>
+                <li style="color:var(--text-muted);font-size:0.88rem;margin-bottom:6px;"><code>.slider-ltr * &#123; direction: ltr !important; &#125;</code><br><span>הסליידר עצמו – ירוץ משמאל לימין (כרגיל)</span></li>
+                <li style="color:var(--text-muted);font-size:0.88rem;"><code>.slider-ltr label &#123; text-align: right; &#125;</code><br><span>אבל התווית מעל הסליידר – תישאר עברית ימינה</span></li>
+              </ul>
+            </div>
+            <div class="css-concept-card">
+              <div class="css-concept-title">⚡ <code>!important</code> – מה זה?</div>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;">Gradio מוסיף CSS משל עצמו לכל רכיב. <code>!important</code> אומר "הכלל שלי מנצח את כולם" – גם אם Gradio קבע משהו אחר.</p>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:6px;">השתמשו בו רק כשצריך לדרוס עיצוב של ספרייה חיצונית.</p>
+            </div>
+            <div class="css-concept-card">
+              <div class="css-concept-title">🏷 מחלקה (<code>class</code>) ב-Gradio</div>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;">כשכותבים <code>elem_classes=["slider-ltr"]</code> ב-Gradio, הרכיב מקבל את המחלקה <code>slider-ltr</code> ב-HTML. ואז ה-CSS שכתבנו עם <code>.slider-ltr</code> מחיל עליו את העיצוב.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-outcome">
+        <div class="outcome-icon">🎯</div>
+        <div>
+          <strong>תוצר צפוי:</strong> דפדפן נפתח עם ממשק ריק שיש בו 2 טאבים ("🔄 צופן קיסר", "⚡ צופן זיגזג"), כותרת ראשית, וכל הטקסטים מצודדים לימין.
+        </div>
+      </div>
+
+      <div class="task-box">
+        <div class="task-header">
+          <span class="task-badge caesar">🔄 קיסר – כבר מוכן!</span>
+          <span class="task-badge zigzag">⚡ משימה – זיגזג</span>
+        </div>
+        <div class="task-cols">
+          <div class="task-col done">
+            <div class="task-col-title">✅ העתק והרץ</div>
+            <p>הקוד למעלה כבר מכיל את שני הטאבים. העתיקו אותו, הריצו, ווודאו שאתם רואים את שני הטאבים בדפדפן.</p>
+          </div>
+          <div class="task-col zigzag">
+            <div class="task-col-title">✏️ השלם בעצמך</div>
+            <p>שנו את טקסט placeholder בטאב הזיגזג מ-<code>"כאן יגיע ממשק זיגזג"</code> לכותרת אמיתית עם <code>gr.Markdown</code> שמסבירה מה עושה צופן הזיגזג.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-confirm" onclick="toggleConfirm(this)">
+        <div class="confirm-check" id="confirm1">☐</div>
+        <span>סיימתי שלב זה – הממשק הריק עובד ומוצג בדפדפן, שני הטאבים נראים</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 (לשעבר שלב 3) -->
+  <div class="step" onclick="toggleStep(this)">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">כתיבת פונקציות ההצפנה</div>
+      <div class="step-duration">30 דק'</div>
+      <div class="step-arrow">▼</div>
+    </div>
+    <div class="step-body">
+      <ul>
+        <li><strong>כלל זהב:</strong> פונקציית Gradio = פונקציית Python רגילה. מקבלת מחרוזות/מספרים, מחזירה מחרוזת</li>
+        <li>הפונקציה חייבת לקבל <strong>בדיוק</strong> את מספר הפרמטרים כמו רשימת ה-inputs</li>
+        <li><strong>תמיד בדקו את הפונקציה בטרמינל לפני שמחברים אותה ל-Gradio!</strong></li>
+      </ul>
+<pre><span class="kw">def</span> <span class="fn">caesar_cipher</span>(text: <span class="var">str</span>, shift: <span class="var">int</span>, mode: <span class="var">str</span>) -> <span class="var">str</span>:
+    <span class="cmt"># הצפן = הזזה קדימה, פיענוח = הזזה אחורה</span>
+    <span class="kw">if</span> mode == <span class="str">"פענח"</span>:
+        shift = -shift
+    result = []
+    <span class="kw">for</span> ch <span class="kw">in</span> text:
+        <span class="kw">if</span> ch.<span class="fn">isalpha</span>():
+            base = <span class="fn">ord</span>(<span class="str">'A'</span>) <span class="kw">if</span> ch.<span class="fn">isupper</span>() <span class="kw">else</span> <span class="fn">ord</span>(<span class="str">'a'</span>)
+            result.<span class="fn">append</span>(<span class="fn">chr</span>(((<span class="fn">ord</span>(ch) - base + shift) % <span class="var">26</span>) + base))
+        <span class="kw">else</span>:
+            result.<span class="fn">append</span>(ch)
+    <span class="kw">return</span> <span class="str">''</span>.<span class="fn">join</span>(result)
+
+<span class="cmt"># בדיקה בטרמינל – לפני Gradio!</span>
+<span class="fn">print</span>(<span class="fn">caesar_cipher</span>(<span class="str">"Hello"</span>, <span class="var">3</span>, <span class="str">"הצפן"</span>))   <span class="cmt"># → Khoor</span>
+<span class="fn">print</span>(<span class="fn">caesar_cipher</span>(<span class="str">"Khoor"</span>, <span class="var">3</span>, <span class="str">"פענח"</span>))   <span class="cmt"># → Hello</span>
+</pre>
+      <ul>
+        <li>אם הפונקציה עובדת ב-Python – היא תעבוד ב-Gradio!</li>
+      </ul>
+
+      <div class="step-outcome">
+        <div class="outcome-icon">🎯</div>
+        <div>
+          <strong>תוצר צפוי:</strong> הרצת הבדיקות בטרמינל מחזירה <code>Khoor</code> ואחר כך <code>Hello</code>. רק אחרי שזה עובד – ממשיכים לשלב הבא.
+        </div>
+      </div>
+
+      <div class="task-box">
+        <div class="task-header">
+          <span class="task-badge caesar">🔄 קיסר – כבר מוכן!</span>
+          <span class="task-badge zigzag">⚡ משימה – זיגזג</span>
+        </div>
+        <div class="task-cols">
+          <div class="task-col done">
+            <div class="task-col-title">✅ העתק והרץ</div>
+            <p>הפונקציה <code>caesar_cipher</code> למעלה מוכנה. העתיקו אותה יחד עם שורות הבדיקה, הריצו בטרמינל וודאו שאתם מקבלים <code>Khoor</code> ואחר כך <code>Hello</code>.</p>
+          </div>
+          <div class="task-col zigzag">
+            <div class="task-col-title">✏️ כתוב ובדוק בעצמך</div>
+            <p>כתבו את <code>rail_fence_cipher(text, rails, mode)</code>:</p>
+            <ul style="padding-right:16px; margin-top:8px;">
+              <li>צרו <code>rails</code> רשימות ריקות</li>
+              <li>עברו על האותיות – כל אות הולכת ל-rail שמספרו <code>0, 1, 2, …, rails-1, rails-2, …, 1, 0, 1, …</code></li>
+              <li>לפיענוח: חשבו אילו אינדקסים שייכים לכל rail, ואז קראו לפי הסדר המקורי</li>
+            </ul>
+            <p style="margin-top:8px;">בדקו בטרמינל: <code>rail_fence_cipher("HELLOWORLD", 3, "הצפן")</code> → <code>HOLELWRDLO</code></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-confirm" onclick="toggleConfirm(this)">
+        <div class="confirm-check">☐</div>
+        <span>סיימתי שלב זה – שתי הפונקציות בדוקות ועובדות נכון בטרמינל</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 (לשעבר שלב 2) -->
+  <div class="step" onclick="toggleStep(this)">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">רכיבי קלט ופלט – "אבני הבניין"</div>
+      <div class="step-duration">15 דק'</div>
+      <div class="step-arrow">▼</div>
+    </div>
+    <div class="step-body">
+      <ul>
+        <li><strong>כל ממשק צופן צריך לפחות:</strong> שדה טקסט לקלט + שדה פלט + כפתור הצפנה</li>
+        <li><strong>לצופן קיסר נוסיף:</strong> <code>gr.Slider</code> למפתח (ערך 1–25)</li>
+        <li><strong>לצופן זיגזג נוסיף:</strong> <code>gr.Slider</code> למספר הפסים (ערך 2–6)</li>
+        <li><strong>⚠️ Slider ב-RTL:</strong> הוסיפו <code>elem_classes=["slider-ltr"]</code> כדי שהסליידר ירוץ משמאל לימין כרגיל, ורק התווית תהיה עברית.</li>
+      </ul>
+<pre><span class="kw">with</span> gr.<span class="fn">TabItem</span>(<span class="str">"🔄 צופן קיסר"</span>):
+    <span class="kw">with</span> gr.<span class="fn">Row</span>():
+        <span class="kw">with</span> gr.<span class="fn">Column</span>():
+            <span class="var">txt_in</span>  = gr.<span class="fn">Textbox</span>(label=<span class="str">"טקסט להצפנה"</span>, lines=<span class="var">4</span>)
+            <span class="cmt"># ✅ step=1 מגביל לשלמים, elem_classes מתקן את כיוון הסליידר</span>
+            <span class="var">key</span>     = gr.<span class="fn">Slider</span>(minimum=<span class="var">1</span>, maximum=<span class="var">25</span>, value=<span class="var">3</span>,
+                              step=<span class="var">1</span>, label=<span class="str">"מפתח (הזזה)"</span>,
+                              elem_classes=[<span class="str">"slider-ltr"</span>])
+            <span class="var">mode</span>    = gr.<span class="fn">Radio</span>([<span class="str">"הצפן"</span>, <span class="str">"פענח"</span>], value=<span class="str">"הצפן"</span>, label=<span class="str">"פעולה"</span>)
+            <span class="var">btn</span>     = gr.<span class="fn">Button</span>(<span class="str">"▶ הפעל"</span>, variant=<span class="str">"primary"</span>)
+        <span class="kw">with</span> gr.<span class="fn">Column</span>():
+            <span class="var">txt_out</span> = gr.<span class="fn">Textbox</span>(label=<span class="str">"תוצאה"</span>, lines=<span class="var">4</span>, interactive=<span class="kw">False</span>)
+
+    <span class="var">btn</span>.<span class="fn">click</span>(fn=caesar_cipher, inputs=[<span class="var">txt_in</span>, <span class="var">key</span>, <span class="var">mode</span>], outputs=<span class="var">txt_out</span>)
+</pre>
+      <ul>
+        <li><strong>שימו לב:</strong> <code>.click(fn=..., inputs=[...], outputs=...)</code> – זה מה שמחבר כפתור לפונקציה!</li>
+        <li>הפונקציה <code>caesar_cipher</code> מקבלת בדיוק את הפרמטרים שב-<code>inputs</code> – חשוב שהסדר יהיה זהה</li>
+      </ul>
+
+      <div class="step-outcome">
+        <div class="outcome-icon">🎯</div>
+        <div>
+          <strong>תוצר צפוי:</strong> שתי עמודות בטאב קיסר – שמאל: שדה קלט + סליידר (1 עד 25 משמאל לימין) + כפתור. ימין: שדה פלט. לחיצה על הכפתור מפעילה את הפונקציה ומציגה את הטקסט המוצפן.
+        </div>
+      </div>
+
+      <div class="task-box">
+        <div class="task-header">
+          <span class="task-badge caesar">🔄 קיסר – כבר מוכן!</span>
+          <span class="task-badge zigzag">⚡ משימה – זיגזג</span>
+        </div>
+        <div class="task-cols">
+          <div class="task-col done">
+            <div class="task-col-title">✅ העתק והרץ</div>
+            <p>הקוד למעלה מציג את ממשק קיסר המלא. העתיקו אותו לתוך הטאב המתאים וודאו שהסליידר רץ נכון משמאל לימין ושהכפתור מפעיל את הפונקציה.</p>
+          </div>
+          <div class="task-col zigzag">
+            <div class="task-col-title">✏️ כתוב בעצמך</div>
+            <p>בנו ממשק זהה לטאב הזיגזג. שדה טקסט קלט, סליידר לפסים (<code>minimum=2, maximum=6, value=3</code>), Radio לבחירת הצפן/פענח, כפתור, ושדה פלט. חברו ל-<code>rail_fence_cipher</code> שכתבתם בשלב הקודם.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-confirm" onclick="toggleConfirm(this)">
+        <div class="confirm-check">☐</div>
+        <span>סיימתי שלב זה – שני הטאבים עובדים, הכפתורים מפעילים את הפונקציות הנכונות</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: ELEMENTS REFERENCE -->
+  <div class="section-label">
+    <div class="num">2</div>
+    <h2>מילון אלמנטי Gradio – מה כל רכיב עושה?</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="tip-box">
+    <div class="tip-icon">🗂</div>
+    <p><strong>איך להשתמש:</strong> לחצו על שם הקטגוריה כדי לראות את הרכיבים שלה. לכל רכיב תמצאו: מטרה, פרמטרים חשובים, קוד לדוגמה, ושימוש קריפטוגרפי.</p>
+  </div>
+
+  <!-- CATEGORY TABS -->
+  <div class="elem-tabs">
+    <div class="elem-tab active" onclick="showElemPanel('input')">📥 קלט (Input)</div>
+    <div class="elem-tab" onclick="showElemPanel('output')">📤 פלט (Output)</div>
+    <div class="elem-tab" onclick="showElemPanel('layout')">🏗 פריסה (Layout)</div>
+    <div class="elem-tab" onclick="showElemPanel('interactive')">⚡ אינטראקציה (Events)</div>
+    <div class="elem-tab" onclick="showElemPanel('display')">🎨 תצוגה (Display)</div>
+  </div>
+
+  <!-- ═══════════════════════════════ INPUT PANEL ═══════════════════════════════ -->
+  <div class="elem-panel active" id="panel-input">
+
+    <!-- gr.Textbox -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">📝</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Textbox</h4>
+          <p>תיבת טקסט – לכתיבת קלט או הצגת פלט</p>
+        </div>
+        <div class="elem-purpose-tag">קלט / פלט</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>הרכיב הנפוץ ביותר ב-Gradio. משמש <strong>גם כקלט</strong> (המשתמש כותב בו) <strong>וגם כפלט</strong> (הקוד מחזיר לתוכו תוצאה).</p>
+          <p>כשמשתמשים בו כפלט – הוסיפו <code>interactive=False</code> כדי שהמשתמש לא יוכל לערוך.</p>
+          <div class="crypto-use-tag">🔐 לצפן: קלט לטקסט המקורי + פלט לטקסט המוצפן</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>label</code> – כותרת מעל השדה</li>
+            <li><code>lines=4</code> – גובה בשורות (1 = שורה אחת)</li>
+            <li><code>placeholder</code> – טקסט אפור רמז</li>
+            <li><code>value</code> – ערך ברירת מחדל</li>
+            <li><code>type="password"</code> – מסתיר את הטקסט (לסיסמאות)</li>
+            <li><code>interactive=False</code> – רק לקריאה (לפלט)</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># כקלט – המשתמש מזין טקסט</span>
+<span class="var">txt_input</span> = gr.<span class="fn">Textbox</span>(
+    label=<span class="str">"טקסט להצפנה"</span>,
+    lines=<span class="var">4</span>,
+    placeholder=<span class="str">"הקלד כאן את הטקסט שלך..."</span>
+)
+
+<span class="cmt"># כפלט – הקוד כותב לתוכו (לא ניתן לעריכה)</span>
+<span class="var">txt_output</span> = gr.<span class="fn">Textbox</span>(
+    label=<span class="str">"תוצאת ההצפנה"</span>,
+    lines=<span class="var">4</span>,
+    interactive=<span class="kw">False</span>
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Slider -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🎚</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Slider</h4>
+          <p>מחוון לבחירת ערך מספרי בטווח נתון</p>
+        </div>
+        <div class="elem-purpose-tag">קלט מספרי</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>מאפשר בחירת מספר ע"י גרירה. מושלם כשיש טווח ידוע ורוצים שהמשתמש לא יכניס ערך לא חוקי.</p>
+          <p>עדיף על <code>gr.Number</code> כשהטווח מוגבל – לא צריך validation ידני!</p>
+          <div class="crypto-use-tag">🔐 לצפן קיסר: מפתח 1–25 | לזיגזג: מספר פסים 2–8</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>minimum</code> – ערך מינימום</li>
+            <li><code>maximum</code> – ערך מקסימום</li>
+            <li><code>value</code> – ערך התחלתי</li>
+            <li><code>step=1</code> – קפיצות (1 = רק שלמים)</li>
+            <li><code>label</code> – כותרת + ערך נוכחי מוצג</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># מפתח לצופן קיסר – ערכים 1 עד 25 בלבד</span>
+<span class="var">key_slider</span> = gr.<span class="fn">Slider</span>(
+    minimum=<span class="var">1</span>,
+    maximum=<span class="var">25</span>,
+    value=<span class="var">3</span>,
+    step=<span class="var">1</span>,
+    label=<span class="str">"מפתח ההזזה (1–25)"</span>
+)
+
+<span class="cmt"># שינוי בזמן אמת – מפעיל פונקציה בכל גרירה</span>
+<span class="var">key_slider</span>.<span class="fn">change</span>(fn=caesar_cipher, inputs=[...], outputs=[...])</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Radio -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🔘</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Radio</h4>
+          <p>בחירת אפשרות אחת מתוך רשימה – כפתורי רדיו</p>
+        </div>
+        <div class="elem-purpose-tag">בחירה בלעדית</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>כשיש 2–5 אפשרויות ורוצים שהמשתמש יבחר <strong>בדיוק אחת</strong>. כל האפשרויות נראות בבת אחת.</p>
+          <p>ההבדל מ-Dropdown: Radio מראה הכל, Dropdown מסתיר עד לחיצה. עדיף Radio עד ~5 אפשרויות.</p>
+          <div class="crypto-use-tag">🔐 בחירת מצב: "הצפן" / "פענח" / "פרוץ"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>choices=[...]</code> – רשימת האפשרויות</li>
+            <li><code>value</code> – בחירת ברירת מחדל</li>
+            <li><code>label</code> – כותרת</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">mode</span> = gr.<span class="fn">Radio</span>(
+    choices=[<span class="str">"הצפן"</span>, <span class="str">"פענח"</span>],
+    value=<span class="str">"הצפן"</span>,
+    label=<span class="str">"בחר פעולה"</span>
+)
+
+<span class="cmt"># הפונקציה מקבלת את הערך הנבחר כמחרוזת</span>
+<span class="kw">def</span> <span class="fn">cipher</span>(text, key, mode):
+    <span class="kw">if</span> mode == <span class="str">"פענח"</span>:
+        key = -key  <span class="cmt"># הפך כיוון</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Dropdown -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">📋</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Dropdown</h4>
+          <p>תפריט נפתח – לרשימות ארוכות יותר</p>
+        </div>
+        <div class="elem-purpose-tag">בחירה מרשימה</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>דומה ל-Radio אבל מתאים לרשימות ארוכות (6+ פריטים). חוסך מקום על המסך כי האפשרויות מסתתרות עד לחיצה.</p>
+          <div class="crypto-use-tag">🔐 בחירת צופן לניתוח, שפה, קידוד תווים</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>choices=[...]</code> – רשימת האפשרויות</li>
+            <li><code>value</code> – ערך ראשוני</li>
+            <li><code>multiselect=True</code> – בחירה מרובה</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">cipher_type</span> = gr.<span class="fn">Dropdown</span>(
+    choices=[<span class="str">"קיסר"</span>, <span class="str">"זיגזג"</span>, <span class="str">"החלפה"</span>, <span class="str">"ויז'נר"</span>],
+    value=<span class="str">"קיסר"</span>,
+    label=<span class="str">"בחר צופן"</span>
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Number -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🔢</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Number</h4>
+          <p>שדה הזנת מספר עם חיצים להגדלה/הקטנה</p>
+        </div>
+        <div class="elem-purpose-tag">קלט מספרי חופשי</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>כשרוצים שהמשתמש יזין מספר אבל אין טווח קבוע, או שהטווח גדול מאוד. שימושי לפרמטרים מתמטיים.</p>
+          <div class="crypto-use-tag">🔐 פרמטר a,b בצופן Affine; גודל מפתח RSA</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>value</code> – ערך ראשוני</li>
+            <li><code>minimum / maximum</code> – גבולות</li>
+            <li><code>precision=0</code> – מספר ספרות אחרי נקודה</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># לצופן Affine: E(x) = (a*x + b) mod 26</span>
+<span class="var">param_a</span> = gr.<span class="fn">Number</span>(value=<span class="var">5</span>, label=<span class="str">"פרמטר a (חייב להיות הדדי עם 26)"</span>)
+<span class="var">param_b</span> = gr.<span class="fn">Number</span>(value=<span class="var">8</span>, label=<span class="str">"פרמטר b (הזזה)"</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Checkbox -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">☑️</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Checkbox</h4>
+          <p>תיבת סימון – כן/לא (True/False)</p>
+        </div>
+        <div class="elem-purpose-tag">בוליאני</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>לאפשרויות בינאריות – כן/לא, פעיל/כבוי. הפונקציה מקבלת <code>True</code> או <code>False</code>.</p>
+          <div class="crypto-use-tag">🔐 "שמור רק אותיות?", "הצג שלבי עיבוד?", "התעלם מרווחים?"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים חשובים</h5>
+          <ul>
+            <li><code>label</code> – הכיתוב ליד התיבה</li>
+            <li><code>value=False</code> – מצב ראשוני</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">keep_spaces</span> = gr.<span class="fn">Checkbox</span>(
+    label=<span class="str">"שמור רווחים בטקסט המוצפן"</span>,
+    value=<span class="kw">True</span>
+)
+
+<span class="kw">def</span> <span class="fn">caesar</span>(text, shift, keep_spaces):
+    <span class="kw">if not</span> keep_spaces:
+        text = text.<span class="fn">replace</span>(<span class="str">" "</span>, <span class="str">""</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-input -->
+
+  <!-- ═══════════════════════════════ OUTPUT PANEL ═══════════════════════════════ -->
+  <div class="elem-panel" id="panel-output">
+
+    <!-- gr.Textbox (output) -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge teal">📤</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Textbox (כפלט)</h4>
+          <p>הצגת תוצאת טקסט – הדרך הנפוצה ביותר לפלט</p>
+        </div>
+        <div class="elem-purpose-tag">פלט טקסטואלי</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>כשהפונקציה מחזירה מחרוזת, היא נכתבת ישירות לתיבת הטקסט. הוסיפו <code>interactive=False</code> כדי שהמשתמש לא יוכל לשנות.</p>
+          <div class="crypto-use-tag">🔐 הצגת הטקסט המוצפן/מפוענח</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ טיפ חשוב</h5>
+          <p>הפונקציה פשוט מחזירה מחרוזת – Gradio שם אותה בתוך ה-Textbox אוטומטית:</p>
+          <ul>
+            <li>החזרת <code>"KHOOR"</code> → מופיע בשדה</li>
+            <li>החזרת <code>""</code> → השדה מתרוקן</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">result_box</span> = gr.<span class="fn">Textbox</span>(
+    label=<span class="str">"תוצאה"</span>,
+    lines=<span class="var">5</span>,
+    interactive=<span class="kw">False</span>,  <span class="cmt"># לא ניתן לעריכה</span>
+    show_copy_button=<span class="kw">True</span>  <span class="cmt"># כפתור העתקה אוטומטי</span>
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Markdown -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge teal">📄</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Markdown</h4>
+          <p>הצגת טקסט עשיר – כותרות, הדגשות, קוד</p>
+        </div>
+        <div class="elem-purpose-tag">תצוגת תוכן</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>להצגת הסברים, כותרות, ותוצאות מעוצבות. תומך בסינטקס Markdown מלא: <code>**מודגש**</code>, <code># כותרת</code>, רשימות, קוד מוטבע.</p>
+          <p>אפשר גם <strong>לעדכן</strong> Markdown דינמית מהפונקציה!</p>
+          <div class="crypto-use-tag">🔐 הצגת טבלת ההחלפה, ניתוח תדירות בטקסט</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ שימוש כפלט דינמי</h5>
+          <ul>
+            <li>הגדירו כרכיב ב-outputs</li>
+            <li>הפונקציה מחזירה מחרוזת Markdown</li>
+            <li>Gradio מרנדר אותה אוטומטית</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># כותרת סטטית</span>
+gr.<span class="fn">Markdown</span>(<span class="str">"## 🔐 צופן קיסר\nהצפנה קלאסית מהעת העתיקה"</span>)
+
+<span class="cmt"># כפלט דינמי – מעודכן מהפונקציה</span>
+<span class="var">table_display</span> = gr.<span class="fn">Markdown</span>(label=<span class="str">"טבלת ההחלפה"</span>)
+
+<span class="kw">def</span> <span class="fn">show_table</span>(key):
+    <span class="kw">return</span> <span class="str">f"| מקור | מוצפן |\n|---|---|\n| A | {key[0]} |"</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Label -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge teal">🏷</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Label</h4>
+          <p>תווית עם ערך בולט – לתוצאות מספריות/בינאריות</p>
+        </div>
+        <div class="elem-purpose-tag">פלט ויזואלי</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>להצגת תוצאה בולטת אחת – כמו "צופן זוהה: קיסר" עם ציון אחוזי. מתאים כשיש תשובה ברורה אחת.</p>
+          <div class="crypto-use-tag">🔐 "הצופן שזוהה", "ציון ניתוח", "ביטחון: 87%"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים</h5>
+          <ul>
+            <li>הפונקציה מחזירה מחרוזת → מוצגת גדול</li>
+            <li>או dict: <code>{"קיסר": 0.87, "ויז'נר": 0.13}</code></li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">result_label</span> = gr.<span class="fn">Label</span>(label=<span class="str">"הצופן שזוהה"</span>)
+
+<span class="kw">def</span> <span class="fn">detect_cipher</span>(ciphertext):
+    <span class="cmt"># מחזיר dict לתצוגת הסתברויות</span>
+    <span class="kw">return</span> {<span class="str">"קיסר"</span>: <span class="var">0.85</span>, <span class="str">"החלפה"</span>: <span class="var">0.10</span>, <span class="str">"ויז'נר"</span>: <span class="var">0.05</span>}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.HTML -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge teal">🌐</div>
+        <div class="elem-card-head-text">
+          <h4>gr.HTML</h4>
+          <p>הצגת HTML מותאם אישית – לתצוגות מתקדמות</p>
+        </div>
+        <div class="elem-purpose-tag">פלט גמיש</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>כשצריך שליטה מלאה על עיצוב הפלט. הפונקציה מחזירה מחרוזת HTML – Gradio מציג אותה כמו דפדפן.</p>
+          <div class="crypto-use-tag">🔐 הדגשת אותיות מוצפנות בצבע, טבלת תדירות צבעונית</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ שימוש</h5>
+          <p>החזירו HTML כמחרוזת מהפונקציה. אפשר להשתמש ב-CSS מוטבע.</p>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">colored_output</span> = gr.<span class="fn">HTML</span>(label=<span class="str">"טקסט מוצפן עם הדגשה"</span>)
+
+<span class="kw">def</span> <span class="fn">encrypt_colored</span>(text, shift):
+    result = <span class="str">""</span>
+    <span class="kw">for</span> ch <span class="kw">in</span> text:
+        encrypted = caesar_char(ch, shift)
+        result += <span class="str">f"&lt;span style='color:#c8973a'&gt;{encrypted}&lt;/span&gt;"</span>
+    <span class="kw">return</span> <span class="str">f"&lt;div style='font-size:20px;letter-spacing:3px'&gt;{result}&lt;/div&gt;"</span></pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-output -->
+
+  <!-- ═══════════════════════════════ LAYOUT PANEL ═══════════════════════════════ -->
+  <div class="elem-panel" id="panel-layout">
+
+    <div class="tip-box" style="margin-bottom:16px;">
+      <div class="tip-icon">📐</div>
+      <p><strong>עיקרון הפריסה:</strong> כל הרכיבים מוכנסים <em>בתוך</em> <code>with gr.Blocks() as app:</code>. הפריסה נקבעת ע"י קינון של Row, Column וכדומה.</p>
+    </div>
+
+    <!-- Diagram -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🗺</div>
+        <div class="elem-card-head-text">
+          <h4>תרשים מבנה הפריסה</h4>
+          <p>איך Row, Column ו-Tabs מתקינים אחד בתוך השני</p>
+        </div>
+      </div>
+      <div class="elem-card-body" style="grid-template-columns:1fr;">
+        <pre class="layout-diagram">
+<span class="ld-tab">gr.Blocks()</span>  ← העטיפה הכוללת של כל האפליקציה
+  │
+  ├── <span class="ld-tab">gr.Tabs()</span>  ← מחלק לטאבים נפרדים
+  │     ├── <span class="ld-tab">gr.TabItem("קיסר")</span>
+  │     │     └── <span class="ld-row">gr.Row()</span>  ← שורה אופקית
+  │     │           ├── <span class="ld-col">gr.Column()</span>  ← עמודה שמאל (קלט)
+  │     │           │     ├── <span class="ld-elem">gr.Textbox()</span>
+  │     │           │     ├── <span class="ld-elem">gr.Slider()</span>
+  │     │           │     └── <span class="ld-elem">gr.Button()</span>
+  │     │           └── <span class="ld-col">gr.Column()</span>  ← עמודה ימין (פלט)
+  │     │                 └── <span class="ld-elem">gr.Textbox(interactive=False)</span>
+  │     │
+  │     └── <span class="ld-tab">gr.TabItem("זיגזג")</span>
+  │           └── ...
+  │
+  └── <span class="ld-group">gr.Accordion("עזרה")</span>  ← תיבה מתקפלת
+        </pre>
+      </div>
+    </div>
+
+    <!-- gr.Row -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">↔️</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Row</h4>
+          <p>מסדר רכיבים זה לצד זה אופקית</p>
+        </div>
+        <div class="elem-purpose-tag">פריסה אופקית</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>מכניסים לתוכו Column-ות – הן מסתדרות זו לצד זו. כך קלט ופלט נראים זה ליד זה.</p>
+          <div class="crypto-use-tag">🔐 קלט הצפנה (שמאל) | פלט תוצאה (ימין)</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ שימוש</h5>
+          <ul>
+            <li>משתמשים תמיד עם <code>with</code></li>
+            <li>כל מה שבתוך ה-with מסתדר אופקית</li>
+            <li>אפשר לקנן Row בתוך Column</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="kw">with</span> gr.<span class="fn">Row</span>():          <span class="cmt"># פותח שורה אופקית</span>
+    <span class="kw">with</span> gr.<span class="fn">Column</span>():   <span class="cmt"># עמודה ראשונה – קלט</span>
+        <span class="var">txt_in</span> = gr.<span class="fn">Textbox</span>(label=<span class="str">"קלט"</span>)
+        <span class="var">btn</span>    = gr.<span class="fn">Button</span>(<span class="str">"הצפן"</span>)
+    <span class="kw">with</span> gr.<span class="fn">Column</span>():   <span class="cmt"># עמודה שנייה – פלט</span>
+        <span class="var">txt_out</span> = gr.<span class="fn">Textbox</span>(label=<span class="str">"פלט"</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Column -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">↕️</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Column</h4>
+          <p>עמודה אנכית – מסדר רכיבים מלמעלה למטה</p>
+        </div>
+        <div class="elem-purpose-tag">פריסה אנכית</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>בתוך Row, כל Column תופסת חלק מהרוחב. אפשר לשלוט ברוחב עם <code>scale</code>.</p>
+          <p><code>scale=2</code> = פעמיים רחבה מ-<code>scale=1</code></p>
+          <div class="crypto-use-tag">🔐 עמודת קלט רחבה יותר מעמודת הפרמטרים</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים</h5>
+          <ul>
+            <li><code>scale=1</code> – יחס הרוחב (ברירת מחדל)</li>
+            <li><code>min_width=200</code> – רוחב מינימלי בפיקסלים</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="kw">with</span> gr.<span class="fn">Row</span>():
+    <span class="kw">with</span> gr.<span class="fn">Column</span>(scale=<span class="var">3</span>):  <span class="cmt"># 3/4 מהרוחב</span>
+        <span class="var">txt_in</span> = gr.<span class="fn">Textbox</span>(label=<span class="str">"טקסט ארוך"</span>, lines=<span class="var">6</span>)
+    <span class="kw">with</span> gr.<span class="fn">Column</span>(scale=<span class="var">1</span>):  <span class="cmt"># 1/4 מהרוחב</span>
+        <span class="var">key</span>  = gr.<span class="fn">Slider</span>(...)
+        <span class="var">mode</span> = gr.<span class="fn">Radio</span>(...)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Tabs / TabItem -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge red">🗂</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Tabs + gr.TabItem</h4>
+          <p>חלוקה לטאבים – דף אחר בתוך אותו ממשק</p>
+        </div>
+        <div class="elem-purpose-tag">ניווט</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>לארגן תוכן מרובה בלי לגלגל. כל צופן = טאב נפרד. המשתמש לוחץ ועובר בין הצפנים בחלק.</p>
+          <p><code>visible=False</code> – מסתיר טאב (כמו ב-secure_app.py לאחר Login)</p>
+          <div class="crypto-use-tag">🔐 טאב לכל צופן + טאב "פריצה" + טאב "עזרה"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ מבנה</h5>
+          <ul>
+            <li><code>gr.Tabs()</code> – מיכל הטאבים</li>
+            <li><code>gr.TabItem("שם")</code> – טאב בודד</li>
+            <li>כל מה ב-<code>with gr.TabItem</code> מוצג רק כשהטאב פעיל</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="kw">with</span> gr.<span class="fn">Tabs</span>():
+    <span class="kw">with</span> gr.<span class="fn">TabItem</span>(<span class="str">"🔄 צופן קיסר"</span>):
+        <span class="cmt"># כל הרכיבים של קיסר</span>
+        <span class="var">txt</span> = gr.<span class="fn">Textbox</span>(...)
+    <span class="kw">with</span> gr.<span class="fn">TabItem</span>(<span class="str">"⚡ זיגזג"</span>):
+        <span class="cmt"># כל הרכיבים של זיגזג</span>
+        <span class="var">rails</span> = gr.<span class="fn">Slider</span>(...)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.Accordion + gr.Group -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🪗</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Accordion + gr.Group</h4>
+          <p>תיבה מתקפלת + קיבוץ חזותי</p>
+        </div>
+        <div class="elem-purpose-tag">ארגון תוכן</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 Accordion</h5>
+          <p>תיבה שהמשתמש יכול לפתוח/לסגור. מושלם להסברים, עזרה, ודוגמאות שלא רוצים להציג כל הזמן.</p>
+          <p><code>open=False</code> – סגור כברירת מחדל</p>
+          <div class="crypto-use-tag">🔐 "הסבר על הצופן", "דוגמאות", "מה זה ניתוח תדירות?"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>🎯 Group</h5>
+          <p>מסגרת חזותית סביב קבוצת רכיבים. לא מסתיר – רק מקבץ ויזואלית עם רקע.</p>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># Accordion – מתקפל</span>
+<span class="kw">with</span> gr.<span class="fn">Accordion</span>(<span class="str">"📖 הסבר על צופן קיסר"</span>, open=<span class="kw">False</span>):
+    gr.<span class="fn">Markdown</span>(<span class="str">"כל אות מוזזת ב-K מקומות..."</span>)
+
+<span class="cmt"># Group – קיבוץ ויזואלי</span>
+<span class="kw">with</span> gr.<span class="fn">Group</span>():
+    gr.<span class="fn">Markdown</span>(<span class="str">"**פרמטרי ההצפנה:**"</span>)
+    <span class="var">key</span>  = gr.<span class="fn">Slider</span>(...)
+    <span class="var">mode</span> = gr.<span class="fn">Radio</span>(...)</pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-layout -->
+
+  <!-- ═══════════════════════════════ INTERACTIVE PANEL ═══════════════════════════════ -->
+  <div class="elem-panel" id="panel-interactive">
+
+    <!-- gr.Button -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🖱</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Button + .click()</h4>
+          <p>כפתור לחיצה – מפעיל פונקציה Python</p>
+        </div>
+        <div class="elem-purpose-tag">אירוע לחיצה</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>הגשר בין ה-UI לקוד Python. כשהמשתמש לוחץ, Gradio אוסף את ערכי ה-inputs ומעביר לפונקציה, ואת התוצאה שם ב-outputs.</p>
+          <div class="crypto-use-tag">🔐 כפתור "הצפן", "פענח", "פרוץ", "ייצר מפתח"</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים של .click()</h5>
+          <ul>
+            <li><code>fn</code> – הפונקציה להפעיל</li>
+            <li><code>inputs=[...]</code> – רשימת רכיבי קלט</li>
+            <li><code>outputs=[...]</code> – רשימת רכיבי פלט</li>
+            <li><code>variant="primary"</code> – כפתור ראשי (צבעוני)</li>
+            <li><code>variant="stop"</code> – כפתור עצור (אדום)</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="var">btn</span> = gr.<span class="fn">Button</span>(<span class="str">"🔐 הצפן עכשיו"</span>, variant=<span class="str">"primary"</span>)
+<span class="var">btn_clear</span> = gr.<span class="fn">Button</span>(<span class="str">"🗑 נקה"</span>)
+
+<span class="cmt"># קישור לפונקציה</span>
+<span class="var">btn</span>.<span class="fn">click</span>(
+    fn=caesar_cipher,
+    inputs=[<span class="var">txt_in</span>, <span class="var">key_slider</span>, <span class="var">mode_radio</span>],
+    outputs=[<span class="var">txt_out</span>]
+)
+
+<span class="cmt"># כפתור ניקוי – הפונקציה מחזירה "" לכל השדות</span>
+<span class="var">btn_clear</span>.<span class="fn">click</span>(fn=<span class="kw">lambda</span>: (<span class="str">""</span>, <span class="str">""</span>), outputs=[<span class="var">txt_in</span>, <span class="var">txt_out</span>])</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- .change() -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">⚡</div>
+        <div class="elem-card-head-text">
+          <h4>.change() – עדכון בזמן אמת</h4>
+          <p>מפעיל פונקציה בכל פעם שהמשתמש משנה ערך</p>
+        </div>
+        <div class="elem-purpose-tag">Live Preview</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>לא צריך ללחוץ כפתור – הפונקציה רצה <strong>אוטומטית</strong> בכל שינוי ברכיב. כך מזיזים Slider ורואים מיד את הטקסט המוצפן משתנה.</p>
+          <p>אפשר לחבר <code>.change()</code> לכל רכיב: Textbox, Slider, Radio, Dropdown...</p>
+          <div class="crypto-use-tag">🔐 Live preview של הצפנה בזמן הקלדה/גרירת Slider</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ הבדל מ-.click()</h5>
+          <ul>
+            <li><code>.click()</code> – רק בלחיצת כפתור</li>
+            <li><code>.change()</code> – בכל שינוי ברכיב</li>
+            <li>אפשר לשלב את שניהם!</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># גרירת ה-Slider מפעילה הצפנה מיידית</span>
+<span class="var">key_slider</span>.<span class="fn">change</span>(
+    fn=caesar_cipher,
+    inputs=[<span class="var">txt_in</span>, <span class="var">key_slider</span>, <span class="var">mode_radio</span>],
+    outputs=[<span class="var">txt_out</span>]
+)
+
+<span class="cmt"># גם הקלדה בשדה מפעילה הצפנה</span>
+<span class="var">txt_in</span>.<span class="fn">change</span>(
+    fn=caesar_cipher,
+    inputs=[<span class="var">txt_in</span>, <span class="var">key_slider</span>, <span class="var">mode_radio</span>],
+    outputs=[<span class="var">txt_out</span>]
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- gr.update -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🔄</div>
+        <div class="elem-card-head-text">
+          <h4>gr.update() – שינוי תכונות דינמי</h4>
+          <p>מאפשר לשנות נראות/מצב רכיבים מהקוד</p>
+        </div>
+        <div class="elem-purpose-tag">שליטה דינמית</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>הפונקציה מחזירה <code>gr.update(...)</code> כדי לשנות תכונה של רכיב – כמו להסתיר כפתור, לנטרל שדה, לשנות טקסט.</p>
+          <p>כך עובד ה-Login ב-<code>secure_app.py</code> – לאחר Login, הטאבים מופיעים והכפתורים ננעלים.</p>
+          <div class="crypto-use-tag">🔐 חשיפת טאבים לאחר login, נעילת שדות, הסתרת כפתורים</div>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ תכונות שניתן לשנות</h5>
+          <ul>
+            <li><code>visible=True/False</code> – הסתר/הצג</li>
+            <li><code>interactive=True/False</code> – נעל/שחרר</li>
+            <li><code>value="..."</code> – שנה ערך</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="kw">def</span> <span class="fn">on_login</span>(user, pwd):
+    <span class="kw">if</span> USERS.get(user) == pwd:
+        <span class="kw">return</span> (
+            <span class="str">"✅ התחברת!"</span>,
+            gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),   <span class="cmt"># הצג טאבים</span>
+            gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),   <span class="cmt"># הצג כפתור logout</span>
+            gr.<span class="fn">update</span>(interactive=<span class="kw">False</span>) <span class="cmt"># נעל כפתור login</span>
+        )</pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-interactive -->
+
+  <!-- ═══════════════════════════════ DISPLAY PANEL ═══════════════════════════════ -->
+  <div class="elem-panel" id="panel-display">
+
+    <!-- gr.Blocks + theme -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🎨</div>
+        <div class="elem-card-head-text">
+          <h4>gr.Blocks + ערכות נושא</h4>
+          <p>המיכל הכולל + עיצוב כללי של האפליקציה</p>
+        </div>
+        <div class="elem-purpose-tag">מיכל ראשי</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p><code>gr.Blocks</code> הוא "הדף" עצמו – כל שאר הרכיבים מוכנסים בתוכו. הוא שולט בנושא העיצוב הכללי, הכותרת בכרטיסיית הדפדפן, ו-CSS מותאם.</p>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ ערכות נושא מובנות</h5>
+          <ul>
+            <li><code>gr.themes.Default()</code> – ברירת מחדל</li>
+            <li><code>gr.themes.Soft()</code> – עגול ונעים</li>
+            <li><code>gr.themes.Monochrome()</code> – שחור-לבן מקצועי</li>
+            <li><code>gr.themes.Glass()</code> – שקוף ומודרני</li>
+            <li><code>gr.themes.Ocean()</code> – כחול-ים</li>
+            <li><code>gr.themes.Citrus()</code> – כתום חי</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># ✅ Gradio 6: css נשאר ב-Blocks, theme עובר ל-launch()</span>
+css = <span class="str">"""
+* { direction: rtl; }
+.slider-ltr *     { direction: ltr !important; }
+.slider-ltr label { direction: rtl !important; text-align: right !important; }
+"""</span>
+
+<span class="kw">with</span> gr.<span class="fn">Blocks</span>(
+    title=<span class="str">"🔐 מעבדת הצפנים"</span>,
+    css=css
+) <span class="kw">as</span> app:
+    <span class="cmt"># כל הרכיבים כאן</span>
+    ...
+
+<span class="cmt"># theme עובר לכאן ב-Gradio 6</span>
+app.<span class="fn">launch</span>(theme=gr.themes.<span class="fn">Soft</span>())</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- app.launch() -->
+    <div class="elem-card">
+      <div class="elem-card-head">
+        <div class="elem-icon-badge">🚀</div>
+        <div class="elem-card-head-text">
+          <h4>app.launch()</h4>
+          <p>מפעיל את השרת ופותח את האפליקציה בדפדפן</div>
+        </div>
+        <div class="elem-purpose-tag">הפעלה</div>
+      </div>
+      <div class="elem-card-body">
+        <div class="elem-section">
+          <h5>🎯 מטרה</h5>
+          <p>זו השורה האחרונה בכל קובץ Gradio. היא מפעילה שרת HTTP מקומי ופותחת את הדפדפן אוטומטית.</p>
+          <p>לאחר ההפעלה תראו: <code>Running on local URL: http://127.0.0.1:7860</code></p>
+        </div>
+        <div class="elem-section teal">
+          <h5>⚙️ פרמטרים שימושיים</h5>
+          <ul>
+            <li><code>share=True</code> – יוצר קישור ציבורי זמני (!)</li>
+            <li><code>server_port=8080</code> – פורט שונה</li>
+            <li><code>inbrowser=True</code> – פתח דפדפן אוטומטית</li>
+          </ul>
+        </div>
+        <div class="elem-code">
+<pre><span class="cmt"># הפעלה רגילה – גישה מקומית בלבד</span>
+app.<span class="fn">launch</span>()
+
+<span class="cmt"># הפעלה עם קישור ציבורי (72 שעות)</span>
+app.<span class="fn">launch</span>(share=<span class="kw">True</span>)
+
+<span class="cmt"># כדי להפסיק: לחצו Ctrl+C ב-terminal</span></pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panel-display -->
+
+  <!-- SECTION: CIPHERS -->
+  <div class="section-label">
+    <div class="num">3</div>
+    <h2>הצפנים שתממשו</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="cipher-grid">
+    <div class="cipher-card">
+      <div class="cipher-icon">🔄</div>
+      <h4>צופן קיסר</h4>
+      <p>הזזת כל אות ב-K מקומות. הצפנה + פיענוח עם סליידר אינטראקטיבי</p>
+      <span class="cipher-tag">בסיסי</span>
+    </div>
+    <div class="cipher-card">
+      <div class="cipher-icon">⚡</div>
+      <h4>צופן זיגזג (Rail Fence)</h4>
+      <p>כתיבה ב"גלים" לפי מספר פסים, ואז קריאה שורה שורה</p>
+      <span class="cipher-tag">בסיסי</span>
+    </div>
+  </div>
+
+  <!-- SECTION: DESIGN TIPS -->
+  <div class="section-label">
+    <div class="num">4</div>
+    <h2>עיצוב ממשק – נכון ושמיש</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="card">
+    <h3>✅ כללי אצבע לממשק טוב</h3>
+    <ul class="checklist">
+      <li>כותרת ברורה לכל טאב – המשתמש יידע מיד היכן הוא</li>
+      <li>קלט תמיד משמאל (RTL), פלט תמיד מימין – או הפוך בעקביות</li>
+      <li>כפתור "הצפן" ו-"פענח" נפרדים, או Radio לבחירה – לא מבלבלים</li>
+      <li>Accordion עם הסבר + דוגמה לכל צופן</li>
+      <li>placeholder בתיבת הטקסט: "לדוגמה: Hello World"</li>
+      <li>כפתור "נקה" כדי לאפס את השדות</li>
+    </ul>
+  </div>
+
+  <div class="warn-box">
+    <div class="tip-icon">⚠️</div>
+    <p><strong>מה להימנע ממנו:</strong> אל תשימו יותר מ-2 רכיבי קלט בשורה אחת. אל תשימו טקסט רב מדי ב-Markdown בתוך הטאב – ישחק את הממשק. כפתורים ארוכים מדי נראים רע – שמרו על טקסט קצר.</p>
+  </div>
+
+  <!-- SECTION: SCHEDULE -->
+  <div class="section-label">
+    <div class="num">5</div>
+    <h2>תכנית עבודה מוצעת</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="schedule">
+    <div class="sched-row">
+      <div class="sched-time">
+        <div class="time-pill">0–15 דק'</div>
+        <div class="time-line"></div>
+      </div>
+      <div class="sched-content">
+        <h4>🛠 הקמה וסקלטון</h4>
+        <p>התקנה, קובץ ריק, מבנה Blocks עם 2 טאבים ריקים, הרצה ראשונה</p>
+      </div>
+    </div>
+    <div class="sched-row">
+      <div class="sched-time">
+        <div class="time-pill">15–45 דק'</div>
+        <div class="time-line"></div>
+      </div>
+      <div class="sched-content">
+        <h4>🔐 צופן קיסר</h4>
+        <p>כתיבת פונקציה + ממשק מלא: טקסט, סליידר, Radio, כפתור, פלט. בדיקה שהצפנה ופיענוח עובדים</p>
+      </div>
+    </div>
+    <div class="sched-row">
+      <div class="sched-time">
+        <div class="time-pill">45–75 דק'</div>
+        <div class="time-line"></div>
+      </div>
+      <div class="sched-content">
+        <h4>⚡ צופן זיגזג</h4>
+        <p>כתיבת פונקציית Rail Fence + ממשק עם סליידר לפסים. בדיקת הצפנה ופיענוח</p>
+      </div>
+    </div>
+    <div class="sched-row">
+      <div class="sched-time">
+        <div class="time-pill">75+ דק'</div>
+        <div class="time-line"></div>
+      </div>
+      <div class="sched-content">
+        <h4>✨ ליטוש ועיצוב</h4>
+        <p>שיפור עיצוב, הוספת Accordions עם הסבר לכל צופן, ניקוי קוד, בדיקות קצה</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: RESOURCES -->
+  <div class="section-label">
+    <div class="num">6</div>
+    <h2>משאבים שימושיים</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="goals-grid">
+    <div class="goal-item">
+      <div class="goal-icon">📚</div>
+      <div>
+        <h4>תיעוד Gradio</h4>
+        <p><code>gradio.app/docs</code> – כל רכיב עם דוגמאות</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">💻</div>
+      <div>
+        <h4>secure_app.py</h4>
+        <p>הקובץ שקיבלתם – דוגמה לLogin + Tabs + מבנה Blocks מלא</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">🎨</div>
+      <div>
+        <h4>ערכות נושא</h4>
+        <p>Soft, Glass, Citrus, Ocean, Monochrome – נסו הכל ובחרו</p>
+      </div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-icon">🤗</div>
+      <div>
+        <h4>Hugging Face Spaces</h4>
+        <p>לפרסם את האפליקציה חינמית לכל העולם – בגמר!</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>צבי שירן</strong> · בית ספר בליך, רמת גן · קריפטוגרפיה עם Gradio
+  <br><span style="font-size: 18px;margin-top:4px;display:block;">הדפס ושמור לצד המחשב בזמן העבודה</span>
+</footer>
+
+<script>
+function toggleCssExplainer(el) {
+  el.closest('.css-explainer').classList.toggle('open');
+}
+function toggleStep(el) {
+  el.classList.toggle('open');
+}
+function showElemPanel(name) {
+  document.querySelectorAll('.elem-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.elem-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+function toggleConfirm(el) {
+  event.stopPropagation();
+  el.classList.toggle('confirmed');
+  const check = el.querySelector('.confirm-check');
+  check.textContent = el.classList.contains('confirmed') ? '☑' : '☐';
+}
+</script>
+</body>
+</html>

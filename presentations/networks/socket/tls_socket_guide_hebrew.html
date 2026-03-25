@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מדריך לתלמיד: שימוש ב-TLS בקשר שרת–לקוח עם סוקטים</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121933;
+      --card-2: #0f1530;
+      --text: #eef3ff;
+      --muted: #b9c4e3;
+      --accent: #6ee7ff;
+      --accent-2: #7c92ff;
+      --border: #2a3566;
+      --ok: #9ef7b1;
+      --warn: #ffd37a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #08101f 0%, #0f1733 100%);
+      color: var(--text);
+      line-height: 1.75;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    .hero {
+      background: radial-gradient(circle at top right, rgba(110,231,255,.18), transparent 28%),
+                  radial-gradient(circle at top left, rgba(124,146,255,.16), transparent 22%),
+                  var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+      margin-bottom: 24px;
+    }
+    h1, h2, h3 { line-height: 1.3; margin: 0 0 14px; }
+    h1 { font-size: 2.1rem; }
+    h2 {
+      font-size: 1.45rem;
+      color: var(--accent);
+      margin-top: 8px;
+    }
+    h3 { font-size: 1.1rem; color: #dbe4ff; }
+    p { margin: 0 0 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 18px 0;
+    }
+    .card {
+      background: rgba(18,25,51,.92);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.18);
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: rgba(110,231,255,.12);
+      color: var(--accent);
+      border: 1px solid rgba(110,231,255,.28);
+      border-radius: 999px;
+      font-size: .92rem;
+      margin-bottom: 10px;
+    }
+    .note, .warning, .success {
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin: 14px 0;
+      border: 1px solid var(--border);
+    }
+    .note { background: rgba(124,146,255,.10); }
+    .warning { background: rgba(255,211,122,.10); border-color: rgba(255,211,122,.25); }
+    .success { background: rgba(158,247,177,.10); border-color: rgba(158,247,177,.25); }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      direction: ltr;
+      text-align: left;
+    }
+    pre {
+      background: #091126;
+      color: #eff5ff;
+      border: 1px solid #223160;
+      border-radius: 18px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 12px 0 18px;
+      font-size: .95rem;
+    }
+    ul, ol { margin: 0 0 14px; padding-right: 22px; }
+    li { margin-bottom: 8px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #0d1430;
+      border: 1px solid var(--border);
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #223160;
+      vertical-align: top;
+    }
+    th { background: #131c3f; color: var(--accent); }
+    tr:last-child td { border-bottom: none; }
+    .section { margin-bottom: 22px; }
+    .footer { color: var(--muted); font-size: .95rem; margin-top: 22px; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0 14px;
+    }
+    .flow span {
+      background: #101836;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: inline-block;
+    }
+    .muted { color: var(--muted); }
+    .small { font-size: .94rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="badge">מדריך לתלמידים</div>
+      <h1>שימוש ב־TLS בקשר שרת–לקוח עם סוקטים</h1>
+      <p>
+        במדריך זה נלמד מהו TLS, למה משתמשים בו, איך יוצרים תעודה לצורך עבודה מעשית,
+        ואיך משלבים TLS בקוד פייתון המבוסס על <code>socket</code>.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>מה נלמד?</h3>
+          <ul>
+            <li>ההבדל בין תקשורת רגילה לתקשורת מאובטחת</li>
+            <li>מה תפקידם של תעודה ומפתח פרטי</li>
+            <li>איך TLS מתלבש על סוקט TCP קיים</li>
+            <li>איך כותבים שרת ולקוח מאובטחים בפייתון</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>תוצרים צפויים</h3>
+          <ul>
+            <li>שרת TLS בסיסי</li>
+            <li>לקוח TLS בסיסי</li>
+            <li>הבנה של שלבי ההתחברות</li>
+            <li>יכולת להסביר טעויות אבטחה נפוצות</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>1. למה בכלל צריך TLS?</h2>
+      <p>
+        כאשר לקוח ושרת מתקשרים באמצעות TCP רגיל, הנתונים עלולים לעבור ברשת באופן גלוי.
+        מי שמאזין לתעבורה עלול לקרוא הודעות, סיסמאות או מידע רגיש אחר.
+      </p>
+      <div class="flow">
+        <span>לקוח</span>
+        <span>TCP רגיל</span>
+        <span>שרת</span>
+      </div>
+      <p>
+        TLS מוסיף שכבת אבטחה מעל TCP. אחרי יצירת החיבור מתבצע תהליך הזדהות והסכמה על מפתחות,
+        ורק לאחר מכן נשלחים הנתונים כשהם מוצפנים.
+      </p>
+      <div class="flow">
+        <span>לקוח</span>
+        <span>TLS</span>
+        <span>TCP</span>
+        <span>TLS</span>
+        <span>שרת</span>
+      </div>
+      <div class="success">
+        <strong>רעיון מרכזי:</strong> TLS לא מחליף את הסוקט, אלא עוטף אותו ומגן על המידע שעובר דרכו.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>2. מטרות TLS</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>מטרה</th>
+            <th>הסבר</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>סודיות</td>
+            <td>המידע מוצפן כך שמאזין ברשת לא יוכל לקרוא אותו.</td>
+          </tr>
+          <tr>
+            <td>שלמות</td>
+            <td>ניתן לזהות אם המידע שונה בדרך.</td>
+          </tr>
+          <tr>
+            <td>אימות</td>
+            <td>הלקוח יכול לוודא מול מי הוא מדבר, באמצעות תעודה דיגיטלית.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <strong>חשוב:</strong> TLS מגן על תוכן התקשורת, אבל לא מסתיר את כתובת ה־IP או את מספר הפורט.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>3. מהי תעודה דיגיטלית?</h2>
+      <p>
+        כדי שהלקוח יוכל להאמין שהוא מדבר עם השרת הנכון, השרת מציג תעודה דיגיטלית.
+        התעודה כוללת מידע מזהה ומפתח ציבורי. בנוסף, לשרת יש מפתח פרטי שמתאים לתעודה.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>cert.pem</h3>
+          <p class="muted">קובץ התעודה של השרת. ניתן לשלוח ללקוח לצורך אימות.</p>
+        </div>
+        <div class="card">
+          <h3>key.pem</h3>
+          <p class="muted">המפתח הפרטי של השרת. אסור לחשוף אותו לאחרים.</p>
+        </div>
+      </div>
+      <div class="warning">
+        <strong>כלל זהב:</strong> את המפתח הפרטי שומרים בסוד. אם הוא דולף, הזהות של השרת בסכנה.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>4. איך יוצרים תעודה לצורך תרגול?</h2>
+      <p>
+        לצורך עבודה בכיתה או במעבדה אפשר ליצור תעודה עצמית (Self-Signed Certificate).
+        היא מתאימה לתרגול, אך אינה מתאימה למערכת אמיתית באינטרנט.
+      </p>
+      <pre>openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes</pre>
+      <p>הפקודה יוצרת שני קבצים:</p>
+      <ul>
+        <li><code>cert.pem</code> – תעודת השרת</li>
+        <li><code>key.pem</code> – המפתח הפרטי</li>
+      </ul>
+      <div class="note">
+        אם OpenSSL לא מותקן במחשב, אפשר להתקין אותו או לעבוד דרך WSL / Linux.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>5. הרעיון המעשי בקוד פייתון</h2>
+      <ol>
+        <li>יוצרים סוקט TCP רגיל.</li>
+        <li>מגדירים אובייקט הקשר של TLS באמצעות <code>ssl.SSLContext</code>.</li>
+        <li>טוענים לשרת את התעודה והמפתח הפרטי.</li>
+        <li>עוטפים את הסוקט באמצעות <code>wrap_socket</code>.</li>
+        <li>מכאן והלאה עובדים עם הסוקט המאובטח.</li>
+      </ol>
+    </section>
+
+    <section class="card section">
+      <h2>6. קוד שרת TLS בפייתון</h2>
+      <pre>import socket
+import ssl
+
+HOST = '0.0.0.0'
+PORT = 8443
+
+# יצירת סוקט TCP רגיל
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(5)
+
+# יצירת הקשר TLS לשרת
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain(certfile='cert.pem', keyfile='key.pem')
+
+print(f'Server listening on {HOST}:{PORT}')
+
+while True:
+    client_socket, addr = server_socket.accept()
+    print('New connection from', addr)
+
+    # עטיפת הסוקט ב-TLS
+    secure_socket = context.wrap_socket(client_socket, server_side=True)
+
+    data = secure_socket.recv(1024)
+    print('Received:', data.decode())
+
+    secure_socket.send(b'Hello secure client!')
+    secure_socket.close()</pre>
+      <h3>הסבר קצר</h3>
+      <ul>
+        <li><code>ssl.PROTOCOL_TLS_SERVER</code> – מגדיר שההקשר מיועד לשרת.</li>
+        <li><code>load_cert_chain</code> – טוען את התעודה והמפתח הפרטי.</li>
+        <li><code>wrap_socket</code> – הופך את סוקט ה־TCP לחיבור TLS.</li>
+      </ul>
+    </section>
+
+    <section class="card section">
+      <h2>7. קוד לקוח TLS בפייתון</h2>
+      <pre>import socket
+import ssl
+
+HOST = '127.0.0.1'
+PORT = 8443
+
+# יצירת הקשר TLS ללקוח
+context = ssl.create_default_context()
+
+# לצורכי תרגול בלבד - לא מתאים למערכת אמיתית
+context.check_hostname = False
+context.verify_mode = ssl.CERT_NONE
+
+with socket.create_connection((HOST, PORT)) as sock:
+    with context.wrap_socket(sock, server_hostname=HOST) as secure_sock:
+        secure_sock.send(b'Hello server')
+        data = secure_sock.recv(1024)
+        print('Received:', data.decode())</pre>
+      <div class="warning">
+        <strong>אזהרה מקצועית:</strong> ההגדרות <code>CERT_NONE</code> ו־<code>check_hostname = False</code>
+        נועדו לניסוי בלבד. במערכת אמיתית צריך לאמת את התעודה של השרת.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>8. איך עובדים נכון במערכת אמיתית?</h2>
+      <p>במערכת אמיתית נרצה שהלקוח יוודא שהוא מדבר עם השרת האמיתי.</p>
+      <ul>
+        <li>שימוש ב־<code>CERT_REQUIRED</code></li>
+        <li>בדיקת שם המארח (<code>hostname</code>)</li>
+        <li>עבודה עם תעודה חתומה על ידי גוף אמין או CA ארגוני</li>
+      </ul>
+      <pre>context = ssl.create_default_context(cafile='cert.pem')
+with socket.create_connection((HOST, PORT)) as sock:
+    with context.wrap_socket(sock, server_hostname=HOST) as secure_sock:
+        secure_sock.send(b'Hello secure server')</pre>
+      <p class="small muted">
+        בדוגמה זו הלקוח סומך על התעודה הנתונה באמצעות <code>cafile</code>, ולכן אין צורך לבטל אימות.
+      </p>
+    </section>
+
+    <section class="card section">
+      <h2>9. שלבי העבודה בקשר TLS</h2>
+      <ol>
+        <li>הלקוח יוצר חיבור TCP לשרת.</li>
+        <li>השרת שולח תעודה ללקוח.</li>
+        <li>הלקוח בודק את התעודה.</li>
+        <li>הצדדים מסכימים על מפתחות הצפנה.</li>
+        <li>מכאן התקשורת מוצפנת.</li>
+      </ol>
+      <div class="note">
+        כל השלבים האלו מתרחשים לפני שהאפליקציה מתחילה לשלוח את ההודעות הרגילות שלה.
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>10. טעויות נפוצות</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>טעות</th>
+            <th>למה זו בעיה?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>שימוש ב־<code>CERT_NONE</code> בפרודקשן</td>
+            <td>הלקוח לא באמת מאמת את זהות השרת.</td>
+          </tr>
+          <tr>
+            <td>שמירת <code>key.pem</code> בתיקייה חשופה</td>
+            <td>המפתח הפרטי עלול לדלוף.</td>
+          </tr>
+          <tr>
+            <td>מחשבה ש־TLS מסתיר IP ופורט</td>
+            <td>TLS מצפין את התוכן, לא את פרטי הרשת הבסיסיים.</td>
+          </tr>
+          <tr>
+            <td>שכחת עטיפת הסוקט ב־TLS</td>
+            <td>החיבור נשאר TCP רגיל וללא הצפנה.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card section">
+      <h2>11. שאלות לבדיקת הבנה</h2>
+      <ol>
+        <li>מה ההבדל בין חיבור TCP רגיל לבין חיבור TLS?</li>
+        <li>איזה שלושה דברים TLS מנסה לספק?</li>
+        <li>מה ההבדל בין <code>cert.pem</code> לבין <code>key.pem</code>?</li>
+        <li>מדוע <code>key.pem</code> הוא קובץ רגיש?</li>
+        <li>למה צריך לבצע <code>wrap_socket</code>?</li>
+        <li>מה הבעיה ב־<code>verify_mode = ssl.CERT_NONE</code>?</li>
+        <li>האם TLS מסתיר את כתובת ה־IP של השרת? הסבר.</li>
+        <li>למה תעודה עצמית טובה לתרגול אך לא בהכרח מתאימה לאינטרנט ציבורי?</li>
+      </ol>
+    </section>
+
+    <section class="card section">
+      <h2>12. שאלות יישום</h2>
+      <ol>
+        <li>הרץ שרת ולקוח TLS בסיסיים וודא שהלקוח מקבל תגובה מהשרת.</li>
+        <li>שנה את הפורט בקוד ל־<code>9443</code> והתאם את שני הצדדים.</li>
+        <li>הוסף לשרת לולאה שמאפשרת לקבל כמה הודעות מאותו לקוח לפני סגירת החיבור.</li>
+        <li>כתוב גרסה שבה הלקוח שולח שם משתמש, והשרת מחזיר הודעת ברכה מותאמת.</li>
+        <li>נסה להריץ את הלקוח בלי לעטוף את הסוקט ב־TLS והסבר מה קורה.</li>
+        <li>כתוב תשובה: אילו שינויים צריך לבצע כדי לעבור מגרסת תרגול לגרסה בטוחה יותר?</li>
+      </ol>
+    </section>
+
+    <section class="card section">
+      <h2>13. משימת אתגר</h2>
+      <p>
+        בנו תוכנת צ'אט קטנה בין לקוח לשרת שבה כל התקשורת נעשית מעל TLS.
+        דרישות מינימום:
+      </p>
+      <ul>
+        <li>השרת מקבל כמה הודעות מאותו לקוח</li>
+        <li>הלקוח יכול להקליד מספר הודעות</li>
+        <li>התקשורת מוצפנת באמצעות TLS</li>
+        <li>הסבירו בכתב מהי נקודת החולשה אם לא בודקים תעודה</li>
+      </ul>
+    </section>
+
+    <section class="card section">
+      <h2>14. סיכום</h2>
+      <p>
+        TLS הוא מנגנון קריטי בהגנה על תקשורת בין לקוח לשרת. הוא אינו מחליף סוקטים,
+        אלא מוסיף להם שכבת אבטחה. כדי להשתמש בו נכון צריך להבין גם את התאוריה וגם את המימוש:
+        תעודה, מפתח פרטי, אימות, והעטפת הסוקט בקוד.
+      </p>
+      <div class="success">
+        תלמיד שמבין את המדריך הזה אמור לדעת להסביר מה TLS עושה, איך יוצרים סביבת ניסוי,
+        ואיך משלבים TLS בקשר שרת–לקוח בפייתון.
+      </div>
+      <p class="footer">הערה: לצורך תרגול הכיתתי הקוד פשוט וממוקד. במערכות אמיתיות יש להוסיף טיפול בשגיאות, ניהול משתמשים, בדיקות תעודה מחמירות ולוגים.</p>
+    </section>
+  </div>
+</body>
+</html>

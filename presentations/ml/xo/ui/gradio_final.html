@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מערך שיעור | בניית ממשק ניסויים עם Gradio</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --text: #e2e8f0;
+    --text-muted: #6b87a8;
+    --danger: #ef4444;
+    --glow: 0 0 20px rgba(0, 212, 255, 0.15);
+    --font: 'Heebo', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    direction: rtl;
+  }
+
+  /* ─── HEADER ─── */
+  .hero {
+    background: linear-gradient(135deg, #0a0e1a 0%, #0d1b35 50%, #0a0e1a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 80px,
+      rgba(0,212,255,0.02) 80px,
+      rgba(0,212,255,0.02) 81px
+    );
+    pointer-events: none;
+  }
+  .hero-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub {
+    color: var(--text-muted);
+    font-size: 18px;
+    margin-bottom: 30px;
+    max-width: 800px;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .meta-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    color: var(--text-muted);
+  }
+  .meta-pill .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .dot-blue { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot-purple { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .dot-green { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+  .dot-yellow { background: var(--accent4); box-shadow: 0 0 8px var(--accent4); }
+
+  /* ─── NAV ─── */
+  .nav-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 16px;
+    color: var(--text-muted);
+    font-size: 18px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .nav-num {
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+  }
+
+  /* ─── LAYOUT ─── */
+  .main {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+
+  /* ─── SECTION ─── */
+  .section {
+    margin-bottom: 60px;
+    scroll-margin-top: 60px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .icon-blue { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2); }
+  .icon-purple { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2); }
+  .icon-green { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
+  .icon-yellow { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+  .icon-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .section-title span { color: var(--accent); }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(0,212,255,0.3); }
+  .card-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 20px; }
+    .hero { padding: 40px 20px 30px; }
+    .nav-bar { padding: 0 20px; }
+  }
+
+  /* ─── TIMELINE / STEPS ─── */
+  .timeline { position: relative; }
+  .timeline-item {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .timeline-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .timeline-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .td-blue { background: rgba(0,212,255,0.15); border: 2px solid var(--accent); color: var(--accent); }
+  .td-purple { background: rgba(124,58,237,0.15); border: 2px solid var(--accent2); color: var(--accent2); }
+  .td-green { background: rgba(16,185,129,0.15); border: 2px solid var(--accent3); color: var(--accent3); }
+  .td-yellow { background: rgba(245,158,11,0.15); border: 2px solid var(--accent4); color: var(--accent4); }
+  .td-red { background: rgba(239,68,68,0.15); border: 2px solid var(--danger); color: var(--danger); }
+
+  .timeline-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+    margin: 4px 0;
+    min-height: 20px;
+  }
+  .timeline-content { flex: 1; padding-bottom: 8px; }
+  .timeline-content h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .timeline-content p { font-size: 18px; color: var(--text-muted); }
+  .time-badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-block {
+    background: #050810;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 16px 0;
+    direction: ltr;
+  }
+  .code-header {
+    background: #0d1424;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang {
+    font-size: 18px;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .code-dots { display: flex; gap: 6px; }
+  .code-dots span {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .code-dots .d1 { background: #ef4444; }
+  .code-dots .d2 { background: #f59e0b; }
+  .code-dots .d3 { background: #10b981; }
+  pre {
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 18px;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #c9d1d9;
+  }
+  .kw { color: #ff79c6; }   /* keywords */
+  .fn { color: #50fa7b; }   /* functions */
+  .st { color: #f1fa8c; }   /* strings */
+  .cm { color: #6272a4; font-style: italic; }  /* comments */
+  .nm { color: #bd93f9; }   /* numbers/names */
+  .at { color: #8be9fd; }   /* attributes */
+  .op { color: #ff5555; }   /* operators */
+  .cl { color: #ffb86c; }   /* classes */
+
+  /* ─── TASK BOX ─── */
+  .task-box {
+    background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(0,212,255,0.05));
+    border: 1px solid rgba(124,58,237,0.3);
+    border-right: 4px solid var(--accent2);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+  .task-box .task-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .task-badge {
+    background: rgba(124,58,237,0.2);
+    border: 1px solid rgba(124,58,237,0.4);
+    color: #a78bfa;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .task-title { font-size: 18px; font-weight: 700; }
+  .task-items { list-style: none; }
+  .task-items li {
+    font-size: 18px;
+    color: var(--text-muted);
+    padding: 5px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .task-items li::before {
+    content: '▸';
+    color: var(--accent2);
+    font-size: 18px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ─── INFO BOX ─── */
+  .info-box {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-right: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-size: 18px;
+  }
+  .warn-box {
+    background: rgba(245,158,11,0.05);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-right: 4px solid var(--accent4);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-size: 18px;
+  }
+  .success-box {
+    background: rgba(16,185,129,0.05);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-right: 4px solid var(--accent3);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-size: 18px;
+  }
+
+  /* ─── CONCEPT TABLE ─── */
+  .concept-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 18px;
+    margin: 16px 0;
+  }
+  .concept-table th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    font-size: 18px;
+  }
+  .concept-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text-muted);
+  }
+  .concept-table tr:hover td {
+    background: rgba(0,212,255,0.03);
+    color: var(--text);
+  }
+  .concept-table .tag {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 18px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ─── FLOW DIAGRAM ─── */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin: 16px 0;
+    direction: ltr;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 100px;
+    direction: rtl;
+  }
+  .flow-box.accent { border-color: var(--accent); color: var(--accent); }
+  .flow-box.purple { border-color: var(--accent2); color: var(--accent2); }
+  .flow-box.green { border-color: var(--accent3); color: var(--accent3); }
+  .flow-box.yellow { border-color: var(--accent4); color: var(--accent4); }
+  .flow-arrow { color: var(--text-muted); font-size: 18px; flex-shrink: 0; }
+
+  /* ─── COMPONENT SHOWCASE ─── */
+  .component-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .comp-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .comp-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .comp-icon { font-size: 24px; margin-bottom: 8px; }
+  .comp-name {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .comp-desc { font-size: 18px; color: var(--text-muted); }
+
+  /* ─── MILESTONE ─── */
+  .milestone-bar {
+    display: flex;
+    gap: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin: 16px 0;
+  }
+  .milestone-step {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    border-left: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .milestone-step:last-child { border-left: none; }
+  .milestone-step .ms-num {
+    display: block;
+    font-size: 18px;
+    font-weight: 900;
+    margin-bottom: 4px;
+  }
+  .ms1 { background: rgba(0,212,255,0.08); color: var(--accent); }
+  .ms2 { background: rgba(124,58,237,0.08); color: var(--accent2); }
+  .ms3 { background: rgba(16,185,129,0.08); color: var(--accent3); }
+  .ms4 { background: rgba(245,158,11,0.08); color: var(--accent4); }
+  .ms5 { background: rgba(239,68,68,0.08); color: var(--danger); }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 30px 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 18px;
+    margin-top: 60px;
+  }
+
+  /* ─── UTIL ─── */
+  .text-accent { color: var(--accent); }
+  .text-purple { color: var(--accent2); }
+  .text-green { color: var(--accent3); }
+  .text-yellow { color: var(--accent4); }
+  .text-muted { color: var(--text-muted); }
+  .fw-bold { font-weight: 700; }
+  .mono { font-family: var(--mono); }
+  ul.styled { list-style: none; }
+  ul.styled li {
+    padding: 6px 0;
+    color: var(--text-muted);
+    font-size: 18px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  ul.styled li::before { content: '◆'; color: var(--accent); font-size: 18px; margin-top: 6px; flex-shrink: 0; }
+  p { margin-bottom: 12px; }
+  .small { font-size: 18px; color: var(--text-muted); }
+
+  /* rubric table */
+  .rubric-table { width: 100%; border-collapse: collapse; font-size: 18px; }
+  .rubric-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 700;
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+  .rubric-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  .rubric-table tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+  .pts {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--accent3);
+    white-space: nowrap;
+  }
+
+  /* ─── BLOCKS BREAKDOWN annotation ─── */
+  .blocks-breakdown {
+    background: #06090f;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent2);
+    border-radius: 0 0 10px 10px;
+    margin-top: -1px;
+    padding: 14px 18px 14px;
+    transition: padding 0.2s;
+  }
+  .blocks-breakdown.bb-open {
+    padding-bottom: 18px;
+  }
+  .bb-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 6px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    transition: background 0.15s;
+  }
+  .bb-title:hover {
+    background: rgba(124,58,237,0.08);
+  }
+  .bb-chevron {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: inline-block;
+    transition: transform 0.25s, color 0.2s;
+  }
+  .bb-hint-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 1;
+    transition: opacity 0.2s;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 400;
+  }
+  .bb-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .bb-row {
+    display: grid;
+    grid-template-columns: 260px 20px 1fr;
+    gap: 8px 10px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(30,58,95,0.5);
+  }
+  .bb-row:last-child { border-bottom: none; }
+  .bb-row.bb-indented .bb-line-wrap {
+    padding-right: 18px;
+  }
+  .bb-row.bb-indented::before {
+    content: '';
+  }
+  .bb-line-wrap {
+    direction: ltr;
+    text-align: left;
+  }
+  .bb-code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #c9d1d9;
+    background: #0d1424;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    display: inline-block;
+    line-height: 1.6;
+    direction: ltr;
+    text-align: left;
+    white-space: pre;
+  }
+  .bb-arrow {
+    color: var(--accent2);
+    font-size: 14px;
+    font-weight: 700;
+    padding-top: 7px;
+    text-align: center;
+  }
+  .bb-explain {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    padding-top: 5px;
+    direction: rtl;
+  }
+  .bb-explain strong { color: var(--text); }
+  .bb-explain code { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .bb-param {
+    display: inline-block;
+    margin-left: 6px;
+    line-height: 1.8;
+  }
+  @media (max-width: 768px) {
+    .bb-row { grid-template-columns: 1fr; }
+    .bb-arrow { display: none; }
+  }
+
+  /* ─── CONCEPT CARDS (expandable) ─── */
+  .concept-cards-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .ccard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .ccard.open { border-color: var(--accent); }
+  .ccard-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    gap: 12px;
+    transition: background 0.15s;
+  }
+  .ccard-head:hover { background: rgba(0,212,255,0.04); }
+  .ccard.open .ccard-head { background: rgba(0,212,255,0.06); border-bottom: 1px solid var(--border); }
+  .ccard-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+  }
+  .ccard-tag {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.25);
+    padding: 3px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ccard-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .ccard-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .ccard-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0.7;
+  }
+  .ccard.open .ccard-hint { opacity: 0; }
+  .ccard-arrow {
+    color: var(--text-muted);
+    font-size: 11px;
+    transition: transform 0.25s;
+    display: inline-block;
+  }
+  .ccard.open .ccard-arrow { transform: rotate(180deg); color: var(--accent); }
+
+  .ccard-body {
+    display: none;
+    padding: 20px 18px;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .ccard.open .ccard-body { display: flex; }
+
+  .ccard-explain {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+  .ccard-explain p { margin-bottom: 8px; color: var(--text-muted); }
+  .ccard-explain p:last-child { margin-bottom: 0; }
+  .ccard-explain strong { color: var(--text); }
+
+  .ccard-result {
+    background: rgba(16,185,129,0.05);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .ccard-result-label {
+    font-weight: 700;
+    color: var(--accent3);
+    margin-left: 6px;
+  }
+
+  /* special tag color for Markdown card */
+  .ccard:nth-child(2) .ccard-tag {
+    color: var(--accent3);
+    background: rgba(16,185,129,0.1);
+    border-color: rgba(16,185,129,0.3);
+  }
+  .ccard:nth-child(2).open { border-color: var(--accent3); }
+  .ccard:nth-child(2) .ccard-head:hover { background: rgba(16,185,129,0.04); }
+  .ccard:nth-child(2).open .ccard-head { background: rgba(16,185,129,0.06); }
+  .ccard:nth-child(2).open .ccard-arrow { color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">🧪 מערך שיעור — למידת מכונה עמוקה</div>
+    <h1>בניית ממשק ניסויים<br><span>עם Gradio</span></h1>
+    <p class="hero-sub">
+      מכיתות ב-Python לממשק אמיתי — בונים UI מלא למערכת ניסויי ה-XO
+      שלכם, שלב אחרי שלב.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-pill"><span class="dot dot-blue"></span> כיתה י"א — הנדסת תוכנה</div>
+      <div class="meta-pill"><span class="dot dot-purple"></span> 3 מפגשים × 90 דקות</div>
+      <div class="meta-pill"><span class="dot dot-green"></span> Gradio Blocks API</div>
+      <div class="meta-pill"><span class="dot dot-yellow"></span> מבנה — מושגים + קוד + משימות</div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a class="nav-item" href="#overview"><span class="nav-num">📋</span> סקירה</a>
+    <a class="nav-item" href="#lesson1"><span class="nav-num">1</span> מפגש 1 — מבוא</a>
+    <a class="nav-item" href="#lesson2"><span class="nav-num">2</span> מפגש 2 — בניית UI</a>
+    <a class="nav-item" href="#lesson3"><span class="nav-num">3</span> מפגש 3 — אינטגרציה</a>
+    <a class="nav-item" href="#components"><span class="nav-num">🔧</span> רכיבים</a>
+    <a class="nav-item" href="#architecture"><span class="nav-num">🏗</span> ארכיטקטורה</a>
+    <a class="nav-item" href="#rubric"><span class="nav-num">📊</span> הערכה</a>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- ─── SECTION 0: OVERVIEW ─── -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <div class="section-icon icon-blue">📋</div>
+    <div>
+      <div class="section-title">סקירה כללית — <span>למה Gradio?</span></div>
+      <div class="small">הקשר בין מה שכבר בניתם למה שאתם הולכים לבנות</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>🎯 מטרה מרכזית:</strong> בסוף שלוש המפגשים, לכל ניסוי שהגדרתם ב-<span class="mono text-accent">experiments_check.csv</span> יהיה ממשק גרפי שמאפשר להריץ, לצפות בתוצאות ולהשוות — בלי לנגוע בשורת הפקודה.
+  </div>
+
+  <div class="grid-2" style="margin-top:20px">
+    <div class="card">
+      <div class="card-title">🐍 מה כבר יש לכם?</div>
+      <ul class="styled">
+        <li><span class="mono text-accent">ExperimentConfig</span> — הגדרת פרמטרים</li>
+        <li><span class="mono text-accent">ExperimentRunner</span> — הרצת ניסויים</li>
+        <li><span class="mono text-accent">XOTournament</span> — מנוע המשחקים</li>
+        <li><span class="mono text-accent">XOGame</span> — לוגיקת המשחק</li>
+        <li>שמירה ל-CSV וסיכום סטטיסטי</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🖥️ מה אנחנו מוסיפים?</div>
+      <ul class="styled">
+        <li>טופס הגדרת ניסוי (Sliders, Numbers)</li>
+        <li>כפתור "הרץ" עם Progress bar</li>
+        <li>תצוגת תוצאות בזמן אמת</li>
+        <li>גרף השוואה בין ניסויים</li>
+        <li>ייצוא לקובץ CSV מהממשק</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0">
+    <div class="card-title">🔄 זרימת הנתונים שנבנה</div>
+    <div class="flow-diagram">
+      <div class="flow-box accent">UI Inputs<br><small>Sliders/Numbers</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box purple">ExperimentConfig<br><small>dataclass</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box yellow">ExperimentRunner<br><small>run_all()</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box green">Statistics<br><small>get_statistics()</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box accent">UI Outputs<br><small>Charts/Tables</small></div>
+    </div>
+  </div>
+
+  <div class="milestone-bar">
+    <div class="milestone-step ms1"><span class="ms-num">1</span>הכרת Gradio</div>
+    <div class="milestone-step ms2"><span class="ms-num">2</span>רכיבים ופריסה</div>
+    <div class="milestone-step ms3"><span class="ms-num">3</span>חיבור ל-Backend</div>
+    <div class="milestone-step ms4"><span class="ms-num">4</span>עיצוב ו-Themes</div>
+    <div class="milestone-step ms5"><span class="ms-num">★</span>ממשק מלא!</div>
+  </div>
+</section>
+
+<!-- ─── LESSON 1 ─── -->
+<section class="section" id="lesson1">
+  <div class="section-header">
+    <div class="section-icon icon-blue">1️⃣</div>
+    <div>
+      <div class="section-title">מפגש 1 — <span>מבוא ל-Gradio ומושגי UI</span></div>
+      <div class="small">90 דקות | מה זה UI, למה Gradio, מבנה Blocks, רכיבי בסיס</div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-blue">1</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">הכנה מנטלית</div>
+        <h3>מה זה ממשק משתמש (UI) ולמה אנחנו צריכים אותו?</h3>
+        <p>
+          עד עכשיו כל ההרצות שלכם היו דרך שורת פקודה. מי שרוצה להריץ ניסוי — צריך לדעת Python,
+          להבין את הקוד, ולדעת לשנות פרמטרים בצורה ידנית. <strong>ממשק משתמש</strong> הוא שכבה גרפית
+          שמאפשרת לכל אחד להשתמש בכלי שבניתם — גם מי שלא יודע לתכנת.
+        </p>
+        <div class="grid-2">
+          <div class="card" style="border-color: rgba(239,68,68,0.3)">
+            <div class="card-title" style="color:#ef4444">❌ בלי UI</div>
+            <ul class="styled">
+              <li>צריך להבין את הקוד</li>
+              <li>שינוי פרמטרים = עריכת קוד</li>
+              <li>תוצאות — רק טקסט בטרמינל</li>
+              <li>בלי גרפים, בלי השוואה</li>
+            </ul>
+          </div>
+          <div class="card" style="border-color: rgba(16,185,129,0.3)">
+            <div class="card-title" style="color: var(--accent3)">✅ עם UI (Gradio)</div>
+            <ul class="styled">
+              <li>ממשק גרפי נגיש לכל אחד</li>
+              <li>Sliders לשינוי פרמטרים</li>
+              <li>גרפים ותרשימים אוטומטיים</li>
+              <li>ייצוא תוצאות בקליק</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-purple">2</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">מושגי בסיס</div>
+        <h3>ספריות UI לפייתון — מה האפשרויות?</h3>
+        <table class="concept-table">
+          <thead>
+            <tr>
+              <th>ספרייה</th>
+              <th>מתאים ל...</th>
+              <th>מורכבות</th>
+              <th>ה-Killer Feature</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag">Gradio</span></td>
+              <td>ML demos, ממשקים מהירים</td>
+              <td style="color: var(--accent3)">●○○ נמוך</td>
+              <td>Integration מובנה עם Python functions</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Streamlit</span></td>
+              <td>Data dashboards</td>
+              <td style="color: var(--accent4)">●●○ בינוני</td>
+              <td>Reactive state management</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Flask+HTML</span></td>
+              <td>אפליקציות web מלאות</td>
+              <td style="color: var(--danger)">●●● גבוה</td>
+              <td>שליטה מלאה בכל פרט</td>
+            </tr>
+            <tr>
+              <td><span class="tag">PyQt6</span></td>
+              <td>Desktop apps</td>
+              <td style="color: var(--danger)">●●● גבוה</td>
+              <td>Native GUI, ביצועים</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="info-box">
+          <strong>מדוע Gradio?</strong> כי זה מתחבר ישירות לפונקציות Python שלכם ב-<strong>5 שורות קוד</strong>,
+          ומיועד בדיוק ל-ML demos. Hugging Face משתמשת בו לכל המודלים שלה.
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-green">3</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">תיאוריה עם קוד</div>
+        <h3>Interface vs. Blocks — שתי פילוסופיות</h3>
+        <div class="grid-2">
+          <div>
+            <div class="card-title" style="margin-bottom: 10px;">🚀 <span class="text-accent">gr.Interface</span> — מהיר ופשוט</div>
+            <p class="small">לפונקציה אחת, קלטים פשוטים, ללא ורסטיליות. תוצאה מיידית.</p>
+            <div class="code-block">
+              <div class="code-header">
+                <span class="code-lang">PYTHON</span>
+                <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+              </div>
+<pre><span class="kw">import</span> gradio <span class="kw">as</span> gr
+
+<span class="kw">def</span> <span class="fn">greet</span>(name):
+    <span class="kw">return</span> <span class="st">f"שלום, {name}!"</span>
+
+gr.<span class="cl">Interface</span>(
+    fn=<span class="fn">greet</span>,
+    inputs=<span class="st">"text"</span>,
+    outputs=<span class="st">"text"</span>
+).launch()</pre>
+            </div>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom: 10px;">🏗️ <span class="text-purple">gr.Blocks</span> — גמיש ומלא</div>
+            <p class="small">פריסה מלאה, מספר פונקציות, events מורכבים. כמו HTML+JS.</p>
+            <div class="code-block">
+              <div class="code-header">
+                <span class="code-lang">PYTHON</span>
+                <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+              </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+    title = gr.<span class="cl">Markdown</span>(<span class="st">"# כותרת"</span>)
+    <span class="kw">with</span> gr.<span class="cl">Row</span>():
+        inp = gr.<span class="cl">Textbox</span>(label=<span class="st">"הכנס שם"</span>)
+        out = gr.<span class="cl">Textbox</span>(label=<span class="st">"תוצאה"</span>)
+    btn = gr.<span class="cl">Button</span>(<span class="st">"שלח"</span>)
+    btn.<span class="fn">click</span>(fn=<span class="fn">greet</span>,
+              inputs=inp,
+              outputs=out)
+demo.<span class="fn">launch</span>()</pre>
+            </div>
+
+            <!-- ── annotated breakdown ── -->
+            <div class="blocks-breakdown" id="bb-panel">
+              <div class="bb-title" onclick="toggleBB()" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none;">
+                <span>🔍 פירוק שורה-שורה</span>
+                <span style="display:flex; align-items:center; gap:10px;">
+                  <span class="bb-hint-text">לחץ לפתיחה</span>
+                  <span class="bb-chevron">▼</span>
+                </span>
+              </div>
+              <div class="bb-lines" id="bb-lines-inner" style="display:none; margin-top:14px;">
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code"><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div dir="rtl" class="bb-explain">
+                    פותחים את ה<strong>מיכל הראשי</strong> של הממשק. כל מה שבתוך ה-<code class="mono">with</code> הוא חלק מהממשק.
+                    <code class="mono">demo</code> הוא שם המשתנה שנשתמש בו אחר כך ב-<code class="mono">demo.launch()</code>.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">title = gr.<span class="cl">Markdown</span>(<span class="st">"# כותרת"</span>)</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    מוסיפים <strong>כותרת טקסטואלית</strong> לממשק. ה-<code class="mono">#</code> הוא תחביר Markdown — יוצר כותרת גדולה (<code class="mono">&lt;h1&gt;</code>).
+                    המשתנה <code class="mono">title</code> מאחסן את הרכיב — אפשר לעדכן אותו מאוחר יותר.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code"><span class="kw">with</span> gr.<span class="cl">Row</span>():</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    פותחים <strong>שורה אופקית</strong>. כל רכיב שנוסיף בתוכה יופיע זה-לצד-זה (ולא אחד מתחת לשני).
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">inp = gr.<span class="cl">Textbox</span>(label=<span class="st">"הכנס שם"</span>)</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    <strong>רכיב קלט</strong> — תיבת טקסט שהמשתמש מקליד בה.
+                    <code class="mono text-accent">label=</code> קובע את הכיתוב שמופיע מעל השדה בממשק.
+                    <code class="mono">inp</code> הוא שם המשתנה — נשתמש בו כ-<code class="mono">inputs=inp</code> בהמשך.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">out = gr.<span class="cl">Textbox</span>(label=<span class="st">"תוצאה"</span>)</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    <strong>רכיב פלט</strong> — תיבת טקסט שהממשק <em>כותב אליה</em> את התוצאה.
+                    <code class="mono">label=</code> מסמן למשתמש שזה פלט ולא קלט.
+                    <code class="mono">out</code> ישמש כ-<code class="mono">outputs=out</code> בקישור לכפתור.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">btn = gr.<span class="cl">Button</span>(<span class="st">"שלח"</span>)</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    יוצרים <strong>כפתור</strong>. הטקסט <code class="mono">"שלח"</code> הוא מה שרואים על הכפתור.
+                    לבד הכפתור לא עושה כלום — צריך לחבר אותו לפונקציה בשורה הבאה.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">btn.<span class="fn">click</span>(fn=<span class="fn">greet</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inputs=inp,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;outputs=out)</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    <strong>חיבור הכפתור לפונקציה</strong> — הלב של Gradio.<br>
+                    <span class="bb-param"><code class="mono text-accent">fn=greet</code></span> הפונקציה שתרוץ בלחיצה.<br>
+                    <span class="bb-param"><code class="mono text-accent">inputs=inp</code></span> מה לשלוח לפונקציה — הערך שבתיבת <code class="mono">inp</code>.<br>
+                    <span class="bb-param"><code class="mono text-accent">outputs=out</code></span> לאן לכתוב את ה-<code class="mono">return</code> של הפונקציה — ישירות לתוך <code class="mono">out</code>.
+                  </div>
+                </div>
+
+                <div class="bb-row">
+                  <div class="bb-line-wrap">
+                    <code class="bb-code">demo.<span class="fn">launch</span>()</code>
+                  </div>
+                  <div class="bb-arrow">→</div>
+                  <div class="bb-explain">
+                    <strong>מפעיל שרת web מקומי</strong> ופותח את הממשק בדפדפן.
+                    כברירת מחדל על <code class="mono">http://127.0.0.1:7860</code>.
+                    זה השלב האחרון — בלעדיו הממשק לא יוצג.
+                  </div>
+                </div>
+
+              </div><!-- /bb-lines -->
+            </div><!-- /blocks-breakdown -->
+
+          </div>
+        </div>
+        <div class="warn-box">
+          ⚠️ <strong>אנחנו נשתמש ב-Blocks בלבד</strong> — כי אנחנו צריכים מספר טאבים,
+          פריסה מורכבת, ומספר כפתורים עם פונקציות שונות.
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-yellow">4</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">הסבר עמוק</div>
+        <h3>מבנה Blocks — המושגים הבסיסיים</h3>
+        <p class="text-muted" style="margin-bottom: 16px;">
+          Blocks עובד כמו HTML — יש מיכלים (containers) שמחזיקים רכיבים (components).
+          הסדר בקוד = הסדר על המסך. לחצו על כל מושג להרחבה ודוגמת קוד.
+        </p>
+
+        <!-- ── CONCEPT CARDS ── -->
+        <div class="concept-cards-wrap">
+
+          <!-- gr.Blocks -->
+          <div class="ccard" id="cc-blocks">
+            <div class="ccard-head" onclick="toggleCard('cc-blocks')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Blocks()</span>
+                <span class="ccard-desc">המיכל הראשי — עוטף את כל הממשק</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Blocks()</code> הוא מיכל השורש של כל ממשק Gradio. כל רכיב שתוסיף חייב להיות <em>בתוך</em> ה-Blocks. משתמשים בו עם <code class="mono text-accent">with</code> כדי שהקוד בפנים יתרשם כחלק מהממשק.</p>
+                <p><strong>פרמטרים שימושיים:</strong></p>
+                <ul class="styled" style="margin-bottom:0">
+                  <li><code class="mono">theme=gr.themes.Soft()</code> — ערכת עיצוב</li>
+                  <li><code class="mono">title="כותרת הדף"</code> — כותרת שמופיעה בטאב הדפדפן</li>
+                  <li><code class="mono">css="..."</code> — CSS מותאם אישית</li>
+                </ul>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Blocks()</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">import</span> gradio <span class="kw">as</span> gr
+
+<span class="cm"># הגדרת הממשק — כל מה שבתוך ה-with שייך לממשק</span>
+<span class="kw">with</span> gr.<span class="cl">Blocks</span>(
+    theme=gr.themes.<span class="fn">Soft</span>(),
+    title=<span class="st">"ניסויי XO"</span>,
+    css=<span class="st">".my-btn { background: blue; }"</span>
+) <span class="kw">as</span> demo:
+
+    <span class="cm"># כאן מגדירים את כל הרכיבים...</span>
+    gr.<span class="cl">Markdown</span>(<span class="st">"# שלום עולם!"</span>)
+
+<span class="cm"># מחוץ ל-with — מפעילים את השרת</span>
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים בדפדפן:</span>
+                כותרת דף "ניסויי XO" בטאב, ממשק עם עיצוב Soft, וכיתוב "שלום עולם!" בגדול.
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Markdown -->
+          <div class="ccard" id="cc-markdown">
+            <div class="ccard-head" onclick="toggleCard('cc-markdown')">
+              <div class="ccard-left">
+                <span class="ccard-tag" style="border-color:rgba(16,185,129,0.4);color:var(--accent3)">gr.Markdown()</span>
+                <span class="ccard-desc">טקסט עשיר — כותרות, הדגשות, רשימות, קישורים</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Markdown()</code> מאפשר להציג טקסט מעוצב בתוך הממשק באמצעות תחביר Markdown — בדיוק כמו ב-README ב-GitHub. זה לא רכיב קלט/פלט, אלא <em>תצוגה סטטית</em> בלבד.</p>
+                <p><strong>תחביר Markdown עיקרי:</strong></p>
+                <ul class="styled" style="margin-bottom:0">
+                  <li><code class="mono"># כותרת ראשית</code> → &lt;h1&gt;</li>
+                  <li><code class="mono">## כותרת משנה</code> → &lt;h2&gt;, <code class="mono">###</code> → &lt;h3&gt;</li>
+                  <li><code class="mono">**מודגש**</code> → <strong>מודגש</strong></li>
+                  <li><code class="mono">*נטוי*</code> → <em>נטוי</em></li>
+                  <li><code class="mono">`קוד inline`</code> → קוד</li>
+                  <li><code class="mono">- פריט</code> → רשימת תבליטים</li>
+                  <li><code class="mono">[טקסט](URL)</code> → קישור</li>
+                </ul>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Markdown() דוגמאות</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+
+    <span class="cm"># כותרת ראשית של הממשק</span>
+    gr.<span class="cl">Markdown</span>(<span class="st">"# 🧪 מערכת ניסויי XO"</span>)
+
+    <span class="cm"># תת-כותרת עם תיאור</span>
+    gr.<span class="cl">Markdown</span>(<span class="st">"## הגדרת פרמטרים"</span>)
+    gr.<span class="cl">Markdown</span>(<span class="st">"הגדר את **gamma** ו-**exploration rate** לניסוי."</span>)
+
+    <span class="cm"># Markdown מורכב — כמה שורות</span>
+    gr.<span class="cl">Markdown</span>(<span class="st">"""
+    ### 📖 הוראות שימוש
+    1. הגדר את שם הניסוי
+    2. כוון את הפרמטרים בעזרת ה-sliders
+    3. לחץ על **הרץ ניסוי**
+
+    > ⚠️ ריצה עם יותר מ-50,000 משחקים עלולה לקחת זמן רב.
+    """</span>)
+
+    <span class="cm"># Markdown דינמי — מתעדכן מתוך פונקציה!</span>
+    results_md = gr.<span class="cl">Markdown</span>(<span class="st">"_ממתין לתוצאות..._"</span>)
+
+    <span class="cm"># ניתן להשתמש ב-results_md כ-output של פונקציה:</span>
+    <span class="cm"># btn.click(fn=run, outputs=results_md)</span>
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">💡 טיפ:</span>
+                <code class="mono text-accent">gr.Markdown()</code> יכול לשמש גם כ-<strong>output</strong> — הפונקציה מחזירה מחרוזת Markdown ורכיב המD מתעדכן בזמן אמת. שימושי להצגת תוצאות בפורמט עשיר.
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Row -->
+          <div class="ccard" id="cc-row">
+            <div class="ccard-head" onclick="toggleCard('cc-row')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Row()</span>
+                <span class="ccard-desc">סידור <strong>אופקי</strong> — רכיבים זה-לצד-זה</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> כל רכיב שמוסיפים בתוך <code class="mono text-accent">gr.Row()</code> יופיע באותה שורה אופקית. ברירת המחדל של Gradio היא <em>אנכי</em> (כל רכיב בשורה חדשה) — Row משנה זאת.</p>
+                <p><strong>מתי משתמשים?</strong> כשרוצים קלט ופלט זה-לצד-זה, או מספר כפתורים באותה שורה.</p>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Row()</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+    gr.<span class="cl">Markdown</span>(<span class="st">"## קלט ופלט זה-לצד-זה"</span>)
+
+    <span class="cm"># בלי Row — שני Textbox יופיעו אחד מתחת לשני</span>
+    <span class="cm"># עם Row — יופיעו זה-לצד-זה :</span>
+    <span class="kw">with</span> gr.<span class="cl">Row</span>():
+        inp = gr.<span class="cl">Textbox</span>(label=<span class="st">"קלט"</span>)
+        out = gr.<span class="cl">Textbox</span>(label=<span class="st">"פלט"</span>)
+
+    <span class="cm"># Row עם שלושה כפתורים:</span>
+    <span class="kw">with</span> gr.<span class="cl">Row</span>():
+        btn_run    = gr.<span class="cl">Button</span>(<span class="st">"▶ הרץ"</span>,   variant=<span class="st">"primary"</span>)
+        btn_clear  = gr.<span class="cl">Button</span>(<span class="st">"🗑 נקה"</span>,   variant=<span class="st">"secondary"</span>)
+        btn_cancel = gr.<span class="cl">Button</span>(<span class="st">"⛔ בטל"</span>,   variant=<span class="st">"stop"</span>)
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים:</span>
+                שני תיבות טקסט זה-לצד-זה, ומתחתיהן שלושה כפתורים צבעוניים בשורה אחת.
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Column -->
+          <div class="ccard" id="cc-column">
+            <div class="ccard-head" onclick="toggleCard('cc-column')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Column()</span>
+                <span class="ccard-desc">סידור <strong>אנכי</strong> + שליטה ברוחב עם <code class="mono">scale=</code></span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Column()</code> משמש <em>בתוך</em> Row כדי לחלק את הרוחב לעמודות. הפרמטר <code class="mono text-accent">scale=</code> קובע את היחס בין העמודות — scale=2 אומר "פי שניים רחוב מה-scale=1 לצדו".</p>
+                <p><strong>scale בפועל:</strong> אם יש Column עם scale=2 וColumn עם scale=1, הראשון יתפוס ⅔ מהרוחב והשני ⅓.</p>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Column() + scale</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+    gr.<span class="cl">Markdown</span>(<span class="st">"## חלוקה לעמודות"</span>)
+
+    <span class="kw">with</span> gr.<span class="cl">Row</span>():
+        <span class="cm"># עמודה רחבה (⅔) — פרמטרי קלט</span>
+        <span class="kw">with</span> gr.<span class="cl">Column</span>(scale=<span class="nm">2</span>):
+            gr.<span class="cl">Markdown</span>(<span class="st">"### 🎛️ פרמטרים"</span>)
+            name   = gr.<span class="cl">Textbox</span>(label=<span class="st">"שם ניסוי"</span>)
+            gamma  = gr.<span class="cl">Slider</span>(<span class="nm">0</span>, <span class="nm">1</span>, label=<span class="st">"Gamma"</span>)
+            btn    = gr.<span class="cl">Button</span>(<span class="st">"הרץ"</span>, variant=<span class="st">"primary"</span>)
+
+        <span class="cm"># עמודה צרה (⅓) — תוצאות</span>
+        <span class="kw">with</span> gr.<span class="cl">Column</span>(scale=<span class="nm">1</span>):
+            gr.<span class="cl">Markdown</span>(<span class="st">"### 📊 תוצאות"</span>)
+            out = gr.<span class="cl">Textbox</span>(label=<span class="st">"פלט"</span>, lines=<span class="nm">5</span>)
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים:</span>
+                עמודה שמאלית רחבה עם כותרת "פרמטרים" + שדות קלט, ועמודה ימנית צרה עם "תוצאות".
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Tab -->
+          <div class="ccard" id="cc-tab">
+            <div class="ccard-head" onclick="toggleCard('cc-tab')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Tab() / gr.Tabs()</span>
+                <span class="ccard-desc">חלוקה לטאבים — כל טאב עולם נפרד</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Tabs()</code> הוא המיכל של כל הטאבים, ובתוכו כל <code class="mono text-accent">gr.Tab("שם")</code> הוא עולם רכיבים נפרד. רק הטאב הנבחר מוצג בפועל.</p>
+                <p><strong>מתי משתמשים?</strong> כשיש כמה "מצבים" שונים לממשק — למשל ניסוי יחיד / ניסוי אצווה / השוואה.</p>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Tabs() ו-gr.Tab()</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+    gr.<span class="cl">Markdown</span>(<span class="st">"# 🧪 מערכת ניסויים"</span>)
+
+    <span class="kw">with</span> gr.<span class="cl">Tabs</span>():
+
+        <span class="kw">with</span> gr.<span class="cl">Tab</span>(<span class="st">"ניסוי יחיד"</span>):
+            gr.<span class="cl">Markdown</span>(<span class="st">"### הגדרת ניסוי אחד"</span>)
+            name = gr.<span class="cl">Textbox</span>(label=<span class="st">"שם הניסוי"</span>)
+            btn1 = gr.<span class="cl">Button</span>(<span class="st">"הרץ"</span>)
+
+        <span class="kw">with</span> gr.<span class="cl">Tab</span>(<span class="st">"אצווה מ-CSV"</span>):
+            gr.<span class="cl">Markdown</span>(<span class="st">"### טעינת קובץ ניסויים"</span>)
+            file_inp = gr.<span class="cl">File</span>(file_types=[<span class="st">".csv"</span>])
+            btn2 = gr.<span class="cl">Button</span>(<span class="st">"הרץ הכל"</span>)
+
+        <span class="kw">with</span> gr.<span class="cl">Tab</span>(<span class="st">"📊 השוואה"</span>):
+            gr.<span class="cl">Markdown</span>(<span class="st">"### גרף השוואה"</span>)
+            plot = gr.<span class="cl">Plot</span>(label=<span class="st">"השוואת ניסויים"</span>)
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים:</span>
+                שלושה טאבים בראש הממשק. לחיצה על כל אחד מציגה תוכן שונה לגמרי.
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Group -->
+          <div class="ccard" id="cc-group">
+            <div class="ccard-head" onclick="toggleCard('cc-group')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Group()</span>
+                <span class="ccard-desc">קיבוץ ויזואלי — מסגרת סביב רכיבים קשורים</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Group()</code> מוסיף מסגרת ויזואלית סביב קבוצת רכיבים. זה לא משנה את <em>הפריסה</em> (לא כמו Row/Column), רק מסמן ויזואלית שהרכיבים שייכים יחד.</p>
+                <p><strong>שימוש נפוץ:</strong> הפרדה בין "הגדרות כלליות" לבין "פרמטרי RL" לבין "תגמולים" — כל אחד ב-Group נפרד עם כותרת Markdown.</p>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Group() עם כותרת Markdown</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+
+    <span class="kw">with</span> gr.<span class="cl">Row</span>():
+
+        <span class="kw">with</span> gr.<span class="cl">Column</span>():
+            <span class="cm"># Group 1 — הגדרות כלליות</span>
+            <span class="kw">with</span> gr.<span class="cl">Group</span>():
+                gr.<span class="cl">Markdown</span>(<span class="st">"### 📋 הגדרות כלליות"</span>)
+                name     = gr.<span class="cl">Textbox</span>(label=<span class="st">"שם ניסוי"</span>)
+                num_games = gr.<span class="cl">Slider</span>(<span class="nm">100</span>, <span class="nm">50000</span>, label=<span class="st">"משחקים"</span>)
+
+            <span class="cm"># Group 2 — פרמטרי RL</span>
+            <span class="kw">with</span> gr.<span class="cl">Group</span>():
+                gr.<span class="cl">Markdown</span>(<span class="st">"### 🧠 פרמטרי RL"</span>)
+                gamma   = gr.<span class="cl">Slider</span>(<span class="nm">0</span>, <span class="nm">1</span>, label=<span class="st">"Gamma"</span>)
+                explore = gr.<span class="cl">Slider</span>(<span class="nm">0</span>, <span class="nm">1</span>, label=<span class="st">"Exploration"</span>)
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים:</span>
+                שני "בלוקים" ויזואליים עם מסגרת, כל אחד עם כותרת ורכיבים בתוכו.
+              </div>
+            </div>
+          </div>
+
+          <!-- gr.Accordion -->
+          <div class="ccard" id="cc-accordion">
+            <div class="ccard-head" onclick="toggleCard('cc-accordion')">
+              <div class="ccard-left">
+                <span class="ccard-tag">gr.Accordion()</span>
+                <span class="ccard-desc">רכיב מתקפל — מסתיר/מראה תוכן בלחיצה</span>
+              </div>
+              <div class="ccard-right">
+                <span class="ccard-hint">לחץ להרחבה</span>
+                <span class="ccard-arrow">▼</span>
+              </div>
+            </div>
+            <div class="ccard-body">
+              <div class="ccard-explain">
+                <p><strong>מה זה?</strong> <code class="mono text-accent">gr.Accordion()</code> הוא מיכל שהמשתמש יכול לפתוח ולסגור בלחיצה. שימושי להסתרת פרטים מתקדמים שרוב המשתמשים לא צריכים.</p>
+                <p><strong>פרמטרים:</strong></p>
+                <ul class="styled" style="margin-bottom:0">
+                  <li><code class="mono">open=True</code> — פתוח כברירת מחדל</li>
+                  <li><code class="mono">open=False</code> — סגור כברירת מחדל (נפוץ יותר)</li>
+                </ul>
+              </div>
+              <div class="code-block" style="margin:0">
+                <div class="code-header">
+                  <span class="code-lang">PYTHON — gr.Accordion()</span>
+                  <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+                </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Blocks</span>() <span class="kw">as</span> demo:
+    gr.<span class="cl">Markdown</span>(<span class="st">"# ממשק ניסויים"</span>)
+
+    <span class="cm"># פרמטרים רגילים — תמיד מוצגים</span>
+    name  = gr.<span class="cl">Textbox</span>(label=<span class="st">"שם ניסוי"</span>)
+    gamma = gr.<span class="cl">Slider</span>(<span class="nm">0</span>, <span class="nm">1</span>, label=<span class="st">"Gamma"</span>)
+
+    <span class="cm"># פרמטרים מתקדמים — מוסתרים כברירת מחדל</span>
+    <span class="kw">with</span> gr.<span class="cl">Accordion</span>(<span class="st">"⚙️ הגדרות מתקדמות"</span>, open=<span class="kw">False</span>):
+        gr.<span class="cl">Markdown</span>(<span class="st">"_הגדרות אלה מיועדות למשתמשים מנוסים_"</span>)
+        block_r  = gr.<span class="cl">Number</span>(value=<span class="nm">0.95</span>, label=<span class="st">"פרס חסימה"</span>)
+        rival    = gr.<span class="cl">Radio</span>([<span class="st">"random"</span>, <span class="st">"heuristic"</span>], label=<span class="st">"יריב"</span>)
+
+    <span class="cm"># לוג ריצה — נפתח רק כשצריך</span>
+    <span class="kw">with</span> gr.<span class="cl">Accordion</span>(<span class="st">"📋 לוג ריצה"</span>, open=<span class="kw">False</span>):
+        log = gr.<span class="cl">Textbox</span>(lines=<span class="nm">8</span>, interactive=<span class="kw">False</span>)
+
+    btn = gr.<span class="cl">Button</span>(<span class="st">"הרץ"</span>, variant=<span class="st">"primary"</span>)
+
+demo.<span class="fn">launch</span>()</pre>
+              </div>
+              <div class="ccard-result">
+                <span class="ccard-result-label">📺 מה רואים:</span>
+                ממשק נקי עם שדות בסיסיים, ושני כותרות מתקפלות. לחיצה עליהן מגלה פרמטרים מתקדמים ולוג ריצה.
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /concept-cards-wrap -->
+
+        <div class="info-box" style="margin-top:20px">
+          💡 <strong>חשוב להבין:</strong> <span class="mono text-accent">with</span> + indentation = הרכיבים
+          שבפנים נמצאים <em>בתוך</em> המיכל. בדיוק כמו <code>&lt;div&gt;</code> ב-HTML.
+          ניתן לקנן מיכלים בתוך מיכלים — <code class="mono">Tabs → Tab → Row → Column → Group → Accordion</code>.
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-blue">5</div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">התקנה + תרגול</div>
+        <h3>התקנה וממשק ראשון — Live Coding</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">TERMINAL</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre>pip install gradio</pre>
+        </div>
+        <div class="task-box">
+          <div class="task-header">
+            <span class="task-badge">🎯 משימה 1 — עשה בעצמך</span>
+            <span class="task-title">ממשק "שלום עולם" עם Gradio</span>
+          </div>
+          <ul class="task-items">
+            <li>צור קובץ <span class="mono text-accent">hello_gradio.py</span></li>
+            <li>הוסף כותרת עם <span class="mono text-accent">gr.Markdown</span></li>
+            <li>צור שורה אחת עם Textbox קלט + Textbox פלט</li>
+            <li>כפתור שמחזיר את הטקסט הנכנס הפוך (<span class="mono">[::-1]</span>)</li>
+            <li><strong class="text-accent">בונוס:</strong> הוסף גם כפתור שמספר את מספר האותיות בטקסט</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /timeline -->
+</section>
+
+<!-- ─── LESSON 2 ─── -->
+<section class="section" id="lesson2">
+  <div class="section-header">
+    <div class="section-icon icon-purple">2️⃣</div>
+    <div>
+      <div class="section-title">מפגש 2 — <span>בניית ממשק הניסויים</span></div>
+      <div class="small">90 דקות | רכיבי קלט, events, גרפים, חיבור ל-ExperimentConfig</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-purple">1</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">מקבצת הרכיבים</div>
+        <h3>רכיבי קלט — האיות המלא לממשק הניסויים</h3>
+        <p class="text-muted">כל פרמטר ב-<span class="mono text-accent">ExperimentConfig</span> צריך רכיב UI מתאים:</p>
+        <table class="concept-table">
+          <thead>
+            <tr><th>פרמטר ב-Config</th><th>רכיב Gradio</th><th>דוגמת קוד</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">name: str</td>
+              <td><span class="tag">gr.Textbox</span></td>
+              <td class="mono small">gr.Textbox(label="שם הניסוי")</td>
+            </tr>
+            <tr>
+              <td class="mono">num_games: int</td>
+              <td><span class="tag">gr.Slider</span></td>
+              <td class="mono small">gr.Slider(100, 50000, step=100, value=5000)</td>
+            </tr>
+            <tr>
+              <td class="mono">gamma: float</td>
+              <td><span class="tag">gr.Slider</span></td>
+              <td class="mono small">gr.Slider(0.0, 1.0, step=0.05, value=0.9)</td>
+            </tr>
+            <tr>
+              <td class="mono">exploration_rate: float</td>
+              <td><span class="tag">gr.Slider</span></td>
+              <td class="mono small">gr.Slider(0.01, 1.0, step=0.01, value=0.1)</td>
+            </tr>
+            <tr>
+              <td class="mono">win_reward: float</td>
+              <td><span class="tag">gr.Number</span></td>
+              <td class="mono small">gr.Number(value=1.0, label="פרס ניצחון")</td>
+            </tr>
+            <tr>
+              <td class="mono">loss_penalty: float</td>
+              <td><span class="tag">gr.Number</span></td>
+              <td class="mono small">gr.Number(value=0.0, label="עונש הפסד")</td>
+            </tr>
+            <tr>
+              <td class="mono">rival_plan: str</td>
+              <td><span class="tag">gr.Radio</span></td>
+              <td class="mono small">gr.Radio(["random","heuristic","mixed"])</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — פריסת רכיבי הקלט</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="kw">import</span> gradio <span class="kw">as</span> gr
+
+
+<span class="kw">def</span> <span class="fn">start_experiment</span>(name, games, strategy, g, eps, win, loss, tie, block):
+    <span class="cm"># כאן תבוא הפונקציה שמריצה את הניסוי שלך</span>
+    <span class="kw">return</span> <span class="st">f"Experiment '{name}' started with {games} games."</span>
+
+
+<span class="kw">with</span> gr.<span class="cl">Blocks</span>(theme=gr.themes.<span class="fn">Soft</span>()) <span class="kw">as</span> demo:
+    gr.<span class="cl">Markdown</span>(<span class="st">"# 🧪 XO Experiment Management System"</span>)
+
+    <span class="kw">with</span> gr.<span class="cl">Tabs</span>():
+        <span class="kw">with</span> gr.<span class="cl">Tab</span>(<span class="st">"Experiment Setup"</span>):
+            <span class="kw">with</span> gr.<span class="cl">Row</span>():
+                <span class="cm"># --- Column 1: RL Parameters ---</span>
+                <span class="kw">with</span> gr.<span class="cl">Column</span>():
+                    <span class="kw">with</span> gr.<span class="cl">Group</span>():
+                        gr.<span class="cl">Markdown</span>(<span class="st">"### 🧠 RL Parameters"</span>)
+                        gamma = gr.<span class="cl">Slider</span>(
+                            minimum=<span class="nm">0.0</span>, maximum=<span class="nm">1.0</span>,
+                            step=<span class="nm">0.05</span>, value=<span class="nm">0.9</span>,
+                            label=<span class="st">"Gamma (Discount Factor)"</span>
+                        )
+                        explore = gr.<span class="cl">Slider</span>(
+                            minimum=<span class="nm">0.01</span>, maximum=<span class="nm">1.0</span>,
+                            step=<span class="nm">0.01</span>, value=<span class="nm">0.1</span>,
+                            label=<span class="st">"Exploration Rate (ε)"</span>
+                        )
+
+                    <span class="kw">with</span> gr.<span class="cl">Group</span>():
+                        gr.<span class="cl">Markdown</span>(<span class="st">"### 🏆 Reward Structure"</span>)
+                        win_r  = gr.<span class="cl">Number</span>(value=<span class="nm">1.0</span>,  label=<span class="st">"Win Reward"</span>,      step=<span class="nm">0.1</span>)
+                        loss_p = gr.<span class="cl">Number</span>(value=<span class="nm">0.0</span>,  label=<span class="st">"Loss Penalty"</span>,    step=<span class="nm">0.1</span>)
+                        tie_r  = gr.<span class="cl">Number</span>(value=<span class="nm">0.5</span>,  label=<span class="st">"Tie Reward"</span>,      step=<span class="nm">0.1</span>)
+                        block_r= gr.<span class="cl">Number</span>(value=<span class="nm">0.95</span>, label=<span class="st">"Blocking Reward"</span>,  step=<span class="nm">0.05</span>)
+
+                <span class="cm"># --- Column 2: General Settings ---</span>
+                <span class="kw">with</span> gr.<span class="cl">Column</span>():
+                    <span class="kw">with</span> gr.<span class="cl">Group</span>():
+                        gr.<span class="cl">Markdown</span>(<span class="st">"### 📋 General Settings"</span>)
+                        exp_name = gr.<span class="cl">Textbox</span>(
+                            label=<span class="st">"Experiment Name"</span>,
+                            placeholder=<span class="st">"e.g., dqn_test_01"</span>
+                        )
+                        num_games = gr.<span class="cl">Slider</span>(
+                            minimum=<span class="nm">100</span>, maximum=<span class="nm">50000</span>,
+                            step=<span class="nm">100</span>, value=<span class="nm">5000</span>,
+                            label=<span class="st">"Number of Games"</span>
+                        )
+                        rival = gr.<span class="cl">Radio</span>(
+                            choices=[<span class="st">"random"</span>, <span class="st">"heuristic"</span>, <span class="st">"mixed"</span>],
+                            value=<span class="st">"random"</span>,
+                            label=<span class="st">"Opponent Strategy"</span>
+                        )
+
+            run_btn = gr.<span class="cl">Button</span>(<span class="st">"🚀 Run Experiment"</span>, variant=<span class="st">"primary"</span>)
+            output  = gr.<span class="cl">Textbox</span>(label=<span class="st">"Status"</span>)
+
+    <span class="cm"># קישור כפתור ההפעלה</span>
+    run_btn.<span class="fn">click</span>(
+        fn=<span class="fn">start_experiment</span>,
+        inputs=[exp_name, num_games, rival, gamma, explore, win_r, loss_p, tie_r, block_r],
+        outputs=output
+    )
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    demo.<span class="fn">launch</span>()</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-green">2</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">Events + Progress</div>
+        <h3>חיבור כפתורים — Events ו-Progress Bar</h3>
+        <div class="info-box">
+          📡 <strong>Events ב-Gradio:</strong> כל כפתור, slider, textbox — יכולים "לשדר" אירועים.
+          הפונקציה Python שלנו <strong>מאזינה</strong> לאירוע ומחזירה ערכים שמתעדכנים בממשק.
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — פונקציית הרצה + Progress</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="kw">from</span> experiment_config <span class="kw">import</span> ExperimentConfig
+<span class="kw">from</span> experiment_runner <span class="kw">import</span> ExperimentRunner
+
+<span class="kw">def</span> <span class="fn">run_experiment</span>(
+    name, num_games, gamma, explore,
+    win_r, loss_p, tie_r, block_r, rival,
+    progress=gr.<span class="cl">Progress</span>(track_tqdm=<span class="kw">True</span>)
+):
+    <span class="cm"># שלב 1: בנה ExperimentConfig מהפרמטרים של ה-UI</span>
+    config = <span class="cl">ExperimentConfig</span>(
+        name=name,
+        description=<span class="st">f"ניסוי מ-UI: {name}"</span>,
+        num_games=<span class="nm">int</span>(num_games),
+        gamma=gamma,
+        exploration_rate=explore,
+        win_reward=win_r,
+        loss_penalty=loss_p,
+        tie_reward=tie_r,
+        blocking_reward=block_r,
+        rival_plan=rival
+    )
+
+    progress(<span class="nm">0</span>, desc=<span class="st">"מאתחל טורניר..."</span>)
+
+    <span class="cm"># שלב 2: הרץ את הניסוי</span>
+    runner = <span class="cl">ExperimentRunner</span>()
+    runner.<span class="fn">run_all</span>([config])
+
+    progress(<span class="nm">0.9</span>, desc=<span class="st">"מחשב סטטיסטיקות..."</span>)
+
+    <span class="cm"># שלב 3: חלץ תוצאות</span>
+    result = runner.results[<span class="nm">0</span>]
+    summary = (
+        <span class="st">f"✅ ניסוי הסתיים!\n\n"</span>
+        <span class="st">f"🏆 X ניצח: {result['x_win_rate']*100:.1f}%\n"</span>
+        <span class="st">f"💀 O ניצח: {result['o_win_rate']*100:.1f}%\n"</span>
+        <span class="st">f"🤝 תיקו:   {result['tie_rate']*100:.1f}%\n"</span>
+        <span class="st">f"🧠 מצבים נלמדו: {result['learning_dict_size']}"</span>
+    )
+    return summary
+
+<span class="cm"># ─── חיבור ה-UI ───</span>
+run_btn = gr.<span class="cl">Button</span>(<span class="st">"🚀 הרץ ניסוי"</span>, variant=<span class="st">"primary"</span>)
+output  = gr.<span class="cl">Textbox</span>(label=<span class="st">"תוצאות"</span>, lines=<span class="nm">8</span>)
+
+run_btn.<span class="fn">click</span>(
+    fn=<span class="fn">run_experiment</span>,
+    inputs=[exp_name, num_games, gamma, explore,
+            win_r, loss_p, tie_r, block_r, rival],
+    outputs=output
+)</pre>
+        </div>
+        <div class="success-box">
+          ✅ <strong>מה קורה כאן?</strong> הפרמטר <span class="mono text-accent">progress=gr.Progress()</span>
+          הוא "קסם" של Gradio — הוא מוסיף אוטומטית סרגל התקדמות לממשק בזמן שהפונקציה רצה.
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-yellow">3</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">גרפים</div>
+        <h3>הצגת תוצאות עם gr.Plot — גרפים בזמן אמת</h3>
+        <p class="text-muted">Gradio תומך ב-Matplotlib, Plotly ו-Pandas. נשתמש ב-Matplotlib כי כבר יש לכם ניסיון:</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — גרף עוגה של תוצאות</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">import</span> matplotlib
+matplotlib.use(<span class="st">"Agg"</span>)  <span class="cm"># חשוב! לא interactive</span>
+
+<span class="kw">def</span> <span class="fn">create_results_plot</span>(x_rate, o_rate, tie_rate):
+    fig, axes = plt.<span class="fn">subplots</span>(<span class="nm">1</span>, <span class="nm">2</span>, figsize=(<span class="nm">10</span>, <span class="nm">4</span>))
+
+    <span class="cm"># גרף עוגה</span>
+    labels = [<span class="st">'X ניצח'</span>, <span class="st">'O ניצח'</span>, <span class="st">'תיקו'</span>]
+    sizes  = [x_rate, o_rate, tie_rate]
+    colors = [<span class="st">'#00d4ff'</span>, <span class="st">'#ef4444'</span>, <span class="st">'#10b981'</span>]
+    axes[<span class="nm">0</span>].<span class="fn">pie</span>(sizes, labels=labels, colors=colors,
+               autopct=<span class="st">'%1.1f%%'</span>, startangle=<span class="nm">90</span>)
+    axes[<span class="nm">0</span>].<span class="fn">set_title</span>(<span class="st">'פילוג תוצאות'</span>)
+
+    <span class="cm"># גרף עמודות</span>
+    axes[<span class="nm">1</span>].<span class="fn">bar</span>(labels, sizes, color=colors)
+    axes[<span class="nm">1</span>].<span class="fn">set_ylabel</span>(<span class="st">'שיעור (%)'</span>)
+    axes[<span class="nm">1</span>].<span class="fn">set_title</span>(<span class="st">'אחוזי ניצחון'</span>)
+
+    plt.<span class="fn">tight_layout</span>()
+    <span class="kw">return</span> fig
+
+<span class="cm"># בממשק — הוסף רכיב Plot:</span>
+results_plot = gr.<span class="cl">Plot</span>(label=<span class="st">"גרף תוצאות"</span>)</pre>
+        </div>
+        <div class="task-box">
+          <div class="task-header">
+            <span class="task-badge">🎯 משימה 2 — תרגול עצמאי</span>
+            <span class="task-title">בנה את ממשק הניסוי הבסיסי</span>
+          </div>
+          <ul class="task-items">
+            <li>צור קובץ <span class="mono text-accent">experiment_ui.py</span> באותה תיקייה כמו הקבצים שלכם</li>
+            <li>הוסף את כל רכיבי הקלט עבור <span class="mono">ExperimentConfig</span></li>
+            <li>חבר את הכפתור לפונקציית הרצה שמחזירה טקסט תוצאות</li>
+            <li>הוסף גרף עוגה של פילוג תוצאות (X/O/תיקו)</li>
+            <li><strong class="text-accent">בונוס:</strong> הוסף שמירה ל-CSV מהממשק עצמו</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-blue">4</div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">הרחבה</div>
+        <h3>Accordions — מידע מפורט על פי דרישה</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — Accordion להצגת log מפורט</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="kw">with</span> gr.<span class="cl">Accordion</span>(<span class="st">"📋 לוג מפורט (הצג/הסתר)"</span>, open=<span class="kw">False</span>):
+    log_output = gr.<span class="cl">Textbox</span>(
+        label=<span class="st">"לוג ריצה"</span>,
+        lines=<span class="nm">10</span>,
+        interactive=<span class="kw">False</span>
+    )</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── LESSON 3 ─── -->
+<section class="section" id="lesson3">
+  <div class="section-header">
+    <div class="section-icon icon-green">3️⃣</div>
+    <div>
+      <div class="section-title">מפגש 3 — <span>אינטגרציה מלאה + עיצוב</span></div>
+      <div class="small">90 דקות | השוואת ניסויים, טאבים, עיצוב, State, ייצוא</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-green">1</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">State + השוואה</div>
+        <h3>gr.State — זיכרון בין הרצות</h3>
+        <p class="text-muted" style="margin-bottom:12px">
+          הבעיה: כל פעם שמריצים ניסוי, תוצאות קודמות נמחקות. הפתרון — <span class="mono text-accent">gr.State</span>
+          שמחזיק רשימה בין קריאות לפונקציה.
+        </p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — State לשמירת ניסויים קודמים</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="cm"># gr.State מאחסן נתונים בין קריאות — כמו "משתנה גלובלי" לממשק</span>
+experiments_history = gr.<span class="cl">State</span>([])  <span class="cm"># רשימה ריקה בהתחלה</span>
+
+<span class="kw">def</span> <span class="fn">run_and_store</span>(name, num_games, gamma, explore,
+                    win_r, loss_p, tie_r, block_r, rival,
+                    history,  <span class="cm"># ← State מועבר אוטומטית</span>
+                    progress=gr.<span class="cl">Progress</span>()):
+    <span class="cm"># הרץ ניסוי (כמו בעבר)</span>
+    config = <span class="cl">ExperimentConfig</span>(name=name, ...)
+    runner = <span class="cl">ExperimentRunner</span>()
+    runner.<span class="fn">run_all</span>([config])
+    result = runner.results[<span class="nm">0</span>]
+
+    <span class="cm"># עדכן את ה-State</span>
+    history.<span class="fn">append</span>(result)
+
+    <span class="cm"># החזר: תוצאה טקסטואלית, גרף השוואה, State מעודכן</span>
+    summary = <span class="st">f"✅ ניסוי '{name}' הסתיים"</span>
+    comparison_plot = <span class="fn">build_comparison_chart</span>(history)
+    <span class="kw">return</span> summary, comparison_plot, history
+
+<span class="cm"># חיבור — שים לב שה-State הוא גם input וגם output!</span>
+run_btn.<span class="fn">click</span>(
+    fn=<span class="fn">run_and_store</span>,
+    inputs=[..., experiments_history],
+    outputs=[summary_out, comparison_plot, experiments_history]
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-blue">2</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">גרף השוואה</div>
+        <h3>גרף השוואת ניסויים</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — Grouped Bar Chart להשוואה</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre><span class="kw">def</span> <span class="fn">build_comparison_chart</span>(history):
+    <span class="kw">if not</span> history:
+        <span class="kw">return</span> <span class="kw">None</span>
+
+    names   = [r[<span class="st">'experiment_name'</span>] <span class="kw">for</span> r <span class="kw">in</span> history]
+    x_rates = [r[<span class="st">'x_win_rate'</span>] * <span class="nm">100</span> <span class="kw">for</span> r <span class="kw">in</span> history]
+    tie_rates = [r[<span class="st">'tie_rate'</span>] * <span class="nm">100</span> <span class="kw">for</span> r <span class="kw">in</span> history]
+
+    x = range(<span class="nm">len</span>(names))
+    fig, ax = plt.<span class="fn">subplots</span>(figsize=(<span class="nm">10</span>, <span class="nm">5</span>))
+
+    bars1 = ax.<span class="fn">bar</span>([i - <span class="nm">0.2</span> <span class="kw">for</span> i <span class="kw">in</span> x], x_rates,
+                    <span class="nm">0.4</span>, label=<span class="st">'X ניצח %'</span>, color=<span class="st">'#00d4ff'</span>)
+    bars2 = ax.<span class="fn">bar</span>([i + <span class="nm">0.2</span> <span class="kw">for</span> i <span class="kw">in</span> x], tie_rates,
+                    <span class="nm">0.4</span>, label=<span class="st">'תיקו %'</span>,   color=<span class="st">'#10b981'</span>)
+
+    ax.<span class="fn">set_xticks</span>(x)
+    ax.<span class="fn">set_xticklabels</span>(names, rotation=<span class="nm">15</span>)
+    ax.<span class="fn">set_ylabel</span>(<span class="st">'אחוז (%)'</span>)
+    ax.<span class="fn">set_title</span>(<span class="st">'השוואת ניסויים'</span>)
+    ax.<span class="fn">legend</span>()
+    ax.<span class="fn">set_ylim</span>(<span class="nm">0</span>, <span class="nm">100</span>)
+
+    plt.<span class="fn">tight_layout</span>()
+    <span class="kw">return</span> fig</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-yellow">3</div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">עיצוב ו-Themes</div>
+        <h3>עיצוב — Themes ו-CSS מותאם</h3>
+        <table class="concept-table">
+          <thead>
+            <tr><th>Theme</th><th>מראה</th><th>מתאים ל...</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="tag">gr.themes.Default()</span></td><td>בסיסי, אפור-לבן</td><td>ניסוי מהיר</td></tr>
+            <tr><td><span class="tag">gr.themes.Soft()</span></td><td>עגול, כחלחל</td><td>demo מקצועי</td></tr>
+            <tr><td><span class="tag">gr.themes.Monochrome()</span></td><td>שחור-לבן</td><td>עיצוב מינימלי</td></tr>
+            <tr><td><span class="tag">gr.themes.Glass()</span></td><td>שקוף, מודרני</td><td>הצגות</td></tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">PYTHON — CSS מותאם + כותרת מרשימה</span>
+            <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          </div>
+<pre>custom_css = <span class="st">"""
+.run-button {
+    background: linear-gradient(135deg, #00d4ff, #0088aa) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    padding: 12px 24px !important;
+}
+"""</span>
+
+<span class="kw">with</span> gr.<span class="cl">Blocks</span>(
+    theme=gr.themes.<span class="fn">Soft</span>(),
+    css=custom_css,
+    title=<span class="st">"🧪 XO Experiment Lab"</span>
+) <span class="kw">as</span> demo:
+    gr.<span class="cl">HTML</span>(<span class="st">"""
+    &lt;div style="background: linear-gradient(135deg,#001a2e,#002244);
+                padding: 20px; border-radius: 10px; margin-bottom: 10px;"&gt;
+        &lt;h1 style="color:#00d4ff;font-size:28px;margin:0"&gt;
+            🧪 XO Experiment Laboratory
+        &lt;/h1&gt;
+        &lt;p style="color:#8aaccc;margin:4px 0 0"&gt;
+            Reinforcement Learning Experiment Runner
+        &lt;/p&gt;
+    &lt;/div&gt;
+    """</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-left">
+        <div class="timeline-dot td-blue">4</div>
+      </div>
+      <div class="timeline-content">
+        <div class="time-badge">פרויקט מסכם</div>
+        <h3>🏁 משימת הסיום — הממשק המלא</h3>
+        <div class="task-box">
+          <div class="task-header">
+            <span class="task-badge">🏆 פרויקט מסיים</span>
+            <span class="task-title">XO Experiment Lab — ממשק מלא</span>
+          </div>
+          <ul class="task-items">
+            <li><strong>טאב 1 — "ניסוי יחיד":</strong> כל פרמטרי ExperimentConfig + כפתור הרצה + Progress + גרף + תוצאות</li>
+            <li><strong>טאב 2 — "מצב אצווה":</strong> טעינת CSV עם מספר ניסויים (כמו experiments_check.csv) + הרצה של כולם</li>
+            <li><strong>טאב 3 — "השוואה":</strong> גרף השוואה בין כל הניסויים שרצו (gr.State), טבלת סיכום</li>
+            <li><strong>ייצוא:</strong> כפתור "שמור תוצאות CSV" שמוריד קובץ</li>
+            <li><strong>עיצוב:</strong> Theme מותאם, כותרת HTML, Accordion לפרמטרים מתקדמים</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── COMPONENTS REFERENCE ─── -->
+<section class="section" id="components">
+  <div class="section-header">
+    <div class="section-icon icon-yellow">🔧</div>
+    <div>
+      <div class="section-title">מדריך רכיבים — <span>כרטיס עזר מהיר</span></div>
+      <div class="small">כל הרכיבים שתצטרכו בפרויקט הניסויים</div>
+    </div>
+  </div>
+
+  <div class="component-grid">
+    <div class="comp-card">
+      <div class="comp-icon">📝</div>
+      <div class="comp-name">gr.Textbox</div>
+      <div class="comp-desc">קלט/פלט טקסט. lines= למרובה שורות</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">🔢</div>
+      <div class="comp-name">gr.Number</div>
+      <div class="comp-desc">קלט מספרי מדויק. value= לברירת מחדל</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">🎚️</div>
+      <div class="comp-name">gr.Slider</div>
+      <div class="comp-desc">מחוון. minimum, maximum, step, value</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">📻</div>
+      <div class="comp-name">gr.Radio</div>
+      <div class="comp-desc">בחירה אחת מתוך choices=[...]</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">☑️</div>
+      <div class="comp-name">gr.Checkbox</div>
+      <div class="comp-desc">אמת/שקר. value=True/False</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">📂</div>
+      <div class="comp-name">gr.File</div>
+      <div class="comp-desc">העלאת קבצים. file_types=[".csv"]</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">📊</div>
+      <div class="comp-name">gr.Plot</div>
+      <div class="comp-desc">הצגת גרף Matplotlib/Plotly</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">📋</div>
+      <div class="comp-name">gr.DataFrame</div>
+      <div class="comp-desc">הצגת Pandas DataFrame כטבלה</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">💾</div>
+      <div class="comp-name">gr.DownloadButton</div>
+      <div class="comp-desc">הורדת קובץ ישירות מהממשק</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">🏷️</div>
+      <div class="comp-name">gr.Label</div>
+      <div class="comp-desc">תווית פשוטה. num_top_classes=</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">⏳</div>
+      <div class="comp-name">gr.Progress</div>
+      <div class="comp-desc">Progress bar. פרמטר בחתימת הפונקציה</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-icon">💾</div>
+      <div class="comp-name">gr.State</div>
+      <div class="comp-desc">זיכרון בין קריאות. value=[] לרשימה</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">⚡ תבנית Event מלאה</div>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">PYTHON — כל האפשרויות של .click()</span>
+        <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+      </div>
+<pre>event = btn.<span class="fn">click</span>(
+    fn=<span class="fn">my_function</span>,       <span class="cm"># פונקציה Python</span>
+    inputs=[a, b, c],      <span class="cm"># רכיבי קלט (סדר = פרמטרים)</span>
+    outputs=[x, y],        <span class="cm"># רכיבי פלט (סדר = ערכי return)</span>
+    show_progress=<span class="st">"full"</span>,  <span class="cm"># הצג progress bar</span>
+)
+
+<span class="cm"># כפתור ביטול — מאד שימושי לריצות ארוכות:</span>
+cancel_btn.<span class="fn">click</span>(
+    fn=<span class="kw">None</span>,
+    cancels=[event]         <span class="cm"># מבטל את ה-event הקודם</span>
+)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ARCHITECTURE ─── -->
+<section class="section" id="architecture">
+  <div class="section-header">
+    <div class="section-icon icon-purple">🏗</div>
+    <div>
+      <div class="section-title">ארכיטקטורת הפרויקט — <span>מבנה הקבצים הסופי</span></div>
+      <div class="small">כיצד Gradio משתלב בקוד הקיים שלכם</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">FILE STRUCTURE</span>
+      <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+    </div>
+<pre style="direction:ltr">xo_project/
+│
+├── game.py                   ← XOGame (לא משנים!)
+├── tournament.py             ← XOTournament (לא משנים!)
+├── experiment_config.py      ← ExperimentConfig (לא משנים!)
+├── experiment_runner.py      ← ExperimentRunner (לא משנים!)
+│
+├── experiments_check.csv     ← CSV ניסויים (קיים)
+│
+├── <span style="color:#00d4ff; font-weight:700">experiment_ui.py</span>          ← <span style="color:#10b981">★ הקובץ החדש — Gradio UI</span>
+│   ├── פונקציית run_experiment()
+│   ├── פונקציית run_batch_from_csv()
+│   ├── פונקציית build_comparison_chart()
+│   └── הגדרת כל ה-gr.Blocks
+│
+└── experiments/              ← תיקיית פלט (קיימת)</pre>
+  </div>
+
+  <div class="grid-2" style="margin-top:16px">
+    <div class="card">
+      <div class="card-title text-green">✅ עקרון חשוב — Separation of Concerns</div>
+      <p class="text-muted" style="font-size: 18px;">
+        הקבצים הקיימים (<span class="mono text-accent">game.py</span>, <span class="mono text-accent">tournament.py</span> וכו') 
+        <strong>לא נוגעים</strong>. הממשק הוא שכבה נפרדת שרק <em>קוראת</em> להם.
+        זה ה-MVC pattern — Model נפרד מ-View.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title text-accent">💡 שינוי יחיד ב-ExperimentRunner</div>
+      <p class="text-muted" style="font-size: 18px;">
+        תצטרכו להוסיף import ב-<span class="mono text-accent">experiment_ui.py</span> בלבד:
+        <br><br>
+        <code class="mono" style="color: var(--text-muted); direction:ltr; display:block">
+          from experiment_config import ExperimentConfig<br>
+          from experiment_runner import ExperimentRunner
+        </code>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── RUBRIC ─── -->
+<section class="section" id="rubric">
+  <div class="section-header">
+    <div class="section-icon icon-red">📊</div>
+    <div>
+      <div class="section-title">מחוון הערכה — <span>פרויקט הממשק</span></div>
+      <div class="small">100 נקודות | מוגש קובץ experiment_ui.py + הרצה חיה</div>
+    </div>
+  </div>
+
+  <table class="rubric-table">
+    <thead>
+      <tr>
+        <th>קריטריון</th>
+        <th>מה נבדק</th>
+        <th>ציון</th>
+        <th>נקודות</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. פונקציונליות בסיסית</strong></td>
+        <td>הממשק עולה ללא שגיאות, כפתור הרצה עובד</td>
+        <td>מלא / חלקי / לא עובד</td>
+        <td class="pts">20</td>
+      </tr>
+      <tr>
+        <td><strong>2. חיבור לקוד הקיים</strong></td>
+        <td>ExperimentConfig נוצר נכון מה-UI, run_all() מופעל</td>
+        <td>5 נק' לכל פרמטר נכון</td>
+        <td class="pts">20</td>
+      </tr>
+      <tr>
+        <td><strong>3. פריסת UI</strong></td>
+        <td>Row/Column/Group נכונים, טאב אחד לפחות, Accordion</td>
+        <td>5 נק' לכל רכיב פריסה נכון</td>
+        <td class="pts">15</td>
+      </tr>
+      <tr>
+        <td><strong>4. הצגת תוצאות</strong></td>
+        <td>טקסט תוצאות + גרף אחד לפחות</td>
+        <td>7.5 נק' לכל אחד</td>
+        <td class="pts">15</td>
+      </tr>
+      <tr>
+        <td><strong>5. Progress Bar</strong></td>
+        <td>gr.Progress עובד במהלך ריצה</td>
+        <td>עובד / לא עובד</td>
+        <td class="pts">10</td>
+      </tr>
+      <tr>
+        <td><strong>6. עיצוב</strong></td>
+        <td>Theme מוגדר, CSS מותאם כלשהו, כותרת אסתטית</td>
+        <td>1-10 לפי יצירתיות</td>
+        <td class="pts">10</td>
+      </tr>
+      <tr>
+        <td><strong>7. בונוס — State + השוואה</strong></td>
+        <td>שמירת היסטוריה וגרף השוואה בין ניסויים</td>
+        <td>כל הסעיף עובד = +5</td>
+        <td class="pts">+5</td>
+      </tr>
+      <tr>
+        <td><strong>8. בונוס — Batch CSV</strong></td>
+        <td>טאב לטעינת CSV עם מספר ניסויים</td>
+        <td>כל הסעיף עובד = +5</td>
+        <td class="pts">+5</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="grid-2" style="margin-top: 20px">
+    <div class="success-box">
+      ✅ <strong>הגשה:</strong> קובץ <span class="mono">experiment_ui.py</span> +
+      הרצה חיה בפני המורה (2-3 דקות demo) + תיאור קצר מה בניתם ולמה.
+    </div>
+    <div class="warn-box">
+      ⚠️ <strong>תנאי מקדים:</strong> הקוד חייב לרוץ ללא שגיאות בסביבת Python
+      שיש לה גישה לקבצי הפרויקט. בדקו לפני ההגשה!
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div>🧪 מערך שיעור — בניית ממשק ניסויים עם Gradio | כיתה י"א הנדסת תוכנה</div>
+  <div style="margin-top: 6px; font-size: 18px; opacity: 0.6">3 מפגשים × 90 דקות | Gradio Blocks API | XO RL Experiment System</div>
+</footer>
+
+<script>
+  // ── Toggle blocks breakdown ──
+  function toggleBB() {
+    const panel = document.getElementById('bb-panel');
+    const inner = document.getElementById('bb-lines-inner');
+    const chevron = panel.querySelector('.bb-chevron');
+    const hint = panel.querySelector('.bb-hint-text');
+    const isOpen = inner.style.display !== 'none';
+    inner.style.display = isOpen ? 'none' : 'flex';
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    chevron.style.color = isOpen ? '' : 'var(--accent2)';
+    hint.style.opacity = isOpen ? '1' : '0';
+    panel.classList.toggle('bb-open', !isOpen);
+  }
+
+  // ── Toggle concept cards ──
+  function toggleCard(id) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    const isOpen = card.classList.contains('open');
+    card.classList.toggle('open', !isOpen);
+  }
+
+  // Active nav highlighting on scroll
+  const sections = document.querySelectorAll('.section');
+  const navItems = document.querySelectorAll('.nav-item');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navItems.forEach(n => {
+      n.classList.toggle('active', n.getAttribute('href') === '#' + current);
+    });
+  });
+
+  // Smooth scroll
+  navItems.forEach(n => {
+    n.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(n.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>

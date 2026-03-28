@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מדריך A3C — סוכן חכם ל-Pong</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Heebo:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg2: #0f1525;
+  --bg3: #141b2d;
+  --surface: #1a2235;
+  --surface2: #1f2a3d;
+  --border: #2a3a55;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --accent5: #ef4444;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --code-bg: #0d1117;
+  --radius: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  direction: rtl;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── HEADER ── */
+.hero {
+  position: relative;
+  padding: 80px 40px 60px;
+  text-align: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.hero-glow {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-block;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.3);
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.hero h1 .accent { color: var(--accent); }
+.hero h1 .accent2 { color: var(--accent2); }
+
+.hero-sub {
+  color: var(--text2);
+  font-size: 17px;
+  max-width: 600px;
+  margin: 0 auto 32px;
+  position: relative;
+}
+
+/* ── NAV ── */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  padding: 20px 40px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toc a {
+  color: var(--text3);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.toc a:hover { color: var(--accent); border-color: rgba(0,212,255,0.3); background: rgba(0,212,255,0.05); }
+
+/* ── LAYOUT ── */
+.container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 60px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.section-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.2);
+  padding: 4px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 28px 0 12px;
+}
+
+h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent4);
+  margin: 20px 0 8px;
+  font-family: 'Space Mono', monospace;
+}
+
+p { color: var(--text2); margin-bottom: 14px; }
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin: 20px 0;
+  border-right: 3px solid;
+  position: relative;
+}
+
+.callout-info { background: rgba(0,212,255,0.06); border-color: var(--accent); }
+.callout-warning { background: rgba(245,158,11,0.07); border-color: var(--accent4); }
+.callout-success { background: rgba(16,185,129,0.07); border-color: var(--accent3); }
+.callout-danger { background: rgba(239,68,68,0.07); border-color: var(--accent5); }
+
+.callout-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.callout-info .callout-label { color: var(--accent); }
+.callout-warning .callout-label { color: var(--accent4); }
+.callout-success .callout-label { color: var(--accent3); }
+.callout-danger .callout-label { color: var(--accent5); }
+
+.callout p { margin-bottom: 0; }
+
+/* ── CODE BLOCKS ── */
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  overflow-x: auto;
+  margin: 16px 0;
+  direction: ltr;
+}
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+p code, li code {
+  background: rgba(0,212,255,0.1);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  direction: ltr;
+  display: inline-block;
+}
+
+.code-comment { color: #6a9955; }
+.code-keyword { color: #c792ea; }
+.code-string { color: #c3e88d; }
+.code-number { color: #f78c6c; }
+.code-func { color: #82aaff; }
+.code-class { color: #ffcb6b; }
+.code-accent { color: var(--accent); }
+.code-green { color: var(--accent3); }
+.code-orange { color: var(--accent4); }
+.code-red { color: var(--accent5); }
+
+/* ── CONCEPT CARDS ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+
+.card-icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+.card h4 { margin-top: 0; color: var(--text); font-family: 'Heebo', sans-serif; font-size: 15px; }
+.card p { font-size: 14px; margin: 0; }
+
+/* ── FORMULA ── */
+.formula {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  margin: 16px 0;
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  direction: ltr;
+  color: var(--accent4);
+  line-height: 2;
+}
+
+.formula .comment {
+  display: block;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: right;
+  direction: rtl;
+  margin-top: 8px;
+  font-family: 'Heebo', sans-serif;
+}
+
+/* ── DIAGRAM SVG ── */
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+/* ── TABLE ── */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.tbl th {
+  background: var(--surface2);
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 10px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.tbl td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(42,58,85,0.5);
+  color: var(--text2);
+  vertical-align: top;
+}
+.tbl tr:hover td { background: rgba(0,212,255,0.02); }
+.tbl td:first-child { color: var(--accent3); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+/* ── PARAM CALC ── */
+.param-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.param-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 140px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(42,58,85,0.5);
+  align-items: center;
+  gap: 12px;
+}
+.param-row:last-child { border-bottom: none; }
+.param-row:hover { background: rgba(0,212,255,0.02); }
+
+.param-header {
+  background: var(--surface2);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 1px;
+}
+
+.param-name { color: var(--accent4); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+.param-formula { color: var(--text2); font-size: 13px; direction: ltr; }
+.param-result { color: var(--accent3); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; text-align: left; }
+.param-desc { color: var(--text3); font-size: 12px; }
+
+.param-total {
+  background: rgba(0,212,255,0.06);
+  border-top: 2px solid var(--accent);
+}
+.param-total .param-name { color: var(--accent); font-size: 14px; }
+.param-total .param-result { color: var(--accent); font-size: 16px; }
+
+/* ── FLOW STEP ── */
+.flow-steps { display: flex; flex-direction: column; gap: 0; margin: 20px 0; }
+.flow-step {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(42,58,85,0.4);
+  position: relative;
+}
+.flow-step:last-child { border-bottom: none; }
+
+.step-num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.3);
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.step-content h4 { margin: 0 0 6px; }
+.step-content p { font-size: 14px; margin: 0; }
+
+/* ── INTERACTIVE PONG ── */
+#pongCanvas {
+  display: block;
+  border-radius: 8px;
+  margin: 0 auto;
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.pong-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.pong-stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  color: var(--text2);
+}
+.stat-pill span { color: var(--accent3); font-weight: 700; }
+
+/* ── INTERACTIVE CALC ── */
+.calc-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.calc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.calc-row label {
+  font-size: 13px;
+  color: var(--text2);
+  min-width: 180px;
+  font-family: 'Space Mono', monospace;
+}
+
+.calc-row input[type=range] {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+
+.calc-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent4);
+  min-width: 60px;
+}
+
+.calc-result {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--code-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  direction: ltr;
+  line-height: 2;
+}
+
+/* ── VALUE HEATMAP ── */
+#heatmap {
+  display: block;
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  image-rendering: pixelated;
+  margin: 12px 0;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ── FOOTER ── */
+.footer {
+  padding: 40px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.section { animation: fadeIn 0.5s ease both; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.cursor { animation: blink 1s step-end infinite; }
+
+.highlight-row { background: rgba(0,212,255,0.06) !important; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ HERO -->
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="badge">DEEP REINFORCEMENT LEARNING</div>
+  <h1>
+    מדריך <span class="accent">A3C</span><br>
+    סוכן חכם ל<span class="accent2">-Pong</span>
+  </h1>
+  <p class="hero-sub">
+    תיאוריה · מושגים · קוד · חישובים<br>
+    Asynchronous Advantage Actor-Critic
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════ TOC -->
+<nav class="toc">
+  <a href="#s1">01 · מה זה RL?</a>
+  <a href="#s2">02 · ייצוג מצב</a>
+  <a href="#s3">03 · הרשת</a>
+  <a href="#s4">04 · 1.8M פרמטרים</a>
+  <a href="#s5">05 · V(s) ולמידה</a>
+  <a href="#s6">06 · Advantage</a>
+  <a href="#s7">07 · Loss</a>
+  <a href="#s8">08 · A3C מקביל</a>
+  <a href="#s9">09 · קבלת החלטות</a>
+  <a href="#s10">10 · קוד מלא</a>
+</nav>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════ S1 -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>מה זה Reinforcement Learning?</h2>
+  </div>
+
+  <p>
+    בלמידת מכונה רגילה יש לנו תוויות — תמונה של חתול ואנחנו יודעים שזה חתול.
+    ב-<strong>Reinforcement Learning</strong> אין תוויות. הסוכן חי בתוך סביבה,
+    מנסה פעולות, ומקבל <em>reward</em> — מספר שאומר "עד כמה טוב מה שעשית".
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">🎮</div>
+      <h4>סביבה (Environment)</h4>
+      <p>המשחק עצמו — Pong. מחזיר מצב חדש ו-reward אחרי כל פעולה.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🤖</div>
+      <h4>סוכן (Agent)</h4>
+      <p>הרשת שלנו. מקבלת פיקסלים, מחזירה פעולה. לומדת מטעויות.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h4>Reward</h4>
+      <p>+1 כשהסוכן מנצח נקודה, -1 כשמפסיד. 0 כל שאר הזמן.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <h4>מדיניות (Policy)</h4>
+      <p>הפונקציה שממפה מצב לפעולה — הלב של מה שהרשת לומדת.</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg width="100%" viewBox="0 0 680 140" style="direction:ltr">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#00d4ff" stroke-width="1.5"/>
+        </marker>
+        <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+        </marker>
+      </defs>
+      <!-- Agent box -->
+      <rect x="50" y="40" width="160" height="60" rx="10" fill="#1a2235" stroke="#7c3aed" stroke-width="1"/>
+      <text x="130" y="67" text-anchor="middle" fill="#e2e8f0" font-family="Heebo" font-size="14" font-weight="700">Agent</text>
+      <text x="130" y="87" text-anchor="middle" fill="#94a3b8" font-family="Heebo" font-size="12">רשת נוירונים</text>
+      <!-- Env box -->
+      <rect x="470" y="40" width="160" height="60" rx="10" fill="#1a2235" stroke="#00d4ff" stroke-width="1"/>
+      <text x="550" y="67" text-anchor="middle" fill="#e2e8f0" font-family="Heebo" font-size="14" font-weight="700">Environment</text>
+      <text x="550" y="87" text-anchor="middle" fill="#94a3b8" font-family="Heebo" font-size="12">משחק Pong</text>
+      <!-- Action arrow top -->
+      <path d="M210 60 L470 60" fill="none" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="340" y="52" text-anchor="middle" fill="#7c3aed" font-family="Space Mono" font-size="11">action aₜ (עלה / ירד / ירה)</text>
+      <!-- State+reward bottom -->
+      <path d="M470 80 L210 80" fill="none" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="340" y="105" text-anchor="middle" fill="#00d4ff" font-family="Space Mono" font-size="11">state sₜ₊₁  +  reward rₜ</text>
+    </svg>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-label">מושג מפתח — Sparse Reward</div>
+    <p>ב-Pong, reward מגיע רק בסוף נקודה — אחרי עשרות צעדים. 99% מהצעדים הם reward=0. האתגר: הרשת צריכה לייחס את הניצחון/הפסד לפעולות שקרו קודם לכן.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ S2 -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>ייצוג מצב — מה "רואה" הרשת?</h2>
+  </div>
+
+  <p>הרשת לא מקבלת קואורדינטות X,Y של הכדור. היא מקבלת <strong>פיקסלים גולמיים</strong>, בדיוק כמו שאדם רואה את המסך.</p>
+
+  <h3>שלבי עיבוד הקלט</h3>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>פריים גולמי — 210×160×3</h4>
+        <p>Atari מחזיר תמונת RGB בגודל 210×160 פיקסלים. 3 ערוצי צבע.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>המרה לגווני אפור + Resize → 84×84</h4>
+        <p>חיסכון בזיכרון ובחישובים. צבע לא נחוץ ל-Pong. הפונקציה <code>wrap_dqn</code> ב-<code>lib/wrappers.py</code> עושה זאת.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>ערימת 4 פריימים → 4×84×84</h4>
+        <p>פריים בודד הוא תמונה סטטית — הכדור נראה כנקודה בלי תנועה. 4 פריימים מאפשרים לרשת להסיק מהירות וכיוון.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>נורמליזציה: חלוקה ב-256</h4>
+        <p>פיקסל בטווח 0–255 הופך ל-0.0–1.0. מייצב את האימון. בקוד: <code>fx = x.float() / 256</code></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-warning">
+    <div class="callout-label">למה הרשת לא "יודעת" היכן הכדור?</div>
+    <p>אין קואורדינטות! הרשת לומדת בעצמה לזהות דפוסים בפיקסלים — מה שנראה כמו "כדור" הוא קבוצת פיקסלים בהירים שמשנה מיקום בין פריימים. הקונבולוציה מחלצת דפוסים אלה ללא הנחיה מפורשת.</p>
+  </div>
+
+  <h3>דמו — מה הרשת רואה</h3>
+  <div class="pong-container">
+    <canvas id="pongCanvas" width="240" height="160"></canvas>
+    <div class="pong-stats">
+      <div class="stat-pill">פריים: <span id="frameNum">0</span></div>
+      <div class="stat-pill">reward: <span id="rewardDisplay">0</span></div>
+      <div class="stat-pill">ניקוד: <span id="scoreDisplay">0-0</span></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+      <button onclick="togglePong()" id="pongBtn" style="padding:6px 18px;font-size:13px">הפעל סימולציה</button>
+      <button onclick="resetPong()" style="padding:6px 18px;font-size:13px">אפס</button>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px">מסך גולמי (שמאל) לעומת מה שהרשת מקבלת: 84×84 grayscale</p>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S3 -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>ארכיטקטורת הרשת — model.py</h2>
+  </div>
+
+  <p>הרשת היא <strong>Actor-Critic משותפת</strong>: גוף CNN משותף שמחלץ features, ואחריו שני ראשים נפרדים לשתי מטרות שונות.</p>
+
+<pre><code><span class="code-comment"># model.py — הרשת שאיתי מימש</span>
+<span class="code-keyword">class</span> <span class="code-class">ModelA3C</span>(nn.Module):
+    <span class="code-keyword">def</span> <span class="code-func">__init__</span>(self, input_shape, n_actions):
+        <span class="code-keyword">super</span>(ModelA3C, self).__init__()
+
+        <span class="code-comment"># ── גוף משותף: 3 שכבות קונבולוציה ──</span>
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[<span class="code-number">0</span>], <span class="code-number">32</span>, kernel_size=<span class="code-number">8</span>, stride=<span class="code-number">4</span>),  <span class="code-comment"># 4→32 filters</span>
+            nn.ReLU(),
+            nn.Conv2d(<span class="code-number">32</span>, <span class="code-number">64</span>, kernel_size=<span class="code-number">4</span>, stride=<span class="code-number">2</span>),            <span class="code-comment"># 32→64 filters</span>
+            nn.ReLU(),
+            nn.Conv2d(<span class="code-number">64</span>, <span class="code-number">64</span>, kernel_size=<span class="code-number">3</span>, stride=<span class="code-number">1</span>),            <span class="code-comment"># 64→64 filters</span>
+            nn.ReLU()
+        )
+        conv_out_size = self._get_conv_out(input_shape)  <span class="code-comment"># = 3136</span>
+
+        <span class="code-comment"># ── ראש Actor: מה לעשות? ──</span>
+        self.policy = nn.Sequential(
+            nn.Linear(conv_out_size, <span class="code-number">512</span>),
+            nn.ReLU(),
+            nn.Linear(<span class="code-number">512</span>, n_actions)   <span class="code-comment"># 6 פעולות ב-Pong</span>
+        )
+        <span class="code-comment"># ── ראש Critic: כמה שווה המצב? ──</span>
+        self.value = nn.Sequential(
+            nn.Linear(conv_out_size, <span class="code-number">512</span>),
+            nn.ReLU(),
+            nn.Linear(<span class="code-number">512</span>, <span class="code-number">1</span>)             <span class="code-comment"># מספר אחד: V(s)</span>
+        )
+
+    <span class="code-keyword">def</span> <span class="code-func">forward</span>(self, x):
+        fx = x.float() / <span class="code-number">256</span>                          <span class="code-comment"># נורמליזציה</span>
+        conv_out = self.conv(fx).flatten(start_dim=<span class="code-number">1</span>) <span class="code-comment"># → וקטור 3136</span>
+        <span class="code-keyword">return</span> self.policy(conv_out), self.value(conv_out)
+        <span class="code-comment">#       ^Actor: logits[6]   ^Critic: V(s)[1]</span>
+</code></pre>
+
+  <div class="diagram">
+    <svg width="100%" viewBox="0 0 680 200" style="direction:ltr">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+        </marker>
+      </defs>
+      <!-- Input -->
+      <rect x="10" y="75" width="85" height="50" rx="8" fill="#1a2235" stroke="#2a3a55" stroke-width="0.8"/>
+      <text x="52" y="96" text-anchor="middle" fill="#94a3b8" font-family="Heebo" font-size="11" font-weight="600">קלט</text>
+      <text x="52" y="113" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">4×84×84</text>
+      <!-- CNN -->
+      <rect x="115" y="55" width="140" height="90" rx="8" fill="#1a2235" stroke="#7c3aed" stroke-width="1"/>
+      <text x="185" y="80" text-anchor="middle" fill="#e2e8f0" font-family="Heebo" font-size="12" font-weight="700">CNN</text>
+      <text x="185" y="97" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">Conv 8×8 s4 →32</text>
+      <text x="185" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">Conv 4×4 s2 →64</text>
+      <text x="185" y="127" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">Conv 3×3 s1 →64</text>
+      <!-- flatten -->
+      <rect x="275" y="75" width="70" height="50" rx="8" fill="#1a2235" stroke="#2a3a55" stroke-width="0.8"/>
+      <text x="310" y="97" text-anchor="middle" fill="#94a3b8" font-family="Heebo" font-size="11">flatten</text>
+      <text x="310" y="113" text-anchor="middle" fill="#f59e0b" font-family="JetBrains Mono" font-size="10">3136</text>
+      <!-- split -->
+      <line x1="345" y1="100" x2="375" y2="65" stroke="#64748b" stroke-width="1"/>
+      <line x1="345" y1="100" x2="375" y2="135" stroke="#64748b" stroke-width="1"/>
+      <!-- Policy -->
+      <rect x="378" y="30" width="140" height="65" rx="8" fill="#1a2235" stroke="#10b981" stroke-width="1"/>
+      <text x="448" y="55" text-anchor="middle" fill="#10b981" font-family="Heebo" font-size="12" font-weight="700">Policy (Actor)</text>
+      <text x="448" y="72" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">FC 3136→512→6</text>
+      <text x="448" y="87" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">softmax → probs</text>
+      <!-- Value -->
+      <rect x="378" y="105" width="140" height="65" rx="8" fill="#1a2235" stroke="#f59e0b" stroke-width="1"/>
+      <text x="448" y="130" text-anchor="middle" fill="#f59e0b" font-family="Heebo" font-size="12" font-weight="700">Value (Critic)</text>
+      <text x="448" y="147" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">FC 3136→512→1</text>
+      <text x="448" y="162" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">V(s) ∈ ℝ</text>
+      <!-- output arrows -->
+      <line x1="520" y1="62" x2="548" y2="62" stroke="#10b981" stroke-width="1" marker-end="url(#a1)"/>
+      <line x1="520" y1="137" x2="548" y2="137" stroke="#f59e0b" stroke-width="1" marker-end="url(#a1)"/>
+      <!-- outputs -->
+      <rect x="552" y="38" width="118" height="48" rx="6" fill="#0d1117" stroke="#10b981" stroke-width="0.6"/>
+      <text x="611" y="58" text-anchor="middle" fill="#10b981" font-family="JetBrains Mono" font-size="11">action probs</text>
+      <text x="611" y="76" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">[0.1,0.6,0.1,...]</text>
+      <rect x="552" y="113" width="118" height="48" rx="6" fill="#0d1117" stroke="#f59e0b" stroke-width="0.6"/>
+      <text x="611" y="133" text-anchor="middle" fill="#f59e0b" font-family="JetBrains Mono" font-size="11">V(s) = 0.73</text>
+      <text x="611" y="151" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">לאימון בלבד</text>
+      <!-- connector arrows -->
+      <line x1="97" y1="100" x2="113" y2="100" stroke="#64748b" stroke-width="1" marker-end="url(#a1)"/>
+      <line x1="257" y1="100" x2="273" y2="100" stroke="#64748b" stroke-width="1" marker-end="url(#a1)"/>
+    </svg>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S4 -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>מאיפה מגיע המספר 1.8M פרמטרים?</h2>
+  </div>
+
+  <p>כל חיבור בין נוירון לנוירון הוא פרמטר — מספר float32 שהרשת לומדת. בואו נחשב שכבה אחרי שכבה.</p>
+
+  <h3>חישוב גודל הפלט של ה-CNN</h3>
+  <p>נוסחת גודל פלט קונבולוציה: <code>⌊(W - F) / S⌋ + 1</code></p>
+
+  <div class="calc-box">
+    <div class="calc-row">
+      <label>Conv1 — kernel=8, stride=4:</label>
+      <span style="direction:ltr;font-family:'JetBrains Mono',monospace;font-size:13px;color:#10b981">⌊(84-8)/4⌋+1 = 20 → 20×20×32</span>
+    </div>
+    <div class="calc-row">
+      <label>Conv2 — kernel=4, stride=2:</label>
+      <span style="direction:ltr;font-family:'JetBrains Mono',monospace;font-size:13px;color:#10b981">⌊(20-4)/2⌋+1 = 9 → 9×9×64</span>
+    </div>
+    <div class="calc-row">
+      <label>Conv3 — kernel=3, stride=1:</label>
+      <span style="direction:ltr;font-family:'JetBrains Mono',monospace;font-size:13px;color:#10b981">⌊(9-3)/1⌋+1 = 7 → 7×7×64</span>
+    </div>
+    <div class="calc-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <label>גודל וקטור אחרי flatten:</label>
+      <span style="direction:ltr;font-family:'JetBrains Mono',monospace;font-size:14px;color:#f59e0b;font-weight:700">7 × 7 × 64 = 3,136</span>
+    </div>
+  </div>
+
+  <h3>פרוט כל שכבה — חישוב פרמטרים</h3>
+  <p>נוסחה לשכבת קונבולוציה: <code>params = (F×F×C_in + 1) × C_out</code> (×1 לbias)</p>
+  <p>נוסחה לשכבה צפופה: <code>params = (input_size + 1) × output_size</code></p>
+
+  <div class="param-block">
+    <div class="param-row param-header">
+      <span>שכבה</span>
+      <span>חישוב</span>
+      <span>פרמטרים</span>
+      <span>תפקיד</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Conv1</span>
+      <span class="param-formula">(8×8×4 + 1) × 32</span>
+      <span class="param-result">8,224</span>
+      <span class="param-desc">זיהוי קצוות ובסיסי</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Conv2</span>
+      <span class="param-formula">(4×4×32 + 1) × 64</span>
+      <span class="param-result">32,832</span>
+      <span class="param-desc">דפוסים מורכבים</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Conv3</span>
+      <span class="param-formula">(3×3×64 + 1) × 64</span>
+      <span class="param-result">36,928</span>
+      <span class="param-desc">features גבוהות רמה</span>
+    </div>
+    <div class="param-row" style="background:rgba(124,58,237,0.05)">
+      <span class="param-name" style="color:#64748b">סה"כ CNN</span>
+      <span class="param-formula" style="color:#64748b">8,224 + 32,832 + 36,928</span>
+      <span class="param-result" style="color:#7c3aed">77,984</span>
+      <span class="param-desc">גוף משותף</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Policy FC1</span>
+      <span class="param-formula">(3,136 + 1) × 512</span>
+      <span class="param-result">1,606,144</span>
+      <span class="param-desc">הכי גדול!</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Policy FC2</span>
+      <span class="param-formula">(512 + 1) × 6</span>
+      <span class="param-result">3,078</span>
+      <span class="param-desc">6 פעולות Pong</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Value FC1</span>
+      <span class="param-formula">(3,136 + 1) × 512</span>
+      <span class="param-result">1,606,144</span>
+      <span class="param-desc">כמו Policy FC1</span>
+    </div>
+    <div class="param-row">
+      <span class="param-name">Value FC2</span>
+      <span class="param-formula">(512 + 1) × 1</span>
+      <span class="param-result">513</span>
+      <span class="param-desc">V(s) — מספר אחד</span>
+    </div>
+    <div class="param-row param-total">
+      <span class="param-name">סה"כ</span>
+      <span class="param-formula">77,984 + 1,609,222 + 1,606,657</span>
+      <span class="param-result">~3.29M</span>
+      <span class="param-desc">שני heads מלאים</span>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-label">מאיפה 1.8M?</div>
+    <p>המספר 1.8M מתייחס לרוב רק ל<strong>גוף + ראש אחד</strong> (בחלק מהמימושים Policy head בלבד), או לגרסה קצת שונה עם FC קטן יותר. המימוש של איתי עם שני heads מלאים מגיע ל-~3.3M. בכל מקרה — הרוב המוחלט של הפרמטרים נמצא בשכבות ה-FC (לא ב-CNN).</p>
+  </div>
+
+  <h3>מחשבון פרמטרים אינטראקטיבי</h3>
+  <div class="calc-box">
+    <div class="calc-row">
+      <label>מספר filters Conv3 (C_out):</label>
+      <input type="range" id="c3" min="32" max="128" value="64" step="32" oninput="calcParams()">
+      <span class="calc-val" id="c3v">64</span>
+    </div>
+    <div class="calc-row">
+      <label>גודל FC hidden:</label>
+      <input type="range" id="fc" min="128" max="1024" value="512" step="128" oninput="calcParams()">
+      <span class="calc-val" id="fcv">512</span>
+    </div>
+    <div class="calc-result" id="calcResult"></div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S5 -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2>V(s) — הערכת ערך מצב</h2>
+  </div>
+
+  <p>הצ'ריטיק לומד לענות על שאלה אחת: <strong>"אם אני נמצא במצב s, כמה reward אקבל בממוצע מכאן עד סוף המשחק?"</strong></p>
+
+  <div class="formula">
+    V(s) = E[ rₜ + γ·rₜ₊₁ + γ²·rₜ₊₂ + ... ]
+    <span class="comment">ציפייה על סכום ה-rewards המוזלים מהמצב הנוכחי</span>
+  </div>
+
+  <h3>Temporal Difference — איך הרשת לומדת</h3>
+  <p>הרשת לא יכולה לראות את העתיד. היא לומדת מ<strong>השוואה בין ניחוש לניחוש</strong>:</p>
+
+  <div class="formula">
+    V_ref = r + γ · V(s_next)
+    <br>
+    שגיאה (TD-error) = V_ref − V(s)
+    <br>
+    עדכון: V(s) ← V(s) + lr · שגיאה
+    <span class="comment">כל עדכון שיפור קטן. אחרי אלפי עדכונים — V(s) מתכנס</span>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4 style="color:var(--accent3)">γ = 0.99 — למה כל כך גבוה?</h4>
+      <p style="font-size:13px">Pong הוא משחק ארוך. reward הגיע אחרי 50-100 צעדים. γ=0.99 מאפשר למידע להתפשט 100 צעדים אחורה עם ערך סביר: 0.99¹⁰⁰ ≈ 0.37.</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent4)">STEPS_COUNT = 4 — n-step return</h4>
+      <p style="font-size:13px">במקום ניחוש אחרי צעד אחד, צוברים 4 צעדים ואז מסתכלים קדימה. מאיץ את הלמידה ומייצב את ה-gradient.</p>
+    </div>
+  </div>
+
+  <h3>מפת חום — V(s) לפי מיקום כדור</h3>
+  <canvas id="heatmap" width="680" height="120"></canvas>
+  <p style="font-size:12px;color:var(--text3);text-align:center">ירוק = V גבוה (מצב טוב). אדום = V נמוך (מצב גרוע). לחץ להפעיל למידה.</p>
+  <button onclick="startHeatmap()" id="heatBtn" style="display:block;margin:8px auto;padding:6px 18px;font-size:13px">הפעל למידה</button>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S6 -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2>Advantage — לב A3C</h2>
+  </div>
+
+  <p>Advantage שואל שאלה חכמה: <strong>"האם הפעולה שעשיתי הייתה טובה יחסית למה שציפיתי?"</strong></p>
+
+  <div class="formula">
+    A(s, a) = V_ref − V(s)
+    <span class="comment">V_ref = מה שקרה בפועל &nbsp;|&nbsp; V(s) = מה שציפינו</span>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" style="border-color:#10b981">
+      <h4 style="color:var(--accent3)">A > 0 — טוב מהצפוי</h4>
+      <p>הפעולה הניבה יותר ממה שהרשת ניחשה. → Policy מתחזק לבחור פעולה זו.</p>
+    </div>
+    <div class="card" style="border-color:#ef4444">
+      <h4 style="color:var(--accent5)">A < 0 — גרוע מהצפוי</h4>
+      <p>הפעולה הניבה פחות. → Policy מתחלש. הסוכן ילמד להימנע מפעולה זו.</p>
+    </div>
+    <div class="card" style="border-color:#64748b">
+      <h4 style="color:var(--text2)">A ≈ 0 — כציפייה</h4>
+      <p>הפעולה לא מפתיעה. אין עדכון חזק. הרשת כבר "ידעה" שזה יקרה.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-success">
+    <div class="callout-label">למה Advantage ולא reward ישיר?</div>
+    <p>בלי baseline (V(s)), הסוכן היה לומד: "כל פעולה שקדמה לניצחון היא טובה". זה רועש ואיטי. עם Advantage, הסוכן לומד: "הפעולה הזו הייתה טובה *ביחס לציפייה*". V(s) משמש כ-baseline שמפחית variance ומאיץ את הלמידה.</p>
+  </div>
+
+<pre><code><span class="code-comment"># חישוב Advantage ב-a3c.py</span>
+logits_v, value_v = net(states_v)          <span class="code-comment"># forward pass</span>
+
+<span class="code-comment"># Advantage = מה שקרה − מה שציפינו</span>
+adv_v = vals_ref_v - value_v.detach()      <span class="code-comment"># .detach() חשוב!</span>
+<span class="code-comment"># .detach() = לא מחשבים gradient דרך V(s) בחישוב Policy Loss</span>
+
+<span class="code-comment"># Policy Loss: מחזק פעולות עם Advantage חיובי</span>
+log_prob_v = F.log_softmax(logits_v, dim=<span class="code-number">1</span>)
+log_prob_actions_v = adv_v * log_prob_v[range(BATCH_SIZE), actions_t]
+loss_policy_v = -log_prob_actions_v.mean()  <span class="code-comment"># מינוס = maximize</span>
+</code></pre>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S7 -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2>Loss — מה הרשת ממזערת?</h2>
+  </div>
+
+  <p>ה-Loss הכולל מורכב משלושה חלקים, כל אחד עם תפקיד:</p>
+
+  <div class="formula">
+    L_total = L_value + L_policy + L_entropy
+    <span class="comment">כל שלושה מחושבים בבת אחת ו-backprop עובר דרך כולם</span>
+  </div>
+
+  <table class="tbl">
+    <tr>
+      <th>Loss</th>
+      <th>נוסחה</th>
+      <th>תפקיד</th>
+      <th>ב-Pong</th>
+    </tr>
+    <tr>
+      <td>L_value</td>
+      <td>MSE(V(s), V_ref)</td>
+      <td>מלמד את ה-Critic לנחש נכון</td>
+      <td>הפרש בריבוע בין ניחוש לאמת</td>
+    </tr>
+    <tr>
+      <td>L_policy</td>
+      <td>-log π(a|s) × A</td>
+      <td>מחזק פעולות טובות</td>
+      <td>אם עליתי וניצחתי → A>0 → חזק עלייה</td>
+    </tr>
+    <tr>
+      <td>L_entropy</td>
+      <td>β × Σ π·log(π)</td>
+      <td>מונע התכנסות מוקדמת</td>
+      <td>מעודד חקירה. β=0.01 קטן אך חיוני</td>
+    </tr>
+  </table>
+
+<pre><code><span class="code-comment"># חישוב Loss מלא ב-a3c.py</span>
+
+<span class="code-comment"># 1. Value Loss — Critic לומד לנחש V(s)</span>
+loss_value_v = F.mse_loss(value_v.squeeze(-<span class="code-number">1</span>), vals_ref_v)
+
+<span class="code-comment"># 2. Policy Loss — Actor לומד מה לעשות</span>
+log_prob_v = F.log_softmax(logits_v, dim=<span class="code-number">1</span>)
+adv_v = vals_ref_v - value_v.detach()
+log_prob_actions_v = adv_v * log_prob_v[range(BATCH_SIZE), actions_t]
+loss_policy_v = -log_prob_actions_v.mean()
+
+<span class="code-comment"># 3. Entropy Bonus — מונע "קיפאון"</span>
+prob_v = F.softmax(logits_v, dim=<span class="code-number">1</span>)
+entropy_loss_v = ENTROPY_BETA * (prob_v * log_prob_v).sum(dim=<span class="code-number">1</span>).mean()
+
+<span class="code-comment"># Loss כולל — backprop דרך כולם</span>
+loss_v = entropy_loss_v + loss_value_v + loss_policy_v
+loss_v.backward()
+
+<span class="code-comment"># Clip Grad — מגן מ-exploding gradients</span>
+nn_utils.clip_grad_norm_(net.parameters(), CLIP_GRAD)  <span class="code-comment"># = 0.1</span>
+optimizer.step()
+</code></pre>
+
+  <div class="callout callout-warning">
+    <div class="callout-label">למה CLIP_GRAD = 0.1?</div>
+    <p>עם A3C מקביל, נדיפות גבוהה של gradients היא בעיה נפוצה. gradient שגדול מ-0.1 נחתך. ערך קטן (0.1) מסוכן — אם החיתוך קורה תמיד, הלמידה איטית מאוד. ערך גדול מדי — הרשת עלולה להתפרץ. 0.1 הוא ערך מאוד קטן ושמרני.</p>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S8 -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2>A3C — מקביליות ואסינכרוניות</h2>
+  </div>
+
+  <p>ה-A מ-A3C — <strong>Asynchronous</strong>. זה הרעיון הגדול: במקום Worker אחד שאוסף ניסיון לינארי, <strong>4 Workers רצים בו-זמנית</strong>, כל אחד עם 15 סביבות Pong.</p>
+
+  <div class="callout callout-info">
+    <div class="callout-label">למה מקביליות עוזרת?</div>
+    <p>אם Worker אחד שחק 1000 פריימים — כולם מסצנה אחת, מצב אחד, מסלול אחד. ה-batch יהיה מאוד מתואם. עם 4 Workers × 15 סביבות = 60 משחקים במקביל, כל batch מגיע ממצבים שונים לגמרי → הגרדיאנט יציב יותר, הלמידה מהירה יותר.</p>
+  </div>
+
+  <div class="diagram">
+    <svg width="100%" viewBox="0 0 680 300" style="direction:ltr">
+      <defs>
+        <marker id="aq" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+        </marker>
+      </defs>
+      <!-- Main process -->
+      <rect x="230" y="10" width="220" height="55" rx="8" fill="#1a2235" stroke="#7c3aed" stroke-width="1.2"/>
+      <text x="340" y="34" text-anchor="middle" fill="#e2e8f0" font-family="Heebo" font-size="13" font-weight="700">תהליך ראשי</text>
+      <text x="340" y="52" text-anchor="middle" fill="#7c3aed" font-family="JetBrains Mono" font-size="11">net.share_memory()</text>
+
+      <!-- Arrows down to workers -->
+      <line x1="270" y1="67" x2="115" y2="127" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="320" y1="67" x2="250" y2="127" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="360" y1="67" x2="430" y2="127" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="410" y1="67" x2="565" y2="127" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+
+      <text x="195" y="100" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">ref to model</text>
+
+      <!-- Workers -->
+      <rect x="40" y="130" width="148" height="65" rx="8" fill="#1a2235" stroke="#00d4ff" stroke-width="0.8"/>
+      <text x="114" y="155" text-anchor="middle" fill="#00d4ff" font-family="Heebo" font-size="12" font-weight="600">Worker 1</text>
+      <text x="114" y="172" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">15 × Pong envs</text>
+      <text x="114" y="187" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">mp.Process</text>
+
+      <rect x="200" y="130" width="148" height="65" rx="8" fill="#1a2235" stroke="#00d4ff" stroke-width="0.8"/>
+      <text x="274" y="155" text-anchor="middle" fill="#00d4ff" font-family="Heebo" font-size="12" font-weight="600">Worker 2</text>
+      <text x="274" y="172" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">15 × Pong envs</text>
+      <text x="274" y="187" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">mp.Process</text>
+
+      <rect x="360" y="130" width="148" height="65" rx="8" fill="#1a2235" stroke="#00d4ff" stroke-width="0.8"/>
+      <text x="434" y="155" text-anchor="middle" fill="#00d4ff" font-family="Heebo" font-size="12" font-weight="600">Worker 3</text>
+      <text x="434" y="172" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">15 × Pong envs</text>
+      <text x="434" y="187" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">mp.Process</text>
+
+      <rect x="520" y="130" width="148" height="65" rx="8" fill="#1a2235" stroke="#00d4ff" stroke-width="0.8"/>
+      <text x="594" y="155" text-anchor="middle" fill="#00d4ff" font-family="Heebo" font-size="12" font-weight="600">Worker 4</text>
+      <text x="594" y="172" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">15 × Pong envs</text>
+      <text x="594" y="187" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">mp.Process</text>
+
+      <!-- Queue -->
+      <rect x="200" y="222" width="280" height="45" rx="8" fill="#1a2235" stroke="#f59e0b" stroke-width="1"/>
+      <text x="340" y="242" text-anchor="middle" fill="#f59e0b" font-family="Heebo" font-size="13" font-weight="700">mp.Queue (maxsize=4)</text>
+      <text x="340" y="259" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono" font-size="10">Experience + TotalReward</text>
+
+      <!-- Arrows into queue -->
+      <line x1="114" y1="197" x2="250" y2="220" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="274" y1="197" x2="295" y2="220" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="434" y1="197" x2="390" y2="220" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+      <line x1="594" y1="197" x2="440" y2="220" stroke="#64748b" stroke-width="0.8" marker-end="url(#aq)"/>
+
+      <!-- Feedback arrow from queue back to main -->
+      <path d="M480 222 L480 200 L560 200 L560 37" fill="none" stroke="#7c3aed" stroke-width="1" stroke-dasharray="5,3" marker-end="url(#aq)"/>
+      <text x="605" y="135" text-anchor="middle" fill="#7c3aed" font-family="Heebo" font-size="11" transform="rotate(90,580,135)">עדכון משקלות</text>
+    </svg>
+  </div>
+
+<pre><code><span class="code-comment"># a3c.py — הרצת Workers</span>
+<span class="code-keyword">for</span> _ <span class="code-keyword">in</span> range(PROCESSES_COUNT):   <span class="code-comment"># = 4</span>
+    data_proc = mp.Process(
+        target=data_func,
+        args=(net, device, train_queue)
+    )
+    data_proc.start()
+
+<span class="code-comment"># כל Worker מריץ:</span>
+<span class="code-keyword">def</span> <span class="code-func">data_func</span>(net, device, train_queue):
+    envs = [make_env() <span class="code-keyword">for</span> _ <span class="code-keyword">in</span> range(ENV_COUNT)]  <span class="code-comment"># 15 סביבות</span>
+    agent = Agent(lambda x: net(x)[<span class="code-number">0</span>], ...)           <span class="code-comment"># Policy head בלבד</span>
+    exp_source = ExperienceSourceFirstLast(envs, agent, ...)
+
+    <span class="code-keyword">for</span> exp <span class="code-keyword">in</span> exp_source:
+        train_queue.put(exp)    <span class="code-comment"># שולח ניסיון לתהליך הראשי</span>
+</code></pre>
+
+  <table class="tbl">
+    <tr>
+      <th>קבוע</th>
+      <th>ערך</th>
+      <th>משמעות</th>
+    </tr>
+    <tr><td>PROCESSES_COUNT</td><td>4</td><td>Workers במקביל</td></tr>
+    <tr><td>ENV_COUNT</td><td>15</td><td>סביבות לכל Worker</td></tr>
+    <tr><td>סה"כ משחקים</td><td>60</td><td>4×15 בו-זמנית</td></tr>
+    <tr><td>BATCH_SIZE</td><td>128</td><td>ניסיונות לעדכון</td></tr>
+    <tr><td>STEPS_COUNT</td><td>4</td><td>n-step return</td></tr>
+    <tr><td>REWARD_BOUNDARY</td><td>18</td><td>תנאי עצירה (ניצחון)</td></tr>
+  </table>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S9 -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2>קבלת החלטות — איך בוחרים פעולה?</h2>
+  </div>
+
+  <p>ב<strong>זמן אימון</strong> ובזמן <strong>בדיקה</strong> — הסוכן בוחר פעולה דרך Policy head בלבד. V(s) לא משתתף בקבלת ההחלטה.</p>
+
+<pre><code><span class="code-comment"># lib/Agent.py — קבלת החלטה</span>
+<span class="code-keyword">class</span> <span class="code-class">Agent</span>:
+    <span class="code-keyword">def</span> <span class="code-func">__call__</span>(self, states):
+        <span class="code-comment"># forward pass — רק Policy head</span>
+        logits = self.model(states)          <span class="code-comment"># → [6 מספרים]</span>
+
+        <span class="code-keyword">if</span> self.apply_softmax:               <span class="code-comment"># = True</span>
+            probs = F.softmax(logits, dim=<span class="code-number">1</span>)  <span class="code-comment"># הסתברויות [0,1]</span>
+        
+        <span class="code-comment"># דגימה הסתברותית — לא argmax!</span>
+        action = np.random.choice(probs, p=probs)
+        <span class="code-keyword">return</span> action
+</code></pre>
+
+  <div class="callout callout-info">
+    <div class="callout-label">למה דגימה ולא argmax?</div>
+    <p>argmax תמיד בוחרת את הפעולה הטובה ביותר — אין חקירה. אם ניצחנו פעם אחת על ידי "עלה" לפני ה-שמאל, argmax יבחר "עלה" תמיד ולעולם לא יגלה שיש פתרונות טובים יותר. דגימה הסתברותית מאפשרת חקירה מתמשכת גם בבדיקה.</p>
+  </div>
+
+  <h3>דוגמה — מה קורה בפריים אחד</h3>
+
+  <div class="calc-box">
+    <p style="font-size:13px;margin-bottom:12px;">הרשת קיבלה 4 פריימים. הפלט מ-Policy head:</p>
+    <div id="actionDemo" style="direction:ltr;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2.2;color:var(--text2)"></div>
+    <button onclick="sampleAction()" style="margin-top:12px;padding:6px 18px;font-size:13px">דגום פעולה חדשה</button>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════ S10 -->
+<section class="section" id="s10">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <h2>זרימת הקוד המלאה — test_model.py</h2>
+  </div>
+
+  <p>אחרי אימון שמגיע ל-reward&gt;18, נטענת המודל הנלמד ומשחקים:</p>
+
+<pre><code><span class="code-comment"># test_model.py — הפעלת הסוכן הלמוד</span>
+<span class="code-keyword">def</span> <span class="code-func">main</span>():
+    device = torch.device(<span class="code-string">'cuda'</span> <span class="code-keyword">if</span> torch.cuda.is_available() <span class="code-keyword">else</span> <span class="code-string">'cpu'</span>)
+    
+    <span class="code-comment"># טעינת המודל הנלמד (כל המשקלות)</span>
+    net = torch.load(<span class="code-string">'models/complete.pt'</span>)
+    net = net.to(device)
+    net.eval()  <span class="code-comment"># מצב בדיקה — BatchNorm/Dropout מושבתים</span>
+    
+    <span class="code-comment"># סוכן משתמש רק ב-Policy head</span>
+    agent = Agent(lambda x: net(x)[<span class="code-number">0</span>], device=device, apply_softmax=<span class="code-keyword">True</span>)
+    
+    env = make_env()
+    state = [env.reset()]
+
+    <span class="code-keyword">while True</span>:
+        env.render()                        <span class="code-comment"># הצג על המסך</span>
+        action = agent(state)               <span class="code-comment"># 1. קבל פעולה מהסוכן</span>
+        next_state, reward, done, _ = env.step(action)  <span class="code-comment"># 2. בצע</span>
+        state = [next_state]                <span class="code-comment"># 3. עדכן מצב</span>
+        
+        <span class="code-keyword">if</span> done:
+            state = [env.reset()]           <span class="code-comment"># 4. משחק חדש</span>
+</code></pre>
+
+  <h3>ציר הזמן המלא — מ-pixel לפעולה</h3>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>פריים נכנס</h4>
+        <p>Atari מחזיר <code>numpy array</code> 210×160×3. <code>wrap_dqn</code> ממיר ל-84×84 grayscale ומוסיף לתור של 4 פריימים.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>tensor → CNN → flatten</h4>
+        <p>4×84×84 → Conv1(32) → Conv2(64) → Conv3(64) → flatten → וקטור 3136.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>Policy head → logits</h4>
+        <p>FC(3136→512) → ReLU → FC(512→6). פלט: 6 מספרים לפני softmax.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>softmax → הסתברויות</h4>
+        <p>e^x_i / Σe^x_j. הופך לוגיטים ל-6 הסתברויות שמסתכמות ל-1.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h4>דגימה → פעולה</h4>
+        <p><code>np.random.choice</code> עם ה-probs. מחזיר מספר 0–5 המייצג פעולה (NOOP/FIRE/UP/DOWN/...).</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h4>env.step(action)</h4>
+        <p>Atari מבצע את הפעולה, מחזיר פריים חדש + reward. חוזר לשלב 1.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-success">
+    <div class="callout-label">תוצאה — ביצועי על אנושיים</div>
+    <p>לאחר אימון מלא, הסוכן מנצח בהפרש של 15+ נקודות כמעט תמיד. בני אדם ממוצעים מגיעים ל-~9 נקודות. הסוכן למד לשחק טוב יותר מאדם ממוצע <strong>מבלי לקבל הוראה אחת</strong> — רק פיקסלים ו-reward.</p>
+  </div>
+
+</section>
+
+</div><!-- /container -->
+
+<footer class="footer">
+  <p>מדריך A3C · בית הספר ע"ש בליך · פרויקט: איתי פלדמן · מורה: צבי שירן</p>
+  <p style="margin-top:6px;color:#334155">Asynchronous Advantage Actor-Critic · DeepMind 2016</p>
+</footer>
+
+<!-- ══════════════════════════════════════════════ SCRIPTS -->
+<script>
+/* ─── PONG DEMO ─── */
+let pongRunning=false, pongRaf=null;
+const pc=document.getElementById('pongCanvas');
+const pctx=pc.getContext('2d');
+const PW=240,PH=160;
+let pb={x:PW/2,y:PH/2,vx:1.8,vy:1.4};
+let pay=PH/2,poy=PH/2;
+let pScore=[0,0],pFrames=0,pReward=0;
+
+function drawPong(){
+  pctx.fillStyle='#111';pctx.fillRect(0,0,PW,PH);
+  pctx.fillStyle='#ddd';
+  pctx.fillRect(8,pay-18,6,36);
+  pctx.fillRect(PW-14,poy-18,6,36);
+  pctx.fillStyle='#fff';
+  pctx.fillRect(pb.x-3,pb.y-3,6,6);
+  pctx.strokeStyle='#333';pctx.setLineDash([5,5]);
+  pctx.beginPath();pctx.moveTo(PW/2,0);pctx.lineTo(PW/2,PH);pctx.stroke();
+  pctx.setLineDash([]);
+}
+
+function pongTick(){
+  pb.x+=pb.vx; pb.y+=pb.vy;
+  if(pb.y<4||pb.y>PH-4) pb.vy*=-1;
+  pay+=(pb.y-pay)*0.09; pay=Math.max(20,Math.min(PH-20,pay));
+  poy+=(Math.random()-0.5)*3; poy=Math.max(20,Math.min(PH-20,poy));
+  pReward=0;
+  if(pb.x<16){
+    if(Math.abs(pb.y-pay)<20){pb.vx=Math.abs(pb.vx);}
+    else{pScore[1]++;pReward=-1;pb.x=PW/2;pb.y=PH/2;pb.vx=1.8;}
+  }
+  if(pb.x>PW-16){
+    if(Math.abs(pb.y-poy)<20){pb.vx=-Math.abs(pb.vx);}
+    else{pScore[0]++;pReward=+1;pb.x=PW/2;pb.y=PH/2;pb.vx=-1.8;}
+  }
+  pFrames++;
+  drawPong();
+  document.getElementById('frameNum').textContent=pFrames;
+  document.getElementById('rewardDisplay').textContent=pReward||'0';
+  document.getElementById('rewardDisplay').style.color=pReward>0?'#10b981':pReward<0?'#ef4444':'#94a3b8';
+  document.getElementById('scoreDisplay').textContent=pScore[0]+'-'+pScore[1];
+  if(pongRunning) pongRaf=requestAnimationFrame(pongTick);
+}
+function togglePong(){
+  pongRunning=!pongRunning;
+  document.getElementById('pongBtn').textContent=pongRunning?'עצור':'הפעל סימולציה';
+  if(pongRunning) pongRaf=requestAnimationFrame(pongTick);
+  else if(pongRaf) cancelAnimationFrame(pongRaf);
+}
+function resetPong(){
+  pongRunning=false;if(pongRaf)cancelAnimationFrame(pongRaf);
+  document.getElementById('pongBtn').textContent='הפעל סימולציה';
+  pb={x:PW/2,y:PH/2,vx:1.8,vy:1.4};pay=PH/2;poy=PH/2;pScore=[0,0];pFrames=0;pReward=0;
+  drawPong();
+  document.getElementById('frameNum').textContent='0';
+  document.getElementById('rewardDisplay').textContent='0';
+  document.getElementById('scoreDisplay').textContent='0-0';
+}
+drawPong();
+
+/* ─── PARAM CALCULATOR ─── */
+function calcParams(){
+  const c3=parseInt(document.getElementById('c3').value);
+  const fc=parseInt(document.getElementById('fc').value);
+  document.getElementById('c3v').textContent=c3;
+  document.getElementById('fcv').textContent=fc;
+  const conv1=(8*8*4+1)*32;
+  const conv2=(4*4*32+1)*64;
+  const conv3=(3*3*64+1)*c3;
+  const flatSize=7*7*c3;
+  const pfc1=(flatSize+1)*fc;
+  const pfc2=(fc+1)*6;
+  const vfc1=(flatSize+1)*fc;
+  const vfc2=(fc+1)*1;
+  const total=conv1+conv2+conv3+pfc1+pfc2+vfc1+vfc2;
+  const fmt=n=>n.toLocaleString();
+  document.getElementById('calcResult').innerHTML=
+    `<span style="color:#64748b">Conv layers:</span>  ${fmt(conv1)} + ${fmt(conv2)} + ${fmt(conv3)} = <span style="color:#7c3aed">${fmt(conv1+conv2+conv3)}</span>\n`+
+    `<span style="color:#64748b">Policy FC:  </span>  ${fmt(pfc1)} + ${fmt(pfc2)} = <span style="color:#10b981">${fmt(pfc1+pfc2)}</span>\n`+
+    `<span style="color:#64748b">Value  FC:  </span>  ${fmt(vfc1)} + ${fmt(vfc2)} = <span style="color:#f59e0b">${fmt(vfc1+vfc2)}</span>\n`+
+    `\n<span style="color:#00d4ff;font-weight:700">סה"כ: ${fmt(total)} פרמטרים (${(total/1e6).toFixed(2)}M)</span>`;
+}
+calcParams();
+
+/* ─── HEATMAP ─── */
+let hmRunning=false,hmRaf=null,hmStep=0;
+const hmc=document.getElementById('heatmap');
+const hmctx=hmc.getContext('2d');
+const HCols=34,HRows=6;
+let hmVals=new Array(HCols*HRows).fill(0);
+
+function drawHeatmap(){
+  const W=hmc.width,H=hmc.height;
+  const cw=W/HCols,ch=H/HRows;
+  for(let r=0;r<HRows;r++){
+    for(let c=0;c<HCols;c++){
+      const v=(hmVals[r*HCols+c]+1)/2;
+      const red=Math.round(210*(1-v)),grn=Math.round(158*v);
+      hmctx.fillStyle=`rgb(${red},${grn},40)`;
+      hmctx.fillRect(c*cw,r*ch,cw-1,ch-1);
+    }
+  }
+}
+
+function hmTick(){
+  hmStep++;
+  for(let i=0;i<HCols*HRows;i++){
+    const c=i%HCols,r=Math.floor(i/HCols);
+    const proximity=1-(c/HCols);
+    const target=proximity*0.8-0.1+(Math.random()-0.5)*0.1;
+    hmVals[i]+=(target-hmVals[i])*0.015;
+  }
+  if(hmStep%3===0) drawHeatmap();
+  if(hmRunning) hmRaf=requestAnimationFrame(hmTick);
+}
+function startHeatmap(){
+  hmRunning=!hmRunning;
+  document.getElementById('heatBtn').textContent=hmRunning?'עצור':'הפעל למידה';
+  if(hmRunning) hmRaf=requestAnimationFrame(hmTick);
+  else if(hmRaf) cancelAnimationFrame(hmRaf);
+}
+drawHeatmap();
+
+/* ─── ACTION DEMO ─── */
+const ACTIONS=['NOOP (אין פעולה)','FIRE (ירה)','UP (עלה)','DOWN (ירד)','UPFIRE','DOWNFIRE'];
+function sampleAction(){
+  const logits=[Math.random()*2-1,Math.random()*2-1,Math.random()*3,Math.random()*2,Math.random()-0.5,Math.random()-0.5];
+  const exps=logits.map(x=>Math.exp(x));
+  const sum=exps.reduce((a,b)=>a+b,0);
+  const probs=exps.map(x=>x/sum);
+  const chosen=probs.indexOf(Math.max(...probs));
+  let html='<span style="color:#64748b">logits:  </span> ['+logits.map(x=>x.toFixed(3)).join(', ')+']\n';
+  html+='<span style="color:#64748b">softmax: </span> ['+probs.map(x=>(x*100).toFixed(1)+'%').join(', ')+']\n\n';
+  ACTIONS.forEach((a,i)=>{
+    const bar='█'.repeat(Math.round(probs[i]*30));
+    const col=i===chosen?'#10b981':'#64748b';
+    html+=`<span style="color:${col}">${a.padEnd(18)} ${bar} ${(probs[i]*100).toFixed(1)}%${i===chosen?' ← נבחר':''}</span>\n`;
+  });
+  document.getElementById('actionDemo').innerHTML=html;
+}
+sampleAction();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הנוירון – למידת מכונה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0d14;
+  --panel: #0f1420;
+  --panel2: #131926;
+  --border: #1e2d45;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --accent5: #ef4444;
+  --text: #e2e8f0;
+  --text-dim: #8899aa;
+  --glow: rgba(0,212,255,0.15);
+  --glow2: rgba(124,58,237,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;}
+
+/* ===== SCANLINE OVERLAY ===== */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}
+
+/* ===== LAYOUT ===== */
+#app{display:flex;flex-direction:column;height:100vh;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;}
+.topbar-title{font-size:1.2rem;font-weight:700;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+.slide-counter{font-family:'Share Tech Mono',monospace;color:var(--text-dim);font-size:1.2rem;}
+.progress-bar{height:2px;background:var(--border);}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .4s ease;}
+
+.slides-wrap{flex:1;overflow:hidden;position:relative;}
+.slide{position:absolute;inset:0;overflow-y:auto;padding:30px 40px 80px;display:none;opacity:0;transition:opacity .3s;}
+.slide.active{display:block;opacity:1;}
+
+/* ===== NAV ===== */
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:var(--panel);border-top:1px solid var(--border);z-index:100;}
+.nav-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 22px;border-radius:4px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:1.2rem;;transition:all .2s;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--glow);}
+.nav-btn:disabled{opacity:.3;cursor:default;}
+.dots{display:flex;gap:6px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s;}
+.dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+
+/* ===== TYPOGRAPHY ===== */
+h1{font-size:2.2rem;font-weight:900;color:var(--accent);margin-bottom:6px;line-height:1.2;}
+h2{font-size:1.5rem;font-weight:700;color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+h3{font-size:1.15rem;font-weight:700;color:var(--accent4);margin-bottom:10px;}
+p{color:var(--text);line-height:1.8;margin-bottom:10px;}
+.subtitle{color:var(--text-dim);font-size:1.2rem;margin-bottom:20px;}
+
+/* ===== CARDS ===== */
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;background:var(--accent);}
+.card.purple::before{background:var(--accent2);}
+.card.green::before{background:var(--accent3);}
+.card.yellow::before{background:var(--accent4);}
+.card.red::before{background:var(--accent5);}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+/* ===== CODE BLOCKS ===== */
+.code-wrap{background:#060a10;border:1px solid var(--border);border-radius:8px;margin:12px 0;overflow:hidden;}
+.code-header{background:var(--panel);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.code-lang{font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--accent2);}
+.code-body{padding:16px;overflow-x:auto;direction:ltr;}
+pre{font-family:'Share Tech Mono',monospace;font-size:1.2rem;line-height:1.7;color:#a0cfff;}
+.kw{color:#c678dd;}
+.fn{color:#61afef;}
+.str{color:#98c379;}
+.num{color:#d19a66;}
+.cmt{color:#5c6370;font-style:italic;}
+.var{color:#e06c75;}
+.cls{color:#e5c07b;}
+
+/* ===== NEURON SVG DIAGRAM ===== */
+.diagram-wrap{background:#060a10;border:1px solid var(--border);border-radius:8px;padding:10px;margin:12px 0;}
+
+/* ===== FORMULA ===== */
+.formula{background:#060a10;border:1px solid var(--accent2);border-radius:8px;padding:16px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--accent);margin:12px 0;direction:ltr;}
+
+/* ===== QUIZ ===== */
+.quiz-box{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:20px;margin:14px 0;}
+.quiz-q{font-weight:700;color:var(--accent4);margin-bottom:14px;font-size:1.2rem;}
+.quiz-opts{display:flex;flex-direction:column;gap:8px;}
+.quiz-opt{background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:6px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:1.2rem;;text-align:right;transition:all .2s;}
+.quiz-opt:hover{border-color:var(--accent);background:var(--glow);}
+.quiz-opt.correct{border-color:var(--accent3)!important;background:rgba(16,185,129,.15)!important;color:var(--accent3)!important;}
+.quiz-opt.wrong{border-color:var(--accent5)!important;background:rgba(239,68,68,.1)!important;color:var(--accent5)!important;}
+.quiz-feedback{margin-top:10px;padding:10px 14px;border-radius:6px;font-size:1.2rem;;display:none;}
+.quiz-feedback.show{display:block;}
+.quiz-feedback.ok{background:rgba(16,185,129,.15);border:1px solid var(--accent3);color:var(--accent3);}
+.quiz-feedback.no{background:rgba(239,68,68,.1);border:1px solid var(--accent5);color:var(--accent5);}
+
+/* ===== INTERACTIVE NEURON ===== */
+.neuron-sim{background:#060a10;border:1px solid var(--border);border-radius:8px;padding:20px;margin:12px 0;}
+.inputs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.input-group label{display:block;color:var(--text-dim);font-size:1.2rem;margin-bottom:4px;}
+.input-group input[type=range]{width:100%;accent-color:var(--accent);}
+.input-val{font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.2rem;}
+.sim-result{background:var(--panel2);border:1px solid var(--accent);border-radius:6px;padding:14px;text-align:center;}
+.sim-result .big{font-size:2.2rem;font-weight:900;color:var(--accent);font-family:'Share Tech Mono',monospace;}
+.sim-result .label{color:var(--text-dim);font-size:1.2rem;}
+
+/* ===== ACTIVATION EXPLORER ===== */
+.act-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.act-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:6px 14px;border-radius:4px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:1.2rem;transition:all .2s;}
+.act-btn.active{border-color:var(--accent2);color:var(--accent2);background:var(--glow2);}
+
+canvas{border-radius:6px;background:#060a10;}
+
+/* ===== TAGS ===== */
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:1.2rem;font-weight:700;margin:2px;}
+.tag.blue{background:rgba(0,212,255,.1);border:1px solid var(--accent);color:var(--accent);}
+.tag.purple{background:rgba(124,58,237,.1);border:1px solid var(--accent2);color:var(--accent2);}
+.tag.green{background:rgba(16,185,129,.1);border:1px solid var(--accent3);color:var(--accent3);}
+.tag.yellow{background:rgba(245,158,11,.1);border:1px solid var(--accent4);color:var(--accent4);}
+
+/* ===== TABLE ===== */
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:1.2rem;}
+th{background:var(--panel2);color:var(--accent);padding:10px;border:1px solid var(--border);text-align:right;}
+td{padding:9px 10px;border:1px solid var(--border);color:var(--text);}
+tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+
+/* ===== STEP BOXES ===== */
+.steps{display:flex;flex-direction:column;gap:10px;}
+.step{display:flex;align-items:flex-start;gap:14px;padding:12px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;}
+.step-num{min-width:32px;height:32px;background:var(--accent2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.2rem;;flex-shrink:0;}
+.step-body{flex:1;}
+.step-title{font-weight:700;color:var(--accent4);margin-bottom:4px;}
+
+/* ===== TITLE SLIDE ===== */
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;}
+.hero h1{font-size:3.5rem;margin-bottom:10px;}
+.hero-sub{font-size:1.2rem;color:var(--text-dim);max-width:500px;line-height:1.7;}
+.neon-line{width:120px;height:3px;background:linear-gradient(90deg,var(--accent2),var(--accent));margin:20px auto;border-radius:2px;}
+
+/* ===== SECTION LABEL ===== */
+.sec-label{font-size:1.2rem;font-family:'Share Tech Mono',monospace;color:var(--accent2);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;}
+
+/* ===== EXERCISE BOX ===== */
+.exercise{background:rgba(245,158,11,.05);border:1px solid var(--accent4);border-radius:8px;padding:18px;margin:12px 0;}
+.exercise-title{color:var(--accent4);font-weight:700;font-size:1.2rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+
+/* ===== MSE CALCULATOR ===== */
+.mse-table input{width:70px;background:#060a10;border:1px solid var(--border);color:var(--accent);padding:4px 6px;border-radius:4px;font-family:'Share Tech Mono',monospace;text-align:center;}
+.calc-btn{background:var(--accent2);color:#fff;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:700;font-size:1.2rem;;transition:all .2s;margin-top:10px;}
+.calc-btn:hover{opacity:.85;}
+.mse-result{font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.2rem;margin-top:10px;}
+
+/* ===== FWD PROPAGATION INTERACTIVE ===== */
+.fp-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.fp-label{min-width:60px;color:var(--text-dim);font-size:1.2rem;}
+.fp-val{font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.2rem;;background:#060a10;border:1px solid var(--border);border-radius:4px;padding:3px 8px;}
+.fp-calc{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--text-dim);line-height:2;}
+
+/* ===== ANIMATIONS ===== */
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.slide.active .card,.slide.active .code-wrap,.slide.active .quiz-box{animation:slideIn .35s ease forwards;}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-title">⚡ הנוירון — למידת מכונה</span>
+    <span class="slide-counter" id="counter">1 / 10</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:10%"></div></div>
+
+  <div class="slides-wrap" id="slides">
+
+    <!-- ===== SLIDE 1: TITLE ===== -->
+    <div class="slide active" id="s0">
+      <div class="hero">
+        <div class="sec-label">מבוא ללמידת מכונה</div>
+        <h1>הנוירון</h1>
+        <div class="neon-line"></div>
+        <p class="hero-sub">אבן הבניין של כל רשת נוירונים — יחידה מתמטית קטנה שיכולה ללמוד לחזות ערכים מהעולם האמיתי</p>
+        <div style="margin-top:28px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+          <span class="tag blue">Forward Propagation</span>
+          <span class="tag purple">Weights &amp; Bias</span>
+          <span class="tag green">Activation Functions</span>
+          <span class="tag yellow">MSE Loss</span>
+        </div>
+        <div style="margin-top:40px;">
+          <!-- Animated mini neuron diagram -->
+          <svg width="420" height="120" viewBox="0 0 420 120">
+            <defs>
+              <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <!-- inputs -->
+            <circle cx="50" cy="30" r="16" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+            <text x="50" y="35" text-anchor="middle" fill="#00d4ff" font-size="11" font-family="Share Tech Mono">x₁</text>
+            <circle cx="50" cy="60" r="16" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+            <text x="50" y="65" text-anchor="middle" fill="#00d4ff" font-size="11" font-family="Share Tech Mono">x₂</text>
+            <circle cx="50" cy="90" r="16" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+            <text x="50" y="95" text-anchor="middle" fill="#00d4ff" font-size="11" font-family="Share Tech Mono">x₃</text>
+            <!-- arrows to sum -->
+            <line x1="66" y1="30" x2="148" y2="57" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+            <text x="95" y="38" fill="#8899aa" font-size="9" font-family="Share Tech Mono">w₁</text>
+            <line x1="66" y1="60" x2="148" y2="61" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+            <text x="95" y="56" fill="#8899aa" font-size="9" font-family="Share Tech Mono">w₂</text>
+            <line x1="66" y1="90" x2="148" y2="65" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+            <text x="95" y="85" fill="#8899aa" font-size="9" font-family="Share Tech Mono">w₃</text>
+            <!-- bias -->
+            <line x1="190" y1="15" x2="190" y2="44" stroke="#f59e0b" stroke-width="1.5" opacity=".8"/>
+            <text x="198" y="12" fill="#f59e0b" font-size="9" font-family="Share Tech Mono">b</text>
+            <!-- sum circle -->
+            <circle cx="190" cy="60" r="20" fill="#0f1420" stroke="#7c3aed" stroke-width="2" filter="url(#glow)"/>
+            <text x="190" y="65" text-anchor="middle" fill="#c678dd" font-size="16" font-family="Share Tech Mono">Σ</text>
+            <!-- activation -->
+            <line x1="210" y1="60" x2="248" y2="60" stroke="#00d4ff" stroke-width="1.5" opacity=".8"/>
+            <circle cx="270" cy="60" r="20" fill="#0f1420" stroke="#00d4ff" stroke-width="2" filter="url(#glow)"/>
+            <text x="270" y="65" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="Share Tech Mono">g(Σ)</text>
+            <!-- output -->
+            <line x1="290" y1="60" x2="335" y2="60" stroke="#10b981" stroke-width="2" opacity=".9"/>
+            <circle cx="360" cy="60" r="22" fill="#0f1420" stroke="#10b981" stroke-width="2" filter="url(#glow)"/>
+            <text x="360" y="56" text-anchor="middle" fill="#10b981" font-size="10" font-family="Share Tech Mono">ŷ</text>
+            <text x="360" y="70" text-anchor="middle" fill="#8899aa" font-size="8" font-family="Share Tech Mono">output</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 2: WHAT IS A NEURON ===== -->
+    <div class="slide" id="s1">
+      <div class="sec-label">מושג בסיסי</div>
+      <h1>מה זה נוירון?</h1>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <h3>🧠 הרעיון הביולוגי</h3>
+            <p>הנוירון הממוחשב מבוסס על הנוירון הביולוגי במוח האנושי. גם הוא מקבל <strong style="color:var(--accent)">אותות קלט</strong>, מעבד אותם, ומוציא <strong style="color:var(--accent3)">אות פלט</strong>.</p>
+          </div>
+          <div class="card purple">
+            <h3>🤖 הרעיון הממוחשב</h3>
+            <p>נוירון ממוחשב הוא <strong style="color:var(--accent2)">מודל מתמטי</strong> שמקבל קלטים (features), מבצע עליהם חישוב, ומחזיר ערך מספרי — <strong style="color:var(--accent3)">חיזוי</strong>.</p>
+          </div>
+          <div class="card green">
+            <h3>🎯 המטרה</h3>
+            <p>הנוירון הוא <strong style="color:var(--accent3)">מכונת למידה</strong> — לאחר אימון, הוא יכול לחזות תוצאות עבור נתונים שלא ראה מעולם.</p>
+          </div>
+        </div>
+        <div>
+          <div class="diagram-wrap">
+            <svg width="100%" height="240" viewBox="0 0 340 240">
+              <!-- title -->
+              <text x="170" y="22" text-anchor="middle" fill="#8899aa" font-size="10" font-family="Share Tech Mono">מבנה הנוירון</text>
+              <!-- input nodes -->
+              <circle cx="50" cy="70" r="18" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+              <text x="50" y="75" text-anchor="middle" fill="#00d4ff" font-size="12" font-family="Share Tech Mono">x₁</text>
+              <circle cx="50" cy="120" r="18" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+              <text x="50" y="125" text-anchor="middle" fill="#00d4ff" font-size="12" font-family="Share Tech Mono">x₂</text>
+              <circle cx="50" cy="170" r="18" fill="#0f1420" stroke="#1e2d45" stroke-width="1.5"/>
+              <text x="50" y="175" text-anchor="middle" fill="#00d4ff" font-size="12" font-family="Share Tech Mono">x₃</text>
+              <!-- labels -->
+              <text x="18" y="74" fill="#8899aa" font-size="8">features</text>
+              <!-- weight lines -->
+              <line x1="68" y1="70" x2="155" y2="115" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+              <line x1="68" y1="120" x2="155" y2="120" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+              <line x1="68" y1="170" x2="155" y2="125" stroke="#7c3aed" stroke-width="1.5" opacity=".7"/>
+              <text x="85" y="85" fill="#c678dd" font-size="9" font-family="Share Tech Mono">×w₁</text>
+              <text x="95" y="115" fill="#c678dd" font-size="9" font-family="Share Tech Mono">×w₂</text>
+              <text x="85" y="162" fill="#c678dd" font-size="9" font-family="Share Tech Mono">×w₃</text>
+              <!-- bias -->
+              <line x1="175" y1="50" x2="175" y2="100" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="185" y="52" fill="#f59e0b" font-size="9" font-family="Share Tech Mono">b (bias)</text>
+              <!-- sum node -->
+              <circle cx="175" cy="120" r="22" fill="#0f1420" stroke="#7c3aed" stroke-width="2"/>
+              <text x="175" y="115" text-anchor="middle" fill="#c678dd" font-size="18" font-family="Share Tech Mono">Σ</text>
+              <text x="175" y="131" text-anchor="middle" fill="#8899aa" font-size="8">חלק ליניארי</text>
+              <!-- to activation -->
+              <line x1="197" y1="120" x2="234" y2="120" stroke="#00d4ff" stroke-width="1.5"/>
+              <!-- activation -->
+              <circle cx="255" cy="120" r="22" fill="#0f1420" stroke="#00d4ff" stroke-width="2"/>
+              <text x="255" y="115" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="Share Tech Mono">g(Σ)</text>
+              <text x="255" y="131" text-anchor="middle" fill="#8899aa" font-size="8">activation</text>
+              <!-- to output -->
+              <line x1="277" y1="120" x2="308" y2="120" stroke="#10b981" stroke-width="2"/>
+              <circle cx="318" cy="120" r="14" fill="#0f1420" stroke="#10b981" stroke-width="2"/>
+              <text x="318" y="115" text-anchor="middle" fill="#10b981" font-size="9" font-family="Share Tech Mono">ŷ</text>
+              <text x="318" y="130" text-anchor="middle" fill="#8899aa" font-size="7">output</text>
+              <!-- annotation boxes -->
+              <rect x="25" y="195" width="80" height="22" rx="3" fill="rgba(0,212,255,.08)" stroke="#1e2d45"/>
+              <text x="65" y="210" text-anchor="middle" fill="#00d4ff" font-size="8">קלטים + משקלים</text>
+              <rect x="240" y="195" width="80" height="22" rx="3" fill="rgba(16,185,129,.08)" stroke="#1e2d45"/>
+              <text x="280" y="210" text-anchor="middle" fill="#10b981" font-size="8">חיזוי מספרי</text>
+            </svg>
+          </div>
+          <div class="formula" style="font-size:1.2rem;">
+            ŷ = g(w₁·x₁ + w₂·x₂ + w₃·x₃ + b)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 3: MOTIVATION EXAMPLE ===== -->
+    <div class="slide" id="s2">
+      <div class="sec-label">מוטיבציה</div>
+      <h1>דוגמה: ציון סופי בזמן עיצומים</h1>
+      <p class="subtitle">איך אפשר לחזות את הציון הסופי כשאין מורים?</p>
+      <div class="card yellow">
+        <h3>🧮 המטרה</h3>
+        <p>לבנות <strong style="color:var(--accent4)">מודל מתמטי</strong> שיחזה את הציון הסופי של תלמיד בהינתן שלושה פרמטרים:</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+          <span class="tag blue">שעות למידה שבועיות</span>
+          <span class="tag purple">ממוצע ציונים קודם</span>
+          <span class="tag green">מספר היעדרויות</span>
+        </div>
+      </div>
+      <div class="formula" style="font-size:1.2rem;">
+        ציון סופי = b + w₁ × שעות למידה + w₂ × ממוצע קודם + w₃ × היעדרויות
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>📊 פירוש המשקלים</h3>
+          <table>
+            <tr><th>פרמטר</th><th>משמעות</th></tr>
+            <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">w₁</span></td><td>השפעת שעות הלמידה</td></tr>
+            <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">w₂</span></td><td>השפעת הממוצע הקודם</td></tr>
+            <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">w₃</span></td><td>השפעת ההיעדרויות (שלילי!)</td></tr>
+            <tr><td><span style="color:var(--accent4);font-family:'Share Tech Mono'">b</span></td><td>ציון בסיסי (bias)</td></tr>
+          </table>
+        </div>
+        <div class="neuron-sim">
+          <h3 style="color:var(--accent4);margin-bottom:14px;">🧪 נסה בעצמך!</h3>
+          <div class="inputs-grid">
+            <div class="input-group">
+              <label>שעות למידה (x₁)</label>
+              <input type="range" min="0" max="10" step="0.5" value="5" oninput="updateSim()" id="sx1">
+              <span class="input-val" id="vx1">5</span>
+            </div>
+            <div class="input-group">
+              <label>ממוצע קודם (x₂)</label>
+              <input type="range" min="40" max="100" step="1" value="75" oninput="updateSim()" id="sx2">
+              <span class="input-val" id="vx2">75</span>
+            </div>
+            <div class="input-group">
+              <label>היעדרויות (x₃)</label>
+              <input type="range" min="0" max="20" step="1" value="3" oninput="updateSim()" id="sx3">
+              <span class="input-val" id="vx3">3</span>
+            </div>
+          </div>
+          <div class="fp-calc" id="fpCalc" dir="ltr">מחשב...</div>
+          <div class="sim-result" style="margin-top:10px">
+            <div class="label">חיזוי הנוירון</div>
+            <div class="big" id="simOutput">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background:rgba(245,158,11,.05)">
+        <h3>💬 שאלה לדיון</h3>
+        <p>מה לדעתכם צריך להיות הסימן של w₃ (משקל ההיעדרויות) — חיובי או שלילי? למה?</p>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 4: FORWARD PROPAGATION ===== -->
+    <div class="slide" id="s3">
+      <div class="sec-label">אלגוריתם</div>
+      <h1>חלחול קדימה — Forward Propagation</h1>
+      <p class="subtitle">תהליך החישוב מקלט לפלט</p>
+      <div class="grid2">
+        <div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <div class="step-title">קבלת קלטים</div>
+                <p>וקטור הפיצ'רים x₁, x₂, ..., xₙ נכנס לנוירון</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <div class="step-title">כפל במשקלים</div>
+                <p>כל קלט מוכפל במשקל המתאים: w₁·x₁, w₂·x₂, ...</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <div class="step-title">חיבור + bias</div>
+                <p>סכום כל המכפלות + ה-bias: Σ = Σwᵢxᵢ + b</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-body">
+                <div class="step-title">פונקציית אקטיבציה</div>
+                <p>העברת Σ דרך g(): ŷ = g(Σ)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="code-wrap">
+            <div class="code-header">
+              <span class="code-lang">Python</span>
+              <span style="color:var(--text-dim);font-size:1.2rem;">חלחול קדימה ידני</span>
+            </div>
+            <div class="code-body"><pre><span class="kw">def</span> <span class="fn">predict_grade</span>(hours, avg, missing,
+                     weights, bias):
+    <span class="cmt"># שלב 1+2: כפל קלטים במשקלים</span>
+    z = (weights[<span class="num">0</span>] * hours +
+         weights[<span class="num">1</span>] * avg +
+         weights[<span class="num">2</span>] * missing)
+
+    <span class="cmt"># שלב 3: הוספת bias</span>
+    z = z + bias
+
+    <span class="cmt"># שלב 4: פונקציית אקטיבציה (לינארית)</span>
+    prediction = z  <span class="cmt"># g(z) = z</span>
+
+    <span class="kw">return</span> prediction
+
+<span class="cmt"># דוגמה:</span>
+weights = [<span class="num">0.5</span>, <span class="num">0.5</span>, <span class="num">0.5</span>]
+bias = <span class="num">40</span>
+
+result = <span class="fn">predict_grade</span>(<span class="num">5</span>, <span class="num">75</span>, <span class="num">3</span>,
+                        weights, bias)
+<span class="fn">print</span>(f<span class="str">"חיזוי ציון: {result}"</span>)
+<span class="cmt"># חיזוי ציון: 81.5</span></pre></div>
+          </div>
+        </div>
+      </div>
+      <div class="exercise">
+        <div class="exercise-title">✏️ תרגיל — חשב בעצמך</div>
+        <p>נתון: hours=8, avg=85, missing=2, w=[0.5, 0.5, 0.5], b=40</p>
+        <p>חשב ידנית את ŷ לפי הנוסחה: <span style="color:var(--accent);font-family:'Share Tech Mono'">ŷ = 0.5×8 + 0.5×85 + 0.5×2 + 40</span></p>
+        <input id="exerciseAns" type="number" placeholder="הכנס תשובה" style="background:#060a10;border:1px solid var(--border);color:var(--accent);padding:7px 12px;border-radius:4px;font-family:'Share Tech Mono';font-size:1.2rem;width:160px;margin-top:8px;direction:ltr">
+        <button class="calc-btn" onclick="checkFP()" style="margin-right:10px">בדוק</button>
+        <div id="fpFeedback" style="display:none;margin-top:8px;color:var(--accent3);font-size:1.2rem;"></div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 5: MSE ===== -->
+    <div class="slide" id="s4">
+      <div class="sec-label">מדידת דיוק</div>
+      <h1>פונקציית שגיאה — MSE</h1>
+      <p class="subtitle">איך מודדים כמה המודל טועה?</p>
+      <div class="grid2">
+        <div>
+          <div class="card red">
+            <h3>❌ הבעיה</h3>
+            <p>המשקלים הראשוניים <strong style="color:var(--accent5)">שרירותיים</strong> — החיזויים לא מדויקים. צריך דרך לכמת את גודל הטעות.</p>
+          </div>
+          <div class="card">
+            <h3>📐 הנוסחה</h3>
+            <div class="formula" style="font-size:1.2rem;margin:10px 0">MSE = (1/n) · Σ(yᵢ - ŷᵢ)²</div>
+            <table style="font-size:1.2rem;">
+              <tr><th>סמל</th><th>משמעות</th></tr>
+              <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">n</span></td><td>מספר הדוגמאות (שורות)</td></tr>
+              <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">yᵢ</span></td><td>הערך האמיתי של דוגמה i</td></tr>
+              <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">ŷᵢ</span></td><td>החיזוי של הנוירון לדוגמה i</td></tr>
+              <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">(y-ŷ)²</span></td><td>ריבוע הפרש = עונש על טעות</td></tr>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="neuron-sim">
+            <h3 style="color:var(--accent4);margin-bottom:12px">🧮 מחשבון MSE</h3>
+            <p style="font-size:1.2rem;color:var(--text-dim);margin-bottom:10px">הכנס ערכים אמיתיים וחיזויים (מופרדים בפסיקים):</p>
+            <div style="margin-bottom:8px">
+              <label style="color:var(--text-dim);font-size:1.2rem;">ערכים אמיתיים (y):</label>
+              <input id="yTrue" type="text" value="80,72,91,65" style="width:100%;background:#060a10;border:1px solid var(--border);color:var(--accent);padding:7px;border-radius:4px;font-family:'Share Tech Mono';margin-top:4px;direction:ltr;font-size:1.2rem;">
+            </div>
+            <div style="margin-bottom:8px">
+              <label style="color:var(--text-dim);font-size:1.2rem;">חיזויים (ŷ):</label>
+              <input id="yPred" type="text" value="75,80,88,70" style="width:100%;background:#060a10;border:1px solid var(--border);color:var(--accent);padding:7px;border-radius:4px;font-family:'Share Tech Mono';margin-top:4px;direction:ltr;font-size:1.2rem;">
+            </div>
+            <button class="calc-btn" onclick="calcMSE()">חשב MSE</button>
+            <div id="mseOutput" style="margin-top:12px;display:none">
+              <div id="mseSteps" style="font-family:'Share Tech Mono';font-size:1.2rem;color:var(--text-dim);line-height:2;margin-bottom:8px"></div>
+              <div style="background:var(--panel2);border:1px solid var(--accent);border-radius:6px;padding:12px;text-align:center">
+                <div style="color:var(--text-dim);font-size:1.2rem;">MSE =</div>
+                <div style="font-size:2rem;font-weight:900;color:var(--accent);font-family:'Share Tech Mono'" id="mseResult"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>💡 למה ריבוע ולא הפרש פשוט?</h3>
+        <div class="grid3">
+          <div style="text-align:center;padding:10px"><span style="font-size:1.5rem">➕➖</span><p style="font-size:1.2rem;margin-top:6px">שגיאות חיוביות ושליליות מבטלות זו את זו — לא טוב!</p></div>
+          <div style="text-align:center;padding:10px"><span style="font-size:1.5rem">²</span><p style="font-size:1.2rem;margin-top:6px">הריבוע הופך הכל לחיובי ו<strong style="color:var(--accent5)">מעניש יותר</strong> על שגיאות גדולות</p></div>
+          <div style="text-align:center;padding:10px"><span style="font-size:1.5rem">📉</span><p style="font-size:1.2rem;margin-top:6px">רוצים MSE <strong style="color:var(--accent3)">קטן ככל האפשר</strong> — הכוונת האימון</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 6: QUIZ ===== -->
+    <div class="slide" id="s5">
+      <div class="sec-label">בדיקת הבנה</div>
+      <h1>✅ שאלות הבנה</h1>
+      <p class="subtitle">בדוק את עצמך!</p>
+
+      <div class="quiz-box" id="q1">
+        <div class="quiz-q">1. מה תפקיד ה-bias (b) בנוירון?</div>
+        <div class="quiz-opts">
+          <button class="quiz-opt" onclick="answer(1,'a')">הוא קובע את פונקציית האקטיבציה</button>
+          <button class="quiz-opt" onclick="answer(1,'b')">הוא ציון בסיסי שאינו תלוי בשום קלט</button>
+          <button class="quiz-opt" onclick="answer(1,'c')">הוא מספר הנוירונים ברשת</button>
+          <button class="quiz-opt" onclick="answer(1,'d')">הוא מספר הפיצ'רים</button>
+        </div>
+        <div class="quiz-feedback" id="qf1"></div>
+      </div>
+
+      <div class="quiz-box" id="q2">
+        <div class="quiz-q">2. אם MSE=0, מה זה אומר?</div>
+        <div class="quiz-opts">
+          <button class="quiz-opt" onclick="answer(2,'a')">המודל לא מאומן כלל</button>
+          <button class="quiz-opt" onclick="answer(2,'b')">החיזויים שווים בדיוק לערכים האמיתיים</button>
+          <button class="quiz-opt" onclick="answer(2,'c')">יש בעיית overfitting</button>
+          <button class="quiz-opt" onclick="answer(2,'d')">ה-bias שווה לאפס</button>
+        </div>
+        <div class="quiz-feedback" id="qf2"></div>
+      </div>
+
+      <div class="quiz-box" id="q3">
+        <div class="quiz-q">3. בחיזוי ציון, מה צריך להיות סימן המשקל w₃ של "מספר היעדרויות"?</div>
+        <div class="quiz-opts">
+          <button class="quiz-opt" onclick="answer(3,'a')">חיובי — יותר היעדרויות = ציון גבוה יותר</button>
+          <button class="quiz-opt" onclick="answer(3,'b')">שלילי — יותר היעדרויות = ציון נמוך יותר</button>
+          <button class="quiz-opt" onclick="answer(3,'c')">אפס — היעדרויות לא משפיעות</button>
+          <button class="quiz-opt" onclick="answer(3,'d')">תלוי בנתונים בלבד</button>
+        </div>
+        <div class="quiz-feedback" id="qf3"></div>
+      </div>
+
+      <div class="quiz-box" id="q4">
+        <div class="quiz-q">4. מה המטרה של תהליך האימון (training)?</div>
+        <div class="quiz-opts">
+          <button class="quiz-opt" onclick="answer(4,'a')">למצוא את הארכיטקטורה הנכונה</button>
+          <button class="quiz-opt" onclick="answer(4,'b')">למצוא את ערכי w ו-b שמביאים את ה-MSE למינימום</button>
+          <button class="quiz-opt" onclick="answer(4,'c')">להגדיל את מספר הנוירונים</button>
+          <button class="quiz-opt" onclick="answer(4,'d')">לנרמל את הנתונים</button>
+        </div>
+        <div class="quiz-feedback" id="qf4"></div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 7: ACTIVATION FUNCTIONS ===== -->
+    <div class="slide" id="s6">
+      <div class="sec-label">פונקציות אקטיבציה</div>
+      <h1>Activation Functions</h1>
+      <p class="subtitle">כיצד הנוירון מעבד את הסכום הליניארי?</p>
+      <div class="grid2">
+        <div>
+          <table style="font-size:1.2rem;margin-bottom:12px">
+            <tr><th>פונקציה</th><th>טווח</th><th>שימוש עיקרי</th></tr>
+            <tr><td><span style="color:var(--accent);font-family:'Share Tech Mono'">Linear</span></td><td>(-∞,∞)</td><td>רגרסיה / שכבת פלט</td></tr>
+            <tr><td><span style="color:var(--accent2);font-family:'Share Tech Mono'">ReLU</span></td><td>[0,∞)</td><td>שכבות נסתרות — הנפוצה ביותר</td></tr>
+            <tr><td><span style="color:var(--accent3);font-family:'Share Tech Mono'">Sigmoid</span></td><td>(0,1)</td><td>סיווג בינארי</td></tr>
+            <tr><td><span style="color:var(--accent4);font-family:'Share Tech Mono'">Tanh</span></td><td>(-1,1)</td><td>כשצריך ערכים שליליים</td></tr>
+            <tr><td><span style="color:var(--accent5);font-family:'Share Tech Mono'">Softmax</span></td><td>[0,1]</td><td>סיווג רב-קטגוריאלי</td></tr>
+          </table>
+          <div class="act-btns" id="actBtns">
+            <button class="act-btn active" onclick="showAct('linear')">Linear</button>
+            <button class="act-btn" onclick="showAct('relu')">ReLU</button>
+            <button class="act-btn" onclick="showAct('sigmoid')">Sigmoid</button>
+            <button class="act-btn" onclick="showAct('tanh')">Tanh</button>
+          </div>
+          <div class="diagram-wrap" style="padding:8px">
+            <canvas id="actCanvas" width="320" height="180"></canvas>
+          </div>
+        </div>
+        <div>
+          <div class="card red">
+            <h3>🔴 ReLU — המלכה</h3>
+            <div class="formula" style="font-size:1.2rem;">ReLU(z) = max(0, z)</div>
+            <p style="font-size:1.2rem;margin-top:8px">מחזירה z אם חיובי, אחרת אפס. <strong style="color:var(--accent5)">מהירה מאוד</strong> לחישוב ועוזרת לרשת ללמוד קשרים לא-ליניאריים.</p>
+          </div>
+          <div class="card green">
+            <h3>🟢 Sigmoid</h3>
+            <div class="formula" style="font-size:1.2rem;">σ(z) = 1 / (1 + e⁻ᶻ)</div>
+            <p style="font-size:1.2rem;margin-top:8px">מוציאה ערכים בין 0 ל-1. <strong style="color:var(--accent3)">אידיאלי לסיווג</strong> — האם הדוגמה שייכת לקטגוריה?</p>
+          </div>
+          <div class="card purple">
+            <h3>🟣 Tanh</h3>
+            <div class="formula" style="font-size:1.2rem;">tanh(z) = (eᶻ - e⁻ᶻ) / (eᶻ + e⁻ᶻ)</div>
+            <p style="font-size:1.2rem;margin-top:8px">דומה ל-Sigmoid אבל <strong style="color:var(--accent2)">סימטרית סביב 0</strong> — מתאימה כשצריך ערכים חיוביים ושליליים.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 8: TRAINING CODE ===== -->
+    <div class="slide" id="s7">
+      <div class="sec-label">קוד</div>
+      <h1>בניית נוירון עם Keras</h1>
+      <p class="subtitle">3 שלבים: הגדרה → קימפול → אימון</p>
+      <div class="grid2">
+        <div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">Python — שלב 1: הגדרת מבנה</span></div>
+            <div class="code-body"><pre><span class="kw">from</span> tensorflow.keras.models <span class="kw">import</span> Sequential
+<span class="kw">from</span> tensorflow.keras.layers <span class="kw">import</span> Dense
+
+<span class="cmt"># נוירון יחיד עם 3 קלטים</span>
+model = <span class="cls">Sequential</span>([
+    <span class="cls">Dense</span>(<span class="num">1</span>,                    <span class="cmt"># נוירון אחד</span>
+          activation=<span class="str">'linear'</span>,  <span class="cmt"># פונקציית אקטיבציה</span>
+          input_shape=(<span class="num">3</span>,))     <span class="cmt"># 3 פיצ'רים</span>
+])</pre></div>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">Python — שלב 2: קימפול</span></div>
+            <div class="code-body"><pre><span class="kw">from</span> tensorflow.keras.optimizers <span class="kw">import</span> Adam
+
+model.<span class="fn">compile</span>(
+    optimizer=<span class="cls">Adam</span>(learning_rate=<span class="num">0.1</span>),
+    loss=<span class="str">'mean_squared_error'</span>,
+    metrics=[<span class="str">'mae'</span>]
+)</pre></div>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">Python — שלב 3: אימון</span></div>
+            <div class="code-body"><pre>history = model.<span class="fn">fit</span>(
+    X_train, y_train,
+    validation_data=(X_test, y_test),
+    epochs=<span class="num">100</span>,
+    verbose=<span class="num">1</span>
+)
+<span class="cmt"># הדפסת המשקלים שנמצאו</span>
+weights = model.<span class="fn">get_weights</span>()
+<span class="fn">print</span>(<span class="str">"w, b:"</span>, weights)</pre></div>
+          </div>
+        </div>
+        <div>
+          <div class="card yellow">
+            <h3>📌 מה כל שלב עושה?</h3>
+            <div class="steps" style="margin-top:8px">
+              <div class="step">
+                <div class="step-num" style="background:var(--accent)">1</div>
+                <div class="step-body">
+                  <div class="step-title">Sequential + Dense</div>
+                  <p style="font-size:1.2rem;">מגדיר את <strong>ארכיטקטורת הרשת</strong> — כמה נוירונים, כמה קלטים, איזו פונקציית אקטיבציה</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--accent2)">2</div>
+                <div class="step-body">
+                  <div class="step-title">compile</div>
+                  <p style="font-size:1.2rem;"><strong>optimizer</strong> = איך לעדכן משקלים (Adam)<br><strong>loss</strong> = מה למזער (MSE)<br><strong>metrics</strong> = מה למדוד (MAE)</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--accent3)">3</div>
+                <div class="step-body">
+                  <div class="step-title">fit</div>
+                  <p style="font-size:1.2rem;">מאמן את המודל: עובר על הנתונים <strong>epochs</strong> פעמים, מעדכן w ו-b אחרי כל batch</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>⚙️ היפר-פרמטרים עיקריים</h3>
+            <table style="font-size:1.2rem;">
+              <tr><th>פרמטר</th><th>משמעות</th></tr>
+              <tr><td><code style="color:var(--accent4)">learning_rate</code></td><td>גודל הצעד בעדכון משקלים</td></tr>
+              <tr><td><code style="color:var(--accent4)">epochs</code></td><td>כמה פעמים לעבור על כל הדאטה</td></tr>
+              <tr><td><code style="color:var(--accent4)">activation</code></td><td>פונקציית אקטיבציה</td></tr>
+              <tr><td><code style="color:var(--accent4)">loss</code></td><td>מה פונקציית השגיאה</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 9: OVERFITTING ===== -->
+    <div class="slide" id="s8">
+      <div class="sec-label">בעיות נפוצות</div>
+      <h1>Overfitting — מכה בלמידת מכונה</h1>
+      <p class="subtitle">מתי מודל "לומד יותר מדי"?</p>
+      <div class="grid2">
+        <div>
+          <div class="card red">
+            <h3>🔴 מה זה Overfitting?</h3>
+            <p>המודל לומד את הנתונים <strong style="color:var(--accent5)">בצורה מושלמת מדי</strong> — כולל "רעש" ואנומליות. התוצאה: ביצועים מצוינים על נתוני אימון, <strong style="color:var(--accent5)">ביצועים גרועים</strong> על נתונים חדשים.</p>
+          </div>
+          <div class="card green">
+            <h3>🟢 איך מזהים?</h3>
+            <p>Train Loss ↓ ירד מאוד<br>Validation Loss ↗ עלה — <strong style="color:var(--accent3)">סימן אדום!</strong></p>
+            <div class="diagram-wrap" style="padding:8px;margin-top:8px">
+              <canvas id="overfitCanvas" width="300" height="150"></canvas>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card purple">
+            <h3>🛡️ איך מונעים Overfitting?</h3>
+            <div class="steps" style="margin-top:8px">
+              <div class="step">
+                <div class="step-num" style="background:var(--accent2);font-size:1.2rem;">1</div>
+                <div class="step-body">
+                  <div class="step-title">Validation Set</div>
+                  <p style="font-size:1.2rem;">חלק מהדאטה לבדיקה תוך כדי אימון — מזהה overfitting</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--accent2);font-size:1.2rem;">2</div>
+                <div class="step-body">
+                  <div class="step-title">Early Stopping</div>
+                  <p style="font-size:1.2rem;">עצירת האימון כשה-validation loss מפסיק לרדת</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--accent2);font-size:1.2rem;">3</div>
+                <div class="step-body">
+                  <div class="step-title">Dropout / Regularization</div>
+                  <p style="font-size:1.2rem;">הוספת "עונשים" לפרמטרים גדולים מדי</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--accent2);font-size:1.2rem;">4</div>
+                <div class="step-body">
+                  <div class="step-title">הגדלת הדאטה</div>
+                  <p style="font-size:1.2rem;">יותר נתונים = קשה יותר "לזכור" הכל</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="exercise">
+        <div class="exercise-title">💬 דיון כיתתי</div>
+        <p>מתי נוירון יחיד לא יספיק לפתרון בעיה? תנו דוגמאות מהחיים לבעיות שדורשות רשת עמוקה יותר.</p>
+      </div>
+    </div>
+
+    <!-- ===== SLIDE 10: SUMMARY ===== -->
+    <div class="slide" id="s9">
+      <div class="sec-label">סיכום</div>
+      <h1>מה למדנו?</h1>
+      <div class="grid3">
+        <div class="card">
+          <h3 style="color:var(--accent)">🧠 הנוירון</h3>
+          <p style="font-size:1.2rem;">יחידה מתמטית שמקבלת קלטים (features), מכפיל במשקלים, מוסיף bias, ומעביר דרך פונקציית אקטיבציה</p>
+          <div class="formula" style="font-size:1.2rem;margin-top:8px">ŷ = g(Wx + b)</div>
+        </div>
+        <div class="card green">
+          <h3 style="color:var(--accent3)">📊 MSE</h3>
+          <p style="font-size:1.2rem;">מודד את הטעות הממוצעת בריבוע. המטרה: <strong style="color:var(--accent3)">למזער</strong> אותו על ידי מציאת w ו-b אופטימליים</p>
+          <div class="formula" style="font-size:1.2rem;margin-top:8px">MSE = (1/n)Σ(y-ŷ)²</div>
+        </div>
+        <div class="card purple">
+          <h3 style="color:var(--accent2)">🏋️ אימון</h3>
+          <p style="font-size:1.2rem;">תהליך מסודר שמעדכן w ו-b כדי להקטין את השגיאה — בדרך כלל Gradient Descent</p>
+          <div class="formula" style="font-size:1.2rem;margin-top:8px">w ← w - lr·∇MSE</div>
+        </div>
+        <div class="card yellow">
+          <h3 style="color:var(--accent4)">⚡ Activation</h3>
+          <p style="font-size:1.2rem;">פונקציה שמוסיפה אי-ליניאריות: ReLU, Sigmoid, Tanh, Softmax — כל אחת לשימוש שונה</p>
+        </div>
+        <div class="card red">
+          <h3 style="color:var(--accent5)">⚠️ Overfitting</h3>
+          <p style="font-size:1.2rem;">מודל שלמד "יותר מדי" — מזהים עם validation set ומונעים עם Early Stopping / Dropout</p>
+        </div>
+        <div class="card">
+          <h3>🔗 הצעד הבא</h3>
+          <p style="font-size:1.2rem;">מנוירון אחד ל<strong style="color:var(--accent)">רשת נוירונים</strong> — שכבות מרובות של נוירונים שיכולים לפתור בעיות הרבה יותר מורכבות</p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:10px;background:rgba(0,212,255,.04);border-color:rgba(0,212,255,.2)">
+        <h3>📋 שאלה לפרויקט</h3>
+        <p>תכנן ניסוי: בחר 3 היפר-פרמטרים, שנה כל אחד לפחות 3 פעמים, ובדוק איזה שילוב נותן את ה-MSE הנמוך ביותר עבור נתוני הסרטים. תעד את התוצאות בטבלה.</p>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <span class="tag yellow">learning_rate</span>
+          <span class="tag blue">epochs</span>
+          <span class="tag purple">activation</span>
+          <span class="tag green">optimizer</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end slides-wrap -->
+
+  <div class="nav">
+    <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled>→ הקודם</button>
+    <div class="dots" id="dots"></div>
+    <button class="nav-btn" id="nextBtn" onclick="navigate(1)">הבא ←</button>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const TOTAL = 10;
+let cur = 0;
+
+// ===== NAVIGATION =====
+function navigate(dir) {
+  const slides = document.querySelectorAll('.slide');
+  slides[cur].classList.remove('active');
+  cur = Math.max(0, Math.min(TOTAL-1, cur + dir));
+  slides[cur].classList.add('active');
+  update();
+  if (cur === 6) setTimeout(drawActivation, 100);
+  if (cur === 8) setTimeout(drawOverfit, 100);
+}
+
+function goTo(i) { navigate(i - cur); }
+
+function update() {
+  document.getElementById('counter').textContent = `${cur+1} / ${TOTAL}`;
+  document.getElementById('progress').style.width = `${((cur+1)/TOTAL)*100}%`;
+  document.getElementById('prevBtn').disabled = cur === 0;
+  document.getElementById('nextBtn').disabled = cur === TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===cur));
+}
+
+// build dots
+const dotsEl = document.getElementById('dots');
+for (let i=0;i<TOTAL;i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+// keyboard
+document.addEventListener('keydown', e => {
+  if (e.key==='ArrowLeft') navigate(1);
+  if (e.key==='ArrowRight') navigate(-1);
+});
+
+// ===== NEURON SIMULATOR (slide 3) =====
+function updateSim() {
+  const x1 = parseFloat(document.getElementById('sx1').value);
+  const x2 = parseFloat(document.getElementById('sx2').value);
+  const x3 = parseFloat(document.getElementById('sx3').value);
+  document.getElementById('vx1').textContent = x1;
+  document.getElementById('vx2').textContent = x2;
+  document.getElementById('vx3').textContent = x3;
+  const w1=3.7, w2=0.7, w3=-4.33, b=40;
+  const z = w1*x1 + w2*x2 + w3*x3 + b;
+  const y = Math.max(0, Math.min(100, Math.round(z*10)/10));
+  document.getElementById('fpCalc').innerHTML =
+    `z = ${w1}×${x1} + ${w2}×${x2} + (${w3})×${x3} + ${b}\nz = ${z.toFixed(1)}\nŷ = ${y}`;
+  document.getElementById('simOutput').textContent = y;
+  document.getElementById('simOutput').style.color = y>=60?'var(--accent3)':'var(--accent5)';
+}
+updateSim();
+
+// ===== FORWARD PROPAGATION EXERCISE =====
+function checkFP() {
+  const ans = parseFloat(document.getElementById('exerciseAns').value);
+  // 0.5*8 + 0.5*85 + 0.5*2 + 40 = 4+42.5+1+40 = 87.5
+  const correct = 87.5;
+  const fb = document.getElementById('fpFeedback');
+  fb.style.display = 'block';
+  if (Math.abs(ans - correct) < 0.5) {
+    fb.textContent = `✅ נכון! ŷ = 0.5×8 + 0.5×85 + 0.5×2 + 40 = 4 + 42.5 + 1 + 40 = 87.5`;
+    fb.style.color = 'var(--accent3)';
+  } else {
+    fb.textContent = `❌ לא מדויק. נסה שוב: 0.5×8=4, 0.5×85=42.5, 0.5×2=1, +40=87.5`;
+    fb.style.color = 'var(--accent5)';
+  }
+}
+
+// ===== MSE CALCULATOR =====
+function calcMSE() {
+  const yT = document.getElementById('yTrue').value.split(',').map(Number);
+  const yP = document.getElementById('yPred').value.split(',').map(Number);
+  if (yT.length !== yP.length) { alert('מספר ערכים שונה!'); return; }
+  const n = yT.length;
+  let steps = '';
+  let sum = 0;
+  for (let i=0;i<n;i++) {
+    const diff = yT[i]-yP[i];
+    const sq = diff*diff;
+    sum += sq;
+    steps += `error_${i+1} = (${yT[i]} - ${yP[i]})² = ${sq}\n`;
+  }
+  const mse = sum/n;
+  document.getElementById('mseSteps').textContent = steps + `MSE = (${sum.toFixed(1)}) / ${n} = ${mse.toFixed(2)}`;
+  document.getElementById('mseResult').textContent = mse.toFixed(2);
+  document.getElementById('mseOutput').style.display = 'block';
+}
+
+// ===== QUIZ =====
+const answers = {1:'b', 2:'b', 3:'b', 4:'b'};
+const explanations = {
+  1: '✅ נכון! ה-bias הוא קבוע בסיסי שמאפשר לנוירון להיות "פעיל" גם כשכל הקלטים אפס.',
+  2: '✅ נכון! MSE=0 אומר שהחיזויים מושלמים. בפועל זה נדיר ועלול להיות סימן ל-overfitting.',
+  3: '✅ נכון! יותר היעדרויות פוגעות בציון → משקל שלילי.',
+  4: '✅ נכון! האימון הוא תהליך מינימיזציה של פונקציית ה-loss על ידי מציאת המשקלים הטובים ביותר.'
+};
+function answer(qn, opt) {
+  const box = document.getElementById(`q${qn}`);
+  if (box.dataset.answered) return;
+  box.dataset.answered = '1';
+  const opts = box.querySelectorAll('.quiz-opt');
+  const letters = ['a','b','c','d'];
+  opts.forEach((o,i) => {
+    if (letters[i] === answers[qn]) o.classList.add('correct');
+    else if (letters[i] === opt) o.classList.add('wrong');
+    o.disabled = true;
+  });
+  const fb = document.getElementById(`qf${qn}`);
+  fb.classList.add('show');
+  if (opt === answers[qn]) {
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = explanations[qn];
+  } else {
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = `❌ לא מדויק. ${explanations[qn]}`;
+  }
+}
+
+// ===== ACTIVATION FUNCTIONS CANVAS =====
+let currentAct = 'linear';
+function showAct(fn) {
+  currentAct = fn;
+  document.querySelectorAll('.act-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(fn));
+  });
+  drawActivation();
+}
+
+function drawActivation() {
+  const canvas = document.getElementById('actCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#060a10';
+  ctx.fillRect(0,0,W,H);
+
+  const colors = {linear:'#00d4ff', relu:'#ef4444', sigmoid:'#10b981', tanh:'#7c3aed'};
+  const fns = {
+    linear: z => z,
+    relu: z => Math.max(0,z),
+    sigmoid: z => 1/(1+Math.exp(-z)),
+    tanh: z => Math.tanh(z)
+  };
+
+  // axes
+  ctx.strokeStyle = '#1e2d45';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0,H/2); ctx.lineTo(W,H/2);
+  ctx.moveTo(W/2,0); ctx.lineTo(W/2,H);
+  ctx.stroke();
+
+  // grid
+  ctx.setLineDash([3,5]);
+  ctx.strokeStyle = '#0f1824';
+  for (let x=0;x<W;x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0;y<H;y+=30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.setLineDash([]);
+
+  // scale: x from -6 to 6, y from -1.5 to 1.5
+  const toCanvasX = z => (z+6)/12*W;
+  const toCanvasY = v => H/2 - (v/1.5)*H/2;
+
+  // draw function
+  ctx.strokeStyle = colors[currentAct];
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = colors[currentAct];
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  for (let px=0; px<=W; px++) {
+    const z = (px/W)*12-6;
+    const v = fns[currentAct](z);
+    const cy = toCanvasY(v);
+    if (px===0) ctx.moveTo(px,cy); else ctx.lineTo(px,cy);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // label
+  ctx.fillStyle = colors[currentAct];
+  ctx.font = '12px Share Tech Mono';
+  ctx.fillText(currentAct, 8, 18);
+}
+
+// ===== OVERFITTING CHART =====
+function drawOverfit() {
+  const canvas = document.getElementById('overfitCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#060a10';
+  ctx.fillRect(0,0,W,H);
+
+  const N = 50;
+  // train loss: decreasing curve
+  const trainLoss = Array.from({length:N}, (_,i) => 1000*Math.exp(-i*0.08) + 20 + Math.random()*10);
+  // val loss: decreases then increases
+  const valLoss = Array.from({length:N}, (_,i) => {
+    if (i < 20) return 1000*Math.exp(-i*0.07) + 50 + Math.random()*20;
+    return 50 + (i-20)*8 + Math.random()*15 + 100;
+  });
+
+  const maxV = Math.max(...trainLoss, ...valLoss);
+  const toX = i => (i/N)*W;
+  const toY = v => H - (v/maxV)*H*0.85 - 10;
+
+  // axes labels
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '9px Share Tech Mono';
+  ctx.fillText('Loss', 4, 12);
+  ctx.fillText('Epochs', W-45, H-4);
+
+  function drawCurve(data, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color; ctx.shadowBlur = 4;
+    ctx.beginPath();
+    data.forEach((v,i) => { if(i===0) ctx.moveTo(toX(i),toY(v)); else ctx.lineTo(toX(i),toY(v)); });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  drawCurve(trainLoss, '#00d4ff');
+  drawCurve(valLoss, '#f59e0b');
+
+  // overfitting zone
+  ctx.fillStyle = 'rgba(239,68,68,.08)';
+  ctx.fillRect(toX(20), 0, W-toX(20), H);
+  ctx.fillStyle = '#ef4444';
+  ctx.font = '9px Share Tech Mono';
+  ctx.fillText('Overfitting', toX(22), 16);
+
+  // legend
+  ctx.fillStyle = '#00d4ff';
+  ctx.fillRect(W-90, 6, 14, 3);
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '8px Heebo';
+  ctx.fillText('Train', W-72, 12);
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(W-90, 18, 14, 3);
+  ctx.fillStyle = '#8899aa';
+  ctx.fillText('Validation', W-72, 24);
+}
+
+// init
+setTimeout(drawActivation, 100);
+</script>
+</body>
+</html>

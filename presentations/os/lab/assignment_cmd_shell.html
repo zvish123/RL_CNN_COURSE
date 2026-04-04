@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מטלה — בניית Shell ומחקר Sysinternals</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #09090f;
+    --bg2:     #0f0f1a;
+    --bg3:     #161625;
+    --card:    #1a1a2e;
+    --border:  #2a2a45;
+    --cyan:    #00e5ff;
+    --green:   #00ff9d;
+    --amber:   #ffb300;
+    --red:     #ff4757;
+    --purple:  #a855f7;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --mono:    'IBM Plex Mono', monospace;
+    --sans:    'Heebo', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 18px;
+    line-height: 1.7;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.04) 2px, rgba(0,0,0,.04) 4px);
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    padding: 3rem 2rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 120% at 50% -20%, rgba(0,229,255,.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .school-tag {
+    font-family: var(--mono); font-size: 18px; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .badges { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono); font-size: 18px; padding: 3px 10px;
+    border-radius: 2px; letter-spacing: .08em; font-weight: 600;
+  }
+  .badge-cyan  { background: rgba(0,229,255,.1); color: var(--cyan);  border: 1px solid rgba(0,229,255,.3); }
+  .badge-amber { background: rgba(255,179,0,.1); color: var(--amber); border: 1px solid rgba(255,179,0,.3); }
+  .badge-green { background: rgba(0,255,157,.1); color: var(--green); border: 1px solid rgba(0,255,157,.3); }
+  .badge-red   { background: rgba(255,71,87,.1); color: var(--red);   border: 1px solid rgba(255,71,87,.3); }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 900; line-height: 1.15;
+    background: linear-gradient(135deg, var(--cyan) 0%, #fff 55%, var(--purple) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: .6rem;
+  }
+  .subtitle {
+    font-size: 18px; color: var(--muted); max-width: 650px;
+  }
+
+  .meta-row {
+    display: flex; gap: 2rem; margin-top: 1.5rem; flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .meta-label { font-family: var(--mono); font-size: 18px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .meta-val   { font-size: 18px; font-weight: 600; color: var(--text); }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(9,9,15,.9); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: .5rem 2rem;
+    display: flex; gap: 0; overflow-x: auto;
+  }
+  .nav-link {
+    font-family: var(--mono); font-size: 18px; padding: .5rem 1.2rem;
+    color: var(--muted); text-decoration: none; letter-spacing: .06em;
+    border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap;
+  }
+  .nav-link:hover { color: var(--text); }
+  .nav-link.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+  /* ── MAIN LAYOUT ── */
+  main { max-width: 900px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 3.5rem; }
+  .section-header {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .section-num {
+    font-family: var(--mono); font-size: 18px; font-weight: 600;
+    color: var(--bg); padding: 3px 8px; border-radius: 2px; flex-shrink: 0;
+  }
+  .num-cyan   { background: var(--cyan); }
+  .num-green  { background: var(--green); }
+  .num-amber  { background: var(--amber); }
+  .num-red    { background: var(--red); }
+  .num-purple { background: var(--purple); }
+
+  .section-title {
+    font-size: 1.3rem; font-weight: 700; color: var(--text);
+  }
+  .section-hr {
+    flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card-accent-cyan   { border-right: 3px solid var(--cyan); }
+  .card-accent-green  { border-right: 3px solid var(--green); }
+  .card-accent-amber  { border-right: 3px solid var(--amber); }
+  .card-accent-red    { border-right: 3px solid var(--red); }
+  .card-accent-purple { border-right: 3px solid var(--purple); }
+
+  .card-title {
+    font-family: var(--mono); font-size: 18px; font-weight: 600;
+    margin-bottom: .7rem; display: flex; align-items: center; gap: .5rem;
+  }
+  .card-title-cyan   { color: var(--cyan); }
+  .card-title-green  { color: var(--green); }
+  .card-title-amber  { color: var(--amber); }
+  .card-title-red    { color: var(--red); }
+  .card-title-purple { color: var(--purple); }
+
+  /* ── CODE ── */
+  pre, code {
+    font-family: var(--mono);
+  }
+  .code-block {
+    background: #060610;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .9rem 1.1rem;
+    margin: .75rem 0;
+    overflow-x: auto;
+    font-size: 18px; line-height: 1.8;
+    color: #8be9fd;
+    direction: ltr;
+  }
+  .code-block .c { color: #6272a4; }   /* comment */
+  .code-block .k { color: var(--cyan); font-weight: 600; } /* keyword */
+  .code-block .s { color: var(--green); } /* string */
+  .code-block .f { color: var(--amber); } /* function */
+  .code-block .o { color: var(--purple); } /* output */
+  .code-block .e { color: var(--red); }   /* error/warning */
+  code.inline {
+    font-size: 18px; background: rgba(0,229,255,.08);
+    border: 1px solid rgba(0,229,255,.2); border-radius: 3px;
+    padding: 1px 6px; color: var(--cyan);
+  }
+
+  /* ── LISTS ── */
+  ul.task-list { list-style: none; }
+  ul.task-list li {
+    padding: .35rem 0;
+    padding-right: 1.4rem;
+    position: relative;
+    color: var(--text); font-size: 18px;
+  }
+  ul.task-list li::before {
+    content: '▸';
+    position: absolute; right: 0;
+    color: var(--cyan); font-size: 18px; top: .5rem;
+  }
+  ul.task-list li.green::before  { color: var(--green); }
+  ul.task-list li.amber::before  { color: var(--amber); }
+  ul.task-list li.red::before    { color: var(--red); }
+  ul.task-list li.purple::before { color: var(--purple); }
+
+  ol.task-list { list-style: none; counter-reset: item; }
+  ol.task-list li {
+    counter-increment: item;
+    padding: .4rem 0 .4rem 0;
+    padding-right: 2rem;
+    position: relative;
+    color: var(--text); font-size: 18px;
+  }
+  ol.task-list li::before {
+    content: counter(item) '.';
+    position: absolute; right: 0;
+    font-family: var(--mono); font-size: 18px;
+    color: var(--cyan); top: .55rem; font-weight: 600;
+  }
+
+  /* ── GRID ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
+  @media (max-width: 640px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  /* ── MINI STAT ── */
+  .stat-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .9rem 1rem;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: var(--mono); font-size: 1.8rem; font-weight: 600;
+    line-height: 1; margin-bottom: .25rem;
+  }
+  .stat-label { font-size: 18px; color: var(--muted); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; margin: .75rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 18px; }
+  th {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: .6rem .9rem;
+    font-family: var(--mono); font-size: 18px;
+    color: var(--muted); text-align: right; font-weight: 600;
+    letter-spacing: .06em;
+  }
+  td {
+    border: 1px solid var(--border);
+    padding: .55rem .9rem;
+    color: var(--text); vertical-align: top;
+  }
+  tr:nth-child(even) td { background: rgba(255,255,255,.015); }
+
+  /* ── MILESTONE ── */
+  .milestone-row {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: .8rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .milestone-row:last-child { border-bottom: none; }
+  .milestone-num {
+    font-family: var(--mono); font-size: 18px; font-weight: 600;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .milestone-content { flex: 1; }
+  .milestone-title { font-weight: 600; font-size: 18px; margin-bottom: .2rem; }
+  .milestone-desc { font-size: 18px; color: var(--muted); }
+
+  /* ── SCORE BOXES ── */
+  .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: .75rem; margin-top: .75rem; }
+  .score-box {
+    border-radius: 4px; padding: .8rem 1rem;
+    border: 1px solid var(--border);
+  }
+  .score-box-title { font-size: 18px; font-weight: 600; margin-bottom: .3rem; }
+  .score-box-pts   { font-family: var(--mono); font-size: 1.4rem; font-weight: 600; }
+  .score-box-desc  { font-size: 18px; color: var(--muted); margin-top: .2rem; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  /* ── PRINT ── */
+  @media print {
+    body::before { display: none; }
+    nav { display: none; }
+    .card { break-inside: avoid; }
+    body { background: white; color: black; font-size: 18px; }
+    .code-block { background: #f5f5f5; color: #222; border: 1px solid #ccc; }
+    header { border-bottom: 2px solid #333; }
+    h1 { -webkit-text-fill-color: #000; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="school-tag">בית ספר בליך, רמת גן &nbsp;·&nbsp; כיתות י"א–י"ב &nbsp;·&nbsp; סייבר ומערכות הפעלה</div>
+    <div class="badges">
+      <span class="badge badge-cyan">מטלה אישית</span>
+      <span class="badge badge-amber">⏱ 3 שבועות</span>
+      <span class="badge badge-green">100 נקודות</span>
+    </div>
+  </div>
+  <h1>בניית Shell &amp; מחקר Sysinternals</h1>
+  <p class="subtitle">פיתוח Shell/CMD מינימלי בפייתון, תרגיל מחקר מעשי עם כלי Sysinternals, ודוח ניתוח מקצועי.</p>
+  <div class="meta-row">
+    <div class="meta-item"><span class="meta-label">שפת פיתוח</span><span class="meta-val">Python 3.10+</span></div>
+    <div class="meta-item"><span class="meta-label">סביבה</span><span class="meta-val">Windows 10/11</span></div>
+    <div class="meta-item"><span class="meta-label">הגשה</span><span class="meta-val">קובץ .zip + דוח PDF</span></div>
+    <div class="meta-item"><span class="meta-label">עבודה</span><span class="meta-val">יחידנית</span></div>
+  </div>
+</header>
+
+<nav>
+  <a href="#overview"   class="nav-link active">סקירה</a>
+  <a href="#part1"      class="nav-link">חלק א — Shell</a>
+  <a href="#part2"      class="nav-link">חלק ב — מחקר</a>
+  <a href="#deliverables" class="nav-link">הגשה</a>
+  <a href="#scoring"    class="nav-link">ניקוד</a>
+  <a href="#tips"       class="nav-link">רמזים</a>
+</nav>
+
+<main>
+
+  <!-- OVERVIEW -->
+  <section class="section" id="overview">
+    <div class="section-header">
+      <span class="section-num num-cyan">00</span>
+      <h2 class="section-title">סקירת המטלה</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:1rem">
+      <div class="card card-accent-cyan">
+        <div class="card-title card-title-cyan">// PART A — פיתוח</div>
+        <p style="font-size: 18px;">בנה Shell מינימלי בפייתון שמממש סט פקודות בסיסיות, Piping, משתני סביבה, היסטוריה ומנגנון פלאגינים. ה-Shell יהיה <strong>ניתן להרחבה</strong> — ניתן להוסיף פקודות בקלות.</p>
+      </div>
+      <div class="card card-accent-purple">
+        <div class="card-title card-title-purple">// PART B — מחקר</div>
+        <p style="font-size: 18px;">השתמש ב-Sysinternals Suite לניתוח ה-Shell שלך בזמן ריצה. גלה מה באמת קורה מתחת למכסה — Handles, DLLs, Network, Event Log. תעד ב-דוח מקצועי.</p>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--cyan)">60</div>
+        <div class="stat-label">נקודות — פיתוח Shell</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--purple)">30</div>
+        <div class="stat-label">נקודות — מחקר Sysinternals</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--amber)">10</div>
+        <div class="stat-label">נקודות — בונוס הרחבות</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 1 -->
+  <section class="section" id="part1">
+    <div class="section-header">
+      <span class="section-num num-cyan">01</span>
+      <h2 class="section-title">חלק א — בניית Shell מינימלי בפייתון</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="card card-accent-cyan" style="margin-bottom:1.5rem">
+      <div class="card-title card-title-cyan">// מטרה</div>
+      <p style="font-size: 18px;">בנה תוכנית Python שמדמה Shell/CMD — לולאה שמקבלת קלט מהמשתמש, מפרסרת את הפקודה, ומבצעת אותה. ה-Shell יפעיל גם פקודות built-in (שכתבת) וגם פקודות מערכת חיצוניות.</p>
+    </div>
+
+    <!-- Req 1 -->
+    <div class="card card-accent-cyan">
+      <div class="card-title card-title-cyan">REQ-01 &nbsp;·&nbsp; לולאת REPL + Prompt</div>
+      <ul class="task-list">
+        <li>הצג Prompt בפורמט: <code class="inline">user@host:path&gt;</code> (צבעוני עם ANSI codes)</li>
+        <li>קבל שורת קלט, פרסר לפקודה + ארגומנטים</li>
+        <li>הדפס הודעת שגיאה ברורה אם הפקודה לא קיימת</li>
+        <li>הפקודה <code class="inline">exit</code> / <code class="inline">quit</code> יוצאת מה-Shell בנימוס</li>
+      </ul>
+      <pre class="code-block"><span class="c"># מבנה בסיסי של ה-Shell</span>
+<span class="k">def</span> <span class="f">main_loop</span>():
+    <span class="k">while</span> True:
+        prompt = <span class="f">build_prompt</span>()        <span class="c"># user@host:cwd</span>
+        line   = <span class="f">input</span>(prompt).strip()
+        <span class="k">if not</span> line: <span class="k">continue</span>
+        tokens = <span class="f">parse_line</span>(line)        <span class="c"># פיצול חכם</span>
+        <span class="f">dispatch</span>(tokens)               <span class="c"># built-in / external</span></pre>
+    </div>
+
+    <!-- Req 2 -->
+    <div class="card card-accent-green">
+      <div class="card-title card-title-green">REQ-02 &nbsp;·&nbsp; פקודות Built-in (לפחות 8)</div>
+      <div class="table-wrap">
+        <table>
+          <tr>
+            <th>פקודה</th><th>תיאור</th><th>דגלים נדרשים</th>
+          </tr>
+          <tr><td><code class="inline">cd &lt;dir&gt;</code></td><td>שינוי תיקייה נוכחית</td><td>cd - (אחורה), cd ~ (Home)</td></tr>
+          <tr><td><code class="inline">ls / dir</code></td><td>רשימת קבצים בתיקייה</td><td>-l (פרטים), -a (נסתרים), --color</td></tr>
+          <tr><td><code class="inline">pwd</code></td><td>הדפסת תיקייה נוכחית</td><td>—</td></tr>
+          <tr><td><code class="inline">mkdir &lt;name&gt;</code></td><td>יצירת תיקייה</td><td>-p (nested)</td></tr>
+          <tr><td><code class="inline">cat &lt;file&gt;</code></td><td>הצגת תוכן קובץ</td><td>-n (מספרי שורות)</td></tr>
+          <tr><td><code class="inline">echo &lt;text&gt;</code></td><td>הדפסת טקסט</td><td>תמיכה ב-$VAR</td></tr>
+          <tr><td><code class="inline">set / export</code></td><td>ניהול משתני סביבה</td><td>set X=val, set (הצג הכל)</td></tr>
+          <tr><td><code class="inline">history</code></td><td>היסטוריית פקודות</td><td>-c (מחיקה), !n (חזרה)</td></tr>
+          <tr><td><code class="inline">help</code></td><td>הצגת עזרה</td><td>help &lt;cmd&gt; לפקודה ספציפית</td></tr>
+          <tr><td><code class="inline">alias</code></td><td>קיצורי פקודות</td><td>alias ll='ls -la'</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Req 3 -->
+    <div class="card card-accent-amber">
+      <div class="card-title card-title-amber">REQ-03 &nbsp;·&nbsp; פקודות חיצוניות + subprocess</div>
+      <ul class="task-list">
+        <li class="amber">פקודות שאינן built-in → הפעל עם <code class="inline">subprocess.run()</code></li>
+        <li class="amber">הצג <code class="inline">stdout</code> ו-<code class="inline">stderr</code> בנפרד</li>
+        <li class="amber">שמור את קוד החזרה (<code class="inline">$?</code>) ואפשר לבדוק אותו</li>
+        <li class="amber">Timeout: אם תהליך חיצוני תקוע מעל N שניות — הצע להרוג</li>
+      </ul>
+      <pre class="code-block"><span class="k">import</span> subprocess
+<span class="k">def</span> <span class="f">run_external</span>(tokens):
+    result = subprocess.<span class="f">run</span>(tokens, capture_output=<span class="k">True</span>, text=<span class="k">True</span>)
+    <span class="k">if</span> result.stdout: <span class="f">print</span>(result.stdout, end=<span class="s">''</span>)
+    <span class="k">if</span> result.stderr: <span class="f">print</span>(<span class="s">f"\033[91m{result.stderr}\033[0m"</span>, end=<span class="s">''</span>)
+    env[<span class="s">'?'</span>] = <span class="f">str</span>(result.returncode)   <span class="c"># $? כמו bash</span></pre>
+    </div>
+
+    <!-- Req 4 -->
+    <div class="card card-accent-purple">
+      <div class="card-title card-title-purple">REQ-04 &nbsp;·&nbsp; Piping בין פקודות</div>
+      <ul class="task-list">
+        <li class="purple">זיהוי תו <code class="inline">|</code> בשורת הפקודה</li>
+        <li class="purple">חיבור <code class="inline">stdout</code> של פקודה שמאלית ל-<code class="inline">stdin</code> של ימנית</li>
+        <li class="purple">תמיכה בשרשרת ארוכה: <code class="inline">cmd1 | cmd2 | cmd3</code></li>
+        <li class="purple">Pipeline עובד גם בין built-in לחיצונית וגם להיפך</li>
+      </ul>
+      <pre class="code-block"><span class="c"># דוגמה לפקודות שצריכות לעבוד:</span>
+<span class="o">myshell&gt;</span> ls | cat -n
+<span class="o">myshell&gt;</span> cat log.txt | grep error
+<span class="o">myshell&gt;</span> echo hello world | <span class="f">python</span> -c <span class="s">"import sys; print(sys.stdin.read().upper())"</span></pre>
+    </div>
+
+    <!-- Req 5 -->
+    <div class="card card-accent-cyan">
+      <div class="card-title card-title-cyan">REQ-05 &nbsp;·&nbsp; משתני סביבה</div>
+      <ul class="task-list">
+        <li>שמור Dict פנימי של משתני סביבה (ירש מ-<code class="inline">os.environ</code> בהתחלה)</li>
+        <li>הרחבת משתנים בפקודות: <code class="inline">echo $HOME</code>, <code class="inline">cd $MYDIR</code></li>
+        <li>פקודת <code class="inline">set X=value</code> מגדירה משתנה; <code class="inline">set</code> בלבד מציג הכל</li>
+        <li>משתנים מיוחדים: <code class="inline">$?</code> (קוד חזרה), <code class="inline">$0</code> (שם Shell), <code class="inline">$PWD</code></li>
+        <li>משתנים מועברים לפקודות חיצוניות (<code class="inline">env=</code> ב-subprocess)</li>
+      </ul>
+    </div>
+
+    <!-- Req 6 -->
+    <div class="card card-accent-green">
+      <div class="card-title card-title-green">REQ-06 &nbsp;·&nbsp; היסטוריה + השלמה</div>
+      <ul class="task-list">
+        <li class="green">שמור היסטוריה של עד 500 פקודות בזיכרון ובקובץ <code class="inline">~/.myshell_history</code></li>
+        <li class="green">ניווט בחצים Up/Down לעיון בהיסטוריה (<code class="inline">readline</code> module)</li>
+        <li class="green">חיפוש היסטוריה: <code class="inline">history | grep cd</code></li>
+        <li class="green">חזרה על פקודה: <code class="inline">!3</code> (פקודה מספר 3), <code class="inline">!!</code> (אחרונה)</li>
+      </ul>
+    </div>
+
+    <!-- Req 7 - Bonus -->
+    <div class="card" style="border-color:var(--amber);border-style:dashed">
+      <div class="card-title card-title-amber">★ BONUS-01 &nbsp;·&nbsp; מנגנון פלאגינים</div>
+      <ul class="task-list">
+        <li class="amber">תמיכה בטעינת פקודות מקבצי Python חיצוניים בתיקיית <code class="inline">plugins/</code></li>
+        <li class="amber">כל פלאגין מגדיר: <code class="inline">COMMAND_NAME</code>, <code class="inline">run(args, env)</code>, <code class="inline">HELP</code></li>
+        <li class="amber">הדגמה: כתוב פלאגין <code class="inline">sysinfo.py</code> שמציג מידע על המערכת</li>
+      </ul>
+      <pre class="code-block"><span class="c"># plugins/sysinfo.py</span>
+COMMAND_NAME = <span class="s">"sysinfo"</span>
+HELP = <span class="s">"הצג מידע על המערכת"</span>
+
+<span class="k">def</span> <span class="f">run</span>(args, env):
+    <span class="k">import</span> platform
+    <span class="f">print</span>(<span class="s">f"OS: {platform.system()} {platform.release()}"</span>)
+    <span class="f">print</span>(<span class="s">f"Python: {platform.python_version()}"</span>)</pre>
+    </div>
+
+    <!-- Req 8 - Bonus -->
+    <div class="card" style="border-color:var(--red);border-style:dashed">
+      <div class="card-title card-title-red">★ BONUS-02 &nbsp;·&nbsp; Redirection + Script Mode</div>
+      <ul class="task-list">
+        <li class="red">תמיכה ב-Redirection: <code class="inline">echo hi &gt; out.txt</code>, <code class="inline">cat &lt; in.txt</code>, <code class="inline">ls &gt;&gt; log.txt</code></li>
+        <li class="red">Script Mode: <code class="inline">myshell.py script.sh</code> מריץ קובץ שורה אחרי שורה</li>
+        <li class="red">תמיכה בהערות: שורות שמתחילות ב-<code class="inline">#</code> מתעלמים מהן</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="section" id="part2">
+    <div class="section-header">
+      <span class="section-num num-purple">02</span>
+      <h2 class="section-title">חלק ב — מחקר Sysinternals על ה-Shell שלך</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="card card-accent-purple" style="margin-bottom:1.5rem">
+      <div class="card-title card-title-purple">// מטרה</div>
+      <p style="font-size: 18px;">לאחר שה-Shell שלך עובד — השתמש ב-Sysinternals Suite לחקור אותו בזמן ריצה. ענה על ארבעת שאלות המחקר הבאות ותעד את ממצאיך עם screenshots + ניתוח.</p>
+    </div>
+
+    <!-- Research Q1 -->
+    <div class="card card-accent-cyan">
+      <div class="card-title card-title-cyan">🔬 מחקר 1 — Process Explorer: מה קורה בזמן ריצה?</div>
+      <p style="font-size: 18px;;margin-bottom:.8rem">הרץ את ה-Shell שלך ובצע את הצעדים הבאים ב-Process Explorer:</p>
+      <ol class="task-list">
+        <li>אתר את תהליך <code class="inline">python.exe</code> של ה-Shell שלך בעץ התהליכים</li>
+        <li>פתח את ה-Properties ובחן את לשונית <strong>Threads</strong> — כמה threads? מה כל אחד עושה?</li>
+        <li>לשונית <strong>Handles</strong> — מה ה-Shell שלך מחזיק? האם יש File handles? Registry?</li>
+        <li>לשונית <strong>DLLs</strong> — רשום את 5 ה-DLLs המעניינות שנטענות. מה תפקיד כל אחת?</li>
+        <li>הרץ פקודה חיצונית (למשל <code class="inline">dir</code>) — מה קורה לעץ התהליכים? מתי ה-Child נעלם?</li>
+      </ol>
+      <pre class="code-block"><span class="c"># מה לדווח בדוח:</span>
+<span class="o">✓</span> Screenshot של עץ התהליכים עם ה-Shell שלך
+<span class="o">✓</span> Screenshot של לשונית Handles
+<span class="o">✓</span> טבלה: DLL | גודל | תיאור תפקיד
+<span class="o">✓</span> תיאור מה ראית כשהרצת פקודה חיצונית</pre>
+    </div>
+
+    <!-- Research Q2 -->
+    <div class="card card-accent-green">
+      <div class="card-title card-title-green">🔬 מחקר 2 — Process Monitor: מה ה-Shell נוגע?</div>
+      <p style="font-size: 18px;;margin-bottom:.8rem">הפעל ProcMon (Ctrl+L לסינון) וצפה בפעולות ה-Shell שלך:</p>
+      <ol class="task-list">
+        <li class="green">סנן לפי Process Name = <code class="inline">python.exe</code></li>
+        <li class="green">הרץ את הפקודה <code class="inline">cd Desktop</code> — אילו Registry operations רואים?</li>
+        <li class="green">הרץ <code class="inline">cat myfile.txt</code> — מה הסדר של File operations? (CreateFile, ReadFile, CloseFile)</li>
+        <li class="green">הרץ <code class="inline">set MYVAR=hello</code> — האם ה-Shell כותב לרגיסטרי? למה כן/לא?</li>
+        <li class="green">מה הנתיבים שה-Shell מחפש בהם קבצי Python modules? (חפש <code class="inline">PATH NOT FOUND</code>)</li>
+      </ol>
+      <pre class="code-block"><span class="c"># מה לדווח בדוח:</span>
+<span class="o">✓</span> Screenshot של ProcMon מסונן לפי python.exe
+<span class="o">✓</span> ציר הזמן של File Operations בעת cd
+<span class="o">✓</span> ניתוח: האם ה-Shell שלך "מלכלך" את הרגיסטרי?</pre>
+    </div>
+
+    <!-- Research Q3 -->
+    <div class="card card-accent-amber">
+      <div class="card-title card-title-amber">🔬 מחקר 3 — TCPView: האם ה-Shell מתחבר לרשת?</div>
+      <p style="font-size: 18px;;margin-bottom:.8rem">פתח TCPView ובחן:</p>
+      <ol class="task-list">
+        <li class="amber">בזמן ריצה רגילה של ה-Shell — האם פייתון מחזיק ports פתוחים? מדוע כן/לא?</li>
+        <li class="amber">הרץ <code class="inline">pip install requests</code> מתוך ה-Shell שלך — מה TCPView מראה? לאן מתחבר?</li>
+        <li class="amber">אם כתבת פקודת <code class="inline">wget</code> / <code class="inline">curl</code> — נטר את החיבור</li>
+        <li class="amber">בדוק: האם Python בטעינה פותח Socket כלשהו גם ללא בקשת רשת?</li>
+      </ol>
+    </div>
+
+    <!-- Research Q4 -->
+    <div class="card card-accent-red">
+      <div class="card-title card-title-red">🔬 מחקר 4 — Event Log: מה נרשם?</div>
+      <p style="font-size: 18px;;margin-bottom:.8rem">פתח Event Viewer ו-PowerShell לחיפוש אירועים:</p>
+      <pre class="code-block"><span class="c"># חפש Events של ה-Shell שלך</span>
+<span class="k">Get-WinEvent</span> -FilterHashtable @{
+    LogName   = <span class="s">'Security'</span>
+    Id        = <span class="s">4688</span>          <span class="c"># Process Created</span>
+    StartTime = (Get-Date).AddMinutes(-30)
+} | <span class="k">Where-Object</span> { $_.Message -like <span class="s">"*python*"</span> }</pre>
+      <ol class="task-list">
+        <li class="red">האם EventID 4688 מופיע בעת הרצת ה-Shell ו/או פקודות חיצוניות?</li>
+        <li class="red">האם נרשמים Events נוספים בעת שימוש ב-subprocess?</li>
+        <li class="red">אם היית תוקף שמשתמש ב-Shell שלך — אילו עקבות ישאיר ב-Log?</li>
+        <li class="red">הצע: אילו Event IDs כדאי לנטר כדי לזהות שימוש לרעה ב-Shell מסוג זה?</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- DELIVERABLES -->
+  <section class="section" id="deliverables">
+    <div class="section-header">
+      <span class="section-num num-amber">03</span>
+      <h2 class="section-title">מה מגישים</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="card card-accent-amber">
+      <div class="card-title card-title-amber">// מבנה קובץ ה-zip</div>
+      <pre class="code-block">submission_[שם]_[כיתה].zip
+├── shell/
+│   ├── myshell.py          <span class="c"># קובץ ראשי</span>
+│   ├── builtins/           <span class="c"># פקודות Built-in (קובץ לכל פקודה)</span>
+│   │   ├── cd.py
+│   │   ├── ls.py
+│   │   └── ...
+│   ├── plugins/            <span class="c"># פלאגינים (בונוס)</span>
+│   │   └── sysinfo.py
+│   ├── README.md           <span class="c"># הוראות הרצה + פקודות נתמכות</span>
+│   └── requirements.txt    <span class="c"># תלויות (אם יש)</span>
+└── report/
+    └── sysinternals_report.pdf   <span class="c"># דוח מחקר</span></pre>
+    </div>
+
+    <div class="card card-accent-cyan">
+      <div class="card-title card-title-cyan">// דוח המחקר — מבנה מצופה (PDF)</div>
+      <div class="card" style="background:var(--bg3);border-color:var(--border);margin-top:.5rem">
+        <div class="milestone-row">
+          <div class="milestone-num" style="background:rgba(0,229,255,.15);color:var(--cyan)">1</div>
+          <div class="milestone-content">
+            <div class="milestone-title">כותרת ורקע</div>
+            <div class="milestone-desc">שם, כיתה, תאריך. תיאור קצר של ה-Shell שבנית ומה הוא עושה.</div>
+          </div>
+        </div>
+        <div class="milestone-row">
+          <div class="milestone-num" style="background:rgba(0,255,157,.15);color:var(--green)">2</div>
+          <div class="milestone-content">
+            <div class="milestone-title">ממצאי Process Explorer</div>
+            <div class="milestone-desc">Screenshots + טבלת DLLs + ניתוח Handles + תצפית על Child Processes.</div>
+          </div>
+        </div>
+        <div class="milestone-row">
+          <div class="milestone-num" style="background:rgba(255,179,0,.15);color:var(--amber)">3</div>
+          <div class="milestone-content">
+            <div class="milestone-title">ממצאי Process Monitor</div>
+            <div class="milestone-desc">Screenshots של File/Registry operations + ניתוח מה ה-Shell עושה ברמת ה-OS.</div>
+          </div>
+        </div>
+        <div class="milestone-row">
+          <div class="milestone-num" style="background:rgba(168,85,247,.15);color:var(--purple)">4</div>
+          <div class="milestone-content">
+            <div class="milestone-title">ממצאי TCPView + Event Log</div>
+            <div class="milestone-desc">Network analysis + EventIDs + ניתוח מנקודת מבט אבטחה.</div>
+          </div>
+        </div>
+        <div class="milestone-row" style="border-bottom:none">
+          <div class="milestone-num" style="background:rgba(255,71,87,.15);color:var(--red)">5</div>
+          <div class="milestone-content">
+            <div class="milestone-title">מסקנות ותובנות</div>
+            <div class="milestone-desc">מה למדת על אופן פעולת Shell? מה הפתיע אותך? מה ישתפר בגרסה הבאה?</div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 18px;color:var(--muted);margin-top:.75rem">אורך מצופה: 4–8 עמודים כולל Screenshots. לא ספירת דברים — <strong>ניתוח</strong>.</p>
+    </div>
+  </section>
+
+  <!-- SCORING -->
+  <section class="section" id="scoring">
+    <div class="section-header">
+      <span class="section-num num-green">04</span>
+      <h2 class="section-title">ניקוד</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="score-grid">
+      <div class="score-box" style="border-color:var(--cyan)">
+        <div class="score-box-title" style="color:var(--cyan)">REPL + Prompt</div>
+        <div class="score-box-pts" style="color:var(--cyan)">10</div>
+        <div class="score-box-desc">לולאה, פרסינג, prompt עם צבע</div>
+      </div>
+      <div class="score-box" style="border-color:var(--green)">
+        <div class="score-box-title" style="color:var(--green)">Built-in Commands</div>
+        <div class="score-box-pts" style="color:var(--green)">15</div>
+        <div class="score-box-desc">לפחות 8 פקודות עובדות נכון</div>
+      </div>
+      <div class="score-box" style="border-color:var(--amber)">
+        <div class="score-box-title" style="color:var(--amber)">subprocess + External</div>
+        <div class="score-box-pts" style="color:var(--amber)">10</div>
+        <div class="score-box-desc">הרצת פקודות OS, קוד חזרה</div>
+      </div>
+      <div class="score-box" style="border-color:var(--purple)">
+        <div class="score-box-title" style="color:var(--purple)">Piping</div>
+        <div class="score-box-pts" style="color:var(--purple)">10</div>
+        <div class="score-box-desc">שרשרת מלאה built-in ↔ external</div>
+      </div>
+      <div class="score-box" style="border-color:var(--cyan)">
+        <div class="score-box-title" style="color:var(--cyan)">Env Variables</div>
+        <div class="score-box-pts" style="color:var(--cyan)">8</div>
+        <div class="score-box-desc">set/get/expand, $?, העברה ל-subprocess</div>
+      </div>
+      <div class="score-box" style="border-color:var(--green)">
+        <div class="score-box-title" style="color:var(--green)">History</div>
+        <div class="score-box-pts" style="color:var(--green)">7</div>
+        <div class="score-box-desc">שמירה, ניווט, !n</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="score-grid" style="margin-top:0">
+      <div class="score-box" style="border-color:var(--purple)">
+        <div class="score-box-title" style="color:var(--purple)">Process Explorer</div>
+        <div class="score-box-pts" style="color:var(--purple)">10</div>
+        <div class="score-box-desc">Screenshots + ניתוח DLLs + Handles</div>
+      </div>
+      <div class="score-box" style="border-color:var(--purple)">
+        <div class="score-box-title" style="color:var(--purple)">ProcMon</div>
+        <div class="score-box-pts" style="color:var(--purple)">8</div>
+        <div class="score-box-desc">File/Reg operations + ניתוח</div>
+      </div>
+      <div class="score-box" style="border-color:var(--purple)">
+        <div class="score-box-title" style="color:var(--purple)">TCPView + Event Log</div>
+        <div class="score-box-pts" style="color:var(--purple)">7</div>
+        <div class="score-box-desc">Network + EventIDs + זוית אבטחה</div>
+      </div>
+      <div class="score-box" style="border-color:var(--purple)">
+        <div class="score-box-title" style="color:var(--purple)">מסקנות</div>
+        <div class="score-box-pts" style="color:var(--purple)">5</div>
+        <div class="score-box-desc">תובנות + ניתוח עומק</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="score-grid" style="margin-top:0">
+      <div class="score-box" style="border-color:var(--amber)">
+        <div class="score-box-title" style="color:var(--amber)">★ Plugin System</div>
+        <div class="score-box-pts" style="color:var(--amber)">+5</div>
+        <div class="score-box-desc">מנגנון פלאגינים עובד + דוגמה</div>
+      </div>
+      <div class="score-box" style="border-color:var(--amber)">
+        <div class="score-box-title" style="color:var(--amber)">★ Redirection</div>
+        <div class="score-box-pts" style="color:var(--amber)">+3</div>
+        <div class="score-box-desc">&gt; &lt; &gt;&gt; עובדים</div>
+      </div>
+      <div class="score-box" style="border-color:var(--amber)">
+        <div class="score-box-title" style="color:var(--amber)">★ Script Mode</div>
+        <div class="score-box-pts" style="color:var(--amber)">+2</div>
+        <div class="score-box-desc">הרצת קובץ script שלם</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.5rem;border-color:var(--border)">
+      <div class="table-wrap">
+        <table>
+          <tr><th>רמה</th><th>ניקוד</th><th>תיאור</th></tr>
+          <tr><td>מצוין</td><td>90–100</td><td>כל הדרישות + דוח עמוק + בונוס</td></tr>
+          <tr><td>טוב מאוד</td><td>75–89</td><td>כל הדרישות + דוח מלא</td></tr>
+          <tr><td>טוב</td><td>60–74</td><td>רוב הדרישות + דוח בסיסי</td></tr>
+          <tr><td>עובר</td><td>50–59</td><td>Shell בסיסי עובד + מחקר חלקי</td></tr>
+          <tr><td>לא עובר</td><td>&lt;50</td><td>Shell לא עובד / דוח חסר</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIPS -->
+  <section class="section" id="tips">
+    <div class="section-header">
+      <span class="section-num num-red">05</span>
+      <h2 class="section-title">טיפים ואזהרות</h2>
+      <div class="section-hr"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card card-accent-green">
+        <div class="card-title card-title-green">// מה יעזור לך</div>
+        <ul class="task-list">
+          <li class="green">השתמש ב-<code class="inline">shlex.split()</code> לפרסינג — מטפל בציטוטים נכון</li>
+          <li class="green"><code class="inline">readline</code> module — השלמה אוטומטית ב-5 שורות</li>
+          <li class="green">בנה כל פקודה כ-class או function נפרדת — קל לבדוק</li>
+          <li class="green">כתוב tests קטנים לכל פקודה לפני שמחברים הכל</li>
+          <li class="green">ProcMon — Filter &gt; Include &gt; Process Name IS python.exe</li>
+        </ul>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title card-title-red">// שגיאות נפוצות</div>
+        <ul class="task-list">
+          <li class="red">אל תשנה <code class="inline">os.environ</code> ישירות — שמור Dict משלך</li>
+          <li class="red">Pipe עם <code class="inline">subprocess</code> — השתמש ב-<code class="inline">PIPE</code> flag, לא ב-print</li>
+          <li class="red">פקודות עם רווחים בשמות קבצים — <code class="inline">shlex</code> פותר זאת</li>
+          <li class="red">Ctrl+C בתהליך חיצוני — טפל ב-<code class="inline">KeyboardInterrupt</code></li>
+          <li class="red">ProcMon מאט את המערכת — הפעל רק בזמן הניסוי הספציפי</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card card-accent-amber" style="margin-top:1rem">
+      <div class="card-title card-title-amber">// Skeleton — התחל מכאן</div>
+      <pre class="code-block"><span class="k">import</span> os, sys, shlex, subprocess, readline
+
+HISTORY  = []
+ENV      = dict(os.environ)               <span class="c"># עותק של סביבה</span>
+ENV[<span class="s">'?'</span>]  = <span class="s">'0'</span>
+BUILTINS = {}                             <span class="c"># dict: name -> function</span>
+
+<span class="k">def</span> <span class="f">register</span>(name):                       <span class="c"># decorator לרישום built-in</span>
+    <span class="k">def</span> <span class="f">wrapper</span>(fn):
+        BUILTINS[name] = fn; <span class="k">return</span> fn
+    <span class="k">return</span> wrapper
+
+<span class="k">@</span><span class="f">register</span>(<span class="s">'cd'</span>)
+<span class="k">def</span> <span class="f">cmd_cd</span>(args):
+    path = args[0] <span class="k">if</span> args <span class="k">else</span> os.<span class="f">path.expanduser</span>(<span class="s">'~'</span>)
+    <span class="k">try</span>:
+        os.<span class="f">chdir</span>(path); ENV[<span class="s">'PWD'</span>] = os.<span class="f">getcwd</span>()
+    <span class="k">except</span> FileNotFoundError:
+        <span class="f">print</span>(<span class="s">f"cd: {path}: לא נמצא"</span>)
+
+<span class="k">def</span> <span class="f">expand_vars</span>(token):                   <span class="c"># הרחבת $VAR</span>
+    <span class="k">for</span> k, v <span class="k">in</span> ENV.items():
+        token = token.<span class="f">replace</span>(<span class="s">f'${k}'</span>, v)
+    <span class="k">return</span> token
+
+<span class="k">def</span> <span class="f">dispatch</span>(tokens):
+    <span class="k">if not</span> tokens: <span class="k">return</span>
+    tokens = [<span class="f">expand_vars</span>(t) <span class="k">for</span> t <span class="k">in</span> tokens]
+    cmd, *args = tokens
+    <span class="k">if</span> cmd <span class="k">in</span> BUILTINS:
+        BUILTINS[cmd](args)
+    <span class="k">else</span>:
+        result = subprocess.<span class="f">run</span>(tokens, env=ENV)
+        ENV[<span class="s">'?'</span>] = <span class="f">str</span>(result.returncode)
+
+<span class="k">def</span> <span class="f">main</span>():
+    <span class="k">while</span> True:
+        <span class="k">try</span>:
+            line = <span class="f">input</span>(<span class="s">f"\033[96m{os.getcwd()}\033[0m> "</span>).strip()
+            <span class="k">if not</span> line: <span class="k">continue</span>
+            HISTORY.<span class="f">append</span>(line)
+            <span class="c"># TODO: handle pipes here</span>
+            <span class="f">dispatch</span>(shlex.<span class="f">split</span>(line))
+        <span class="k">except</span> KeyboardInterrupt: <span class="f">print</span>()
+        <span class="k">except</span> EOFError: <span class="k">break</span>
+
+<span class="k">if</span> __name__ == <span class="s">'__main__'</span>: <span class="f">main</span>()</pre>
+    </div>
+
+    <div class="card" style="border-color:var(--border);margin-top:1rem">
+      <div class="card-title" style="color:var(--muted)">// לוח זמנים מומלץ</div>
+      <div class="milestone-row">
+        <div class="milestone-num" style="background:rgba(0,229,255,.1);color:var(--cyan)">1</div>
+        <div class="milestone-content">
+          <div class="milestone-title">שבוע 1 — יסודות ה-Shell</div>
+          <div class="milestone-desc">REPL + Built-ins + subprocess. ודא שה-Shell "עובד" לפני שמוסיפים Piping.</div>
+        </div>
+      </div>
+      <div class="milestone-row">
+        <div class="milestone-num" style="background:rgba(0,255,157,.1);color:var(--green)">2</div>
+        <div class="milestone-content">
+          <div class="milestone-title">שבוע 2 — Pipe + Env + History + בונוס</div>
+          <div class="milestone-desc">השלם את הדרישות + נסה בונוס אחד. שמור זמן לבדיקות.</div>
+        </div>
+      </div>
+      <div class="milestone-row" style="border-bottom:none">
+        <div class="milestone-num" style="background:rgba(168,85,247,.1);color:var(--purple)">3</div>
+        <div class="milestone-content">
+          <div class="milestone-title">שבוע 3 — מחקר Sysinternals + דוח</div>
+          <div class="milestone-desc">הרץ Process Explorer, ProcMon, TCPView, Event Log. כתוב דוח מנותח.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Active nav on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links    = document.querySelectorAll('.nav-link');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

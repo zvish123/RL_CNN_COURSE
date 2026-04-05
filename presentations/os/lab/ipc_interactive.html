@@ -1,0 +1,2368 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC — Interprocess Communication | שיעור אינטראקטיבי</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #05080a;
+  --surface: #0c1419;
+  --surface2: #111d24;
+  --border: #1a3040;
+  --cyan: #00e5ff;
+  --pink: #ff2d6b;
+  --green: #00ff9d;
+  --yellow: #ffcc00;
+  --purple: #c264fe;
+  --orange: #ff7c2a;
+  --blue: #3d8eff;
+  --text: #c0d4e0;
+  --dim: #5a7a90;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Heebo',sans-serif;
+  overflow:hidden; height:100vh; width:100vw;
+}
+body::before{
+  content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,229,255,0.008) 3px,rgba(0,229,255,0.008) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ── SLIDE ENGINE ── */
+.slides-wrapper{width:100%;height:100vh;position:relative;overflow:hidden;}
+.slide{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;
+  padding:44px 68px 90px;
+  opacity:0;pointer-events:none;
+  transition:opacity .35s ease, transform .35s ease;
+  transform:translateX(-30px);
+  overflow-y:auto;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.out{opacity:0;transform:translateX(30px);}
+
+/* ── PROGRESS ── */
+.progress-bar{
+  position:fixed;top:0;left:0;height:3px;
+  background:linear-gradient(to left,var(--cyan),var(--purple),var(--pink));
+  transition:width .4s ease;z-index:1001;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:22px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:14px;
+  background:rgba(12,20,25,0.96);border:1px solid var(--border);
+  padding:9px 18px;z-index:1000;backdrop-filter:blur(12px);
+}
+.nb{
+  background:none;border:1px solid var(--border);color:var(--text);
+  cursor:pointer;padding:5px 16px;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  transition:all .2s;
+}
+.nb:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan);}
+.nb:disabled{opacity:.25;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);min-width:55px;text-align:center;}
+
+/* ── SCORE ── */
+.xp-widget{
+  position:fixed;top:18px;left:20px;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);z-index:1000;
+}
+.xp-val{color:var(--cyan);font-size: 1.2rem;;font-weight:600;}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+.pop{animation:pop .25s ease;}
+
+/* ── BADGE ── */
+.badge{
+  font-family:'Fira Code',monospace;font-size:9px;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 12px;display:inline-block;
+  margin-bottom:18px;border:1px solid;width:fit-content;
+}
+.b-intro{color:var(--cyan);border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.06);}
+.b-concept{color:var(--purple);border-color:rgba(194,100,254,.3);background:rgba(194,100,254,.06);}
+.b-quiz{color:var(--yellow);border-color:rgba(255,204,0,.3);background:rgba(255,204,0,.06);}
+.b-code{color:var(--green);border-color:rgba(0,255,157,.3);background:rgba(0,255,157,.06);}
+.b-mission{color:var(--pink);border-color:rgba(255,45,107,.3);background:rgba(255,45,107,.06);}
+.b-danger{color:var(--orange);border-color:rgba(255,124,42,.3);background:rgba(255,124,42,.06);}
+.b-section{color:var(--blue);border-color:rgba(61,142,255,.3);background:rgba(61,142,255,.06);}
+
+/* ── TYPOGRAPHY ── */
+h1{font-size:clamp(2rem,4.5vw,3.4rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.3rem,2.8vw,2rem);font-weight:700;line-height:1.2;margin-bottom:8px;}
+h3{font-size: 1.2rem;;font-weight:600;color:#fff;margin-bottom:6px;}
+p{color:var(--dim);line-height:1.7;font-size: 1.2rem;}
+.gc{color:var(--cyan);text-shadow:0 0 18px rgba(0,229,255,.4);}
+.gp{color:var(--pink);text-shadow:0 0 18px rgba(255,45,107,.4);}
+.gg{color:var(--green);text-shadow:0 0 14px rgba(0,255,157,.3);}
+.gpur{color:var(--purple);}
+code{font-family:'Fira Code',monospace;color:var(--cyan);font-size: 1.2rem;}
+
+/* ── CODE BLOCK ── */
+.cb{
+  background:#020507;border:1px solid var(--border);
+  border-right:3px solid var(--cyan);
+  padding:16px 20px;font-family:'Fira Code',monospace;
+  font-size: 1.2rem;color:#a8c8de;line-height:1.9;
+  margin:10px 0;overflow-x:auto;overflow-y:auto;max-height:800px;
+  direction: ltr;
+}
+.cb::-webkit-scrollbar{width:3px;height:3px;}
+.cb::-webkit-scrollbar-track{background:transparent;}
+.cb::-webkit-scrollbar-thumb{background:var(--border);}
+.cb::-webkit-scrollbar-thumb:hover{background:var(--cyan);}
+.kw{color:var(--pink);}
+.fn{color:var(--cyan);}
+.cm{color:#2e5470;font-style:italic;}
+.st{color:var(--green);}
+.nm{color:var(--yellow);}
+.bi{color:var(--blue);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:12px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  padding:16px 18px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.cc::before{background:var(--cyan);}
+.cp::before{background:var(--pink);}
+.cg-c::before{background:var(--green);}
+.cy::before{background:var(--yellow);}
+.cpur::before{background:var(--purple);}
+.co::before{background:var(--orange);}
+.cbl::before{background:var(--blue);}
+.ci{font-size:1.6rem;margin-bottom:8px;display:block;}
+.card p{font-size: 1.2rem;;margin-top:4px;}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.qo{
+  background:var(--surface);border:1px solid var(--border);
+  padding:12px 18px;cursor:pointer;font-size: 1.2rem;color:var(--text);
+  transition:all .2s;display:flex;align-items:center;gap:10px;
+}
+.qo:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.04);}
+.qo.correct{border-color:var(--green);background:rgba(0,255,157,.09);color:#fff;}
+.qo.wrong{border-color:var(--pink);background:rgba(255,45,107,.09);color:var(--pink);}
+.qo.disabled{pointer-events:none;}
+.ql{
+  font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--cyan);
+  background:rgba(0,229,255,.1);width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.qfb{margin-top:12px;padding:12px 16px;font-size: 1.2rem;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.cfb{border-color:var(--green);background:rgba(0,255,157,.07);color:var(--green);}
+.qfb.wfb{border-color:var(--pink);background:rgba(255,45,107,.07);color:var(--pink);}
+
+/* ── FILL CODE ── */
+.fi{
+  background:rgba(255,204,0,.07);border:none;border-bottom:2px solid var(--yellow);
+  color:var(--yellow);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  padding:2px 6px;outline:none;transition:border-color .2s;
+}
+.fi:focus{border-color:var(--cyan);color:var(--cyan);}
+.fi.ok{border-color:var(--green);color:var(--green);background:rgba(0,255,157,.08);}
+.fi.bad{border-color:var(--pink);color:var(--pink);background:rgba(255,45,107,.07);}
+.ckbtn{
+  margin-top:10px;background:none;border:1px solid var(--cyan);
+  color:var(--cyan);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  padding:7px 18px;cursor:pointer;transition:all .2s;
+}
+.ckbtn:hover{background:rgba(0,229,255,.09);}
+.ffb{margin-top:8px;font-size: 1.2rem;;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{
+  background:rgba(255,45,107,.04);border:1px solid rgba(255,45,107,.25);
+  padding:20px 24px;margin-top:10px;position:relative;
+}
+.mbox::before{
+  content:'▶ MISSION';position:absolute;top:-10px;right:18px;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  background:var(--bg);color:var(--pink);padding:0 8px;letter-spacing:2px;
+}
+.msteps{list-style:none;margin-top:12px;}
+.msteps li{
+  display:flex;gap:10px;align-items:flex-start;
+  font-size: 1.2rem;color:var(--text);margin-bottom:9px;
+}
+.msteps li::before{
+  content:attr(data-n);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  color:var(--pink);background:rgba(255,45,107,.12);
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;
+}
+
+/* ── TIMER ── */
+.tw{
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px solid var(--border);
+  padding:10px 18px;margin-top:14px;width:fit-content;
+}
+.td{
+  font-family:'Fira Code',monospace;font-size:1.6rem;
+  color:var(--cyan);font-weight:600;min-width:72px;
+}
+.td.urg{color:var(--pink);animation:blink .5s ease infinite alternate;}
+@keyframes blink{from{opacity:1}to{opacity:.4}}
+.tb{
+  background:none;border:1px solid var(--border);color:var(--text);
+  cursor:pointer;padding:5px 12px;font-family:'Fira Code',monospace;font-size: 1.2rem;
+  transition:all .2s;
+}
+.tb:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* ── PIPE VIZ ── */
+.pipe-viz{
+  display:flex;align-items:center;gap:0;margin:16px 0;
+  font-family:'Fira Code',monospace;
+}
+.pv-node{
+  padding:10px 18px;font-size: 1.2rem;font-weight:600;
+  border:2px solid;text-align:center;min-width:110px;
+}
+.pv-proc{background:rgba(0,229,255,.08);border-color:var(--cyan);color:var(--cyan);}
+.pv-pipe{
+  flex:1;height:6px;background:linear-gradient(to left,var(--green),var(--cyan));
+  position:relative;margin:0;
+}
+.pv-pipe::after{
+  content:'► ► ►';position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+  font-size: 1.2rem;color:var(--green);letter-spacing:4px;
+  animation:flow 1.2s linear infinite;
+}
+@keyframes flow{from{opacity:0;transform:translateX(-50%) translateX(-10px)}to{opacity:1;transform:translateX(-50%) translateX(10px)}}
+.pv-label{
+  position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);
+  font-size: 1.2rem;color:var(--dim);white-space:nowrap;
+}
+
+/* ── IPC COMPARISON TABLE ── */
+.ipc-table{width:100%;border-collapse:collapse;font-size: 1.2rem;margin-top:12px;}
+.ipc-table th{
+  text-align:right;padding:10px 14px;background:var(--surface2);
+  border-bottom:2px solid var(--cyan);color:var(--cyan);
+  font-family:'Fira Code',monospace;font-size: 1.2rem;letter-spacing:1px;
+}
+.ipc-table td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:top;}
+.ipc-table tr:hover td{background:rgba(0,229,255,.02);}
+.ipc-table .good{color:var(--green);}
+.ipc-table .bad{color:var(--pink);}
+.ipc-table .mid{color:var(--yellow);}
+
+/* ── LAYOUTS ── */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.cols6040{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;}
+.cols4060{display:grid;grid-template-columns:1fr 1.5fr;gap:20px;}
+.sc-content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scroll{flex:1;overflow-y:auto;padding-bottom:10px;}
+.scroll::-webkit-scrollbar{width:3px;}
+.scroll::-webkit-scrollbar-track{background:transparent;}
+.scroll::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{
+  font-family:'Fira Code',monospace;font-size:5.5rem;font-weight:900;
+  line-height:1;margin-bottom:-22px;
+}
+.stitle{font-size:clamp(1.8rem,3.5vw,3rem);font-weight:900;}
+
+/* ── TITLE HERO ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  color:var(--dim);letter-spacing:4px;margin-bottom:14px;
+}
+.ttags{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size: 1.2rem;padding:3px 10px;border:1px solid var(--border);color:var(--dim);}
+.bigbg{
+  font-family:'Fira Code',monospace;font-size:9rem;font-weight:900;
+  color:rgba(0,229,255,.03);position:absolute;left:30px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;
+}
+
+/* ── DRAG & DROP ── */
+.dnd-wrap{display:flex;gap:18px;margin-top:12px;}
+.dnd-pool,.dnd-zone{
+  flex:1;padding:12px;min-height:100px;
+  border:1px dashed;
+}
+.dnd-pool{border-color:var(--border);background:var(--surface);}
+.dnd-zone{border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.03);}
+.dnd-zone.over{border-color:var(--cyan);background:rgba(0,229,255,.07);}
+.dnd-chip{
+  background:var(--surface2);border:1px solid var(--border);
+  padding:7px 12px;margin:5px 0;cursor:grab;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--cyan);
+  user-select:none;transition:all .15s;display:inline-block;width:100%;
+}
+.dnd-chip:hover{border-color:var(--cyan);}
+.dnd-chip.dragging{opacity:.3;}
+.dnd-lbl{font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);margin-bottom:8px;letter-spacing:2px;}
+.dnd-result{margin-top:10px;font-size: 1.2rem;;display:none;}
+.dnd-result.show{display:block;}
+
+/* ── REVEAL LIST ── */
+.rlist{list-style:none;}
+.rlist li{
+  padding:9px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:10px;align-items:flex-start;
+  cursor:pointer;transition:all .2s;font-size: 1.2rem;
+}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size: 1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--cyan);}
+
+/* ── SIGNAL VIZ ── */
+.sig-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size: 1.2rem;;}
+.sig-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ── KB HINT ── */
+.kbh{position:fixed;bottom:22px;right:20px;font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--border);}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="pb"></div>
+<div class="xp-widget">XP: <span class="xp-val" id="xpv">0</span></div>
+
+<div class="slides-wrapper" id="sw">
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S0: TITLE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">IPC</div>
+  <div class="thero">
+    <div class="lnum">// LESSON_05 · INTERPROCESS COMMUNICATION</div>
+    <h1>תקשורת בין<br><span class="gc">תהליכים</span></h1>
+    <p style="margin-top:12px;font-size: 1.2rem;">Pipes · Named Pipes · Message Queues · Shared Memory · Signals</p>
+    <div class="ttags">
+      <span class="ttag">Python multiprocessing</span>
+      <span class="ttag">90 דקות</span>
+      <span class="ttag">מגמת סייבר</span>
+      <span class="ttag">שיעור 5/5</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S1: AGENDA -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-intro">// סדר היום</span>
+  <h2>מה נלמד היום?</h2>
+  <div class="sc-content" style="margin-top:14px">
+    <ul class="rlist">
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">🔀</span>
+        <div><div><strong>Process vs Thread</strong> — למה בכלל צריך IPC?</div>
+        <div class="ri-d">Threads חולקים זיכרון אוטומטית. Processes — כל אחד בבועה שלו. IPC = הגשר.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">🔧</span>
+        <div><div><strong>Pipes & Named Pipes</strong> — תעלת תקשורת חד-כיוונית</div>
+        <div class="ri-d">os.pipe(), multiprocessing.Pipe(), mkfifo — בין processes קשורים ולא קשורים</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">📨</span>
+        <div><div><strong>Message Queues</strong> — תור הודעות מובנה</div>
+        <div class="ri-d">multiprocessing.Queue — thread-safe ו-process-safe. מתי עדיף על Pipe?</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">💾</span>
+        <div><div><strong>Shared Memory</strong> — זיכרון משותף בין processes</div>
+        <div class="ri-d">multiprocessing.Value, Array, SharedMemory — ומה הסיכונים?</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">📡</span>
+        <div><div><strong>Signals</strong> — הודעות אסינכרוניות בין processes</div>
+        <div class="ri-d">SIGTERM, SIGKILL, SIGUSR1 — signal handlers ב-Python</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--cyan);font-size: 1.2rem;flex-shrink:0">⚠️</span>
+        <div><div><strong>סנכרון ומניעת Race Conditions</strong></div>
+        <div class="ri-d">multiprocessing.Lock, Semaphore — אותם עקרונות, עולם חדש</div></div>
+      </li>
+    </ul>
+    <p style="margin-top:12px;font-size: 1.2rem;">👆 לחץ לפרטים</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S2: PROCESS VS THREAD — WHY IPC -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <span class="badge b-concept">// מושג בסיס</span>
+  <h2>למה <span class="gc">IPC</span>? Thread vs Process</h2>
+  <div class="cols2" style="margin-top:14px;flex:1">
+    <div>
+      <div class="card cc" style="margin-bottom:12px">
+        <span class="ci">🧵</span>
+        <h3>Thread</h3>
+        <p>חי בתוך אותו process. <strong style="color:#fff">חולק זיכרון</strong> אוטומטית עם כל ה-threads האחרים. תקשורת = פשוטה, אבל מסוכנת (Race Conditions).</p>
+      </div>
+      <div class="card cpur">
+        <span class="ci">🏠</span>
+        <h3>Process</h3>
+        <p>כל process חי ב<strong style="color:#fff">בועה מבודדת</strong>. OS נותן לו זיכרון נפרד לחלוטין. מאובטח יותר — אבל לא יכול לגעת בזיכרון של process אחר.</p>
+      </div>
+    </div>
+    <div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:18px;height:100%;display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);letter-spacing:2px">// MEMORY MODEL</div>
+        <div style="border:1px solid var(--cyan);padding:12px;text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--cyan)">Process A</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">
+            <div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);padding:6px 10px;font-size: 1.2rem;color:var(--cyan)">Thread 1</div>
+            <div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);padding:6px 10px;font-size: 1.2rem;color:var(--cyan)">Thread 2</div>
+          </div>
+          <div style="margin-top:6px;font-size: 1.2rem;color:var(--green)">← זיכרון משותף →</div>
+        </div>
+        <div style="text-align:center;font-size:1.4rem;color:var(--pink)">⚡ IPC</div>
+        <div style="border:1px solid var(--purple);padding:12px;text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--purple)">Process B</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">
+            <div style="background:rgba(194,100,254,.1);border:1px solid rgba(194,100,254,.3);padding:6px 10px;font-size: 1.2rem;color:var(--purple)">Thread 1</div>
+            <div style="background:rgba(194,100,254,.1);border:1px solid rgba(194,100,254,.3);padding:6px 10px;font-size: 1.2rem;color:var(--purple)">Thread 2</div>
+          </div>
+          <div style="margin-top:6px;font-size: 1.2rem;color:var(--pink)">× זיכרון נפרד ×</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S3: SECTION — PIPES -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,229,255,.08)">01</div>
+    <div class="stitle"><span class="gc">Pipes</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">תעלת תקשורת חד-כיוונית בין processes</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S4: PIPE CONCEPT -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span class="gc">Pipe</span> — צינור נתונים</h2>
+  <div class="cols6040" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <p style="margin-bottom:10px">🔧 אנלוגיה: אינסטגרם DM — process אחד <strong style="color:#fff">שולח</strong>, השני <strong style="color:#fff">מקבל</strong>. חד-כיווני, מאגן, בלוקינג.</p>
+      <div style="position:relative;margin:14px 0 24px">
+        <div class="pipe-viz">
+          <div class="pv-node pv-proc">Process A<br><small style="color:var(--dim);font-size: 1.2rem;">writer</small></div>
+          <div style="flex:1;position:relative">
+            <div class="pv-pipe"></div>
+            <div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size: 1.2rem;color:var(--dim);white-space:nowrap">Pipe Buffer (kernel)</div>
+          </div>
+          <div class="pv-node pv-proc">Process B<br><small style="color:var(--dim);font-size: 1.2rem;">reader</small></div>
+        </div>
+      </div>
+      <pre class="cb" style="margin-top:20px">
+<span class="kw">from</span> multiprocessing <span class="kw">import</span> Process, Pipe
+
+<span class="kw">def</span> <span class="fn">sender</span>(conn):
+    conn.<span class="fn">send</span>(<span class="st">"שלום מ-Process A! 👋"</span>)
+    conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">receiver</span>(conn):
+    msg = conn.<span class="fn">recv</span>()  <span class="cm"># חוסם עד קבלה</span>
+    <span class="fn">print</span>(<span class="st">f"קיבלתי: {msg}"</span>)
+
+parent_conn, child_conn = <span class="fn">Pipe</span>()
+p1 = <span class="fn">Process</span>(target=<span class="fn">sender</span>,   args=(child_conn,))
+p2 = <span class="fn">Process</span>(target=<span class="fn">receiver</span>, args=(parent_conn,))
+p1.<span class="fn">start</span>(); p2.<span class="fn">start</span>()
+p1.<span class="fn">join</span>();  p2.<span class="fn">join</span>()
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div class="card cc">
+        <h3>✅ יתרונות Pipe</h3>
+        <p>פשוט, מהיר, מובנה ב-OS. מאגן אוטומטי. בלוקינג = סנכרון חינם.</p>
+      </div>
+      <div class="card cp">
+        <h3>❌ מגבלות</h3>
+        <p>חד-כיווני (Pipe רגיל). רק בין processes קשורים (parent/child). אין persistence.</p>
+      </div>
+      <div class="card cy">
+        <h3>💡 duplex=True</h3>
+        <p><code>Pipe(duplex=True)</code> — תקשורת דו-כיוונית. כל קצה יכול לשלוח ולקבל.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S5: NAMED PIPE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span class="gc">Named Pipe</span> — FIFO</h2>
+  <div class="cols2" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <p style="margin-bottom:10px">Named Pipe = Pipe עם <strong style="color:#fff">שם בפסיסטם</strong> — כל process יכול להתחבר, גם ללא קשר משפחתי (parent/child).</p>
+      <pre class="cb">
+<span class="kw">import</span> os, time
+
+FIFO = <span class="st">"/tmp/my_pipe"</span>
+
+<span class="cm"># יוצר Named Pipe בפסיסטם</span>
+<span class="kw">if not</span> os.path.<span class="fn">exists</span>(FIFO):
+    os.<span class="fn">mkfifo</span>(FIFO)
+
+<span class="cm">## --- Process A: כותב ---</span>
+<span class="kw">with</span> <span class="fn">open</span>(FIFO, <span class="st">'w'</span>) <span class="kw">as</span> f:
+    f.<span class="fn">write</span>(<span class="st">"secret_data\n"</span>)
+
+<span class="cm">## --- Process B (נפרד): קורא ---</span>
+<span class="kw">with</span> <span class="fn">open</span>(FIFO, <span class="st">'r'</span>) <span class="kw">as</span> f:
+    data = f.<span class="fn">readline</span>()
+    <span class="fn">print</span>(<span class="st">f"קיבלתי: {data}"</span>)
+
+os.<span class="fn">unlink</span>(FIFO)  <span class="cm"># ניקוי</span>
+      </pre>
+      <div class="card cbl" style="margin-top:10px">
+        <h3>🔐 קשר לסייבר</h3>
+        <p>Named Pipes ב-Windows ידועים כווקטור תקיפה — privilege escalation דרך impersonation של Named Pipe. (CVE-2021-1732)</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--surface);border:1px solid var(--border);padding:16px">
+        <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);margin-bottom:10px;letter-spacing:2px">// PIPE vs NAMED PIPE</div>
+        <table class="ipc-table" style="margin-top:0">
+          <thead><tr><th>מאפיין</th><th>Pipe</th><th>Named Pipe</th></tr></thead>
+          <tbody>
+            <tr><td>שם בפסיסטם</td><td class="bad">×</td><td class="good">✓</td></tr>
+            <tr><td>processes לא קשורים</td><td class="bad">×</td><td class="good">✓</td></tr>
+            <tr><td>פשטות</td><td class="good">גבוהה</td><td class="mid">בינונית</td></tr>
+            <tr><td>persistence</td><td class="bad">×</td><td class="mid">חלקי</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card cg-c">
+        <h3>Shell Pipe — אתם מכירים!</h3>
+        <p><code style="color:var(--green)">ls | grep .py | wc -l</code><br>כל <code>|</code> הוא Pipe בין processes!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S6: QUIZ — PIPE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <span class="badge b-quiz">// שאלת הבנה #1</span>
+  <h2>Pipe — מה יקרה?</h2>
+  <pre class="cb" style="margin:12px 0">
+parent_conn, child_conn = <span class="fn">Pipe</span>()
+
+<span class="kw">def</span> <span class="fn">child</span>(conn):
+    conn.<span class="fn">send</span>(<span class="nm">42</span>)
+    conn.<span class="fn">send</span>(<span class="nm">99</span>)
+
+p = <span class="fn">Process</span>(target=<span class="fn">child</span>, args=(child_conn,))
+p.<span class="fn">start</span>()
+
+result = parent_conn.<span class="fn">recv</span>()
+<span class="fn">print</span>(result)   <span class="cm"># מה יודפס?</span>
+p.<span class="fn">join</span>()
+  </pre>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> שגיאה — לא ניתן לשלוח שני ערכים ב-Pipe</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ב</span> 99 — recv() מקבל את ההודעה האחרונה</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ג</span> 42 — Pipe הוא FIFO, recv() מקבל את הראשונה</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> (42, 99) — recv() מקבל הכל בבת אחת</div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S7: CODE FILL — PIPE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-code">// השלם את הקוד</span>
+  <h2>בנה תקשורת Pipe דו-כיוונית</h2>
+  <p style="margin-bottom:12px">Process A שולח שאלה, Process B עונה. מלא את החסר:</p>
+  <pre class="cb">
+<span class="kw">from</span> multiprocessing <span class="kw">import</span> Process, Pipe
+
+<span class="kw">def</span> <span class="fn">process_b</span>(conn):
+    question = conn.<span class="fn"><input class="fi" id="f1" placeholder="מה קוראים?" style="width:120px"></span>()
+    conn.<span class="fn">send</span>(<span class="st">f"תשובה ל: {question}"</span>)
+
+parent, child = <span class="fn">Pipe</span>(<input class="fi" id="f2" placeholder="ארגומנט?" style="width:110px">)
+p = <span class="fn">Process</span>(target=<span class="fn">process_b</span>, args=(child,))
+p.<span class="fn">start</span>()
+parent.<span class="fn">send</span>(<span class="st">"מה שלומך?"</span>)
+answer = parent.<span class="fn">recv</span>()
+<span class="fn">print</span>(answer)
+p.<span class="fn">join</span>()
+  </pre>
+  <button class="ckbtn" onclick="checkPipeFill()">בדוק ✓</button>
+  <div class="ffb" id="f12-fb"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S8: SECTION — MESSAGE QUEUE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,255,157,.06)">02</div>
+    <div class="stitle"><span class="gg">Message</span><br><span class="gg">Queue</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">תור הודעות בין processes</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S9: MULTIPROCESSING QUEUE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span class="gg">multiprocessing.Queue</span></h2>
+  <div class="cols6040" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <p style="margin-bottom:10px">כמו <code>queue.Queue</code> שאתם מכירים — אבל עובד בין <strong style="color:#fff">processes נפרדים</strong>, לא רק threads. הסריאליזציה נעשית אוטומטית ב-pickle.</p>
+      <pre class="cb">
+<span class="kw">from</span> multiprocessing <span class="kw">import</span> Process, Queue
+
+<span class="kw">def</span> <span class="fn">producer</span>(q):
+    <span class="kw">for</span> i <span class="kw">in</span> range(<span class="nm">5</span>):
+        q.<span class="fn">put</span>({<span class="st">"id"</span>: i, <span class="st">"data"</span>: <span class="st">f"packet_{i}"</span>})
+        <span class="fn">print</span>(<span class="st">f"[P] שלח packet_{i}"</span>)
+    q.<span class="fn">put</span>(<span class="kw">None</span>)  <span class="cm"># סימן עצירה</span>
+
+<span class="kw">def</span> <span class="fn">consumer</span>(q):
+    <span class="kw">while True</span>:
+        item = q.<span class="fn">get</span>()
+        <span class="kw">if</span> item <span class="kw">is None</span>: <span class="kw">break</span>
+        <span class="fn">print</span>(<span class="st">f"[C] עיבד: {item['data']}"</span>)
+
+q = <span class="fn">Queue</span>(maxsize=<span class="nm">3</span>)
+<span class="fn">Process</span>(target=<span class="fn">producer</span>, args=(q,)).<span class="fn">start</span>()
+<span class="fn">Process</span>(target=<span class="fn">consumer</span>, args=(q,)).<span class="fn">start</span>()
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card cg-c">
+        <h3>Queue vs Pipe</h3>
+        <p>Queue — כמה producers/consumers. Pipe — רק 2 קצוות. Queue גמיש יותר.</p>
+      </div>
+      <div class="card cy">
+        <h3>⚠️ pickle</h3>
+        <p>כל מה שנשלח ב-Queue עובר סריאליזציה. אובייקטים שלא ניתנים ל-pickle יגרמו לשגיאה.</p>
+      </div>
+      <div class="card cpur">
+        <h3>🔐 סייבר</h3>
+        <p>Deserialization of untrusted data = וקטור תקיפה נפוץ. לעולם אל תעשה <code>pickle.loads()</code> על נתון לא מאומת!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S10: QUIZ — QUEUE VS PIPE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <span class="badge b-quiz">// שאלת הבנה #2</span>
+  <h2>Queue או Pipe — מה לבחור?</h2>
+  <p style="margin-bottom:14px">לכל תרחיש — בחר את המנגנון המתאים:</p>
+  <div class="cg cg2" style="margin-bottom:16px">
+    <div class="card cc">
+      <h3>תרחיש A</h3>
+      <p>Web server שמקבל בקשות ו-5 worker processes שמעבדים אותן במקביל.</p>
+    </div>
+    <div class="card cg-c">
+      <h3>תרחיש B</h3>
+      <p>Parent process שולח פרמטרים ל-child, child מחזיר תוצאה. רק שניים.</p>
+    </div>
+  </div>
+  <div class="qc" id="q2">
+    <div class="qo" onclick="cq('q2',this,true)"><span class="ql">א</span> A → Queue (כמה consumers) &nbsp;|&nbsp; B → Pipe (1:1 פשוט)</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ב</span> A → Pipe &nbsp;|&nbsp; B → Queue</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ג</span> Queue לשניהם — תמיד עדיף</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> Pipe לשניהם — מהיר יותר</div>
+  </div>
+  <div class="qfb" id="q2-fb"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S11: MISSION — PIPE/QUEUE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s11">
+  <span class="badge b-mission">// משימה בזוגות</span>
+  <h2>📨 Message Pipeline</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בזוגות:</strong> בנו pipeline של 3 processes — כל אחד מעבד ומעביר הלאה.</p>
+    <ol class="msteps">
+      <li data-n="1">Process A: מייצר רשימת מספרים 1–10, שולח דרך Pipe לB</li>
+      <li data-n="2">Process B: מקבל מA, מכפיל כל מספר ב-2, שולח דרך Pipe לC</li>
+      <li data-n="3">Process C: מקבל מB, מדפיס סכום כולל</li>
+      <li data-n="4">בונוס: שנה כך שB גם מסנן מספרים זוגיים בלבד לפני שליחה לC</li>
+    </ol>
+  </div>
+  <pre class="cb" style="margin-top:12px">
+<span class="cm"># מבנה מוצע — מלאו את הפרטים</span>
+pipe_ab_r, pipe_ab_w = os.<span class="fn">pipe</span>()
+pipe_bc_r, pipe_bc_w = os.<span class="fn">pipe</span>()
+
+pA = <span class="fn">Process</span>(target=<span class="fn">generate</span>, args=(pipe_ab_w,))
+pB = <span class="fn">Process</span>(target=<span class="fn">transform</span>, args=(pipe_ab_r, pipe_bc_w))
+pC = <span class="fn">Process</span>(target=<span class="fn">aggregate</span>, args=(pipe_bc_r,))
+  </pre>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">12:00</div>
+    <button class="tb" onclick="st('t1',12)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',12)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S12: SECTION — SHARED MEMORY -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s12">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,204,0,.06)">03</div>
+    <div class="stitle" style="color:var(--yellow)">Shared</div>
+    <div class="stitle" style="color:var(--yellow)">Memory</div>
+    <p style="margin-top:10px;font-size: 1.2rem;">זיכרון משותף בין processes — המהיר אבל המסוכן</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S13: SHARED MEMORY CONCEPT -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span style="color:var(--yellow)">Shared Memory</span> — Value & Array</h2>
+  <div class="cols6040" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <p style="margin-bottom:10px">הדרך <strong style="color:#fff">המהירה ביותר</strong> לשיתוף נתונים בין processes — אבל דורשת סנכרון ידני. ללא Lock = Race Condition בדיוק כמו ב-threads!</p>
+      <pre class="cb">
+<span class="kw">from</span> multiprocessing <span class="kw">import</span> Process, Value, Array, Lock
+
+<span class="kw">def</span> <span class="fn">increment</span>(counter, lock):
+    <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="nm">1000</span>):
+        <span class="kw">with</span> lock:
+            counter.value += <span class="nm">1</span>  <span class="cm"># חייב lock!</span>
+
+counter = <span class="fn">Value</span>(<span class="st">'i'</span>, <span class="nm">0</span>)  <span class="cm"># integer משותף</span>
+lock    = <span class="fn">Lock</span>()
+
+procs = [<span class="fn">Process</span>(target=<span class="fn">increment</span>, args=(counter, lock))
+         <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="nm">4</span>)]
+
+<span class="kw">for</span> p <span class="kw">in</span> procs: p.<span class="fn">start</span>()
+<span class="kw">for</span> p <span class="kw">in</span> procs: p.<span class="fn">join</span>()
+
+<span class="fn">print</span>(counter.value)  <span class="cm"># צפוי: 4000</span>
+      </pre>
+      <pre class="cb" style="margin-top:6px">
+<span class="cm"># Array — מערך משותף</span>
+arr = <span class="fn">Array</span>(<span class="st">'d'</span>, [<span class="nm">1.0</span>, <span class="nm">2.0</span>, <span class="nm">3.0</span>])
+<span class="cm"># 'd' = double, 'i' = int, 'c' = char</span>
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card cy">
+        <h3>Type Codes</h3>
+        <p><code>'i'</code> = int &nbsp; <code>'d'</code> = double<br><code>'f'</code> = float &nbsp; <code>'c'</code> = char<br><code>'b'</code> = signed byte</p>
+      </div>
+      <div class="card cp">
+        <h3>⚠️ בלי Lock = בעיה</h3>
+        <p>הסר את ה-lock מהקוד — הרץ. תקבל פחות מ-4000. זה Race Condition בין processes.</p>
+      </div>
+      <div class="card cg-c">
+        <h3>SharedMemory (Python 3.8+)</h3>
+        <p>לנתונים גדולים: <code>multiprocessing.shared_memory.SharedMemory</code> — מאפשר שיתוף numpy arrays!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S14: QUIZ — SHARED MEMORY -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-quiz">// שאלת הבנה #3</span>
+  <h2>מה יקרה בלי Lock?</h2>
+  <pre class="cb" style="margin:12px 0">
+<span class="kw">def</span> <span class="fn">bad_increment</span>(counter):
+    <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="nm">10000</span>):
+        counter.value += <span class="nm">1</span>  <span class="cm"># ← ללא lock</span>
+
+counter = <span class="fn">Value</span>(<span class="st">'i'</span>, <span class="nm">0</span>)
+procs = [<span class="fn">Process</span>(target=<span class="fn">bad_increment</span>, args=(counter,))
+         <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="nm">3</span>)]
+<span class="cm"># ... start, join ...</span>
+<span class="fn">print</span>(counter.value)  <span class="cm"># צפוי 30000 — מה יקרה?</span>
+  </pre>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> תמיד יודפס 30000 — Python מגן אוטומטית</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ב</span> מספר קטן מ-30000 — Race Condition, עדכונים אובדים</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ג</span> שגיאה — Python לא מאפשר Value ללא Lock</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> מספר אקראי — יכול להיות גם יותר מ-30000</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S15: SECTION — SIGNALS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s15">
+  <div class="shero">
+    <div class="snum" style="color:rgba(194,100,254,.07)">04</div>
+    <div class="stitle"><span class="gpur">Signals</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">הודעות אסינכרוניות מה-OS לתהליכים</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S16: SIGNALS CONCEPT -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span class="gpur">Signals</span> — אינטרופטים לתהליכים</h2>
+  <div class="cols2" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <p style="margin-bottom:10px">📱 אנלוגיה: התראת פוש — ה-OS "דופק על הדלת" של process בכל רגע. Process יכול להחליט מה לעשות.</p>
+      <div style="margin-bottom:12px">
+        <div class="sig-row"><div class="sig-dot" style="background:var(--pink)"></div><code>SIGTERM (15)</code> — בקשה לסגירה מסודרת</div>
+        <div class="sig-row"><div class="sig-dot" style="background:var(--pink)"></div><code>SIGKILL (9)</code> — הרג מיידי (לא ניתן לתפוס!)</div>
+        <div class="sig-row"><div class="sig-dot" style="background:var(--yellow)"></div><code>SIGINT (2)</code> — Ctrl+C מהמשתמש</div>
+        <div class="sig-row"><div class="sig-dot" style="background:var(--green)"></div><code>SIGUSR1/2</code> — signal מותאם אישית</div>
+        <div class="sig-row"><div class="sig-dot" style="background:var(--blue)"></div><code>SIGCHLD</code> — child process סיים</div>
+      </div>
+      <pre class="cb">
+<span class="kw">import</span> signal, time, os
+
+<span class="kw">def</span> <span class="fn">handle_sigusr1</span>(signum, frame):
+    <span class="fn">print</span>(<span class="st">"📡 קיבלתי SIGUSR1!"</span>)
+
+<span class="cm"># רישום handler</span>
+signal.<span class="fn">signal</span>(signal.<span class="bi">SIGUSR1</span>, <span class="fn">handle_sigusr1</span>)
+
+<span class="fn">print</span>(<span class="st">f"PID: {os.getpid()}"</span>)
+<span class="fn">print</span>(<span class="st">"ממתין לsignal..."</span>)
+signal.<span class="fn">pause</span>()  <span class="cm"># ישן עד signal</span>
+<span class="cm"># מהטרמינל: kill -USR1 &lt;PID&gt;</span>
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card cpur">
+        <h3>Signal Handler</h3>
+        <p>פונקציה שרצה כשה-OS שולח signal. מקבל <code>(signum, frame)</code>. חייב להיות מהיר!</p>
+      </div>
+      <div class="card cp">
+        <h3>⚠️ SIGKILL</h3>
+        <p>SIGKILL אי-אפשר לתפוס, לבטל, או להתעלם ממנו. OS הורג מיידית — ללא cleanup.</p>
+      </div>
+      <div class="card cbl">
+        <h3>🔐 Signals בסייבר</h3>
+        <p>Signal injection, process hijacking דרך signals, TOCTOU דרך SIGALRM — ווקטורי תקיפה אמיתיים.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S17: QUIZ — SIGNALS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-quiz">// שאלת הבנה #4</span>
+  <h2>Signal — מה נכון?</h2>
+  <p style="margin-bottom:14px">בחר את כל הטענות הנכונות על Signals:</p>
+  <div class="qc" id="q4">
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">א</span> ניתן לתפוס ולהתעלם מכל signal, כולל SIGKILL</div>
+    <div class="qo" onclick="cq('q4',this,true)"><span class="ql">ב</span> SIGTERM ניתן לתפוס ולבצע cleanup לפני סגירה</div>
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">ג</span> Signal handler יכול להיות פונקציה ארוכה ומורכבת</div>
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">ד</span> Ctrl+C שולח SIGKILL לתהליך</div>
+  </div>
+  <div class="qfb" id="q4-fb"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S18: SECTION — SYNC -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s18">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,124,42,.07)">05</div>
+    <div class="stitle" style="color:var(--orange)">סנכרון</div>
+    <div class="stitle" style="color:var(--orange)">ומשאבים</div>
+    <p style="margin-top:10px;font-size: 1.2rem;">Lock · Semaphore · Event — בין processes</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S19: SYNC MECHANISMS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-concept">// מושג</span>
+  <h2>מנגנוני <span style="color:var(--orange)">סנכרון</span> — Lock · Mutex · Semaphore</h2>
+  <div class="cols2" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <div class="cg" style="gap:10px">
+        <div class="card co">
+          <span class="ci">🔒</span>
+          <h3>Lock = Mutex</h3>
+          <p>mutual exclusion — רק process אחד בכל פעם. <strong style="color:#fff">Mutex</strong> הוא הרעיון, Lock הוא המימוש.</p>
+          <pre class="cb" style="font-size:1rem;margin-top:8px;max-height:300px">
+lock = <span class="fn">Lock</span>()
+<span class="kw">with</span> lock:
+    counter.value += <span class="nm">1</span>  <span class="cm"># רק אחד כאן</span>
+          </pre>
+        </div>
+        <div class="card cg-c">
+          <span class="ci">📢</span>
+          <h3>Event</h3>
+          <p>דגל go/stop משותף. Process A מחכה ב-<code>wait()</code>, Process B מאותת ב-<code>set()</code>.</p>
+          <pre class="cb" style="font-size:1rem;margin-top:8px;max-height:300px">
+ev = <span class="fn">Event</span>()
+ev.<span class="fn">wait</span>()  <span class="cm"># Process A: ממתין</span>
+ev.<span class="fn">set</span>()   <span class="cm"># Process B: go!</span>
+          </pre>
+        </div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="card cpur" style="margin-bottom:10px">
+        <span class="ci">🚦</span>
+        <h3>Semaphore — connection pool</h3>
+        <p style="margin-bottom:8px">מגביל ל-N processes בו-זמנית. מונה פנימי: acquire() מקטין, release() מגדיל. כשמונה=0 — חוסם.</p>
+        <pre class="cb" style="font-size:.88rem;max-height:400px">
+db_sem = <span class="fn">Semaphore</span>(<span class="nm">3</span>)  <span class="cm"># רק 3 ב-DB</span>
+
+<span class="kw">def</span> <span class="fn">query_db</span>(wid, sem):
+    <span class="fn">print</span>(<span class="st">f"[W{wid}] ממתין..."</span>)
+    <span class="kw">with</span> sem:              <span class="cm"># acquire()</span>
+        <span class="fn">print</span>(<span class="st">f"[W{wid}] 🟢 מחובר"</span>)
+        time.<span class="fn">sleep</span>(random.<span class="fn">uniform</span>(<span class="nm">1</span>,<span class="nm">3</span>))
+    <span class="cm"># release() — פינה לאחר</span>
+
+<span class="cm"># 6 workers, מקסימום 3 בו-זמנית</span>
+<span class="kw">for</span> i <span class="kw">in</span> range(<span class="nm">6</span>):
+    <span class="fn">Process</span>(target=<span class="fn">query_db</span>,
+            args=(i, db_sem)).<span class="fn">start</span>()
+        </pre>
+        <div style="margin-top:8px;font-size:.82rem;color:var(--dim)">
+          פלט: W0/W1/W2 נכנסים → W3/W4/W5 חוסמים → כשW0 יוצא W3 נכנס
+        </div>
+      </div>
+      <div class="card cy">
+        <h3>⚠️ מתי מה?</h3>
+        <p style="font-size:.88rem">
+          <strong style="color:#fff">Lock/Mutex</strong> = critical section, רק 1<br>
+          <strong style="color:#fff">Semaphore(N)</strong> = resource pool, עד N<br>
+          <strong style="color:#fff">RLock</strong> = Mutex שאותו thread יכול לנעול שוב<br>
+          <strong style="color:#fff">Event</strong> = תיאום "התחל עכשיו"
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S19b: MUTEX vs RLOCK -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s19b">
+  <span class="badge b-concept">// מושג</span>
+  <h2><span style="color:var(--orange)">Mutex</span> vs <span style="color:var(--purple)">RLock</span> — מה ההבדל?</h2>
+  <div class="cols2" style="margin-top:12px;flex:1">
+    <div class="scroll">
+      <div class="card co" style="margin-bottom:10px">
+        <span class="ci">🔑</span>
+        <h3>Mutex = Lock()</h3>
+        <p style="margin-bottom:8px"><strong style="color:#fff">Mutex</strong> (Mutual Exclusion) הוא הרעיון: רק אחד בכל פעם. ב-Python, <code>Lock()</code> הוא Mutex. <strong style="color:var(--pink)">בעיה:</strong> אם thread קורא לאותו Lock פעמיים — Deadlock!</p>
+        <pre class="cb" style="font-size:.88rem;max-height:300px">
+lock = <span class="fn">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">outer</span>():
+    <span class="kw">with</span> lock:      <span class="cm"># acquire #1</span>
+        <span class="fn">inner</span>()     <span class="cm"># קורא inner...</span>
+
+<span class="kw">def</span> <span class="fn">inner</span>():
+    <span class="kw">with</span> lock:      <span class="cm"># acquire #2</span>
+        ...         <span class="cm"># 💀 DEADLOCK!</span>
+        </pre>
+      </div>
+      <div style="background:rgba(255,45,107,.05);border:1px solid rgba(255,45,107,.2);padding:12px 16px;font-size:.85rem">
+        <strong style="color:var(--pink)">ויזואליזציה — Race Condition ללא Mutex:</strong>
+        <pre class="cb" style="font-size:.82rem;margin-top:8px;max-height:300px;border-right-color:var(--pink)">
+<span class="cm"># ללא Mutex — counter = 5:</span>
+<span class="cm"># T1 קורא  → 5</span>
+<span class="cm"># T2 קורא  → 5   ← אותו ערך!</span>
+<span class="cm"># T1 כותב  → 6</span>
+<span class="cm"># T2 כותב  → 6   ← אבד +1!</span>
+
+<span class="cm"># עם Mutex:</span>
+<span class="cm"># T1: נועל→קורא 5→כותב 6→משחרר</span>
+<span class="cm"># T2: נועל→קורא 6→כותב 7→משחרר ✓</span>
+        </pre>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="card cpur" style="margin-bottom:10px">
+        <span class="ci">🔄</span>
+        <h3>RLock — Reentrant Mutex</h3>
+        <p style="margin-bottom:8px">Reentrant = אותו thread יכול לנעול <strong style="color:#fff">שוב ושוב</strong> ללא deadlock. חייב לשחרר <strong style="color:#fff">אותו מספר פעמים</strong> שנעל.</p>
+        <pre class="cb" style="font-size:.88rem;max-height:400px">
+<span class="kw">import</span> threading
+
+rlock = threading.<span class="fn">RLock</span>()
+
+<span class="kw">def</span> <span class="fn">outer</span>():
+    <span class="kw">with</span> rlock:      <span class="cm"># acquire #1</span>
+        <span class="fn">print</span>(<span class="st">"outer"</span>)
+        <span class="fn">inner</span>()       <span class="cm"># לא deadlock!</span>
+
+<span class="kw">def</span> <span class="fn">inner</span>():
+    <span class="kw">with</span> rlock:      <span class="cm"># acquire #2 ✓</span>
+        <span class="fn">print</span>(<span class="st">"inner"</span>)
+    <span class="cm"># release #2</span>
+<span class="cm"># release #1</span>
+
+threading.<span class="fn">Thread</span>(target=<span class="fn">outer</span>).<span class="fn">start</span>()
+        </pre>
+      </div>
+      <div class="card cy">
+        <h3>📊 השוואה מהירה</h3>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:5px 0;color:var(--dim)">מנגנון</td>
+            <td style="padding:5px 0;color:var(--dim)">N בו-זמנית</td>
+            <td style="padding:5px 0;color:var(--dim)">Reentrant</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:5px 0;color:var(--cyan)">Lock / Mutex</td>
+            <td style="color:var(--green)">1</td>
+            <td style="color:var(--pink)">✗</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:5px 0;color:var(--purple)">RLock</td>
+            <td style="color:var(--green)">1</td>
+            <td style="color:var(--green)">✓</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;color:var(--orange)">Semaphore(N)</td>
+            <td style="color:var(--green)">N</td>
+            <td style="color:var(--pink)">✗</td>
+          </tr>
+        </table>
+        <p style="margin-top:10px;font-size:.82rem">🔐 סייבר: TOCTOU — תקיפה שמנצלת את החלון בין בדיקת תנאי לביצועו, לפני שה-Mutex נרכש.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S20: IPC COMPARISON -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s20">
+  <span class="badge b-intro">// השוואה</span>
+  <h2>IPC — מה לבחור מתי?</h2>
+  <div class="sc-content" style="margin-top:10px">
+    <table class="ipc-table">
+      <thead>
+        <tr>
+          <th>מנגנון</th>
+          <th>מהירות</th>
+          <th>כמה processes</th>
+          <th>persistence</th>
+          <th>סנכרון</th>
+          <th>מתי להשתמש?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--cyan)">Pipe</strong></td>
+          <td class="good">גבוהה</td>
+          <td class="mid">2 בלבד</td>
+          <td class="bad">×</td>
+          <td class="good">אוטומטי</td>
+          <td>parent↔child, pipeline פשוט</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--cyan)">Named Pipe</strong></td>
+          <td class="good">גבוהה</td>
+          <td class="mid">כמה</td>
+          <td class="mid">חלקי</td>
+          <td class="good">אוטומטי</td>
+          <td>processes לא קשורים, שם קבוע</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--green)">Queue</strong></td>
+          <td class="mid">בינונית</td>
+          <td class="good">הרבה</td>
+          <td class="bad">×</td>
+          <td class="good">מובנה</td>
+          <td>producer/consumer, עומסים</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--yellow)">Shared Memory</strong></td>
+          <td class="good">מהיר מאוד</td>
+          <td class="good">הרבה</td>
+          <td class="mid">אפשרי</td>
+          <td class="bad">ידני!</td>
+          <td>נתונים גדולים, ביצועים קריטיים</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--purple)">Signal</strong></td>
+          <td class="good">מיידי</td>
+          <td class="good">כל process</td>
+          <td class="bad">×</td>
+          <td class="bad">לא</td>
+          <td>אירועים אסינכרוניים, shutdown</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S21: DRAG & DROP — MATCH IPC -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s21">
+  <span class="badge b-quiz">// פעילות — Match It</span>
+  <h2>🎯 התאם מנגנון לתרחיש</h2>
+  <p style="margin-bottom:12px">גרור את המנגנון לתרחיש המתאים לו:</p>
+  <div class="dnd-wrap">
+    <div class="dnd-pool" id="pool">
+      <div class="dnd-lbl">// מנגנונים</div>
+      <div class="dnd-chip" draggable="true" data-val="Pipe" ondragstart="ds(event)">Pipe</div>
+      <div class="dnd-chip" draggable="true" data-val="Queue" ondragstart="ds(event)">multiprocessing.Queue</div>
+      <div class="dnd-chip" draggable="true" data-val="SharedMemory" ondragstart="ds(event)">Shared Memory</div>
+      <div class="dnd-chip" draggable="true" data-val="Signal" ondragstart="ds(event)">Signal</div>
+    </div>
+    <div style="flex:2;display:flex;flex-direction:column;gap:10px">
+      <div class="dnd-zone" id="z1" ondragover="dov(event)" ondrop="dp(event,'z1','Pipe')" data-correct="Pipe">
+        <div class="dnd-lbl">// Parent process שולח נתונים ל-child יחיד</div>
+      </div>
+      <div class="dnd-zone" id="z2" ondragover="dov(event)" ondrop="dp(event,'z2','Queue')" data-correct="Queue">
+        <div class="dnd-lbl">// 10 worker processes מקבלים משימות מmanager</div>
+      </div>
+      <div class="dnd-zone" id="z3" ondragover="dov(event)" ondrop="dp(event,'z3','SharedMemory')" data-correct="SharedMemory">
+        <div class="dnd-lbl">// שיתוף numpy array גדול בין 4 processes</div>
+      </div>
+      <div class="dnd-zone" id="z4" ondragover="dov(event)" ondrop="dp(event,'z4','Signal')" data-correct="Signal">
+        <div class="dnd-lbl">// הודעת graceful shutdown לכל ה-workers</div>
+      </div>
+    </div>
+  </div>
+  <div class="dnd-result" id="dnd-res"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S22: MISSION FINAL -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s22">
+  <span class="badge b-mission">// משימת סיום</span>
+  <h2>🏗️ בנה מיני-מערכת IPC</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3:</strong> כל אחד בונה חלק. יחד זה צריך לעבוד.</p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">תלמיד A — Manager:</strong> יוצר Queue, שולח 10 "עבודות" לworkers, מקבל תוצאות ב-results Queue</li>
+      <li data-n="2"><strong style="color:#fff">תלמיד B — Worker:</strong> מקבל עבודה מQueue, מעבד (sleep + חישוב), שולח תוצאה ל-results Queue</li>
+      <li data-n="3"><strong style="color:#fff">תלמיד C — Monitor:</strong> מאזין ל-SIGUSR1 ומדפיס סטטוס, ומאזין ל-SIGTERM לסגירה מסודרת</li>
+      <li data-n="4"><strong style="color:#fff">בונוס:</strong> הוסיפו Semaphore שמגביל ל-2 workers פעילים בו-זמנית</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t2">15:00</div>
+    <button class="tb" onclick="st('t2',15)">▶ התחל</button>
+    <button class="tb" onclick="rt('t2',15)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S23: HOMEWORK -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s23">
+  <span class="badge b-mission">// שיעורי בית</span>
+  <h2>🏠 IPC Challenge</h2>
+  <div class="cg cg3" style="margin-top:14px">
+    <div class="card cg-c">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--green)">EASY</span>
+      <h3 style="margin-top:6px">Pipe Calculator</h3>
+      <p style="font-size: 1.2rem;">Parent שולח זוגות מספרים דרך Pipe, child מחזיר את הסכום. לפחות 5 חישובים.</p>
+    </div>
+    <div class="card cy">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--yellow)">MEDIUM</span>
+      <h3 style="margin-top:6px">Process Pool</h3>
+      <p style="font-size: 1.2rem;">Manager + 3 workers + Queue. כל worker מעבד "קבצים" (מדומים). Semaphore(2) מגביל עומס.</p>
+    </div>
+    <div class="card cp">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--pink)">HARD ★</span>
+      <h3 style="margin-top:6px">IPC Chat Server</h3>
+      <p style="font-size: 1.2rem;">Named Pipe server שמאפשר ל-2 "לקוחות" לשלוח הודעות. SIGTERM לסגירה מסודרת. הסבר בREADME.</p>
+    </div>
+  </div>
+  <div style="margin-top:14px;padding:12px 18px;background:var(--surface);border:1px solid var(--border);font-size: 1.2rem;">
+    📌 <strong style="color:#fff">הגשה:</strong> Python + README + דיאגרמת IPC (ציור ידני או draw.io) → GitHub Classroom
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- S24: SUMMARY -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" id="s24">
+  <span class="badge b-intro">// סיכום</span>
+  <h2>מה למדנו?</h2>
+  <div class="cg" style="margin-top:14px;flex:1;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div class="card cc">
+      <h3>🔧 Pipe</h3>
+      <p>חד/דו-כיווני. מהיר. רק בין processes קשורים. FIFO.</p>
+    </div>
+    <div class="card cc" style="border-right-color:var(--blue)">
+      <h3>📁 Named Pipe</h3>
+      <p>שם בפסיסטם. כל process יכול להתחבר. mkfifo.</p>
+    </div>
+    <div class="card cg-c">
+      <h3>📨 Queue</h3>
+      <p>הרבה producers/consumers. Thread-safe + Process-safe. pickle.</p>
+    </div>
+    <div class="card cy">
+      <h3>💾 Shared Memory</h3>
+      <p>הכי מהיר. Value, Array, SharedMemory. חייב Lock!</p>
+    </div>
+    <div class="card cpur">
+      <h3>📡 Signals</h3>
+      <p>אסינכרוני. OS שולח. SIGKILL אי-אפשר לתפוס.</p>
+    </div>
+    <div class="card co">
+      <h3>🔒 Lock = Mutex</h3>
+      <p>רק 1 בכל פעם. Mutex = הרעיון. Lock = המימוש.</p>
+    </div>
+    <div class="card cpur" style="border-right-color:var(--orange)">
+      <h3>🚦 Semaphore(N)</h3>
+      <p>עד N בו-זמנית. מונה פנימי. שימוש: connection pool.</p>
+    </div>
+    <div class="card cpur">
+      <h3>🔄 RLock</h3>
+      <p>Reentrant Mutex — אותו thread יכול לנעול שוב ושוב ללא deadlock.</p>
+    </div>
+    <div class="card cg-c" style="border-right-color:var(--yellow)">
+      <h3>📢 Event</h3>
+      <p>דגל go/stop משותף. set() מעיר, wait() ממתין.</p>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);text-align:center">
+    // next: asyncio & concurrent.futures — שיעור 6
+  </div>
+</div>
+
+</div><!-- /slides-wrapper -->
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- COMMAND REFERENCE PANEL -->
+<!-- ══════════════════════════════════════════════════════ -->
+<style>
+/* ── CMD BUTTON (floating) ── */
+.cmd-fab{
+  position:fixed;top:18px;right:20px;
+  background:none;border:1px solid var(--border);
+  color:var(--dim);font-family:'Fira Code',monospace;font-size:.7rem;
+  padding:5px 12px;cursor:pointer;z-index:1000;
+  transition:all .2s;letter-spacing:1px;
+  display:flex;align-items:center;gap:6px;
+}
+.cmd-fab:hover{border-color:var(--cyan);color:var(--cyan);}
+.cmd-fab .fab-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 6px var(--cyan);
+  animation:pulse-dot 2s ease infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+
+/* ── OVERLAY ── */
+.cmd-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(2,5,7,.85);backdrop-filter:blur(6px);
+  z-index:2000;display:none;align-items:center;justify-content:center;
+}
+.cmd-overlay.open{display:flex;}
+
+/* ── PANEL ── */
+.cmd-panel{
+  width:min(860px,95vw);max-height:300vh;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.cmd-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 22px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.cmd-header h3{
+  font-family:'Fira Code',monospace;font-size:.9rem;
+  color:var(--cyan);letter-spacing:2px;margin:0;
+}
+.cmd-close{
+  background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size:.75rem;
+  transition:all .2s;
+}
+.cmd-close:hover{border-color:var(--pink);color:var(--pink);}
+
+/* ── SEARCH ── */
+.cmd-search-wrap{
+  padding:12px 22px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.cmd-search{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'Fira Code',monospace;font-size:.82rem;
+  padding:8px 14px;outline:none;transition:border-color .2s;
+}
+.cmd-search:focus{border-color:var(--cyan);}
+.cmd-search::placeholder{color:var(--dim);}
+
+/* ── TABS ── */
+.cmd-tabs{
+  display:flex;gap:0;padding:0 22px;border-bottom:1px solid var(--border);
+  flex-shrink:0;overflow-x:auto;
+}
+.cmd-tab{
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--dim);font-family:'Fira Code',monospace;font-size:.72rem;
+  padding:10px 14px;cursor:pointer;transition:all .2s;
+  white-space:nowrap;letter-spacing:1px;
+}
+.cmd-tab:hover{color:var(--text);}
+.cmd-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+/* ── CMD LIST ── */
+.cmd-list{
+  flex:1;overflow-y:auto;padding:8px 0;
+}
+.cmd-list::-webkit-scrollbar{width:3px;}
+.cmd-list::-webkit-scrollbar-track{background:transparent;}
+.cmd-list::-webkit-scrollbar-thumb{background:var(--border);}
+.cmd-list::-webkit-scrollbar-thumb:hover{background:var(--cyan);}
+
+/* ── CMD ITEM ── */
+.cmd-item{
+  border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .15s;
+}
+.cmd-item:last-child{border-bottom:none;}
+.cmd-item:hover .cmd-item-header{background:rgba(0,229,255,.04);}
+.cmd-item-header{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 22px;
+}
+.cmd-item-header .cmd-name{
+  font-family:'Fira Code',monospace;font-size:.85rem;
+  color:var(--cyan);font-weight:600;flex-shrink:0;min-width:160px;
+}
+.cmd-item-header .cmd-short{
+  font-size:.82rem;color:var(--text);flex:1;
+}
+.cmd-item-header .cmd-cat{
+  font-family:'Fira Code',monospace;font-size:.65rem;
+  padding:2px 8px;border:1px solid;flex-shrink:0;
+}
+.cat-pipe{color:var(--cyan);border-color:rgba(0,229,255,.3);}
+.cat-queue{color:var(--green);border-color:rgba(0,255,157,.3);}
+.cat-mem{color:var(--yellow);border-color:rgba(255,204,0,.3);}
+.cat-signal{color:var(--purple);border-color:rgba(194,100,254,.3);}
+.cat-sync{color:var(--orange);border-color:rgba(255,124,42,.3);}
+.cat-proc{color:var(--pink);border-color:rgba(255,45,107,.3);}
+.cmd-item-header .cmd-arrow{
+  color:var(--dim);transition:transform .2s;flex-shrink:0;font-size:.8rem;
+}
+.cmd-item.expanded .cmd-arrow{transform:rotate(90deg);}
+
+/* ── CMD DETAIL ── */
+.cmd-detail{
+  display:none;padding:0 22px 18px;
+  border-top:1px solid var(--border);
+  background:rgba(0,229,255,.02);
+}
+.cmd-item.expanded .cmd-detail{display:block;}
+
+.cmd-signature{
+  font-family:'Fira Code',monospace;font-size:.82rem;
+  color:#fff;background:#020507;
+  border-right:3px solid var(--cyan);
+  padding:10px 16px;margin:12px 0;
+  direction:ltr;text-align:left;
+}
+.cmd-signature .p-name{color:var(--cyan);}
+.cmd-signature .p-type{color:var(--yellow);}
+.cmd-signature .p-default{color:var(--green);}
+.cmd-signature .p-opt{color:var(--dim);}
+
+.cmd-desc{font-size:.85rem;color:var(--text);line-height:1.7;margin-bottom:10px;}
+
+.cmd-params-title{
+  font-family:'Fira Code',monospace;font-size:.68rem;
+  color:var(--dim);letter-spacing:2px;margin-bottom:8px;
+}
+.param-row{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:7px 0;border-bottom:1px solid rgba(26,48,64,.5);font-size:.82rem;
+}
+.param-row:last-child{border-bottom:none;}
+.param-name{
+  font-family:'Fira Code',monospace;color:var(--cyan);
+  flex-shrink:0;min-width:120px;
+}
+.param-type{
+  font-family:'Fira Code',monospace;color:var(--yellow);
+  flex-shrink:0;min-width:80px;font-size:.75rem;margin-top:2px;
+}
+.param-desc{color:var(--dim);flex:1;line-height:1.6;}
+
+.cmd-example-title{
+  font-family:'Fira Code',monospace;font-size:.68rem;
+  color:var(--dim);letter-spacing:2px;margin:12px 0 6px;
+}
+.cmd-example{
+  font-family:'Fira Code',monospace;font-size:.78rem;
+  background:#020507;border:1px solid var(--border);
+  border-right:3px solid var(--green);
+  padding:10px 14px;color:#a8c8de;line-height:1.8;
+  overflow-x:auto;direction:ltr;text-align:left;
+}
+.cmd-example .ek{color:var(--pink);}
+.cmd-example .ef{color:var(--cyan);}
+.cmd-example .es{color:var(--green);}
+.cmd-example .ec{color:#2e5470;font-style:italic;}
+.cmd-example .en{color:var(--yellow);}
+
+.cmd-note{
+  margin-top:10px;padding:8px 14px;
+  background:rgba(255,204,0,.06);border-right:2px solid var(--yellow);
+  font-size:.8rem;color:var(--text);line-height:1.6;
+}
+.cmd-returns{
+  margin-top:8px;font-size:.8rem;
+  display:flex;gap:8px;align-items:flex-start;
+}
+.cmd-returns-label{
+  font-family:'Fira Code',monospace;color:var(--purple);
+  flex-shrink:0;font-size:.72rem;margin-top:2px;
+}
+.cmd-returns-val{color:var(--dim);}
+
+.cmd-hidden{display:none!important;}
+.no-results{
+  padding:30px;text-align:center;
+  font-family:'Fira Code',monospace;font-size:.8rem;color:var(--dim);
+}
+</style>
+
+<!-- FAB button -->
+<button class="cmd-fab" onclick="openCmdRef()">
+  <span class="fab-dot"></span>
+  // פקודות IPC
+</button>
+
+<!-- Overlay + Panel -->
+<div class="cmd-overlay" id="cmdOverlay" onclick="closeCmdRef(event)">
+  <div class="cmd-panel" onclick="event.stopPropagation()">
+    <div class="cmd-header">
+      <h3>// IPC COMMAND REFERENCE</h3>
+      <button class="cmd-close" onclick="closeCmdRef()">✕ סגור</button>
+    </div>
+    <div class="cmd-search-wrap">
+      <input class="cmd-search" id="cmdSearch" placeholder="חפש פקודה... (לדוגמה: Pipe, send, Value)" oninput="filterCmds()" autocomplete="off">
+    </div>
+    <div class="cmd-tabs">
+      <button class="cmd-tab active" onclick="filterTab(this,'all')">// הכל</button>
+      <button class="cmd-tab" onclick="filterTab(this,'pipe')">Pipe</button>
+      <button class="cmd-tab" onclick="filterTab(this,'queue')">Queue</button>
+      <button class="cmd-tab" onclick="filterTab(this,'mem')">Shared Memory</button>
+      <button class="cmd-tab" onclick="filterTab(this,'signal')">Signals</button>
+      <button class="cmd-tab" onclick="filterTab(this,'sync')">Sync</button>
+      <button class="cmd-tab" onclick="filterTab(this,'proc')">Process</button>
+    </div>
+    <div class="cmd-list" id="cmdList">
+
+      <!-- ═══════════ PIPE ═══════════ -->
+
+      <div class="cmd-item" data-cat="pipe" data-keys="pipe send recv close duplex">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Pipe()</span>
+          <span class="cmd-short">יוצר זוג חיבורים דו-כיווניים לתקשורת בין processes</span>
+          <span class="cmd-cat cat-pipe">Pipe</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Pipe</span>(<span class="p-name">duplex</span>=<span class="p-default">True</span>)</div>
+          <p class="cmd-desc">יוצר Pipe — צינור תקשורת בין שני processes. מחזיר זוג אובייקטים Connection: <code>(conn1, conn2)</code>. כברירת מחדל דו-כיווני.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">duplex</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">אם True (ברירת מחדל) — שני הקצוות יכולים לשלוח ולקבל. אם False — conn1 קורא בלבד, conn2 כותב בלבד.</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">tuple של (conn1, conn2) — שני אובייקטי Connection</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">from</span> multiprocessing <span class="ek">import</span> Pipe
+parent, child = <span class="ef">Pipe</span>()          <span class="ec"># duplex=True</span>
+r_conn, w_conn = <span class="ef">Pipe</span>(<span class="ek">False</span>)   <span class="ec"># חד-כיווני</span></div>
+          <div class="cmd-note">⚠️ חשוב לסגור את הקצה שלא בשימוש ב-process נתון — אחרת recv() לא יזהה EOF.</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="pipe" data-keys="send pipe connection שליחה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">conn.send()</span>
+          <span class="cmd-short">שולח אובייקט Python דרך ה-Pipe</span>
+          <span class="cmd-cat cat-pipe">Pipe</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">conn</span>.<span class="p-name">send</span>(<span class="p-name">obj</span>)</div>
+          <p class="cmd-desc">שולח אובייקט Python כלשהו דרך ה-Pipe. האובייקט עובר סריאליזציה אוטומטית ב-pickle, כלומר ניתן לשלוח list, dict, מחלקות, וכו'.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">obj</span>
+            <span class="param-type">any</span>
+            <span class="param-desc">כל אובייקט Python שניתן ל-pickle. מחרוזות, מספרים, רשימות, מילונים, מחלקות — הכל עובר.</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">None. חוסם אם ה-buffer מלא.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">conn.<span class="ef">send</span>(<span class="es">"hello"</span>)
+conn.<span class="ef">send</span>([<span class="en">1</span>, <span class="en">2</span>, <span class="en">3</span>])
+conn.<span class="ef">send</span>({<span class="es">"key"</span>: <span class="es">"value"</span>})</div>
+          <div class="cmd-note">⚠️ send() עם אובייקט שלא ניתן ל-pickle יזרוק PicklingError.</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="pipe" data-keys="recv pipe connection קבלה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">conn.recv()</span>
+          <span class="cmd-short">מקבל אובייקט מה-Pipe — חוסם עד שמגיע נתון</span>
+          <span class="cmd-cat cat-pipe">Pipe</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">conn</span>.<span class="p-name">recv</span>()</div>
+          <p class="cmd-desc">מקבל ומחזיר אובייקט שנשלח דרך ה-Pipe. אם אין נתון ממתין — חוסם (blocking) עד שיגיע. אם הצד השני סגר — זורק EOFError.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">—</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">אין פרמטרים. תמיד מקבל את האובייקט הבא בתור (FIFO).</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">האובייקט שנשלח — כפי שנשלח, אחרי deserialization מ-pickle.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">try</span>:
+    msg = conn.<span class="ef">recv</span>()   <span class="ec"># חוסם עד קבלה</span>
+<span class="ek">except</span> EOFError:
+    <span class="ec"># הצד השני סגר את ה-Pipe</span>
+    <span class="ef">print</span>(<span class="es">"Pipe נסגר"</span>)</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="pipe" data-keys="poll pipe בדיקה non-blocking">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">conn.poll()</span>
+          <span class="cmd-short">בדיקה non-blocking האם יש נתון ממתין ב-Pipe</span>
+          <span class="cmd-cat cat-pipe">Pipe</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">conn</span>.<span class="p-name">poll</span>(<span class="p-name">timeout</span>=<span class="p-default">0.0</span>)</div>
+          <p class="cmd-desc">בודק האם יש נתון ממתין ב-Pipe מבלי לחסום. שימושי כשרוצים לבדוק ולהמשיך בעבודה אחרת אם אין נתון.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">timeout</span>
+            <span class="param-type">float</span>
+            <span class="param-desc">0.0 (ברירת מחדל) = non-blocking. None = חוסם עד שיגיע נתון. מספר = ממתין עד N שניות.</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">True אם יש נתון ממתין, False אם לא.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">if</span> conn.<span class="ef">poll</span>(timeout=<span class="en">0.5</span>):  <span class="ec"># ממתין 0.5 שנ</span>
+    msg = conn.<span class="ef">recv</span>()
+    <span class="ef">print</span>(<span class="es">f"קיבלתי: {msg}"</span>)
+<span class="ek">else</span>:
+    <span class="ef">print</span>(<span class="es">"אין הודעה עדיין"</span>)</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="pipe" data-keys="mkfifo named pipe os fifo">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">os.mkfifo()</span>
+          <span class="cmd-short">יוצר Named Pipe (FIFO) בפסיסטם</span>
+          <span class="cmd-cat cat-pipe">Pipe</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">os</span>.<span class="p-name">mkfifo</span>(<span class="p-name">path</span>, <span class="p-name">mode</span>=<span class="p-default">0o666</span>)</div>
+          <p class="cmd-desc">יוצר Named Pipe — קובץ מיוחד בפסיסטם שמתפקד כ-Pipe. כל process שיודע את ה-path יכול להתחבר, גם אם אינו קשור (parent/child).</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">path</span>
+            <span class="param-type">str</span>
+            <span class="param-desc">הנתיב בפסיסטם לקובץ ה-FIFO. לדוגמה <code>"/tmp/my_pipe"</code>. חייב להיות נתיב ייחודי.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">mode</span>
+            <span class="param-type">int</span>
+            <span class="param-desc">הרשאות הקובץ באוקטל. 0o666 = קריאה וכתיבה לכולם (subject to umask).</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">None. יוצר את הקובץ בפסיסטם.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">os.<span class="ef">mkfifo</span>(<span class="es">"/tmp/ipc_pipe"</span>)
+<span class="ec"># פתיחה חוסמת עד שהצד השני נפתח!</span>
+<span class="ek">with</span> <span class="ef">open</span>(<span class="es">"/tmp/ipc_pipe"</span>, <span class="es">'w'</span>) <span class="ek">as</span> f:
+    f.<span class="ef">write</span>(<span class="es">"data\n"</span>)
+os.<span class="ef">unlink</span>(<span class="es">"/tmp/ipc_pipe"</span>)  <span class="ec"># ניקוי</span></div>
+          <div class="cmd-note">🔐 סייבר: Named Pipes ב-Windows ידועים כווקטור privilege escalation. תמיד בדוק הרשאות (CVE-2021-1732).</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ QUEUE ═══════════ -->
+
+      <div class="cmd-item" data-cat="queue" data-keys="queue multiprocessing תור">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Queue()</span>
+          <span class="cmd-short">יוצר תור הודעות process-safe לתקשורת בין processes</span>
+          <span class="cmd-cat cat-queue">Queue</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Queue</span>(<span class="p-name">maxsize</span>=<span class="p-default">0</span>)</div>
+          <p class="cmd-desc">יוצר תור FIFO שניתן לשיתוף בין processes. בניגוד ל-queue.Queue הרגיל — עובד דרך Pipe פנימי עם lock ו-semaphore, כך שבטוח לשימוש בין processes שונים.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">maxsize</span>
+            <span class="param-type">int</span>
+            <span class="param-desc">גודל מקסימלי של התור. 0 (ברירת מחדל) = גודל בלתי מוגבל. אם התור מלא — put() חוסם.</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">אובייקט Queue מוכן לשימוש.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">q = <span class="ef">Queue</span>(maxsize=<span class="en">10</span>)  <span class="ec"># מקסימום 10 פריטים</span>
+q2 = <span class="ef">Queue</span>()           <span class="ec"># ללא מגבלה</span></div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="queue" data-keys="put queue שליחה הכנסה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">q.put()</span>
+          <span class="cmd-short">מכניס פריט לתור — חוסם אם התור מלא</span>
+          <span class="cmd-cat cat-queue">Queue</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">q</span>.<span class="p-name">put</span>(<span class="p-name">item</span>, <span class="p-name">block</span>=<span class="p-default">True</span>, <span class="p-name">timeout</span>=<span class="p-opt">None</span>)</div>
+          <p class="cmd-desc">מכניס פריט לסוף התור. האובייקט עובר pickle אוטומטית לפני שמועבר בין processes.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">item</span>
+            <span class="param-type">any</span>
+            <span class="param-desc">הפריט להכניס. חייב להיות picklable.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">block</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">True (ברירת מחדל) = חסום אם התור מלא. False = זרוק Full מיד.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">timeout</span>
+            <span class="param-type">float</span>
+            <span class="param-desc">None = חסום ללא מגבלה. מספר = ממתין N שניות, אחר כך זורק queue.Full.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">q.<span class="ef">put</span>(<span class="es">"task_1"</span>)
+q.<span class="ef">put</span>({<span class="es">"id"</span>: <span class="en">1</span>}, timeout=<span class="en">3</span>)  <span class="ec"># ממתין 3 שנ</span>
+q.<span class="ef">put_nowait</span>(<span class="es">"urgent"</span>)         <span class="ec"># = put(block=False)</span></div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="queue" data-keys="get queue קבלה הוצאה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">q.get()</span>
+          <span class="cmd-short">מוציא ומחזיר פריט מהתחלת התור — חוסם אם ריק</span>
+          <span class="cmd-cat cat-queue">Queue</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">q</span>.<span class="p-name">get</span>(<span class="p-name">block</span>=<span class="p-default">True</span>, <span class="p-name">timeout</span>=<span class="p-opt">None</span>)</div>
+          <p class="cmd-desc">מוציא את הפריט הראשון מהתור (FIFO). אם התור ריק — חוסם עד שמגיע פריט.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">block</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">True = חסום אם ריק. False = זרוק queue.Empty מיד.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">timeout</span>
+            <span class="param-type">float</span>
+            <span class="param-desc">None = חסום ללא מגבלה. מספר = ממתין N שניות, אחר כך queue.Empty.</span>
+          </div>
+          <div class="cmd-returns"><span class="cmd-returns-label">↩ מחזיר:</span><span class="cmd-returns-val">הפריט שהוצא מהתור, אחרי deserialization.</span></div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">item = q.<span class="ef">get</span>()              <span class="ec"># חוסם</span>
+item = q.<span class="ef">get</span>(timeout=<span class="en">5</span>)    <span class="ec"># ממתין 5 שנ</span>
+item = q.<span class="ef">get_nowait</span>()       <span class="ec"># = get(block=False)</span></div>
+          <div class="cmd-note">חובה לקרוא ל-task_done() אחרי עיבוד אם משתמשים ב-q.join()!</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="queue" data-keys="task_done join queue סיום">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">q.task_done()</span>
+          <span class="cmd-short">מודיע שהפריט שהוצא מהתור עובד — חובה עם q.join()</span>
+          <span class="cmd-cat cat-queue">Queue</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">q</span>.<span class="p-name">task_done</span>()</div>
+          <p class="cmd-desc">מודיע לתור שפריט שהוצא ב-get() עובד בהצלחה. כל קריאה ל-get() חייבת להיות מלווה בקריאה ל-task_done(). נדרש כדי ש-q.join() ידע מתי לשחרר.</p>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">while True</span>:
+    item = q.<span class="ef">get</span>()
+    <span class="ef">process</span>(item)
+    q.<span class="ef">task_done</span>()  <span class="ec"># חובה!</span></div>
+          <div class="cmd-note">⚠️ קריאה ל-task_done() יותר פעמים מאשר get() תזרוק ValueError.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ SHARED MEMORY ═══════════ -->
+
+      <div class="cmd-item" data-cat="mem" data-keys="value shared memory זיכרון משותף">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Value()</span>
+          <span class="cmd-short">יוצר משתנה סקלרי בזיכרון משותף בין processes</span>
+          <span class="cmd-cat cat-mem">Shared Mem</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Value</span>(<span class="p-name">typecode_or_type</span>, <span class="p-name">*args</span>, <span class="p-name">lock</span>=<span class="p-default">True</span>)</div>
+          <p class="cmd-desc">יוצר משתנה בודד (int, float, וכו') בזיכרון שמשותף לכל ה-processes. גישה לערך דרך .value. כברירת מחדל מוגן ב-Lock פנימי.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">typecode</span>
+            <span class="param-type">str/type</span>
+            <span class="param-desc"><code>'i'</code>=int, <code>'d'</code>=double, <code>'f'</code>=float, <code>'b'</code>=byte, <code>'c'</code>=char. או ctypes type.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">*args</span>
+            <span class="param-type">any</span>
+            <span class="param-desc">ערך התחלתי. לדוגמה Value('i', 0) יוצר int עם ערך 0.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">lock</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">True = יוצר Lock פנימי אוטומטי. False = ללא הגנה (מסוכן!). אפשר לתת Lock קיים.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">counter = <span class="ef">Value</span>(<span class="es">'i'</span>, <span class="en">0</span>)   <span class="ec"># int = 0</span>
+pi = <span class="ef">Value</span>(<span class="es">'d'</span>, <span class="en">3.14</span>)   <span class="ec"># double</span>
+
+<span class="ek">with</span> counter.<span class="ef">get_lock</span>():
+    counter.value += <span class="en">1</span>    <span class="ec"># גישה בטוחה</span></div>
+          <div class="cmd-note">⚠️ גם עם lock=True, פעולות כמו += אינן אטומיות! תמיד עטוף ב-with counter.get_lock().</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="mem" data-keys="array shared memory מערך">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Array()</span>
+          <span class="cmd-short">יוצר מערך בזיכרון משותף בין processes</span>
+          <span class="cmd-cat cat-mem">Shared Mem</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Array</span>(<span class="p-name">typecode_or_type</span>, <span class="p-name">size_or_initializer</span>, <span class="p-name">lock</span>=<span class="p-default">True</span>)</div>
+          <p class="cmd-desc">יוצר מערך של ערכים בזיכרון משותף. מהיר מאוד — הנתונים ישבים בזיכרון אחד שכולם רואים, ללא העתקות.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">typecode</span>
+            <span class="param-type">str</span>
+            <span class="param-desc">סוג האיברים: <code>'i'</code>=int, <code>'d'</code>=double, <code>'f'</code>=float, <code>'c'</code>=char.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">size_or_initializer</span>
+            <span class="param-type">int/list</span>
+            <span class="param-desc">מספר = גודל המערך (0 התחלתי). רשימה = ערכי אתחול ומגדיר את הגודל.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">arr = <span class="ef">Array</span>(<span class="es">'i'</span>, [<span class="en">1</span>, <span class="en">2</span>, <span class="en">3</span>, <span class="en">4</span>])
+arr = <span class="ef">Array</span>(<span class="es">'d'</span>, <span class="en">10</span>)  <span class="ec"># 10 doubles, = 0.0</span>
+arr[<span class="en">0</span>] = <span class="en">42</span>           <span class="ec"># גישה רגילה</span>
+<span class="ef">print</span>(<span class="ef">list</span>(arr))      <span class="ec"># [42, 0, 0, ...]</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ SIGNALS ═══════════ -->
+
+      <div class="cmd-item" data-cat="signal" data-keys="signal handler רישום">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">signal.signal()</span>
+          <span class="cmd-short">רושם handler — פונקציה שתרוץ כשמגיע signal</span>
+          <span class="cmd-cat cat-signal">Signal</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">signal</span>.<span class="p-name">signal</span>(<span class="p-name">signalnum</span>, <span class="p-name">handler</span>)</div>
+          <p class="cmd-desc">מגדיר פונקציה שתיקרא אוטומטית כשה-OS שולח signal מסוים ל-process. הפונקציה מקבלת שני ארגומנטים: מספר ה-signal ו-frame (context ריצה).</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">signalnum</span>
+            <span class="param-type">int/signal</span>
+            <span class="param-desc">ה-signal לטפל בו: signal.SIGTERM, signal.SIGUSR1, signal.SIGINT, וכו'. לא ניתן לתפוס SIGKILL או SIGSTOP.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">handler</span>
+            <span class="param-type">callable</span>
+            <span class="param-desc">פונקציה שמקבלת (signum, frame). או signal.SIG_DFL (ברירת מחדל) או signal.SIG_IGN (התעלמות).</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">import</span> signal
+
+<span class="ek">def</span> <span class="ef">handle_term</span>(signum, frame):
+    <span class="ef">print</span>(<span class="es">"מקבל SIGTERM — מתנקה..."</span>)
+    cleanup()
+    exit(<span class="en">0</span>)
+
+signal.<span class="ef">signal</span>(signal.SIGTERM, handle_term)
+signal.<span class="ef">signal</span>(signal.SIGINT, signal.SIG_IGN)  <span class="ec"># מתעלם מCtrl+C</span></div>
+          <div class="cmd-note">⚠️ Handler חייב להיות קצר ומהיר. אסור לקרוא ל-print(), lock(), ופונקציות blocking בתוכו — זה לא thread-safe!</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="signal" data-keys="os kill שליחת signal">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">os.kill()</span>
+          <span class="cmd-short">שולח signal לprocess לפי PID</span>
+          <span class="cmd-cat cat-signal">Signal</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">os</span>.<span class="p-name">kill</span>(<span class="p-name">pid</span>, <span class="p-name">sig</span>)</div>
+          <p class="cmd-desc">שולח signal ל-process לפי מספר הזיהוי שלו (PID). למרות השם, לא תמיד "הורג" — תלוי ב-signal שנשלח.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">pid</span>
+            <span class="param-type">int</span>
+            <span class="param-desc">מזהה ה-process. os.getpid() = ה-PID שלי. p.pid = ה-PID של Process אובייקט.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">sig</span>
+            <span class="param-type">int/signal</span>
+            <span class="param-desc">ה-signal לשלוח. signal.SIGTERM=15, signal.SIGKILL=9, signal.SIGUSR1=10.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example"><span class="ek">import</span> os, signal
+
+p = <span class="ef">Process</span>(target=worker)
+p.<span class="ef">start</span>()
+
+os.<span class="ef">kill</span>(p.pid, signal.SIGUSR1)  <span class="ec"># שלח SIGUSR1</span>
+os.<span class="ef">kill</span>(p.pid, signal.SIGTERM)  <span class="ec"># בקש סגירה</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ SYNC ═══════════ -->
+
+      <div class="cmd-item" data-cat="sync" data-keys="lock acquire release נעילה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Lock()</span>
+          <span class="cmd-short">יוצר נעילה בין processes — mutual exclusion</span>
+          <span class="cmd-cat cat-sync">Sync</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">multiprocessing</span>.<span class="p-name">Lock</span>()</div>
+          <p class="cmd-desc">יוצר Lock שעובד בין processes (לא רק threads!). כל process שרוצה להיכנס ל-critical section חייב לרכוש את ה-Lock קודם. רק process אחד יכול להחזיק את ה-Lock בכל רגע.</p>
+          <div class="cmd-params-title">// שיטות עיקריות</div>
+          <div class="param-row">
+            <span class="param-name">acquire(block, timeout)</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">רכוש את ה-Lock. חוסם עד שזמין. עם timeout לא יחכה לנצח.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">release()</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">שחרר את ה-Lock. חובה לשחרר! אחרת deadlock.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">lock = <span class="ef">Lock</span>()
+
+<span class="ek">with</span> lock:           <span class="ec"># acquire + release אוטומטי</span>
+    counter.value += <span class="en">1</span>
+
+<span class="ec"># ידני:</span>
+lock.<span class="ef">acquire</span>()
+<span class="ek">try</span>:
+    counter.value += <span class="en">1</span>
+<span class="ek">finally</span>:
+    lock.<span class="ef">release</span>()    <span class="ec"># תמיד ישתחרר!</span></div>
+          <div class="cmd-note">💡 תמיד העדף with lock: על פני acquire/release ידני — מבטיח שחרור גם במקרה של שגיאה.</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="sync" data-keys="semaphore משאב pool acquire release מונה">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Semaphore()</span>
+          <span class="cmd-short">מגביל גישה ל-N processes בו-זמנית</span>
+          <span class="cmd-cat cat-sync">Sync</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Semaphore</span>(<span class="p-name">value</span>=<span class="p-default">1</span>)</div>
+          <p class="cmd-desc">כמו Lock, אבל מאפשר ל-N processes לגשת למשאב בו-זמנית. שומר מונה פנימי — acquire() מקטין ב-1, release() מגדיל ב-1. כשהמונה = 0, acquire() חוסם עד שמישהו קורא release().</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">value</span>
+            <span class="param-type">int</span>
+            <span class="param-desc">ערך התחלתי של המונה = מספר processes שיכולים לגשת במקביל. 1 = זהה ל-Lock. 0 = חסום מיד.</span>
+          </div>
+          <div class="cmd-params-title" style="margin-top:10px">// שיטות</div>
+          <div class="param-row">
+            <span class="param-name">acquire(block, timeout)</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">מקטין מונה ב-1. אם מונה=0 וblock=True — חוסם. מחזיר True אם הצליח.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">release()</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">מגדיל מונה ב-1 ומעיר process ממתין אחד.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה מלאה — connection pool</div>
+          <div class="cmd-example"><span class="ek">from</span> multiprocessing <span class="ek">import</span> Process, Semaphore
+<span class="ek">import</span> time, random
+
+db_sem = <span class="ef">Semaphore</span>(<span class="en">3</span>)  <span class="ec"># מגביל ל-3 חיבורי DB</span>
+
+<span class="ek">def</span> <span class="ef">query_db</span>(worker_id, sem):
+    <span class="ef">print</span>(<span class="es">f"[W{worker_id}] ממתין לחיבור..."</span>)
+    <span class="ek">with</span> sem:                           <span class="ec"># acquire()</span>
+        <span class="ef">print</span>(<span class="es">f"[W{worker_id}] 🟢 מחובר!"</span>)
+        time.<span class="ef">sleep</span>(random.<span class="ef">uniform</span>(<span class="en">1</span>, <span class="en">3</span>)) <span class="ec"># מדמה query</span>
+        <span class="ef">print</span>(<span class="es">f"[W{worker_id}] סיים"</span>)
+    <span class="ec"># release() אוטומטי — פינה מקום לאחר</span>
+
+<span class="ec"># 6 processes, אבל רק 3 יחד ב-DB</span>
+procs = [<span class="ef">Process</span>(target=<span class="ef">query_db</span>, args=(i, db_sem))
+         <span class="ek">for</span> i <span class="ek">in</span> range(<span class="en">6</span>)]
+<span class="ek">for</span> p <span class="ek">in</span> procs: p.<span class="ef">start</span>()
+<span class="ek">for</span> p <span class="ek">in</span> procs: p.<span class="ef">join</span>()</div>
+          <div class="cmd-example-title" style="margin-top:10px">// פלט</div>
+          <div class="cmd-example"><span class="ec"># כולם מנסים, רק 3 נכנסים בו-זמנית:</span>
+[W0] 🟢 מחובר!
+[W1] 🟢 מחובר!
+[W2] 🟢 מחובר!   <span class="ec"># sem=0, W3/4/5 חוסמים</span>
+[W0] סיים
+[W3] 🟢 מחובר!   <span class="ec"># W0 שוחרר → W3 נכנס</span></div>
+          <div class="cmd-note">💡 שימוש קלאסי: connection pool לDB, הגבלת בקשות API, ניהול worker pool.<br>⚠️ בניגוד ל-Lock, process שלא עשה acquire() יכול לקרוא release() — אם צריך "ownership" אמיתי השתמש ב-Mutex.</div>
+        </div>
+      </div>
+
+      <div class="cmd-item" data-cat="sync" data-keys="event set wait clear סנכרון">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Event()</span>
+          <span class="cmd-short">דגל סנכרון — process אחד "מאותת", השאר ממתינים</span>
+          <span class="cmd-cat cat-sync">Sync</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">multiprocessing</span>.<span class="p-name">Event</span>()</div>
+          <p class="cmd-desc">מנגנון סנכרון פשוט: Event הוא דגל (True/False) שמשותף לכל ה-processes. Process שממתין ב-wait() יעצור עד שמישהו יקרא ל-set().</p>
+          <div class="cmd-params-title">// שיטות עיקריות</div>
+          <div class="param-row">
+            <span class="param-name">set()</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">מגדיר את הדגל ל-True ומעיר את כל ה-processes שמחכים ב-wait().</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">wait(timeout)</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">ממתין עד שהדגל = True. אם כבר True — חוזר מיד. timeout = מספר שניות מקסימום.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">clear()</span>
+            <span class="param-type">—</span>
+            <span class="param-desc">מאפס את הדגל ל-False. processes שיקראו wait() יחכו שוב.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">is_set()</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">בודק האם הדגל מוגדר. True = set() נקרא ולא clear() אחריו.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">ev = <span class="ef">Event</span>()
+
+<span class="ek">def</span> <span class="ef">worker</span>(ev):
+    ev.<span class="ef">wait</span>()         <span class="ec"># ממתין ל-"go"</span>
+    <span class="ef">start_work</span>()
+
+<span class="ek">def</span> <span class="ef">manager</span>(ev):
+    <span class="ef">prepare</span>()
+    ev.<span class="ef">set</span>()           <span class="ec"># "go!" לכולם</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ MUTEX ═══════════ -->
+
+      <div class="cmd-item" data-cat="sync" data-keys="mutex lock ownership rlock בעלות נעילה בלעדית">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Mutex / RLock()</span>
+          <span class="cmd-short">נעילה בלעדית עם ownership — רק מי שנעל יכול לשחרר</span>
+          <span class="cmd-cat cat-sync">Sync</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">threading</span>.<span class="p-name">RLock</span>()&nbsp;&nbsp;<span class="p-opt">// Reentrant Lock</span></div>
+          <p class="cmd-desc"><strong style="color:#fff">Mutex (Mutual Exclusion)</strong> הוא רעיון, לא מחלקה ספציפית ב-Python. Lock() רגיל הוא Mutex פשוט — רק process/thread אחד מחזיק אותו. RLock() הוא Mutex עם שני שיפורים: <strong style="color:#fff">(1) Ownership</strong> — רק מי שרכש יכול לשחרר. <strong style="color:#fff">(2) Reentrant</strong> — אותו thread יכול לרכוש שוב ושוב ללא deadlock.</p>
+          <div class="cmd-params-title">// Mutex vs Lock vs Semaphore</div>
+          <div class="param-row">
+            <span class="param-name">Lock()</span>
+            <span class="param-type">= Mutex</span>
+            <span class="param-desc">Mutex פשוט. רק 1 בכל פעם. <strong style="color:var(--pink)">שים לב:</strong> ב-Python, thread אחר יכול לשחרר Lock שרכש thread אחר — זה לא ownership אמיתי!</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">RLock()</span>
+            <span class="param-type">Reentrant</span>
+            <span class="param-desc">Mutex עם ownership. רק thread שרכש יכול לשחרר. אותו thread יכול לרכוש N פעמים — חייב לשחרר N פעמים.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">Semaphore(1)</span>
+            <span class="param-type">≈ Mutex</span>
+            <span class="param-desc">פונקציונלית זהה ל-Lock, אבל ללא ownership. כל thread יכול לקרוא release() — זה מסוכן לעיתים.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה — RLock (Reentrant Mutex)</div>
+          <div class="cmd-example"><span class="ek">import</span> threading
+
+rlock = threading.<span class="ef">RLock</span>()
+
+<span class="ek">def</span> <span class="ef">outer</span>():
+    <span class="ek">with</span> rlock:           <span class="ec"># acquire #1</span>
+        <span class="ef">print</span>(<span class="es">"outer נועל"</span>)
+        <span class="ef">inner</span>()           <span class="ec"># קורא inner שגם נועל</span>
+
+<span class="ek">def</span> <span class="ef">inner</span>():
+    <span class="ek">with</span> rlock:           <span class="ec"># acquire #2 — לא deadlock!</span>
+        <span class="ef">print</span>(<span class="es">"inner נועל בתוך outer"</span>)
+    <span class="ec"># release #2 כאן</span>
+<span class="ec"># release #1 כאן</span>
+
+<span class="ec"># עם Lock() רגיל — deadlock!</span>
+<span class="ec"># עם RLock() — עובד תקין</span>
+threading.<span class="ef">Thread</span>(target=<span class="ef">outer</span>).<span class="ef">start</span>()</div>
+          <div class="cmd-example-title" style="margin-top:10px">// דוגמה — Lock() כ-Mutex עם multiprocessing</div>
+          <div class="cmd-example"><span class="ek">from</span> multiprocessing <span class="ek">import</span> Process, Lock, Value
+
+<span class="ec"># Mutex לגישה בטוחה ל-counter משותף</span>
+mutex = <span class="ef">Lock</span>()
+counter = <span class="ef">Value</span>(<span class="es">'i'</span>, <span class="en">0</span>)
+
+<span class="ek">def</span> <span class="ef">safe_increment</span>(mutex, counter, n):
+    <span class="ek">for</span> _ <span class="ek">in</span> range(n):
+        <span class="ek">with</span> mutex:         <span class="ec"># Mutex — רק אחד בכל פעם</span>
+            counter.value += <span class="en">1</span>
+
+procs = [<span class="ef">Process</span>(target=<span class="ef">safe_increment</span>,
+                  args=(mutex, counter, <span class="en">1000</span>))
+         <span class="ek">for</span> _ <span class="ek">in</span> range(<span class="en">4</span>)]
+<span class="ek">for</span> p <span class="ek">in</span> procs: p.<span class="ef">start</span>()
+<span class="ek">for</span> p <span class="ek">in</span> procs: p.<span class="ef">join</span>()
+<span class="ef">print</span>(counter.value)  <span class="ec"># תמיד 4000 ✓</span></div>
+          <div class="cmd-example-title" style="margin-top:10px">// השוואה ויזואלית: מה קורה בלי Mutex</div>
+          <div class="cmd-example"><span class="ec"># ללא Mutex — Race Condition:</span>
+<span class="ec">#  T1 קורא counter = 5</span>
+<span class="ec">#  T2 קורא counter = 5  ← אותו ערך!</span>
+<span class="ec">#  T1 כותב counter = 6</span>
+<span class="ec">#  T2 כותב counter = 6  ← אבד increment אחד!</span>
+
+<span class="ec"># עם Mutex:</span>
+<span class="ec">#  T1 נועל → קורא 5 → כותב 6 → משחרר</span>
+<span class="ec">#  T2 נועל → קורא 6 → כותב 7 → משחרר ✓</span></div>
+          <div class="cmd-note">🔐 סייבר: Mutex vulnerabilities — TOCTOU (Time Of Check To Time Of Use) היא מתקפה שמנצלת את החלון בין בדיקת תנאי לביצועו, לפני שה-Mutex נרכש. תמיד בדוק ורכוש בתוך אותה פעולה אטומית.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ PROCESS ═══════════ -->
+
+      <div class="cmd-item" data-cat="proc" data-keys="process start join target args">
+        <div class="cmd-item-header" onclick="toggleCmd(this)">
+          <span class="cmd-name">Process()</span>
+          <span class="cmd-short">יוצר process חדש — תהליך עצמאי עם זיכרון נפרד</span>
+          <span class="cmd-cat cat-proc">Process</span>
+          <span class="cmd-arrow">▶</span>
+        </div>
+        <div class="cmd-detail">
+          <div class="cmd-signature"><span class="p-name">Process</span>(<span class="p-name">target</span>=<span class="p-opt">None</span>, <span class="p-name">args</span>=<span class="p-default">()</span>, <span class="p-name">kwargs</span>=<span class="p-default">{}</span>, <span class="p-name">name</span>=<span class="p-opt">None</span>, <span class="p-name">daemon</span>=<span class="p-opt">None</span>)</div>
+          <p class="cmd-desc">יוצר process חדש שירוץ במקביל. לאחר יצירה — חייב לקרוא ל-start(). הprocess יחיה בזיכרון נפרד לחלוטין מה-parent.</p>
+          <div class="cmd-params-title">// פרמטרים</div>
+          <div class="param-row">
+            <span class="param-name">target</span>
+            <span class="param-type">callable</span>
+            <span class="param-desc">הפונקציה שתרוץ בprocess החדש. שם הפונקציה ללא סוגריים.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">args</span>
+            <span class="param-type">tuple</span>
+            <span class="param-desc">ארגומנטים positional לפונקציה. חייב להיות tuple — גם לארגומנט יחיד: (val,)</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">kwargs</span>
+            <span class="param-type">dict</span>
+            <span class="param-desc">ארגומנטים keyword לפונקציה. לדוגמה kwargs={'timeout': 5}.</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">daemon</span>
+            <span class="param-type">bool</span>
+            <span class="param-desc">True = process "דמון" — ייסגר אוטומטית כשה-parent נסגר, גם אם לא סיים.</span>
+          </div>
+          <div class="cmd-example-title">// דוגמה</div>
+          <div class="cmd-example">p = <span class="ef">Process</span>(target=worker, args=(q,))
+p.<span class="ef">start</span>()     <span class="ec"># מתחיל לרוץ</span>
+p.<span class="ef">join</span>()      <span class="ec"># ממתין לסיום</span>
+p.<span class="ef">terminate</span>() <span class="ec"># הורג (SIGTERM)</span>
+p.<span class="ef">kill</span>()      <span class="ec"># הורג (SIGKILL)</span>
+<span class="ef">print</span>(p.pid)  <span class="ec"># מזהה ה-process</span></div>
+          <div class="cmd-note">⚠️ Windows חובה: if __name__ == '__main__' — בלי זה, כל import מריץ שוב את הקוד.</div>
+        </div>
+      </div>
+
+    </div><!-- /cmd-list -->
+  </div><!-- /cmd-panel -->
+</div><!-- /cmd-overlay -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>▶ הקודם</button>
+  <span class="sc" id="sc">1 / 26</span>
+  <button class="nb" id="nb2" onclick="go(1)">הבא ◀</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──────────────────────────────
+const TOTAL = 26;
+let cur = 0, xp = 0;
+const slides = document.querySelectorAll('.slide');
+
+function goTo(n){
+  if(n<0||n>=TOTAL) return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),350);
+  cur=n;
+  slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') go(-1);
+});
+
+// ── XP ──────────────────────────────────
+function addXP(n){
+  xp+=n;
+  const el=document.getElementById('xpv');
+  el.textContent=xp;
+  el.classList.add('pop');
+  setTimeout(()=>el.classList.remove('pop'),250);
+}
+
+// ── QUIZ ────────────────────────────────
+const goodMsgs=['🔥 מעולה! +10 XP','⚡ בול פגע! +10 XP','💎 נכון לחלוטין! +10 XP','🎯 מדויק! +10 XP'];
+const badMsgs=['❌ לא בדיוק — חשוב שוב על הדרך שהנתונים זורמים.','❌ נסה שוב — שים לב לכמה קצוות יש לכל מנגנון.','❌ לא נכון — קרא שוב את ההשוואה.'];
+
+function cq(qId,el,ok){
+  const c=document.getElementById(qId);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok){
+    c.querySelectorAll('.qo').forEach(o=>{
+      if(o.getAttribute('onclick')&&o.getAttribute('onclick').includes(',true)'))
+        o.classList.add('correct');
+    });
+  }
+  const fb=document.getElementById(`${qId}-fb`);
+  const msgs=ok?goodMsgs:badMsgs;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'cfb':'wfb'}`;
+  if(ok) addXP(10);
+}
+
+// ── FILL ────────────────────────────────
+function checkPipeFill(){
+  const v1=document.getElementById('f1').value.trim().toLowerCase();
+  const v2=document.getElementById('f2').value.trim().toLowerCase();
+  const ok1=v1==='recv'||v1==='recv()';
+  const ok2=v2.includes('duplex=true')||v2==='true';
+  const f1=document.getElementById('f1'), f2=document.getElementById('f2');
+  f1.className='fi '+(ok1?'ok':'bad');
+  f2.className='fi '+(ok2?'ok':'bad');
+  const fb=document.getElementById('f12-fb');
+  fb.className='ffb show';
+  if(ok1&&ok2){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! recv() ו-duplex=True לתקשורת דו-כיוונית. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--pink)';
+    fb.textContent=`✗ ${!ok1?'רמז 1: כדי לקבל מ-Pipe קוראים ל-recv() ':''}${!ok2?'רמז 2: לאיזה ארגומנט Pipe() צריך כדי לאפשר שליחה משני הכיוונים?':''}`;
+  }
+}
+
+// ── REVEAL LIST ─────────────────────────
+function rv(li){li.classList.toggle('open');}
+
+// ── DRAG & DROP ─────────────────────────
+let dragged=null;
+function ds(e){
+  dragged=e.target;
+  e.target.classList.add('dragging');
+}
+function dov(e){
+  e.preventDefault();
+  e.currentTarget.classList.add('over');
+}
+function dp(e,zoneId,correct){
+  e.preventDefault();
+  const zone=document.getElementById(zoneId);
+  zone.classList.remove('over');
+  if(!dragged) return;
+  const val=dragged.dataset.val;
+  dragged.classList.remove('dragging');
+
+  // remove existing chip in zone
+  zone.querySelectorAll('.dnd-chip').forEach(c=>c.remove());
+  // add chip
+  const chip=document.createElement('div');
+  chip.className='dnd-chip';
+  chip.textContent=dragged.textContent;
+  chip.dataset.val=val;
+  chip.draggable=true;
+  chip.addEventListener('dragstart',ds);
+
+  if(val===correct){
+    chip.style.borderColor='var(--green)';chip.style.color='var(--green)';
+    addXP(5);
+  } else {
+    chip.style.borderColor='var(--pink)';chip.style.color='var(--pink)';
+  }
+  zone.appendChild(chip);
+
+  // remove from original
+  dragged.remove();
+
+  // check all done
+  const filled=document.querySelectorAll('.dnd-zone .dnd-chip').length;
+  if(filled===4){
+    const allCorrect=[...document.querySelectorAll('.dnd-zone')].every(z=>{
+      const chip=z.querySelector('.dnd-chip');
+      return chip&&chip.dataset.val===z.dataset.correct;
+    });
+    const res=document.getElementById('dnd-res');
+    res.className='dnd-result show';
+    res.style.color=allCorrect?'var(--green)':'var(--pink)';
+    res.textContent=allCorrect?'🎯 מושלם! כל ההתאמות נכונות! +20 XP':'❌ חלק מההתאמות שגויות — נסה שוב!';
+    if(allCorrect) addXP(20);
+  }
+  dragged=null;
+}
+
+// ── TIMER ────────────────────────────────
+const timers={};
+function st(id,min){
+  if(timers[id]) clearInterval(timers[id]);
+  let s=min*60;
+  const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60) el.classList.add('urg'); else el.classList.remove('urg');
+  }
+  tick(); timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id]) clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+goTo(0);
+
+// ── COMMAND REFERENCE PANEL ──────────────
+function openCmdRef(){
+  document.getElementById('cmdOverlay').classList.add('open');
+  document.getElementById('cmdSearch').focus();
+}
+function closeCmdRef(e){
+  if(!e||e.target===document.getElementById('cmdOverlay'))
+    document.getElementById('cmdOverlay').classList.remove('open');
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.getElementById('cmdOverlay').classList.remove('open');
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openCmdRef();}
+});
+
+function toggleCmd(header){
+  const item=header.parentElement;
+  const wasOpen=item.classList.contains('expanded');
+  // close all
+  document.querySelectorAll('.cmd-item.expanded').forEach(i=>i.classList.remove('expanded'));
+  if(!wasOpen) item.classList.add('expanded');
+}
+
+let activeTab='all';
+function filterTab(btn,cat){
+  document.querySelectorAll('.cmd-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  activeTab=cat;
+  applyFilters();
+}
+
+function filterCmds(){applyFilters();}
+
+function applyFilters(){
+  const q=document.getElementById('cmdSearch').value.toLowerCase().trim();
+  const items=document.querySelectorAll('.cmd-item');
+  let visible=0;
+  items.forEach(item=>{
+    const cat=item.dataset.cat||'';
+    const keys=(item.dataset.keys||'').toLowerCase();
+    const name=item.querySelector('.cmd-name')?.textContent.toLowerCase()||'';
+    const short=item.querySelector('.cmd-short')?.textContent.toLowerCase()||'';
+    const matchTab=activeTab==='all'||cat===activeTab;
+    const matchQ=!q||(keys+name+short).includes(q);
+    item.classList.toggle('cmd-hidden',!(matchTab&&matchQ));
+    if(matchTab&&matchQ) visible++;
+  });
+  // no results msg
+  let nr=document.querySelector('.no-results');
+  if(!nr){nr=document.createElement('div');nr.className='no-results';document.getElementById('cmdList').appendChild(nr);}
+  nr.style.display=visible===0?'block':'none';
+  nr.textContent='לא נמצאו פקודות מתאימות';
+}
+</script>
+</body>
+</html>

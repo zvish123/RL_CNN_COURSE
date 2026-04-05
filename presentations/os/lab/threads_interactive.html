@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threads מתקדם | שיעור 4</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050a0e;
+  --surface: #0d1821;
+  --surface2: #13202e;
+  --border: #1e3448;
+  --cyan: #00f5ff;
+  --pink: #ff006e;
+  --green: #39ff14;
+  --yellow: #ffd700;
+  --purple: #bf5fff;
+  --orange: #ff8c00;
+  --text: #c8d8e8;
+  --dim: #6a8aaa;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+body::before {
+  content:'';
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.012) 2px, rgba(0,245,255,0.012) 4px);
+  pointer-events:none; z-index:9999;
+}
+
+/* SLIDE ENGINE */
+.slides-wrapper { width:100%; height:100vh; position:relative; }
+.slide {
+  position: absolute; top:0; left:0;
+  width:100%; height:100%;
+  display:flex; flex-direction:column;
+  padding: 50px 70px;
+  opacity:0; pointer-events:none;
+  transform: translateX(-40px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.slide.active {
+  opacity:1; pointer-events:all;
+  transform: translateX(0);
+}
+.slide.exit {
+  opacity:0; transform: translateX(40px);
+}
+
+/* NAV */
+nav {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px;
+  background: rgba(13,24,33,0.95);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+.nav-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+  padding: 6px 18px; font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  transition: all 0.2s;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.slide-counter {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem; color: var(--dim);
+  min-width: 60px; text-align: center;
+}
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: linear-gradient(to left, var(--cyan), var(--purple));
+  transition: width 0.4s ease; z-index: 1001;
+}
+
+/* SLIDE TYPE BADGE */
+.slide-badge {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  letter-spacing: 3px; text-transform: uppercase;
+  padding: 4px 12px; display: inline-block; margin-bottom: 20px;
+  border: 1px solid; width: fit-content;
+}
+.badge-intro { color: var(--cyan); border-color: rgba(0,245,255,0.3); background: rgba(0,245,255,0.07); }
+.badge-concept { color: var(--purple); border-color: rgba(191,95,255,0.3); background: rgba(191,95,255,0.07); }
+.badge-quiz { color: var(--yellow); border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.07); }
+.badge-code { color: var(--green); border-color: rgba(57,255,20,0.3); background: rgba(57,255,20,0.07); }
+.badge-mission { color: var(--pink); border-color: rgba(255,0,110,0.3); background: rgba(255,0,110,0.07); }
+.badge-danger { color: var(--orange); border-color: rgba(255,140,0,0.3); background: rgba(255,140,0,0.07); }
+
+/* TYPOGRAPHY */
+h1 { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; line-height: 1.15; }
+h2 { font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 700; line-height: 1.2; margin-bottom: 10px; }
+h3 { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.glow-cyan { color: var(--cyan); text-shadow: 0 0 20px rgba(0,245,255,0.4); }
+.glow-pink { color: var(--pink); text-shadow: 0 0 20px rgba(255,0,110,0.4); }
+.glow-green { color: var(--green); text-shadow: 0 0 20px rgba(57,255,20,0.3); }
+p { color: var(--dim); line-height: 1.7; }
+
+/* CODE BLOCK */
+
+code {
+font-size: 1.2rem;
+font-family: 'Fira Code', monospace;
+}
+.code-block {
+  background: #020608; border: 1px solid var(--border);
+  border-right: 3px solid var(--cyan);
+  padding: 18px 22px; font-family: 'Fira Code', monospace;
+  font-size: 1.2rem; color: #b0cce0; overflow-x: auto;
+  line-height: 1.9; margin: 12px 0; position: relative;
+  direction: ltr;
+  overflow-x: auto;   /* גלילה אופקית — כבר קיים */
+  overflow-y: auto;   /* גלילה אנכית */
+  max-height: 800px;  /* גובה מקסימלי לפני גלילה */
+}
+.code-block .kw { color: var(--pink); }
+.code-block .fn { color: var(--cyan); }
+.code-block .cm { color: #3d6080; font-style: italic; }
+.code-block .st { color: var(--green); }
+.code-block .num { color: var(--yellow); }
+.code-block .blank { color: var(--yellow); background: rgba(255,215,0,0.15); padding: 0 4px; border-bottom: 2px solid var(--yellow); }
+
+/* CARDS */
+.card-grid { display: grid; gap: 14px; }
+.card-grid-2 { grid-template-columns: 1fr 1fr; }
+.card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 18px 20px; position: relative; overflow: hidden;
+}
+.card::before {
+  content:''; position:absolute; top:0; right:0;
+  width:3px; height:100%;
+}
+.card.c-cyan::before { background: var(--cyan); }
+.card.c-pink::before { background: var(--pink); }
+.card.c-green::before { background: var(--green); }
+.card.c-purple::before { background: var(--purple); }
+.card.c-yellow::before { background: var(--yellow); }
+.card.c-orange::before { background: var(--orange); }
+.card-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+.card p { font-size: 1.2rem; margin-top: 5px; }
+
+/* QUIZ */
+.quiz-container { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.quiz-option {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 14px 20px; cursor: pointer;
+  font-size: 1.2rem; color: var(--text);
+  transition: all 0.2s; text-align: right;
+  display: flex; align-items: center; gap: 12px;
+}
+.quiz-option:hover { border-color: rgba(0,245,255,0.4); background: rgba(0,245,255,0.05); }
+.quiz-option.correct { border-color: var(--green); background: rgba(57,255,20,0.1); color: #fff; }
+.quiz-option.wrong { border-color: var(--pink); background: rgba(255,0,110,0.1); color: var(--pink); }
+.quiz-option.disabled { pointer-events: none; }
+.quiz-option .opt-letter {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  color: var(--cyan); background: rgba(0,245,255,0.1);
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.quiz-feedback {
+  margin-top: 14px; padding: 14px 18px;
+  font-size: 1.2rem; display: none;
+  border: 1px solid;
+}
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct-fb { border-color: var(--green); background: rgba(57,255,20,0.08); color: var(--green); }
+.quiz-feedback.wrong-fb { border-color: var(--pink); background: rgba(255,0,110,0.08); color: var(--pink); }
+
+/* CODE FILL */
+.fill-area {
+  position: relative; margin: 12px 0;
+}
+.fill-input {
+  background: rgba(255,215,0,0.08); border: none; border-bottom: 2px solid var(--yellow);
+  color: var(--yellow); font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  padding: 2px 6px; width: 160px; outline: none;
+  transition: border-color 0.2s;
+}
+.fill-input:focus { border-color: var(--cyan); color: var(--cyan); }
+.fill-input.correct-fill { border-color: var(--green); color: var(--green); background: rgba(57,255,20,0.1); }
+.fill-input.wrong-fill { border-color: var(--pink); color: var(--pink); background: rgba(255,0,110,0.08); }
+.check-btn {
+  margin-top: 12px; background: none; border: 1px solid var(--cyan);
+  color: var(--cyan); font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  padding: 8px 20px; cursor: pointer; transition: all 0.2s;
+}
+.check-btn:hover { background: rgba(0,245,255,0.1); }
+.fill-feedback { margin-top: 10px; font-size: 1.2rem; display: none; }
+.fill-feedback.show { display: block; }
+
+/* MISSION */
+.mission-box {
+  background: rgba(255,0,110,0.05); border: 1px solid rgba(255,0,110,0.3);
+  padding: 22px 26px; margin-top: 10px; position: relative;
+}
+.mission-box::before {
+  content: '▶ MISSION';
+  position: absolute; top: -10px; right: 20px;
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  background: var(--bg); color: var(--pink); padding: 0 8px; letter-spacing: 2px;
+}
+.mission-steps { list-style: none; margin-top: 14px; }
+.mission-steps li {
+  display: flex; gap: 12px; align-items: flex-start;
+  font-size: 1.2rem; color: var(--text); margin-bottom: 10px;
+}
+.mission-steps li::before {
+  content: attr(data-n);
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  color: var(--pink); background: rgba(255,0,110,0.12);
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+
+/* TIMER */
+.timer-widget {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 12px 20px; margin-top: 16px; width: fit-content;
+}
+.timer-display {
+  font-family: 'Fira Code', monospace; font-size: 1.8rem;
+  color: var(--cyan); font-weight: 600; min-width: 80px;
+}
+.timer-display.urgent { color: var(--pink); animation: pulse 0.5s ease infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+.timer-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text); cursor: pointer; padding: 6px 14px;
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  transition: all 0.2s;
+}
+.timer-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* DEADLOCK VIZ */
+.deadlock-viz {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin: 20px 0; position: relative;
+}
+.dl-node {
+  width: 90px; height: 90px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fira Code', monospace; font-weight: 600; font-size: 1.2rem;
+  border: 2px solid; flex-shrink: 0;
+}
+.dl-thread { background: rgba(0,245,255,0.1); border-color: var(--cyan); color: var(--cyan); }
+.dl-lock { background: rgba(255,0,110,0.1); border-color: var(--pink); color: var(--pink); border-radius: 8px; }
+.dl-arrow {
+  font-size: 1.4rem; margin: 0 6px; flex-shrink: 0;
+  transition: color 0.5s;
+}
+.dl-arrow.waiting { color: var(--orange); animation: blink 1s ease infinite; }
+.dl-arrow.holding { color: var(--green); }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+/* DRAG & DROP */
+.dnd-container { display: flex; gap: 20px; margin-top: 14px; }
+.dnd-pool {
+  flex: 1; background: var(--surface); border: 1px dashed var(--border);
+  padding: 14px; min-height: 120px;
+}
+.dnd-target {
+  flex: 1; background: rgba(0,245,255,0.03); border: 1px dashed rgba(0,245,255,0.3);
+  padding: 14px; min-height: 120px;
+}
+.dnd-item {
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 8px 14px; margin: 6px 0; cursor: grab;
+  font-family: 'Fira Code', monospace; font-size: 1.2rem; color: var(--cyan);
+  user-select: none; transition: all 0.2s;
+}
+.dnd-item:hover { border-color: var(--cyan); }
+.dnd-item.dragging { opacity: 0.4; }
+.dnd-label { font-family: 'Fira Code', monospace; font-size: 1.2rem; color: var(--dim); margin-bottom: 8px; letter-spacing: 2px; }
+
+/* TITLE SLIDE SPECIAL */
+.slide-title-hero {
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%;
+}
+.lesson-num {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  color: var(--dim); letter-spacing: 4px; margin-bottom: 16px;
+}
+.title-tags { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+.title-tag {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  padding: 4px 12px; border: 1px solid var(--border); color: var(--dim);
+}
+.big-num {
+  font-family: 'Fira Code', monospace; font-size: 8rem; font-weight: 900;
+  color: rgba(0,245,255,0.04); position: absolute;
+  left: 40px; top: 50%; transform: translateY(-50%);
+  line-height: 1; pointer-events: none; user-select: none;
+}
+
+/* COLUMN LAYOUTS */
+.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.cols-60-40 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+
+/* REVEAL LIST */
+.reveal-list { list-style: none; }
+.reveal-list li {
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  display: flex; gap: 12px; align-items: center;
+  cursor: pointer; transition: all 0.2s; font-size: 1.2rem;
+}
+.reveal-list li:hover { color: #fff; }
+.reveal-list li .ri-icon { color: var(--cyan); font-size: 1.2rem; flex-shrink: 0; }
+.reveal-list li .ri-detail {
+  display: none; font-size: 1.2rem; color: var(--dim);
+  margin-top: 4px; padding-right: 10px;
+}
+.reveal-list li.open .ri-detail { display: block; }
+.reveal-list li.open { color: var(--cyan); }
+
+/* SECTION HEADER SLIDE */
+.section-hero {
+  display: flex; flex-direction: column; justify-content: center;
+  align-items: flex-start; height: 100%;
+  padding-right: 80px;
+}
+.section-num {
+  font-family: 'Fira Code', monospace; font-size: 5rem; font-weight: 900;
+  color: rgba(0,245,255,0.07); line-height: 1; margin-bottom: -20px;
+}
+.section-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; }
+
+/* COFFMAN CONDITIONS */
+.coffman-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.coffman-card {
+  background: rgba(255,0,110,0.05); border: 1px solid rgba(255,0,110,0.2);
+  padding: 16px 18px;
+}
+.coffman-num {
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  color: var(--pink); letter-spacing: 2px; margin-bottom: 6px;
+}
+
+/* SCORE */
+.score-widget {
+  position: fixed; top: 20px; left: 24px;
+  font-family: 'Fira Code', monospace; font-size: 1.2rem;
+  color: var(--dim); z-index: 1000;
+}
+.score-val { color: var(--cyan); font-size: 1.2rem; }
+
+/* TOOLTIP */
+.tooltip { position: relative; display: inline-block; }
+.tooltip .tip-text {
+  visibility: hidden; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-size: 1.2rem; padding: 6px 12px;
+  position: absolute; bottom: 130%; right: 0;
+  white-space: nowrap; z-index: 100; pointer-events: none;
+}
+.tooltip:hover .tip-text { visibility: visible; }
+
+/* SUCCESS ANIMATION */
+@keyframes successPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.success-pop { animation: successPop 0.3s ease; }
+
+/* SLIDE SPECIFIC LAYOUT HELPERS */
+.slide-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.scroll-content { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+.scroll-content::-webkit-scrollbar { width: 3px; }
+.scroll-content::-webkit-scrollbar-track { background: transparent; }
+.scroll-content::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* KEYBOARD HINT */
+.kb-hint {
+  position: fixed; bottom: 28px; right: 24px;
+  font-family: 'Fira Code', monospace; font-size: 1.2rem; color: var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="score-widget">
+  XP: <span class="score-val" id="scoreVal">0</span>
+</div>
+
+<div class="slides-wrapper" id="slidesWrapper">
+
+<!-- ============================================================ -->
+<!-- SLIDE 0: TITLE -->
+<!-- ============================================================ -->
+<div class="slide active" id="s0">
+  <div class="big-num">04</div>
+  <div class="slide-title-hero">
+    <div class="lesson-num">// LESSON_04 · THREADS ADVANCED</div>
+    <h1>ניהול <span class="glow-cyan">מקביליות</span><br>מתקדמת</h1>
+    <p style="margin-top:14px;font-size: 1.2rem;">Join · Condition Variables · Barriers · Deadlock</p>
+    <div class="title-tags">
+      <span class="title-tag">Python threading</span>
+      <span class="title-tag">90 דקות</span>
+      <span class="title-tag">מגמת סייבר</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: AGENDA -->
+<!-- ============================================================ -->
+<div class="slide" id="s1">
+  <span class="slide-badge badge-intro">// מה נלמד היום</span>
+  <h2>סדר היום</h2>
+  <div class="slide-content" style="margin-top:16px">
+    <ul class="reveal-list">
+      <li onclick="toggleReveal(this)">
+        <span class="ri-icon">⏱</span>
+        <div>
+          <div><strong>Join</strong> — המתנה לסיום thread</div>
+          <div class="ri-detail">כיצד thread ראשי ממתין לסיום thread אחר. join() ו-join(timeout=N)</div>
+        </div>
+      </li>
+      <li onclick="toggleReveal(this)">
+        <span class="ri-icon">🔔</span>
+        <div>
+          <div><strong>Condition Variables</strong> — תקשורת בין threads</div>
+          <div class="ri-detail">wait(), notify(), notify_all() — threading.Condition</div>
+        </div>
+      </li>
+      <li onclick="toggleReveal(this)">
+        <span class="ri-icon">🚧</span>
+        <div>
+          <div><strong>Barriers</strong> — נקודות מפגש</div>
+          <div class="ri-detail">threading.Barrier(n) — כולם עוצרים, כולם עוברים יחד</div>
+        </div>
+      </li>
+      <li onclick="toggleReveal(this)">
+        <span class="ri-icon">📦</span>
+        <div>
+          <div><strong>Shared Memory & Queue</strong> — העברת נתונים</div>
+          <div class="ri-detail">multiprocessing.Value, queue.Queue — Producer/Consumer pattern</div>
+        </div>
+      </li>
+      <li onclick="toggleReveal(this)">
+        <span class="ri-icon">💀</span>
+        <div>
+          <div><strong>Deadlock</strong> — זיהוי ומניעה</div>
+          <div class="ri-detail">ארבעת תנאי קופמן, הדגמה חיה, אסטרטגיות מניעה</div>
+        </div>
+      </li>
+    </ul>
+    <p style="margin-top:18px;font-size: 1.2rem;">👆 לחץ על כל נושא לפרטים</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: SECTION — JOIN -->
+<!-- ============================================================ -->
+<div class="slide" id="s2">
+  <div class="section-hero">
+    <div class="section-num">01</div>
+    <div class="section-title"><span class="glow-cyan">Join</span></div>
+    <p style="margin-top:12px;font-size: 1.2rem;">המתנה לסיום thread</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: JOIN CONCEPT -->
+<!-- ============================================================ -->
+<div class="slide" id="s3">
+  <span class="slide-badge badge-concept">// מושג</span>
+  <h2>מה זה <span class="glow-cyan">join()</span>?</h2>
+  <div class="cols-60-40" style="margin-top:16px;flex:1">
+    <div class="scroll-content">
+      <p style="margin-bottom:14px">כשה-thread הראשי קורא ל-<code style="color:var(--cyan)">t.join()</code>, הוא <strong style="color:#fff">עוצר ומחכה</strong> עד שה-thread <code>t</code> מסיים לרוץ.</p>
+      <pre class="code-block">
+<span class="kw">import</span> threading, time
+
+<span class="kw">def</span> <span class="fn">worker</span>(name, delay):
+    time.<span class="fn">sleep</span>(delay)
+    <span class="fn">print</span>(<span class="st">f"[{name}] סיים ✓"</span>)
+
+t1 = threading.<span class="fn">Thread</span>(target=<span class="fn">worker</span>, args=(<span class="st">"A"</span>, <span class="num">2</span>))
+t2 = threading.<span class="fn">Thread</span>(target=<span class="fn">worker</span>, args=(<span class="st">"B"</span>, <span class="num">1</span>))
+
+t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>()
+
+t1.<span class="fn">join</span>()  <span class="cm"># ממתין ל-t1</span>
+t2.<span class="fn">join</span>()  <span class="cm"># ממתין ל-t2</span>
+
+<span class="fn">print</span>(<span class="st">"כולם סיימו!"</span>)  <span class="cm"># רק כאן!</span>
+      </pre>
+      <div class="card c-yellow" style="margin-top:12px">
+        <h3>⚠️ join(timeout=N)</h3>
+        <p>לא תמיד רוצים לחכות לנצח. <code style="color:var(--yellow)">join(timeout=5)</code> ממתין עד 5 שניות ואז ממשיך בכל מקרה.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card c-cyan" style="margin-bottom:14px">
+        <span class="card-icon">🏁</span>
+        <h3>בלי join</h3>
+        <p>הפלט מגיע בסדר לא צפוי. "כולם סיימו!" יכול להדפס לפני שה-threads בכלל התחילו!</p>
+      </div>
+      <div class="card c-green">
+        <span class="card-icon">✅</span>
+        <h3>עם join</h3>
+        <p>מובטח שה-thread הראשי ימשיך <strong style="color:#fff">רק לאחר</strong> סיום כל ה-threads.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: QUIZ — JOIN -->
+<!-- ============================================================ -->
+<div class="slide" id="s4">
+  <span class="slide-badge badge-quiz">// שאלת הבנה #1</span>
+  <h2>מה יודפס לאחרון?</h2>
+  <pre class="code-block" style="margin:14px 0">
+<span class="kw">import</span> threading, time
+
+<span class="kw">def</span> <span class="fn">task</span>():
+    time.<span class="fn">sleep</span>(<span class="num">3</span>)
+    <span class="fn">print</span>(<span class="st">"Thread סיים"</span>)
+
+t = threading.<span class="fn">Thread</span>(target=<span class="fn">task</span>)
+t.<span class="fn">start</span>()
+<span class="fn">print</span>(<span class="st">"Main רץ"</span>)
+t.<span class="fn">join</span>()
+<span class="fn">print</span>(<span class="st">"אחרי join"</span>)
+  </pre>
+  <div class="quiz-container" id="q1">
+    <div class="quiz-option" onclick="checkQuiz('q1', this, false)">
+      <span class="opt-letter">א</span> "Main רץ" — כי ה-main thread מהיר יותר
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q1', this, false)">
+      <span class="opt-letter">ב</span> "Thread סיים" — כי sleep(3) הוא האיטי ביותר
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q1', this, true)">
+      <span class="opt-letter">ג</span> "אחרי join" — join מחכה ל-thread, רק אחריו ממשיכים
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q1', this, false)">
+      <span class="opt-letter">ד</span> הפלט אקראי בכל הרצה
+    </div>
+  </div>
+  <div class="quiz-feedback" id="q1-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: CODE FILL — JOIN -->
+<!-- ============================================================ -->
+<div class="slide" id="s5">
+  <span class="slide-badge badge-code">// השלם את הקוד</span>
+  <h2>הוסף <span class="glow-cyan">join</span> במקום הנכון</h2>
+  <p style="margin-bottom:14px">הקוד הבא מדפיס "הכל מוכן" לפני שה-threads מסיימים. תקן אותו!</p>
+  <pre class="code-block">
+threads = [threading.<span class="fn">Thread</span>(target=<span class="fn">download</span>, args=(url,))
+           <span class="kw">for</span> url <span class="kw">in</span> urls]
+
+<span class="kw">for</span> t <span class="kw">in</span> threads: t.<span class="fn">start</span>()
+
+<span class="cm"># כאן חסר משהו!</span>
+<input class="fill-input" id="fill1" placeholder="הקוד החסר...">
+
+<span class="fn">print</span>(<span class="st">"הכל מוכן!"</span>)
+  </pre>
+  <button class="check-btn" onclick="checkFill('fill1', ['for t in threads: t.join()', 'for t in threads:t.join()', '[t.join() for t in threads]'], 'fill1-fb', 'q2')">בדוק ✓</button>
+  <div class="fill-feedback" id="fill1-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: SECTION — CONDITION & BARRIER -->
+<!-- ============================================================ -->
+<div class="slide" id="s6">
+  <div class="section-hero">
+    <div class="section-num">02</div>
+    <div class="section-title"><span class="glow-purple">Condition</span><br><span style="font-size:1.8rem;color:var(--text)">& Barriers</span></div>
+    <p style="margin-top:12px;font-size: 1.2rem;">תיאום מתקדם בין threads</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: CONDITION VAR -->
+<!-- ============================================================ -->
+<div class="slide" id="s7">
+  <span class="slide-badge badge-concept">// מושג</span>
+  <h2><span class="glow-purple">Condition Variable</span></h2>
+  <div class="cols-2" style="margin-top:14px;flex:1">
+    <div class="scroll-content">
+      <p style="margin-bottom:12px">כמו Push Notification — thread אחד <strong style="color:#fff">שולח הודעה</strong> ("הנתון מוכן"), thread אחר <strong style="color:#fff">מחכה להודעה</strong>.</p>
+      <pre class="code-block">
+<span class="kw">import</span> threading, time
+
+cond = threading.<span class="fn">Condition</span>()
+ready = <span class="kw">False</span>
+
+<span class="kw">def</span> <span class="fn">producer</span>():
+    <span class="kw">global</span> ready
+    <span class="kw">with</span> cond:
+        time.<span class="fn">sleep</span>(<span class="num">2</span>)
+        ready = <span class="kw">True</span>
+        cond.<span class="fn">notify_all</span>()  <span class="cm"># מעיר את כולם</span>
+
+<span class="kw">def</span> <span class="fn">consumer</span>(name):
+    <span class="kw">with</span> cond:
+        <span class="kw">while not</span> ready:
+            cond.<span class="fn">wait</span>()  <span class="cm"># ישן עד notify</span>
+        <span class="fn">print</span>(<span class="st">f"{name}: קיבל!"</span>)
+
+t1 = threading.Thread(target=producer)
+t2 = threading.Thread(target=consumer, args=("one",))
+t3 = threading.Thread(target=consumer, args=("two",))
+t1.start()
+t2.start()
+t3.start()
+
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card c-purple">
+        <h3>wait()</h3>
+        <p>משחרר את ה-Lock באופן אטומי וממתין. לא בוזבז CPU!</p>
+      </div>
+      <div class="card c-cyan">
+        <h3>notify()</h3>
+        <p>מעיר thread אחד שמחכה. notify_all() מעיר את כולם.</p>
+      </div>
+      <div class="card c-yellow">
+        <h3>⚠️ Spurious Wakeups</h3>
+        <p>תמיד כתוב <code style="color:var(--yellow)">while not condition</code> ולא <code>if not</code>!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: BARRIER -->
+<!-- ============================================================ -->
+<div class="slide" id="s8">
+  <span class="slide-badge badge-concept">// מושג</span>
+  <h2><span class="glow-cyan">Barrier</span> — נקודת מפגש</h2>
+  <div class="cols-60-40" style="margin-top:14px;flex:1">
+    <div class="scroll-content">
+      <p style="margin-bottom:12px">🎮 אנלוגיה: כולם ממתינים בחדר בריחה עד שכל הצוות מגיע — רק אז עוברים לשלב הבא.</p>
+      <pre class="code-block">
+<span class="kw">import</span> threading, time, random
+
+barrier = threading.<span class="fn">Barrier</span>(<span class="num">3</span>)  <span class="cm"># 3 threads</span>
+
+<span class="kw">def</span> <span class="fn">phase_worker</span>(name):
+    <span class="cm"># שלב א׳ — כל thread עושה משהו אחר</span>
+    duration = random.uniform(0.5, 2.5)
+    print(f"{name}: מתחיל שלב א׳ (ייקח {duration:.1f} שניות)")
+    time.sleep(duration)
+    barrier.<span class="fn">wait</span>()  <span class="cm"># ⬅ כולם עוצרים כאן</span>
+                   <span class="cm"># עוברים יחד כשהאחרון מגיע</span>
+
+    <span class="cm"># שלב ב׳ — מתחיל רק כשכולם מוכנים</span>
+    <span class="fn">print</span>(<span class="st">f"{name}: מתחיל שלב ב׳ ✓"</span>)
+    time.sleep(0.5)
+    print(f"{name}: שלב ב׳ הסתיים ✓")
+
+threads = [
+    threading.Thread(target=phase_worker, args=(name,))
+    for name in ["Alice", "Bob", "Charlie"]
+]
+
+print("=== מתחילים ===")
+for t in threads:
+    t.start()
+
+for t in threads:
+    t.join()
+
+print("=== כולם סיימו ===")
+      </pre>
+      <div class="card c-pink" style="margin-top:12px">
+        <h3>⚠️ BrokenBarrierError</h3>
+        <p>אם thread אחד קורס, ה-Barrier "נשבר" וכולם מקבלים שגיאה. תמיד השתמש ב-timeout!</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="text-align:center;padding:20px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:2rem;margin-bottom:8px">🏃 🏃 🏃</div>
+        <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim)">כל thread רץ בנפרד</div>
+        <div style="margin:10px 0;height:2px;background:linear-gradient(to left,var(--cyan),transparent)"></div>
+        <div style="font-size: 1.2rem;color:var(--cyan);font-family:'Fira Code',monospace">barrier.wait()</div>
+        <div style="margin:10px 0;height:2px;background:linear-gradient(to right,var(--cyan),transparent)"></div>
+        <div style="font-size:2rem;margin-top:8px">🏃🏃🏃</div>
+        <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim)">כולם ממשיכים ביחד</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: QUIZ — CONDITION/BARRIER -->
+<!-- ============================================================ -->
+<div class="slide" id="s9">
+  <span class="slide-badge badge-quiz">// שאלת הבנה #2</span>
+  <h2>Condition vs Barrier — איזה להשתמש?</h2>
+  <p style="margin-bottom:18px">לכל תרחיש, החלט איזה מנגנון מתאים:</p>
+  <div class="card-grid card-grid-2" style="margin-bottom:18px">
+    <div class="card c-cyan">
+      <h3>תרחיש A</h3>
+      <p>Thread A מוריד קובץ, Threads B ו-C מחכים לו ורק אחר כך מעבדים את הנתונים.</p>
+    </div>
+    <div class="card c-purple">
+      <h3>תרחיש B</h3>
+      <p>3 threads מחשבים חלקים שונים של מטריצה, ואחרי שכולם מסיימים — ממשיכים לשלב הבא יחד.</p>
+    </div>
+  </div>
+  <div class="quiz-container" id="q3">
+    <div class="quiz-option" onclick="checkQuiz('q3', this, true)">
+      <span class="opt-letter">א</span> A → Condition Variable &nbsp;|&nbsp; B → Barrier
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q3', this, false)">
+      <span class="opt-letter">ב</span> A → Barrier &nbsp;|&nbsp; B → Condition Variable
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q3', this, false)">
+      <span class="opt-letter">ג</span> שניהם — Barrier לשניהם
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q3', this, false)">
+      <span class="opt-letter">ד</span> Lock רגיל מספיק לשניהם
+    </div>
+  </div>
+  <div class="quiz-feedback" id="q3-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: MISSION — BARRIER -->
+<!-- ============================================================ -->
+<div class="slide" id="s10">
+  <span class="slide-badge badge-mission">// משימה קבוצתית</span>
+  <h2>🎮 Escape Room Barrier</h2>
+  <div class="mission-box">
+    <p><strong style="color:#fff">בקבוצות של 4:</strong> כל אחד כותב פונקציה שמדמה "שלב" בחדר בריחה. Barrier מבטיח שכולם מחכים לפני שעוברים.</p>
+    <ol class="mission-steps">
+      <li data-n="1">כל תלמיד כותב פונקציה <code style="color:var(--cyan)">def phase_N(barrier)</code> עם <code>time.sleep(random.randint(1,3))</code></li>
+      <li data-n="2">יצירת <code style="color:var(--cyan)">threading.Barrier(4)</code> משותף לכל הפונקציות</li>
+      <li data-n="3">הפעלת כל הפונקציות ב-threads נפרדים</li>
+      <li data-n="4">בונוס: מה קורה אם thread אחד ריצה עם <code>time.sleep(10)</code>? הוסף timeout לbarrier</li>
+    </ol>
+  </div>
+  <div class="timer-widget">
+    <div>⏱ זמן:</div>
+    <div class="timer-display" id="timer1">10:00</div>
+    <button class="timer-btn" onclick="startTimer('timer1', 10)">▶ התחל</button>
+    <button class="timer-btn" onclick="resetTimer('timer1', 10)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11: SECTION — SHARED MEMORY & QUEUE -->
+<!-- ============================================================ -->
+<div class="slide" id="s11">
+  <div class="section-hero">
+    <div class="section-num">03</div>
+    <div class="section-title"><span class="glow-green">Memory</span><br><span style="font-size:1.8rem;color:var(--text)">& Message Passing</span></div>
+    <p style="margin-top:12px;font-size: 1.2rem;">איך threads ו-processes מעבירים נתונים</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12: QUEUE -->
+<!-- ============================================================ -->
+<div class="slide" id="s12">
+  <span class="slide-badge badge-concept">// מושג</span>
+  <h2><span class="glow-green">Queue</span> — Producer/Consumer</h2>
+  <div class="cols-60-40" style="margin-top:14px;flex:1">
+    <div class="scroll-content">
+      <p style="margin-bottom:12px">📱 אנלוגיה: TikTok feed — הרשת "מכניסה" סרטונים לתור, ה-app "מוציא" ומציג. <code style="color:var(--green)">queue.Queue</code> הוא thread-safe מהקופסה.</p>
+      <pre class="code-block">
+<span class="kw">from</span> queue <span class="kw">import</span> Queue
+<span class="kw">import</span> threading, time
+
+q = <span class="fn">Queue</span>(maxsize=<span class="num">5</span>)  <span class="cm"># מקסימום 5 בתור</span>
+
+<span class="kw">def</span> <span class="fn">producer</span>():
+    <span class="kw">for</span> i <span class="kw">in</span> range(<span class="num">10</span>):
+        q.<span class="fn">put</span>(<span class="st">f"packet_{i}"</span>)  <span class="cm"># חוסם אם תור מלא</span>
+        <span class="kw">print</span>(f"[Producer] 📦 שלח: packet_{i}  |  תור: {q.qsize()}/5")
+        time.<span class="fn">sleep</span>(<span class="num">0.5</span>)
+    <span class="kw">print</span>("[Producer] ✅ סיים לשלוח הכל")
+
+<span class="kw">def</span> process(item):
+    time.sleep(1.2)                 # עיבוד לוקח זמן
+    <span class="kw">print</span>(f"[Consumer] ⚙️  עיבד: {item}")
+
+<span class="kw">def</span> <span class="fn">consumer</span>():
+    <span class="kw">while True</span>:
+        item = q.<span class="fn">get</span>()  <span class="cm"># חוסם עד שיש פריט</span>
+        if item is None:            # סימן עצירה
+            q.task_done()
+            break
+        <span class="fn">process</span>(item)
+        q.<span class="fn">task_done</span>()   <span class="cm"># חובה!</span>
+    print("[Consumer] 🏁 עצר")
+
+if __name__ == "__main__":
+    print("=== מתחיל Producer/Consumer ===\n")
+
+    t_producer = threading.Thread(target=producer)
+    t_consumer = threading.Thread(target=consumer, daemon=True)
+
+    t_consumer.start()
+    t_producer.start()
+
+    t_producer.join()               # מחכה שה-producer יסיים
+
+    q.join()                        # מחכה שכל ה-packets יעובדו
+
+    q.put(None)                     # סימן עצירה ל-consumer
+    t_consumer.join()
+
+    print("\n=== כולם סיימו ===")
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card c-green">
+        <h3>יתרונות Queue</h3>
+        <p>Thread-safe מובנה. אין צורך ב-Lock ידני. מונע Race Conditions.</p>
+      </div>
+      <div class="card c-cyan">
+        <h3>vs Shared Memory</h3>
+        <p>Queue — threads מעבירים הודעות.<br>Value/Array — processes חולקים זיכרון פיזי.</p>
+      </div>
+      <div class="card c-pink">
+        <h3>קשר לסייבר</h3>
+        <p>Event queues, message brokers, IPC בין processes — בסיס לאדריכלות מאובטחת.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 13: CODE FILL — QUEUE -->
+<!-- ============================================================ -->
+<div class="slide" id="s13">
+  <span class="slide-badge badge-code">// השלם את הקוד</span>
+  <h2>Producer/Consumer — השלם את החסר</h2>
+  <p style="margin-bottom:14px">Thread ה-consumer מעבד packets. מה חסר?</p>
+  <pre class="code-block">
+<span class="kw">def</span> <span class="fn">consumer</span>(q):
+    <span class="kw">while True</span>:
+        packet = q.<span class="fn"><input class="fill-input" id="fill2" placeholder="מה מוציאים מ-Queue?" style="width:180px"></span>()
+        <span class="fn">print</span>(<span class="st">f"מעבד: {packet}"</span>)
+        q.<span class="fn"><input class="fill-input" id="fill3" placeholder="מה מודיעים לאחר עיבוד?" style="width:200px"></span>()
+  </pre>
+  <button class="check-btn" onclick="checkMultiFill()">בדוק ✓</button>
+  <div class="fill-feedback" id="fill23-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 14: SECTION — DEADLOCK -->
+<!-- ============================================================ -->
+<div class="slide" id="s14">
+  <div class="section-hero" style="background:rgba(255,0,110,0.03)">
+    <div class="section-num" style="color:rgba(255,0,110,0.1)">04</div>
+    <div class="section-title"><span class="glow-pink">Deadlock</span></div>
+    <p style="margin-top:12px;font-size: 1.2rem;;color:var(--pink)">כשהמערכת נתקעת לנצח</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 15: COFFMAN CONDITIONS -->
+<!-- ============================================================ -->
+<div class="slide" id="s15">
+  <span class="slide-badge badge-danger">// ארבעת תנאי קופמן</span>
+  <h2>מתי נוצר <span class="glow-pink">Deadlock</span>?</h2>
+  <p style="margin-bottom:6px">כל 4 התנאים חייבים להתקיים בו-זמנית:</p>
+  <div class="coffman-grid">
+    <div class="coffman-card">
+      <div class="coffman-num">01 // MUTUAL EXCLUSION</div>
+      <h3>בלעדיות</h3>
+      <p style="font-size: 1.2rem;">רק thread אחד יכול להחזיק משאב בכל זמן נתון.</p>
+    </div>
+    <div class="coffman-card">
+      <div class="coffman-num">02 // HOLD AND WAIT</div>
+      <h3>אחזוק והמתנה</h3>
+      <p style="font-size: 1.2rem;">Thread מחזיק משאב אחד בעודו ממתין למשאב אחר.</p>
+    </div>
+    <div class="coffman-card">
+      <div class="coffman-num">03 // NO PREEMPTION</div>
+      <h3>אי-הפרעה</h3>
+      <p style="font-size: 1.2rem;">לא ניתן לקחת משאב בכוח מ-thread שמחזיק בו.</p>
+    </div>
+    <div class="coffman-card">
+      <div class="coffman-num">04 // CIRCULAR WAIT</div>
+      <h3 style="color:var(--pink)">המתנה מעגלית ⚠️</h3>
+      <p style="font-size: 1.2rem;">A מחכה ל-B, B מחכה ל-A — מעגל אינסופי.</p>
+    </div>
+  </div>
+  <div style="margin-top:14px;padding:12px 18px;background:rgba(255,140,0,0.07);border:1px solid rgba(255,140,0,0.3);font-size: 1.2rem;">
+    💡 <strong style="color:var(--orange)">הפתרון:</strong> שבור תנאי אחד מארבעת התנאים — deadlock בלתי אפשרי.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 16: DEADLOCK VISUALIZATION -->
+<!-- ============================================================ -->
+<div class="slide" id="s16">
+  <span class="slide-badge badge-danger">// הדגמה חיה</span>
+  <h2>Deadlock — ויזואליזציה</h2>
+  <div class="deadlock-viz" id="dlViz">
+    <div class="dl-node dl-thread">Thread A</div>
+    <div>
+      <div class="dl-arrow holding">→ מחזיק</div>
+    </div>
+    <div class="dl-node dl-lock">Lock 1</div>
+
+    <div>
+      <div class="dl-arrow waiting" id="dl-wait2">מחכה⟵ </div>
+    </div>
+      <div>
+      <div class="dl-arrow waiting" id="dl-wait1">⟶ מחכה</div>
+    </div>
+      <div class="dl-node dl-lock">Lock 2</div>
+    <div>
+      <div class="dl-arrow holding">← מחזיק</div>
+    </div>
+    <div class="dl-node dl-thread">Thread B</div>
+
+  </div>
+  <pre class="code-block" style="margin-top:10px">
+lock_a, lock_b = threading.<span class="fn">Lock</span>(), threading.<span class="fn">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">thread_A</span>():
+    <span class="kw">with</span> lock_a:          <span class="cm"># ✓ רכש lock_a</span>
+        time.<span class="fn">sleep</span>(<span class="num">0.1</span>)
+        <span class="kw">with</span> lock_b: ...  <span class="cm"># ✗ מחכה ל-lock_b — נתקע!</span>
+
+<span class="kw">def</span> <span class="fn">thread_B</span>():
+    <span class="kw">with</span> lock_b:          <span class="cm"># ✓ רכש lock_b</span>
+        time.<span class="fn">sleep</span>(<span class="num">0.1</span>)
+        <span class="kw">with</span> lock_a: ...  <span class="cm"># ✗ מחכה ל-lock_a — DEADLOCK</span>
+  </pre>
+  <p style="margin-top:10px;font-size: 1.2rem;">⚠️ <strong style="color:var(--pink)">הקוד הזה יתקע לנצח.</strong> אל תריץ אותו בלי Ctrl+C מוכן!</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 17: QUIZ — DEADLOCK DETECTION -->
+<!-- ============================================================ -->
+<div class="slide" id="s17">
+  <span class="slide-badge badge-quiz">// שאלת הבנה #3</span>
+  <h2>🔍 האם יש כאן Deadlock?</h2>
+  <pre class="code-block" style="margin:12px 0">
+lock_x = threading.<span class="fn">Lock</span>()
+lock_y = threading.<span class="fn">Lock</span>()
+
+<span class="kw">def</span> <span class="fn">thread_1</span>():
+    <span class="kw">with</span> lock_x:
+        <span class="kw">with</span> lock_y:
+            <span class="fn">do_work</span>()
+
+<span class="kw">def</span> <span class="fn">thread_2</span>():
+    <span class="kw">with</span> lock_x:    <span class="cm"># שים לב — X לפני Y</span>
+        <span class="kw">with</span> lock_y:
+            <span class="fn">do_work</span>()
+  </pre>
+  <div class="quiz-container" id="q4">
+    <div class="quiz-option" onclick="checkQuiz('q4', this, false)">
+      <span class="opt-letter">א</span> כן — שני threads רוצים את אותם locks
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q4', this, true)">
+      <span class="opt-letter">ב</span> לא — שניהם רוכשים locks באותו סדר (X→Y)
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q4', this, false)">
+      <span class="opt-letter">ג</span> אולי — תלוי בתזמון הריצה
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q4', this, false)">
+      <span class="opt-letter">ד</span> כן — כי שני threads רצים בו-זמנית
+    </div>
+  </div>
+  <div class="quiz-feedback" id="q4-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 18: DEADLOCK PREVENTION -->
+<!-- ============================================================ -->
+<div class="slide" id="s18">
+  <span class="slide-badge badge-concept">// מניעת Deadlock</span>
+  <h2>3 אסטרטגיות מניעה</h2>
+  <div class="card-grid card-grid-3" style="margin-top:14px">
+    <div class="card c-green">
+      <span class="card-icon">📋</span>
+      <h3>Lock Ordering</h3>
+      <p>תמיד רכוש locks <strong style="color:#fff">באותו סדר</strong>. אם כולם עושים A→B, אי-אפשר Circular Wait.</p>
+      <pre class="code-block" style="margin-top:10px;font-size: 1.2rem;">
+<span class="cm"># תמיד lock_a לפני lock_b</span>
+<span class="kw">with</span> lock_a:
+    <span class="kw">with</span> lock_b: ...
+      </pre>
+    </div>
+    <div class="card c-yellow">
+      <span class="card-icon">⏰</span>
+      <h3>Timeout</h3>
+      <p>נסה לרכוש lock עם timeout. אם לא הצלחת — שחרר הכל ונסה שוב.</p>
+      <pre class="code-block" style="margin-top:10px;font-size: 1.2rem;">
+<span class="kw">if</span> lock.<span class="fn">acquire</span>(timeout=<span class="num">1</span>):
+    <span class="cm"># עבד</span>
+    lock.<span class="fn">release</span>()
+<span class="kw">else</span>:
+    <span class="cm"># retry...</span>
+      </pre>
+    </div>
+    <div class="card c-cyan">
+      <span class="card-icon">📦</span>
+      <h3>השתמש ב-Queue</h3>
+      <p>במקום shared state עם locks — העבר הודעות. Queue מובנה, ללא deadlock.</p>
+      <pre class="code-block" style="margin-top:10px;font-size: 1.2rem;">
+<span class="cm"># לא צריך lock !</span>
+q.<span class="fn">put</span>(data)     <span class="cm"># ↑ producer</span>
+q.<span class="fn">get</span>()        <span class="cm"># ↓ consumer</span>
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 19: MISSION — DEADLOCK HUNTER -->
+<!-- ============================================================ -->
+<div class="slide" id="s19">
+  <span class="slide-badge badge-mission">// משימה אישית</span>
+  <h2>💀 Deadlock Hunter</h2>
+  <p style="margin-bottom:12px">בדוק את שלושת קטעי הקוד — האם יש deadlock? מה הפתרון?</p>
+  <div class="card-grid card-grid-3" style="flex:1">
+    <div class="card c-green">
+      <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--green);margin-bottom:8px">קוד A</div>
+      <pre class="code-block" style="font-size: 1.2rem;">
+<span class="kw">with</span> L1:
+    <span class="kw">with</span> L2:
+        work()
+<span class="cm">---</span>
+<span class="kw">with</span> L2:
+    <span class="kw">with</span> L1:
+        work()
+      </pre>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="check-btn" style="flex:1" onclick="revealDL('dlA', true)">יש Deadlock</button>
+        <button class="check-btn" style="flex:1;border-color:var(--green);color:var(--green)" onclick="revealDL('dlA', false)">אין</button>
+      </div>
+      <div id="dlA" style="display:none;margin-top:8px;font-size: 1.2rem;;color:var(--green)">✓ נכון! L1→L2 vs L2→L1 = Circular Wait</div>
+    </div>
+    <div class="card c-yellow">
+      <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--yellow);margin-bottom:8px">קוד B</div>
+      <pre class="code-block" style="font-size: 1.2rem;">
+<span class="kw">with</span> L1:
+    <span class="kw">with</span> L2:
+        work()
+<span class="cm">---</span>
+<span class="kw">with</span> L1:
+    <span class="kw">with</span> L2:
+        work()
+      </pre>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="check-btn" style="flex:1" onclick="revealDL('dlB', false)">יש Deadlock</button>
+        <button class="check-btn" style="flex:1;border-color:var(--green);color:var(--green)" onclick="revealDL('dlB', true)">אין</button>
+      </div>
+      <div id="dlB" style="display:none;margin-top:8px;font-size: 1.2rem;;color:var(--green)">✓ נכון! אותו סדר L1→L2 בשניהם — בטוח!</div>
+    </div>
+    <div class="card c-pink">
+      <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--pink);margin-bottom:8px">קוד C</div>
+      <pre class="code-block" style="font-size: 1.2rem;">
+<span class="kw">with</span> L1:
+    q.<span class="fn">put</span>(data)
+<span class="cm">---</span>
+item = q.<span class="fn">get</span>()
+<span class="kw">with</span> L2:
+    work(item)
+      </pre>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="check-btn" style="flex:1" onclick="revealDL('dlC', false)">יש Deadlock</button>
+        <button class="check-btn" style="flex:1;border-color:var(--green);color:var(--green)" onclick="revealDL('dlC', true)">אין</button>
+      </div>
+      <div id="dlC" style="display:none;margin-top:8px;font-size: 1.2rem;;color:var(--green)">✓ נכון! Queue → אין שיתוף ישיר → אין deadlock</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 20: QUIZ — FINAL -->
+<!-- ============================================================ -->
+<div class="slide" id="s20">
+  <span class="slide-badge badge-quiz">// שאלת אתגר</span>
+  <h2>🏆 שאלת הבונוס</h2>
+  <p style="margin-bottom:14px">מה יקרה בקוד הזה?</p>
+  <pre class="code-block" style="margin-bottom:16px">
+cond = threading.<span class="fn">Condition</span>()
+barrier = threading.<span class="fn">Barrier</span>(<span class="num">2</span>)
+
+<span class="kw">def</span> <span class="fn">t1</span>():
+    <span class="kw">with</span> cond:
+        cond.<span class="fn">wait</span>()   <span class="cm"># ⬅ ממתין להודעה</span>
+    barrier.<span class="fn">wait</span>() <span class="cm"># ⬅ ממתין ל-t2</span>
+
+<span class="kw">def</span> <span class="fn">t2</span>():
+    barrier.<span class="fn">wait</span>() <span class="cm"># ⬅ ממתין ל-t1</span>
+    <span class="kw">with</span> cond:
+        cond.<span class="fn">notify</span>() <span class="cm"># ⬅ מודיע ל-t1</span>
+  </pre>
+  <div class="quiz-container" id="q5">
+    <div class="quiz-option" onclick="checkQuiz('q5', this, false)">
+      <span class="opt-letter">א</span> הקוד יעבוד תקין — t1 מחכה, t2 מודיע
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q5', this, true)">
+      <span class="opt-letter">ב</span> Deadlock — t1 מחכה ל-cond, t2 מחכה ל-t1 ב-barrier
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q5', this, false)">
+      <span class="opt-letter">ג</span> Race Condition — תלוי בתזמון
+    </div>
+    <div class="quiz-option" onclick="checkQuiz('q5', this, false)">
+      <span class="opt-letter">ד</span> שגיאה ב-Python — לא ניתן לשלב Condition ו-Barrier
+    </div>
+  </div>
+  <div class="quiz-feedback" id="q5-fb"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 21: HOMEWORK -->
+<!-- ============================================================ -->
+<div class="slide" id="s21">
+  <span class="slide-badge badge-mission">// שיעורי בית</span>
+  <h2>🏠 Thread Orchestrator</h2>
+  <div class="card-grid card-grid-3" style="margin-top:16px">
+    <div class="card c-green">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--green)">EASY</span>
+      <h3 style="margin-top:8px">5 Downloads</h3>
+      <p style="font-size: 1.2rem;">5 threads שמדמים הורדות (sleep). רק אחרי שכולם סיימים — הדפס סיכום. השתמש ב-join.</p>
+    </div>
+    <div class="card c-yellow">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--yellow)">MEDIUM</span>
+      <h3 style="margin-top:8px">Log Processor</h3>
+      <p style="font-size: 1.2rem;">Producer מייצר לוגים, Consumer מעבד. הוסף Counter thread-safe שסופר כמה לוגים עובדו.</p>
+    </div>
+    <div class="card c-pink">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--pink)">HARD ★</span>
+      <h3 style="margin-top:8px">Deadlock Escape</h3>
+      <p style="font-size: 1.2rem;">כתוב deadlock, זה אותו עם timeout, שחרר locks בצורה בטוחה. הסבר בהערות.</p>
+    </div>
+  </div>
+  <div style="margin-top:18px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);font-size: 1.2rem;">
+    📌 <strong style="color:#fff">הגשה:</strong> קובץ Python + README קצר → GitHub Classroom לפני השיעור הבא
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 22: SUMMARY -->
+<!-- ============================================================ -->
+<div class="slide" id="s22">
+  <span class="slide-badge badge-intro">// סיכום</span>
+  <h2>מה למדנו היום?</h2>
+  <div class="card-grid card-grid-2" style="margin-top:16px;flex:1">
+    <div class="card c-cyan">
+      <h3>⏱ join()</h3>
+      <p>המתנה מסודרת לסיום thread. join(timeout=N) לביטחון.</p>
+    </div>
+    <div class="card c-purple">
+      <h3>🔔 Condition Variable</h3>
+      <p>תקשורת בין threads: wait() ממתין, notify() מעיר. תמיד while לא if.</p>
+    </div>
+    <div class="card c-green">
+      <h3>🚧 Barrier</h3>
+      <p>כולם עוצרים, כולם עוברים ביחד. זהיר מ-BrokenBarrierError.</p>
+    </div>
+    <div class="card c-orange">
+      <h3>📦 Queue</h3>
+      <p>Thread-safe מהקופסה. Producer/Consumer ללא deadlock.</p>
+    </div>
+    <div class="card c-pink" style="grid-column: 1 / -1">
+      <h3>💀 Deadlock = 4 תנאי קופמן</h3>
+      <p>מניעה: Lock Ordering · Timeout · Queue במקום Shared State</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /slides-wrapper -->
+
+<nav>
+  <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>▶ הקודם</button>
+  <span class="slide-counter" id="slideCounter">1 / 23</span>
+  <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">הבא ◀</button>
+</nav>
+
+<div class="kb-hint">← → מקשי חצים לניווט</div>
+
+<script>
+// ====================== SLIDE ENGINE ======================
+const TOTAL = 23;
+let current = 0;
+let score = 0;
+const slides = document.querySelectorAll('.slide');
+
+function goTo(n) {
+  if (n < 0 || n >= TOTAL) return;
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit');
+  setTimeout(() => slides[current].classList.remove('exit'), 400);
+  current = n;
+  slides[current].classList.add('active');
+  document.getElementById('slideCounter').textContent = `${current + 1} / ${TOTAL}`;
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === TOTAL - 1;
+  document.getElementById('progressBar').style.width = `${((current + 1) / TOTAL) * 100}%`;
+}
+
+function changeSlide(dir) { goTo(current + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(-1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(1);
+});
+
+// ====================== QUIZ ======================
+const feedbacks = {
+  correct: [
+    '🔥 מעולה! +10 XP',
+    '💎 נכון לחלוטין! +10 XP',
+    '⚡ פגע! +10 XP',
+    '🎯 בול! +10 XP',
+  ],
+  wrong: [
+    '❌ לא בדיוק — חשוב שוב על הסדר שבו הדברים קורים.',
+    '❌ נסה שוב — שים לב לאיזה thread מחכה למה.',
+    '❌ לא נכון — קרא שוב את הקוד שורה אחר שורה.',
+  ]
+};
+
+function checkQuiz(qId, el, isCorrect) {
+  const container = document.getElementById(qId);
+  const opts = container.querySelectorAll('.quiz-option');
+  opts.forEach(o => o.classList.add('disabled'));
+  el.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    opts.forEach(o => {
+      if (o.onclick.toString().includes(', true')) o.classList.add('correct');
+    });
+  }
+  const fb = document.getElementById(`${qId}-fb`);
+  const msgs = isCorrect ? feedbacks.correct : feedbacks.wrong;
+  fb.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+  fb.className = `quiz-feedback show ${isCorrect ? 'correct-fb' : 'wrong-fb'}`;
+  if (isCorrect) addScore(10);
+}
+
+// ====================== CODE FILL ======================
+function checkFill(inputId, validAnswers, fbId, scoreKey) {
+  const input = document.getElementById(inputId);
+  const val = input.value.trim().replace(/\s+/g, ' ');
+  const ok = validAnswers.some(a => val.toLowerCase().includes(a.toLowerCase().split(' ')[2] || a.toLowerCase()));
+  input.classList.toggle('correct-fill', ok);
+  input.classList.toggle('wrong-fill', !ok);
+  const fb = document.getElementById(fbId);
+  fb.className = `fill-feedback show`;
+  fb.style.color = ok ? 'var(--green)' : 'var(--pink)';
+  fb.textContent = ok
+    ? `✓ נכון! התשובה: for t in threads: t.join() — +10 XP`
+    : `✗ לא בדיוק. רמז: צריך לעבור על כל thread ולקרוא ל-join()`;
+  if (ok) addScore(10);
+}
+
+function checkMultiFill() {
+  const v2 = document.getElementById('fill2').value.trim().toLowerCase();
+  const v3 = document.getElementById('fill3').value.trim().toLowerCase();
+  const ok2 = v2.includes('get');
+  const ok3 = v3.includes('task_done');
+  document.getElementById('fill2').classList.toggle('correct-fill', ok2);
+  document.getElementById('fill2').classList.toggle('wrong-fill', !ok2);
+  document.getElementById('fill3').classList.toggle('correct-fill', ok3);
+  document.getElementById('fill3').classList.toggle('wrong-fill', !ok3);
+  const fb = document.getElementById('fill23-fb');
+  fb.className = 'fill-feedback show';
+  if (ok2 && ok3) {
+    fb.style.color = 'var(--green)';
+    fb.textContent = '✓ מושלם! get() מוציא מה-Queue ו-task_done() מודיע שהסתיים. +15 XP';
+    addScore(15);
+  } else {
+    fb.style.color = 'var(--pink)';
+    fb.textContent = `✗ ${!ok2 ? 'רמז 1: כדי להוציא מ-Queue קוראים ל... ' : ''}${!ok3 ? 'רמז 2: אחרי עיבוד חייבים להודיע ל-Queue שסיימנו...' : ''}`;
+  }
+}
+
+// ====================== DEADLOCK REVEAL ======================
+function revealDL(id, isCorrectChoice) {
+  // find correct answer for this card
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  addScore(5);
+}
+
+// ====================== REVEAL LIST ======================
+function toggleReveal(li) {
+  li.classList.toggle('open');
+}
+
+// ====================== TIMER ======================
+const timers = {};
+function startTimer(id, minutes) {
+  if (timers[id]) { clearInterval(timers[id].interval); }
+  let secs = minutes * 60;
+  const el = document.getElementById(id);
+  function tick() {
+    if (secs <= 0) {
+      clearInterval(timers[id].interval);
+      el.textContent = '00:00';
+      el.classList.add('urgent');
+      return;
+    }
+    secs--;
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    el.textContent = `${m}:${s}`;
+    if (secs <= 60) el.classList.add('urgent');
+    else el.classList.remove('urgent');
+  }
+  tick();
+  timers[id] = { interval: setInterval(tick, 1000) };
+}
+function resetTimer(id, minutes) {
+  if (timers[id]) clearInterval(timers[id].interval);
+  const el = document.getElementById(id);
+  el.textContent = `${String(minutes).padStart(2,'0')}:00`;
+  el.classList.remove('urgent');
+}
+
+// ====================== SCORE ======================
+function addScore(pts) {
+  score += pts;
+  const el = document.getElementById('scoreVal');
+  el.textContent = score;
+  el.classList.add('success-pop');
+  setTimeout(() => el.classList.remove('success-pop'), 300);
+}
+
+// init
+goTo(0);
+</script>
+</body>
+</html>

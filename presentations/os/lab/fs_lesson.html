@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File System Fundamentals | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#04060a; --s1:#0a0f18; --s2:#101828; --s3:#162030;
+  --border:#1e3050; --border2:#2a4060;
+  --amber:#ffb300; --red:#ff3d5a; --green:#00e676;
+  --blue:#40c4ff; --purple:#b388ff; --teal:#1de9b6;
+  --white:#e8f0fe; --dim:#5878a0; --dim2:#3a5070;
+  --text:#ccdaee;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Heebo',sans-serif;
+  overflow:hidden;height:100vh;width:100vw;
+}
+
+/* GRID TEXTURE */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(64,196,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(64,196,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+/* ── ENGINE ── */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden;z-index:1;}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  padding:42px 64px 86px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;
+  transform:translateY(16px);
+  overflow:hidden;
+}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-16px);}
+
+/* ── PROGRESS ── */
+.pbar{
+  position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(to left,var(--amber),var(--teal),var(--blue));
+  transition:width .35s ease;z-index:100;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;
+  background:rgba(10,15,24,.95);border:1px solid var(--border);
+  padding:8px 16px;z-index:50;backdrop-filter:blur(16px);
+}
+.nb{
+  background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:5px 14px;font-family:'Fira Code',monospace;
+  font-size: 1.2rem;transition:all .2s;letter-spacing:1px;
+}
+.nb:hover:not(:disabled){border-color:var(--blue);color:var(--blue);}
+.nb:disabled{opacity:.2;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim2);min-width:52px;text-align:center;}
+
+/* ── XP ── */
+.xp{
+  position:fixed;top:16px;left:18px;z-index:50;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim);
+}
+.xv{color:var(--amber);font-size: 1.2rem;;font-weight:600;}
+@keyframes xpop{0%{transform:scale(1)}40%{transform:scale(1.2)}100%{transform:scale(1)}}
+.xpop{animation:xpop .25s ease;}
+
+/* ── BADGE ── */
+.badge{
+  font-family:'Fira Code',monospace;font-size: 1.2rem;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 10px;display:inline-block;
+  margin-bottom:16px;border:1px solid;width:fit-content;
+}
+.b-i{color:var(--blue);border-color:rgba(64,196,255,.3);background:rgba(64,196,255,.06);}
+.b-c{color:var(--purple);border-color:rgba(179,136,255,.3);background:rgba(179,136,255,.06);}
+.b-q{color:var(--amber);border-color:rgba(255,179,0,.3);background:rgba(255,179,0,.06);}
+.b-m{color:var(--red);border-color:rgba(255,61,90,.3);background:rgba(255,61,90,.06);}
+.b-g{color:var(--green);border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.06);}
+.b-s{color:var(--teal);border-color:rgba(29,233,182,.3);background:rgba(29,233,182,.06);}
+
+/* ── TYPE ── */
+h1{font-size:clamp(2rem,4.5vw,3.2rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.3rem,2.6vw,2rem);font-weight:700;line-height:1.2;margin-bottom:6px;}
+h3{font-size: 1.2rem;font-weight:600;color:#fff;margin-bottom:5px;}
+p{color:var(--dim);line-height:1.7;font-size: 1.2rem;}
+.ga{color:var(--amber);text-shadow:0 0 16px rgba(255,179,0,.4);}
+.gb{color:var(--blue);text-shadow:0 0 16px rgba(64,196,255,.3);}
+.gg{color:var(--green);}
+.gp{color:var(--purple);}
+.gt{color:var(--teal);}
+.gr{color:var(--red);}
+code{font-family:'Fira Code',monospace;color:var(--blue);font-size: 1.2rem;}
+
+/* ── CODE ── */
+.cb{
+  background:#020408;border:1px solid var(--border);
+  border-right:3px solid var(--blue);
+  padding:14px 18px;font-family:'Fira Code',monospace;
+  font-size: 1.2rem;color:#9ab8d8;line-height:1.85;
+  margin:8px 0;overflow-x:auto;overflow-y:auto;max-height:220px;
+  direction:ltr;text-align:left;
+}
+.cb::-webkit-scrollbar{width:3px;height:3px;}
+.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+.cb::-webkit-scrollbar-thumb:hover{background:var(--blue);}
+.kw{color:var(--red);}
+.fn{color:var(--blue);}
+.cm{color:#2a4a6a;font-style:italic;}
+.st{color:var(--green);}
+.nm{color:var(--amber);}
+.fl{color:var(--teal);}
+.op{color:var(--purple);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:10px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{
+  background:var(--s1);border:1px solid var(--border);
+  padding:14px 16px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.ca::before{background:var(--amber);}
+.cb2::before{background:var(--blue);}
+.cg2c::before{background:var(--green);}
+.cp::before{background:var(--purple);}
+.ct::before{background:var(--teal);}
+.cr::before{background:var(--red);}
+.card p{font-size: 1.2rem;;margin-top:4px;}
+.ci{font-size:1.5rem;margin-bottom:7px;display:block;}
+
+/* ── LAYOUT ── */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.c6040{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;}
+.c4060{display:grid;grid-template-columns:1fr 1.5fr;gap:18px;}
+.sc2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scr{flex:1;overflow-y:auto;padding-bottom:8px;}
+.scr::-webkit-scrollbar{width:3px;}
+.scr::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{
+  font-family:'Fira Code',monospace;font-size:5rem;font-weight:900;
+  line-height:1;margin-bottom:-18px;
+}
+.stit{font-size:clamp(1.8rem,3.2vw,2.8rem);font-weight:900;}
+
+/* ── TITLE ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim2);letter-spacing:4px;margin-bottom:12px;}
+.ttags{display:flex;gap:6px;margin-top:20px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size: 1.2rem;padding:2px 8px;border:1px solid var(--border);color:var(--dim2);}
+.bigbg{
+  font-family:'Fira Code',monospace;font-size:8rem;font-weight:900;
+  color:rgba(64,196,255,.025);position:absolute;left:20px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;
+}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.qo{
+  background:var(--s1);border:1px solid var(--border);
+  padding:10px 16px;cursor:pointer;font-size: 1.2rem;color:var(--text);
+  transition:all .18s;display:flex;align-items:center;gap:10px;
+}
+.qo:hover{border-color:rgba(64,196,255,.4);background:rgba(64,196,255,.04);}
+.qo.correct{border-color:var(--green);background:rgba(0,230,118,.08);color:#fff;}
+.qo.wrong{border-color:var(--red);background:rgba(255,61,90,.08);color:var(--red);}
+.qo.disabled{pointer-events:none;}
+.ql{
+  font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--blue);
+  background:rgba(64,196,255,.1);width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.qfb{margin-top:10px;padding:10px 14px;font-size: 1.2rem;;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.ok{border-color:var(--green);background:rgba(0,230,118,.06);color:var(--green);}
+.qfb.no{border-color:var(--red);background:rgba(255,61,90,.06);color:var(--red);}
+
+/* ── FILL ── */
+.fi{
+  background:rgba(255,179,0,.06);border:none;border-bottom:2px solid var(--amber);
+  color:var(--amber);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  padding:2px 5px;outline:none;transition:border-color .2s;min-width:100px;
+}
+.fi:focus{border-color:var(--blue);color:var(--blue);}
+.fi.ok{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.07);}
+.fi.no{border-color:var(--red);color:var(--red);background:rgba(255,61,90,.06);}
+.ck{
+  margin-top:10px;background:none;border:1px solid var(--blue);
+  color:var(--blue);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  padding:6px 16px;cursor:pointer;transition:all .18s;
+}
+.ck:hover{background:rgba(64,196,255,.08);}
+.ffb{margin-top:7px;font-size: 1.2rem;;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{
+  background:rgba(255,61,90,.04);border:1px solid rgba(255,61,90,.22);
+  padding:18px 22px;margin-top:10px;position:relative;
+}
+.mbox::before{
+  content:'▶ MISSION';position:absolute;top:-9px;right:16px;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  background:var(--bg);color:var(--red);padding:0 7px;letter-spacing:2px;
+}
+.msteps{list-style:none;margin-top:10px;}
+.msteps li{
+  display:flex;gap:10px;align-items:flex-start;
+  font-size: 1.2rem;color:var(--text);margin-bottom:8px;
+}
+.msteps li::before{
+  content:attr(data-n);font-family:'Fira Code',monospace;font-size: 1.2rem;
+  color:var(--red);background:rgba(255,61,90,.1);
+  width:19px;height:19px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;
+}
+
+/* ── TIMER ── */
+.tw{
+  display:flex;align-items:center;gap:10px;
+  background:var(--s1);border:1px solid var(--border);
+  padding:8px 16px;margin-top:12px;width:fit-content;
+}
+.td{font-family:'Fira Code',monospace;font-size:1.5rem;color:var(--blue);font-weight:600;min-width:66px;}
+.td.urg{color:var(--red);animation:urgt .5s ease infinite alternate;}
+@keyframes urgt{from{opacity:1}to{opacity:.3}}
+.tb{
+  background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size: 1.2rem;
+  transition:all .18s;
+}
+.tb:hover{border-color:var(--blue);color:var(--blue);}
+
+/* ── TREE VIZ ── */
+.tree{
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  line-height:1.9;color:#9ab8d8;
+  background:#020408;border:1px solid var(--border);
+  padding:14px 18px;overflow:auto;max-height:400px;
+  direction:ltr;text-align:left;
+}
+.tree .dir{color:var(--blue);font-weight:600;}
+.tree .exe{color:var(--green);}
+.tree .cfg{color:var(--amber);}
+.tree .log{color:var(--teal);}
+.tree .sys{color:var(--purple);}
+.tree .hid{color:var(--red);}
+.tree .lnk{color:var(--teal);font-style:italic;}
+
+/* ── PERM GRID ── */
+.perm-row{
+  display:flex;align-items:center;gap:8px;
+  font-family:'Fira Code',monospace;font-size: 1.2rem;;
+  padding:8px 0;border-bottom:1px solid var(--border);
+}
+.perm-row:last-child{border-bottom:none;}
+.perm-name{color:var(--text);min-width:120px;}
+.perm-bits{display:flex;gap:3px;}
+.pbit{
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  font-size: 1.2rem;border:1px solid;cursor:pointer;transition:all .15s;user-select:none;
+}
+.pbit.on{background:rgba(0,230,118,.15);border-color:var(--green);color:var(--green);}
+.pbit.off{background:rgba(255,61,90,.08);border-color:rgba(255,61,90,.3);color:var(--red);}
+.pbit-sep{color:var(--dim2);margin:0 4px;align-self:center;}
+.perm-oct{color:var(--amber);min-width:60px;text-align:center;}
+.perm-who{color:var(--dim);font-size: 1.2rem;min-width:40px;text-align:center;}
+
+/* ── METADATA TABLE ── */
+.meta-table{width:100%;border-collapse:collapse;font-size: 1.2rem;;}
+.meta-table th{
+  text-align:right;padding:8px 12px;background:var(--s2);
+  border-bottom:2px solid var(--blue);color:var(--blue);
+  font-family:'Fira Code',monospace;font-size: 1.2rem;letter-spacing:1px;
+}
+.meta-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:top;}
+.meta-table tr:hover td{background:rgba(64,196,255,.02);}
+.good{color:var(--green);}
+.bad{color:var(--red);}
+.mid{color:var(--amber);}
+
+/* ── INODE VIZ ── */
+.inode-box{
+  background:var(--s2);border:1px solid var(--border2);
+  padding:16px;font-family:'Fira Code',monospace;font-size: 1.2rem;
+}
+.inode-field{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid rgba(30,48,80,.6);
+}
+.inode-field:last-child{border-bottom:none;}
+.inode-key{color:var(--dim);}
+.inode-val{color:var(--amber);}
+.inode-val.blue{color:var(--blue);}
+.inode-val.green{color:var(--green);}
+.inode-val.purple{color:var(--purple);}
+
+/* ── RLIST ── */
+.rlist{list-style:none;}
+.rlist li{
+  padding:8px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:10px;align-items:flex-start;
+  cursor:pointer;transition:all .18s;font-size: 1.2rem;
+}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size: 1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--blue);}
+
+/* ── MATCH ACTIVITY ── */
+.match-wrap{display:flex;gap:16px;margin-top:10px;}
+.match-col{flex:1;}
+.match-lbl{font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim2);letter-spacing:2px;margin-bottom:8px;}
+.match-item{
+  background:var(--s1);border:1px solid var(--border);
+  padding:8px 14px;margin:5px 0;font-size: 1.2rem;;cursor:pointer;
+  transition:all .15s;
+}
+.match-item:hover{border-color:rgba(64,196,255,.4);}
+.match-item.sel{border-color:var(--blue);color:var(--blue);}
+.match-item.matched-ok{border-color:var(--green);background:rgba(0,230,118,.07);color:var(--green);}
+.match-item.matched-no{border-color:var(--red);background:rgba(255,61,90,.07);color:var(--red);}
+.match-result{margin-top:10px;font-size: 1.2rem;;display:none;}
+.match-result.show{display:block;}
+
+/* ── TERMINAL SIM ── */
+.term{
+  background:#010305;border:1px solid var(--border);
+  font-family:'Fira Code',monospace;font-size: 1.2rem;
+  color:#9ab8d8;padding:14px 18px;max-height:200px;overflow-y:auto;
+  direction:ltr;text-align:left;
+}
+.term .prompt{color:var(--green);}
+.term .cmd-out{color:#7899b8;margin-right:16px;}
+.term .hi{color:var(--amber);}
+.term .err{color:var(--red);}
+
+/* ── FLIP CARD ── */
+.flip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+.flip-card{
+  height:90px;cursor:pointer;perspective:800px;
+}
+.flip-inner{
+  position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;transition:transform .4s ease;
+}
+.flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+.flip-front,.flip-back{
+  position:absolute;inset:0;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-size: 1.2rem;text-align:center;padding:8px;
+  border:1px solid var(--border);
+}
+.flip-front{
+  background:var(--s1);color:var(--dim);
+  font-family:'Fira Code',monospace;
+}
+.flip-back{
+  background:var(--s2);border-color:var(--blue);
+  transform:rotateY(180deg);color:var(--text);line-height:1.4;font-size: 1.2rem;
+}
+
+/* ── KB HINT ── */
+.kbh{position:fixed;bottom:20px;right:18px;font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--border2);}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pb"></div>
+<div class="xp">XP: <span class="xv" id="xv">0</span></div>
+
+<div class="deck" id="deck">
+
+<!-- ════════════════════════════════════════ -->
+<!-- S0: TITLE -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">FS</div>
+  <div class="thero">
+    <div class="lnum">// CYBER_SEC · FILE SYSTEM FUNDAMENTALS</div>
+    <h1>מבנה<br><span class="ga">מערכת הקבצים</span></h1>
+    <p style="margin-top:10px;font-size: 1.2rem;">תיקיות · הרשאות · Inodes · Metadata · ניטור</p>
+    <div class="ttags">
+      <span class="ttag">Linux / Windows</span>
+      <span class="ttag">90 דקות</span>
+      <span class="ttag">מגמת סייבר</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S1: AGENDA -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-i">// סדר היום</span>
+  <h2>מה נלמד היום?</h2>
+  <div class="sc2" style="margin-top:14px">
+    <ul class="rlist">
+      <li onclick="rv(this)">
+        <span style="color:var(--blue);flex-shrink:0">🗂️</span>
+        <div><div><strong>מבנה תיקיות</strong> — איך מערכת הקבצים מאורגנת</div>
+        <div class="ri-d">Root (/), היררכיה, מסלולים מוחלטים ויחסיים. Windows vs Linux.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--blue);flex-shrink:0">🔐</span>
+        <div><div><strong>הרשאות קבצים</strong> — rwx, chmod, chown</div>
+        <div class="ri-d">Owner/Group/Other, מספרים אוקטליים, SUID/SGID, umask.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--blue);flex-shrink:0">🔢</span>
+        <div><div><strong>Inodes & מטא-דאטה</strong> — מה מאחורי שם הקובץ</div>
+        <div class="ri-d">inode number, timestamps (atime/mtime/ctime), attributes, hard/soft links.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--blue);flex-shrink:0">📁</span>
+        <div><div><strong>סוגי קבצים</strong> — regular, directory, symlink, device, socket</div>
+        <div class="ri-d">file type bits, ls -la, /proc, /dev. כל דבר ב-Linux הוא קובץ.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--blue);flex-shrink:0">🔍</span>
+        <div><div><strong>ניטור ואבחון</strong> — find, stat, lsof, auditd</div>
+        <div class="ri-d">איתור קבצים חשודים, בדיקת timestamps, ניטור גישה — כלי הסייבר האמיתיים.</div></div>
+      </li>
+    </ul>
+    <p style="margin-top:10px;font-size: 1.2rem;color:var(--dim2)">👆 לחץ לפרטים</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S2: SECTION — DIRECTORY STRUCTURE -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="shero">
+    <div class="snum" style="color:rgba(64,196,255,.06)">01</div>
+    <div class="stit"><span class="gb">מבנה</span><br><span class="gb">התיקיות</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">היררכיה, root, ומסלולים</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S3: DIRECTORY TREE -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <span class="badge b-c">// מושג</span>
+  <h2>עץ הקבצים — <span class="gb">הכל מתחיל מ-/</span></h2>
+  <div class="c6040" style="margin-top:12px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">ב-Linux הכל מתחיל מ-<code>/</code> (root). אין "C:\\" — רק עץ אחד, מוחלט.</p>
+      <pre class="tree">
+<span class="dir">/</span>  ← root directory
+├── <span class="dir">bin/</span>        ← binary executables (ls, cp, bash)
+├── <span class="dir">boot/</span>       ← kernel + bootloader
+├── <span class="dir">dev/</span>        ← device files (sda, null, random)
+├── <span class="dir">etc/</span>        ← <span class="cfg">config files</span> (passwd, hosts, ssh/)
+├── <span class="dir">home/</span>
+│   ├── <span class="dir">alice/</span>
+│   │   ├── <span class="hid">.bashrc</span>    ← <span class="hid">hidden (dot file)</span>
+│   │   ├── <span class="dir">Documents/</span>
+│   │   └── <span class="dir">Downloads/</span>
+│   └── <span class="dir">bob/</span>
+├── <span class="dir">proc/</span>       ← <span class="sys">virtual FS — process info</span>
+├── <span class="dir">root/</span>       ← home dir of root user
+├── <span class="dir">tmp/</span>        ← temporary (deleted on reboot)
+├── <span class="dir">usr/</span>
+│   ├── <span class="dir">bin/</span>       ← user programs
+│   └── <span class="dir">lib/</span>       ← shared libraries
+└── <span class="dir">var/</span>
+    └── <span class="dir">log/</span>       ← <span class="log">system logs ← חשוב לסייבר!</span>
+      </pre>
+      <div class="card ca" style="margin-top:10px">
+        <h3>🔐 קשר לסייבר</h3>
+        <p><code>/etc/passwd</code>, <code>/etc/shadow</code> — קבצי משתמשים. <code>/var/log/</code> — לוגים. <code>/tmp/</code> — מקום נפוץ להנחת backdoors. <code>/proc/</code> — מידע חי על processes.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card cb2">
+        <h3>מסלול מוחלט</h3>
+        <p>מתחיל מ-<code>/</code>. מדויק תמיד.<br><code>/home/alice/docs/secret.txt</code></p>
+      </div>
+      <div class="card ct">
+        <h3>מסלול יחסי</h3>
+        <p>יחסי לתיקייה הנוכחית.<br><code>../docs/secret.txt</code><br><code>./script.sh</code></p>
+      </div>
+      <div class="card cp">
+        <h3>Windows vs Linux</h3>
+        <p>Windows: <code>C:\Users\</code><br>Linux: <code>/home/</code><br>Linux — הכל קובץ, כולל devices!</p>
+      </div>
+      <div class="card cg2c">
+        <h3>הסתרת קבצים</h3>
+        <p>קובץ שמתחיל ב-<code>.</code> מוסתר ב-<code>ls</code>. חשוף עם <code>ls -la</code>. טכניקה ידועה להסתרת malware.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S4: QUIZ — PATHS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-q">// שאלת הבנה #1</span>
+  <h2>מסלולים — מה נכון?</h2>
+  <p style="margin-bottom:12px">המשתמש נמצא ב-<code>/home/alice/Documents</code>. הוא כותב:</p>
+  <pre class="cb" style="margin-bottom:14px">$ cat ../Downloads/report.txt</pre>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> שגיאה — מסלול יחסי לא עובד עם cat</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ב</span> פותח את <code>/home/alice/Downloads/report.txt</code></div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ג</span> פותח את <code>/home/Downloads/report.txt</code></div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> פותח את <code>/Downloads/report.txt</code></div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S5: CODE FILL — FIND HIDDEN FILES -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <span class="badge b-g">// השלם את הפקודה</span>
+  <h2>🔍 מצא קבצים מוסתרים</h2>
+  <p style="margin-bottom:12px">אנליסט סייבר רוצה לראות <strong style="color:#fff">כל</strong> הקבצים בתיקייה, כולל מוסתרים, עם הרשאות:</p>
+  <pre class="cb" style="direction:ltr;text-align:left">
+$ ls -<input class="fi" id="f1" placeholder="דגלים?" style="width:90px">
+<span class="cm"># פלט:</span>
+drwxr-xr-x  alice  alice   4096 Jan 15 .ssh/
+-rw-------  alice  alice    256 Jan 12 .bash_history
+-rw-r--r--  alice  alice   1234 Jan 10 notes.txt
+  </pre>
+  <button class="ck" onclick="cf('f1',['la','al','-la','-al'],'fb1')">בדוק ✓</button>
+  <div class="ffb" id="fb1"></div>
+  <div class="card ca" style="margin-top:14px">
+    <h3>💡 סייבר — מה לחפש?</h3>
+    <p><code>.bash_history</code> — היסטוריית פקודות. <code>.ssh/</code> — מפתחות SSH. קבצי dot שלא מוכרים — חשודים! תמיד בצע <code>ls -la</code> בחקירה.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S6: SECTION — PERMISSIONS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,179,0,.06)">02</div>
+    <div class="stit" style="color:var(--amber)">הרשאות</div>
+    <div class="stit" style="color:var(--amber)">קבצים</div>
+    <p style="margin-top:10px;font-size: 1.2rem;">rwx · chmod · chown · SUID</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S7: PERMISSIONS CONCEPT -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-c">// מושג</span>
+  <h2>הרשאות — <span class="ga">rwx</span></h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">כל קובץ ב-Linux יש לו 3 קבוצות הרשאות × 3 סוגי הרשאה:</p>
+      <pre class="cb" style="margin-bottom:10px">
+-<span style="color:var(--green)">rwx</span><span style="color:var(--blue)">r-x</span><span style="color:var(--amber)">r--</span>  alice  staff  4096  file.txt
+ ↑   <span style="color:var(--green)">Owner</span> <span style="color:var(--blue)">Group</span> <span style="color:var(--amber)">Others</span>
+ └ סוג קובץ: - = regular, d = dir, l = symlink
+      </pre>
+      <div class="cg cg3" style="gap:8px;margin-bottom:10px">
+        <div class="card ca" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.4rem;color:var(--amber)">r</div>
+          <div style="font-size: 1.2rem;margin-top:4px">read<br>קריאה<br>= 4</div>
+        </div>
+        <div class="card cb2" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.4rem;color:var(--blue)">w</div>
+          <div style="font-size: 1.2rem;margin-top:4px">write<br>כתיבה<br>= 2</div>
+        </div>
+        <div class="card cg2c" style="text-align:center">
+          <div style="font-family:'Fira Code',monospace;font-size:1.4rem;color:var(--green)">x</div>
+          <div style="font-size: 1.2rem;margin-top:4px">execute<br>הרצה<br>= 1</div>
+        </div>
+      </div>
+      <pre class="cb">
+<span class="cm"># chmod — שינוי הרשאות</span>
+chmod 755 script.sh   <span class="cm"># rwxr-xr-x</span>
+chmod 644 config.txt  <span class="cm"># rw-r--r--</span>
+chmod +x script.sh    <span class="cm"># הוסף execute לכולם</span>
+chmod g-w file.txt    <span class="cm"># הסר write מGroup</span>
+
+<span class="cm"># chown — שינוי בעלות</span>
+chown alice:staff file.txt
+chown -R root /etc/ssh  <span class="cm"># רקורסיבי</span>
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card cr">
+        <h3>⚠️ SUID bit</h3>
+        <p>קובץ עם SUID רץ עם הרשאות ה-Owner, לא המריץ. <code>chmod 4755</code> = <code>rwsr-xr-x</code>. SUID על <code>/bin/bash</code> = privilege escalation!</p>
+      </div>
+      <div class="card ca">
+        <h3>💡 755 = הכי נפוץ</h3>
+        <p>7=rwx (owner), 5=r-x (group), 5=r-x (others). Script שרוצים שכולם יריצו.</p>
+      </div>
+      <div class="card ct">
+        <h3>umask</h3>
+        <p>מסכה שמורידה הרשאות ברירת מחדל. <code>umask 022</code> → קבצים חדשים = 644, תיקיות = 755.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S8: INTERACTIVE PERMISSIONS CALCULATOR -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s8">
+  <span class="badge b-g">// פעילות אינטראקטיבית</span>
+  <h2>🔐 מחשבון הרשאות</h2>
+  <p style="margin-bottom:14px">לחץ על הביטים כדי להדליק/לכבות הרשאות וראה את ייצוג האוקטל:</p>
+  <div id="permCalc" style="background:var(--s1);border:1px solid var(--border);padding:16px">
+    <div id="permRows"></div>
+    <div style="margin-top:16px;padding:12px;background:var(--s2);border:1px solid var(--border2);font-family:'Fira Code',monospace">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div>chmod <span id="permOctal" style="color:var(--amber);font-size:1.2rem">644</span> file.txt</div>
+        <div id="permStr" style="color:var(--dim);font-size: 1.2rem;">-rw-r--r--</div>
+        <div id="permDesc" style="color:var(--teal);font-size: 1.2rem;">Owner: read+write | Group: read | Others: read</div>
+      </div>
+    </div>
+  </div>
+  <div class="card cr" style="margin-top:12px">
+    <h3>🔐 בדיקה: מה מסוכן?</h3>
+    <p>נסה <strong style="color:#fff">777</strong> — כולם יכולים לכתוב ולהריץ. נסה <strong style="color:#fff">600</strong> — רק Owner. מה נכון ל-<code>/etc/shadow</code>?</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S9: QUIZ — PERMISSIONS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <span class="badge b-q">// שאלת הבנה #2</span>
+  <h2>הרשאות — תרחיש סייבר</h2>
+  <p style="margin-bottom:10px">אנליסט מוצא קובץ עם ההרשאות הבאות:</p>
+  <pre class="cb" style="margin-bottom:14px">-rwsr-xr-x  root  root  /usr/bin/suspicious</pre>
+  <p style="margin-bottom:12px">מה מיוחד ומסוכן בהרשאות אלה?</p>
+  <div class="qc" id="q2">
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">א</span> הקובץ שייך ל-root — זה רגיל ובסדר</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ב</span> ה-group ו-others לא יכולים לכתוב — בעיה</div>
+    <div class="qo" onclick="cq('q2',this,true)"><span class="ql">ג</span> SUID bit פעיל (s במקום x) — כל משתמש שמריץ אותו מקבל הרשאות root</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> אין כאן שום בעיה, זה קובץ רגיל של המערכת</div>
+  </div>
+  <div class="qfb" id="q2-fb"></div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S10: MISSION — PERMISSIONS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <span class="badge b-m">// משימה בזוגות</span>
+  <h2>🔐 Permission Audit</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בזוגות:</strong> בדקו את ה-permissions הבאים וסמנו אילו מהם מסוכנים ולמה.</p>
+    <ol class="msteps">
+      <li data-n="1">הריצו <code>find / -perm -4000 2>/dev/null</code> — מה מוצאים? למה זה חשוב?</li>
+      <li data-n="2">בדקו <code>ls -la /etc/shadow</code> — מה ההרשאות? למה הגיוני?</li>
+      <li data-n="3">מצאו קובץ עם <code>chmod 777</code> בסיסטם — האם זה בסדר?</li>
+      <li data-n="4">בונוס: הסבירו מה עושה <code>find / -writable -not -user $(whoami) 2>/dev/null</code></li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">08:00</div>
+    <button class="tb" onclick="st('t1',8)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',8)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S11: SECTION — INODES & METADATA -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="shero">
+    <div class="snum" style="color:rgba(179,136,255,.06)">03</div>
+    <div class="stit"><span class="gp">Inodes &</span></div>
+    <div class="stit"><span class="gp">Metadata</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">מה מסתתר מאחורי שם הקובץ</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S12: INODE CONCEPT -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s12">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gp">Inode</span> — תעודת הזהות של הקובץ</h2>
+  <div class="c2" style="margin-top:12px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">שם הקובץ הוא רק <strong style="color:#fff">מדבקה</strong>. המידע האמיתי נמצא ב-inode — מבנה נתונים בדיסק.</p>
+      <div class="inode-box">
+        <div style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim2);margin-bottom:10px;letter-spacing:2px">// INODE #274823</div>
+        <div class="inode-field"><span class="inode-key">file type</span><span class="inode-val">regular file (-)</span></div>
+        <div class="inode-field"><span class="inode-key">permissions</span><span class="inode-val">rw-r--r-- (644)</span></div>
+        <div class="inode-field"><span class="inode-key">owner UID</span><span class="inode-val blue">1001 (alice)</span></div>
+        <div class="inode-field"><span class="inode-key">group GID</span><span class="inode-val blue">1001 (staff)</span></div>
+        <div class="inode-field"><span class="inode-key">size</span><span class="inode-val">4,096 bytes</span></div>
+        <div class="inode-field"><span class="inode-key">hard links</span><span class="inode-val">1</span></div>
+        <div class="inode-field"><span class="inode-key">atime</span><span class="inode-val green">2024-01-15 09:23:11</span></div>
+        <div class="inode-field"><span class="inode-key">mtime</span><span class="inode-val green">2024-01-10 14:05:33</span></div>
+        <div class="inode-field"><span class="inode-key">ctime</span><span class="inode-val green">2024-01-10 14:05:33</span></div>
+        <div class="inode-field"><span class="inode-key">data blocks</span><span class="inode-val purple">→ [block 8192, 8193, ...]</span></div>
+      </div>
+      <pre class="cb" style="margin-top:10px">
+$ stat secret.txt
+  File: secret.txt
+  Size: 4096
+  Inode: 274823
+  Access: 2024-01-15 09:23:11  <span class="cm"># atime</span>
+  Modify: 2024-01-10 14:05:33  <span class="cm"># mtime</span>
+  Change: 2024-01-10 14:05:33  <span class="cm"># ctime</span>
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card ca">
+        <h3>⏰ שלושת ה-timestamps</h3>
+        <p><code style="color:var(--green)">atime</code> = last Access (קריאה)<br><code style="color:var(--amber)">mtime</code> = last Modify (שינוי תוכן)<br><code style="color:var(--blue)">ctime</code> = last Change (שינוי inode/metadata)</p>
+      </div>
+      <div class="card cr">
+        <h3>🔐 Timestamps בסייבר</h3>
+        <p>תוקף עשוי לשנות timestamps עם <code>touch -t</code>. אבל ctime לא ניתן לשנות בקלות! השוואת timestamps = כלי forensics חשוב.</p>
+      </div>
+      <div class="card ct">
+        <h3>Hard Link vs Symlink</h3>
+        <p><strong style="color:#fff">Hard link</strong>: שם נוסף לאותו inode. מחיקת אחד לא מוחקת הנתונים.<br><strong style="color:#fff">Symlink</strong>: קיצור דרך — קובץ שמצביע למסלול.</p>
+      </div>
+      <div class="card cp">
+        <h3>ls -i — מספר inode</h3>
+        <p><code>ls -i file.txt</code> מראה את מספר ה-inode. שני שמות עם אותו מספר = hard links לאותו קובץ.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S13: QUIZ — TIMESTAMPS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-q">// שאלת הבנה #3 — Forensics</span>
+  <h2>חקירת Timestamps</h2>
+  <p style="margin-bottom:10px">חוקר מוצא קובץ עם הנתונים הבאים:</p>
+  <pre class="cb" style="margin-bottom:14px">
+$ stat malware.exe
+  Modify: 2020-03-15 08:00:00   <span class="cm"># mtime — "ישן"</span>
+  Change: 2024-01-14 23:47:12   <span class="cm"># ctime — אתמול!</span>
+  Access: 2024-01-14 23:47:15   <span class="cm"># atime — אתמול!</span>
+  </pre>
+  <p style="margin-bottom:12px">מה מסקנת החוקר?</p>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> הקובץ ישן ולא מסוכן — mtime משנת 2020</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ב</span> הקובץ הועבר/שונה אתמול — תוקף כנראה זייף את mtime כדי להסוות פעילות</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ג</span> ctime וatime לא רלוונטיים לחקירה</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> הקובץ נגעה בו רק קריאה, לא שינוי — בסדר</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S14: FLIP CARDS — FILE TYPES -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-c">// סוגי קבצים</span>
+  <h2>כל דבר ב-Linux הוא <span class="gb">קובץ</span></h2>
+  <p style="margin-bottom:6px">לחץ על כל כרטיס לפרטים:</p>
+  <div class="flip-grid" id="flipGrid">
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>-</code><br>Regular File</div>
+        <div class="flip-back">קובץ רגיל — טקסט, binary, image. <code>ls -la</code> מראה <code>-</code> בהתחלה.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>d</code><br>Directory</div>
+        <div class="flip-back">תיקייה — מכילה שמות קבצים וה-inode שלהם. גם היא קובץ!</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>l</code><br>Symlink</div>
+        <div class="flip-back">Symbolic link — קיצור דרך. מצביע למסלול אחר. יכול להצביע לקובץ שלא קיים.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>b</code><br>Block Device</div>
+        <div class="flip-back">מכשיר בלוק — דיסק, USB. <code>/dev/sda</code>. גישה בבלוקים, עם buffer.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>c</code><br>Char Device</div>
+        <div class="flip-back">מכשיר תווים — מקלדת, terminal. <code>/dev/null</code>, <code>/dev/random</code>.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>s</code><br>Socket</div>
+        <div class="flip-back">Unix Domain Socket — תקשורת בין processes. <code>/var/run/docker.sock</code>.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>p</code><br>Named Pipe</div>
+        <div class="flip-back">FIFO — IPC בין processes. ראינו בשיעור הקודם! גם הוא קובץ.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front">🔐<br>Cyber Note</div>
+        <div class="flip-back"><code>/dev/null</code> — מחיקת פלט. תוקפים משתמשים ב-<code>2>/dev/null</code> להסתיר שגיאות.</div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:12px;font-size: 1.2rem;color:var(--dim2)">💡 <code>ls -la</code> — הסימן הראשון בשורה = סוג הקובץ</p>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S15: SECTION — MONITORING -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s15">
+  <div class="shero">
+    <div class="snum" style="color:rgba(29,233,182,.06)">04</div>
+    <div class="stit"><span class="gt">ניטור</span></div>
+    <div class="stit"><span class="gt">ואבחון</span></div>
+    <p style="margin-top:10px;font-size: 1.2rem;">find · stat · lsof · auditd</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S16: MONITORING TOOLS -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-c">// כלי ניטור</span>
+  <h2>כלי <span class="gt">Forensics</span> בסיסיים</h2>
+  <div class="c2" style="margin-top:12px;flex:1">
+    <div class="scr">
+      <div class="card ct" style="margin-bottom:10px">
+        <h3>find — חיפוש מתקדם</h3>
+        <pre class="cb" style="max-height:300px;margin-top:8px">
+<span class="cm"># קבצים שהשתנו ב-24 שעות אחרונות</span>
+find / -mtime -1 2>/dev/null
+
+<span class="cm"># קבצים עם SUID</span>
+find / -perm -4000 -type f 2>/dev/null
+
+<span class="cm"># קבצים ששייכים לאף אחד (orphaned)</span>
+find / -nouser 2>/dev/null
+
+<span class="cm"># קבצים גדולים מ-100MB</span>
+find / -size +100M -type f 2>/dev/null
+
+<span class="cm"># חיפוש לפי שם עם wildcard</span>
+find /tmp -name "*.sh" -type f
+        </pre>
+      </div>
+      <div class="card cp" style="margin-bottom:10px">
+        <h3>stat — מטא-דאטה מלא</h3>
+        <pre class="cb" style="max-height:200px;margin-top:8px">
+$ stat /etc/passwd
+  Inode: 1048577
+  Access: 2024-01-15 09:00
+  Modify: 2024-01-10 14:30
+  Change: 2024-01-10 14:30
+        </pre>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card ca" style="margin-bottom:10px">
+        <h3>lsof — קבצים פתוחים</h3>
+        <pre class="cb" style="max-height:300px;margin-top:8px">
+<span class="cm"># מי פותח את הקובץ הזה?</span>
+lsof /var/log/auth.log
+
+<span class="cm"># כל הקבצים של process</span>
+lsof -p 1234
+
+<span class="cm"># network connections</span>
+lsof -i TCP
+
+<span class="cm"># קבצים שנמחקו אבל עדיין פתוחים</span>
+lsof | grep deleted
+        </pre>
+      </div>
+      <div class="card cr">
+        <h3>🔐 auditd — ניטור מתמשך</h3>
+        <pre class="cb" style="max-height:200px;margin-top:8px">
+<span class="cm"># עקוב אחר גישה לקובץ</span>
+auditctl -w /etc/passwd -p rwxa
+
+<span class="cm"># בדוק לוג auditd</span>
+ausearch -f /etc/passwd
+
+<span class="cm"># כל פעולת write על /etc/</span>
+auditctl -w /etc/ -p w -k etc_changes
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S17: MATCH ACTIVITY -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-q">// פעילות — התאם פקודה לתרחיש</span>
+  <h2>🎯 איזו פקודה?</h2>
+  <p style="margin-bottom:10px">לחץ על תרחיש, אחר כך על הפקודה המתאימה:</p>
+  <div class="match-wrap" id="matchWrap">
+    <div class="match-col">
+      <div class="match-lbl">// תרחישים</div>
+      <div class="match-item" onclick="msel(this,'s1')" data-id="s1">מצא כל קובץ שהשתנה אתמול</div>
+      <div class="match-item" onclick="msel(this,'s2')" data-id="s2">מי משתמש בקובץ /etc/passwd עכשיו</div>
+      <div class="match-item" onclick="msel(this,'s3')" data-id="s3">בדוק timestamps של קובץ חשוד</div>
+      <div class="match-item" onclick="msel(this,'s4')" data-id="s4">מצא קבצים עם SUID שעלולים לסכן</div>
+    </div>
+    <div class="match-col">
+      <div class="match-lbl">// פקודות</div>
+      <div class="match-item" onclick="mans(this,'s2')" data-id="c2"><code>lsof /etc/passwd</code></div>
+      <div class="match-item" onclick="mans(this,'s4')" data-id="c4"><code>find / -perm -4000</code></div>
+      <div class="match-item" onclick="mans(this,'s1')" data-id="c1"><code>find / -mtime -1</code></div>
+      <div class="match-item" onclick="mans(this,'s3')" data-id="c3"><code>stat suspicious.file</code></div>
+    </div>
+  </div>
+  <div class="match-result" id="mres"></div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S18: CODE FILL — FIND COMMAND -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s18">
+  <span class="badge b-g">// השלם את הפקודה</span>
+  <h2>🔍 כתוב פקודת find</h2>
+  <p style="margin-bottom:10px">חוקר רוצה למצוא <strong style="color:#fff">כל הקבצים ב-/tmp</strong> עם סיומת <strong style="color:#fff">.sh</strong> שהשתנו ב<strong style="color:#fff">שעה האחרונה</strong>:</p>
+  <pre class="cb" style="direction:ltr;text-align:left">
+find <input class="fi" id="f2" placeholder="איפה?" style="width:70px">
+     -name <input class="fi" id="f3" placeholder="שם?" style="width:90px">
+     -mmin <input class="fi" id="f4" placeholder="זמן?" style="width:70px">
+     -type f
+  </pre>
+  <button class="ck" onclick="cfind()">בדוק ✓</button>
+  <div class="ffb" id="fb2"></div>
+  <div class="card ct" style="margin-top:12px">
+    <h3>💡 פרמטרים שימושיים של find</h3>
+    <p><code>-mtime -1</code> = שינוי ב-24שע | <code>-mmin -60</code> = שינוי בשעה | <code>-name "*.sh"</code> = שמות | <code>-type f/d/l</code> = סוג</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S19: QUIZ — LSOF -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-q">// שאלת הבנה #4</span>
+  <h2>lsof | grep deleted — למה חשוב?</h2>
+  <p style="margin-bottom:12px">חוקר מריץ <code>lsof | grep deleted</code> ומוצא:</p>
+  <pre class="cb" style="margin-bottom:14px">
+malware  4523  root  3r  REG  8,1  0  /tmp/payload (deleted)
+  </pre>
+  <p style="margin-bottom:12px">מה משמעות הממצא?</p>
+  <div class="qc" id="q4">
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">א</span> הקובץ נמחק — אין מה לדאוג, הוא לא קיים יותר</div>
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">ב</span> Process 4523 מנסה לפתוח קובץ שלא קיים — שגיאה</div>
+    <div class="qo" onclick="cq('q4',this,true)"><span class="ql">ג</span> הקובץ "נמחק" מהפסיסטם אבל עדיין בזיכרון — הנתונים ניתנים לשחזור ואפשר לקרוא אותם ב-/proc</div>
+    <div class="qo" onclick="cq('q4',this,false)"><span class="ql">ד</span> זה תקין — OS מנקה קבצים ישנים אוטומטית</div>
+  </div>
+  <div class="qfb" id="q4-fb"></div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S20: MISSION FINAL -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s20">
+  <span class="badge b-m">// משימת סיום קבוצתית</span>
+  <h2>🕵️ CTF — File System Investigation</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3:</strong> "פרצו" לשרת (VM/sandbox) ובצעו חקירת file system.</p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">מיפוי:</strong> הריצו <code>ls -la /</code>, <code>ls -la /home/</code>, <code>ls -la /tmp/</code> — תעדו מה מוזר</li>
+      <li data-n="2"><strong style="color:#fff">הרשאות:</strong> <code>find / -perm -4000 2>/dev/null</code> — האם יש SUID חשוד?</li>
+      <li data-n="3"><strong style="color:#fff">Timestamps:</strong> <code>find / -mtime -1 2>/dev/null</code> — מה השתנה לאחרונה?</li>
+      <li data-n="4"><strong style="color:#fff">קבצים פתוחים:</strong> <code>lsof | grep -E "deleted|/tmp"</code> — ממצאים?</li>
+      <li data-n="5"><strong style="color:#fff">דוח:</strong> כתבו 3 משפטים — מה מצאתם, מה חשוד, מה המלצתכם</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t2">15:00</div>
+    <button class="tb" onclick="st('t2',15)">▶ התחל</button>
+    <button class="tb" onclick="rt('t2',15)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S21: HOMEWORK -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s21">
+  <span class="badge b-m">// שיעורי בית</span>
+  <h2>🏠 File System Challenge</h2>
+  <div class="cg cg3" style="margin-top:14px">
+    <div class="card cg2c">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--green)">EASY</span>
+      <h3 style="margin-top:6px">Permission Mapper</h3>
+      <p style="font-size: 1.2rem;">כתוב סקריפט bash שסורק תיקייה ומדפיס כל קובץ עם הרשאות 777 או SUID. פלט מסודר עם הסבר.</p>
+    </div>
+    <div class="card ca">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--amber)">MEDIUM</span>
+      <h3 style="margin-top:6px">Timestamp Analyzer</h3>
+      <p style="font-size: 1.2rem;">כתוב Python script שמשווה mtime ו-ctime של קבצים בתיקייה ומדגיש חריגות (mtime < ctime).</p>
+    </div>
+    <div class="card cr">
+      <span style="font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--red)">HARD ★</span>
+      <h3 style="margin-top:6px">Mini Forensics Report</h3>
+      <p style="font-size: 1.2rem;">קיבלתם VM עם "פריצה". בצעו חקירת file system מלאה וכתבו דוח: מה קרה, מתי, ומה הראיות.</p>
+    </div>
+  </div>
+  <div style="margin-top:14px;padding:10px 16px;background:var(--s1);border:1px solid var(--border);font-size: 1.2rem;">
+    📌 <strong style="color:#fff">הגשה:</strong> קוד + README + screenshots → GitHub Classroom
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- S22: SUMMARY -->
+<!-- ════════════════════════════════════════ -->
+<div class="slide" id="s22">
+  <span class="badge b-i">// סיכום</span>
+  <h2>מה למדנו?</h2>
+  <div class="cg" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;flex:1">
+    <div class="card cb2">
+      <h3>🗂️ עץ תיקיות</h3>
+      <p>הכל מ-/. מוחלט vs יחסי. dot files = מוסתרים. /tmp, /var/log, /etc — חשובים לסייבר.</p>
+    </div>
+    <div class="card ca">
+      <h3>🔐 הרשאות</h3>
+      <p>rwx × 3 קבוצות. chmod/chown. SUID = סכנה! find -perm -4000 לאיתור.</p>
+    </div>
+    <div class="card cp">
+      <h3>🔢 Inode & Metadata</h3>
+      <p>atime/mtime/ctime. stat לבדיקה. mtime ניתן לזיוף, ctime — פחות.</p>
+    </div>
+    <div class="card ct">
+      <h3>📁 סוגי קבצים</h3>
+      <p>-, d, l, b, c, s, p. הכל קובץ ב-Linux. /dev/null, /proc — מיוחדים.</p>
+    </div>
+    <div class="card cg2c">
+      <h3>🔍 כלי ניטור</h3>
+      <p>find -mtime/-perm. stat. lsof -i/deleted. auditd -w לניטור מתמשך.</p>
+    </div>
+    <div class="card cr">
+      <h3>🔐 Forensics</h3>
+      <p>timestamp anomalies, SUID hunting, deleted-but-open files, /proc recovery.</p>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-family:'Fira Code',monospace;font-size: 1.2rem;color:var(--dim2);text-align:center">
+    // next: Windows Registry & File System — שיעור הבא
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>▶ הקודם</button>
+  <span class="sc" id="sc">1 / 23</span>
+  <button class="nb" id="nb2" onclick="go(1)">הבא ◀</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──
+const TOTAL=23; let cur=0,xp=0;
+const slides=document.querySelectorAll('.slide');
+
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),300);
+  cur=n;
+  slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')go(-1);
+});
+
+// ── XP ──
+function addXP(n){
+  xp+=n;
+  const el=document.getElementById('xv');
+  el.textContent=xp;
+  el.classList.add('xpop');
+  setTimeout(()=>el.classList.remove('xpop'),250);
+}
+
+// ── QUIZ ──
+const okM=['🔥 מצוין! +10 XP','⚡ בול פגע! +10 XP','💎 נכון! +10 XP','🎯 מדויק! +10 XP'];
+const noM=['❌ לא בדיוק — חשוב על ה-timestamps.','❌ נסה שוב.','❌ שים לב לפרטים.'];
+function cq(id,el,ok){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok) c.querySelectorAll('.qo').forEach(o=>{
+    if(o.getAttribute('onclick')?.includes(',true)')) o.classList.add('correct');
+  });
+  const fb=document.getElementById(`${id}-fb`);
+  const msgs=ok?okM:noM;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  if(ok)addXP(10);
+}
+
+// ── FILL GENERIC ──
+function cf(id,valid,fbId){
+  const v=document.getElementById(id).value.trim().replace(/^-/,'');
+  const ok=valid.some(a=>a.replace(/^-/,'')===v||a===v||('-'+v)===a);
+  document.getElementById(id).className='fi '+(ok?'ok':'no');
+  const fb=document.getElementById(fbId);
+  fb.className='ffb show';
+  fb.style.color=ok?'var(--green)':'var(--red)';
+  fb.textContent=ok?'✓ נכון! ls -la מראה הכל כולל מוסתרים עם הרשאות. +10 XP':'✗ רמז: צריך שני דגלים — l לarticle ו-a לhidden files.';
+  if(ok)addXP(10);
+}
+
+// ── FIND FILL ──
+function cfind(){
+  const v2=document.getElementById('f2').value.trim();
+  const v3=document.getElementById('f3').value.trim();
+  const v4=document.getElementById('f4').value.trim();
+  const ok2=v2==='/tmp'||v2==='tmp';
+  const ok3=v3==='"*.sh"'||v3==="'*.sh'"||v3==='*.sh';
+  const ok4=v4==='-60'||v4==='-1'||v4==='-60m';
+  [['f2',ok2],['f3',ok3],['f4',ok4]].forEach(([id,ok])=>{
+    document.getElementById(id).className='fi '+(ok?'ok':'no');
+  });
+  const fb=document.getElementById('fb2');
+  fb.className='ffb show';
+  if(ok2&&ok3&&ok4){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! find /tmp -name "*.sh" -mmin -60 -type f +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok2?'איפה: /tmp ':''} ${!ok3?'שם: "*.sh" ':''} ${!ok4?'זמן: -60 (דקות) ':''} נסה שוב.`;
+  }
+}
+
+// ── REVEAL LIST ──
+function rv(li){li.classList.toggle('open');}
+
+// ── PERMISSION CALCULATOR ──
+const permDef=[
+  {who:'Owner',bits:[1,1,0]},
+  {who:'Group',bits:[1,0,0]},
+  {who:'Others',bits:[1,0,0]}
+];
+const bitLabels=['r','w','x'];
+const bitVals=[4,2,1];
+
+function renderPerms(){
+  const wrap=document.getElementById('permRows');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  permDef.forEach((row,ri)=>{
+    const div=document.createElement('div');
+    div.className='perm-row';
+    div.innerHTML=`<span class="perm-who">${row.who}</span>`;
+    const bits=document.createElement('div');
+    bits.className='perm-bits';
+    row.bits.forEach((v,bi)=>{
+      const b=document.createElement('div');
+      b.className=`pbit ${v?'on':'off'}`;
+      b.textContent=v?bitLabels[bi]:'-';
+      b.onclick=()=>{
+        row.bits[bi]=row.bits[bi]?0:1;
+        b.className=`pbit ${row.bits[bi]?'on':'off'}`;
+        b.textContent=row.bits[bi]?bitLabels[bi]:'-';
+        updatePerm();
+      };
+      bits.appendChild(b);
+    });
+    div.appendChild(bits);
+    const oct=document.createElement('span');
+    oct.className='perm-oct';
+    const n=row.bits.reduce((s,v,i)=>s+v*bitVals[i],0);
+    oct.textContent=n;
+    div.appendChild(oct);
+    wrap.appendChild(div);
+  });
+  updatePerm();
+}
+
+function updatePerm(){
+  const nums=permDef.map(r=>r.bits.reduce((s,v,i)=>s+v*bitVals[i],0));
+  const oct=nums.join('');
+  document.getElementById('permOctal').textContent=oct;
+  const str='-'+permDef.map(r=>
+    (r.bits[0]?'r':'-')+(r.bits[1]?'w':'-')+(r.bits[2]?'x':'-')
+  ).join('');
+  document.getElementById('permStr').textContent=str;
+  const descs=permDef.map((r,i)=>{
+    const parts=[];
+    if(r.bits[0])parts.push('read');
+    if(r.bits[1])parts.push('write');
+    if(r.bits[2])parts.push('execute');
+    return `${r.who}: ${parts.length?parts.join('+'):'none'}`;
+  });
+  document.getElementById('permDesc').textContent=descs.join(' | ');
+  // update row octal displays
+  const rows=document.querySelectorAll('.perm-oct');
+  nums.forEach((n,i)=>{ if(rows[i]) rows[i].textContent=n; });
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  renderPerms();
+});
+
+// ── MATCH ACTIVITY ──
+let selScenario=null, selCmd=null;
+const correctMap={'s1':'c1','s2':'c2','s3':'c3','s4':'c4'};
+
+function msel(el,id){
+  document.querySelectorAll('.match-col:first-child .match-item').forEach(i=>{
+    if(!i.classList.contains('matched-ok')&&!i.classList.contains('matched-no'))
+      i.classList.remove('sel');
+  });
+  if(!el.classList.contains('matched-ok')){
+    el.classList.add('sel');
+    selScenario=id;
+    if(selCmd) tryMatch();
+  }
+}
+
+function mans(el,matchId){
+  document.querySelectorAll('.match-col:last-child .match-item').forEach(i=>{
+    if(!i.classList.contains('matched-ok')&&!i.classList.contains('matched-no'))
+      i.classList.remove('sel');
+  });
+  if(!el.classList.contains('matched-ok')){
+    el.classList.add('sel');
+    selCmd=matchId;
+    if(selScenario) tryMatch();
+  }
+}
+
+function tryMatch(){
+  const correct=correctMap[selScenario]===selCmd;
+  const sEl=document.querySelector(`[data-id="${selScenario}"]`);
+  const cEl=document.querySelector(`[data-id="${selCmd}"]`);
+  if(correct){
+    sEl.classList.remove('sel');sEl.classList.add('matched-ok');
+    cEl.classList.remove('sel');cEl.classList.add('matched-ok');
+    addXP(8);
+  } else {
+    sEl.classList.add('matched-no');cEl.classList.add('matched-no');
+    setTimeout(()=>{
+      sEl.classList.remove('sel','matched-no');
+      cEl.classList.remove('sel','matched-no');
+    },800);
+  }
+  selScenario=null;selCmd=null;
+  const done=document.querySelectorAll('.matched-ok').length;
+  if(done===8){
+    const res=document.getElementById('mres');
+    res.className='match-result show';
+    res.style.color='var(--green)';
+    res.textContent='🎯 מושלם! כל ההתאמות נכונות!';
+  }
+}
+
+// ── TIMER ──
+const timers={};
+function st(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  let s=min*60;
+  const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60)el.classList.add('urg');else el.classList.remove('urg');
+  }
+  tick();timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+goTo(0);
+</script>
+</body>
+</html>

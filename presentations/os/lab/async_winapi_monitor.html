@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תרגיל אסינכרוני | WinAPI Monitor + DB | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#030407; --s1:#07090e; --s2:#0b0d16; --s3:#0f121e;
+  --border:#182030; --border2:#202c40;
+  --cyan:#00ccff; --red:#ff2244; --green:#00ff88;
+  --gold:#ffaa00; --purple:#aa66ff; --pink:#ff55cc;
+  --orange:#ff6600; --teal:#00ddaa; --lime:#aaff33;
+  --text:#bccde0; --dim:#3c5468; --dim2:#263548;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Heebo',sans-serif;
+  min-height:100vh; overflow-x:hidden;
+}
+body::before{
+  content:''; position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(0,204,255,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,204,255,.012) 1px,transparent 1px);
+  background-size:44px 44px;
+  pointer-events:none; z-index:0;
+}
+
+/* ── FIXED TOP BAR ── */
+.topbar{
+  position:fixed; top:0; left:0; right:0; height:44px;
+  background:rgba(3,4,7,.97); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 28px; z-index:200; backdrop-filter:blur(16px);
+}
+.topbar-left{
+  font-family:'Fira Code',monospace; font-size:1.2rem;
+  color:var(--dim); display:flex; align-items:center; gap:10px;
+}
+.topbar-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);animation:dotblink 2s ease infinite;}
+@keyframes dotblink{0%,100%{opacity:1}50%{opacity:.2}}
+.topbar-right{display:flex;align-items:center;gap:20px;}
+.prog-wrap{display:flex;align-items:center;gap:10px;}
+.prog-bar{width:120px;height:4px;background:var(--s2);border:1px solid var(--border);overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(to left,var(--cyan),var(--lime));transition:width .5s ease;}
+.prog-txt{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--cyan);}
+.xp-badge{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.xp-badge span{color:var(--lime);}
+
+/* ── MAIN WRAP ── */
+.wrap{max-width:1080px;margin:0 auto;padding:60px 28px 80px;position:relative;z-index:1;}
+
+/* ── HERO ── */
+.hero{padding:48px 0 38px;border-bottom:1px solid var(--border);margin-bottom:44px;}
+.lesson-tag{
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--cyan);letter-spacing:4px;margin-bottom:14px;opacity:.7;
+}
+h1{font-size:clamp(1.7rem,4vw,2.8rem);font-weight:900;line-height:1.12;margin-bottom:8px;}
+.hl{color:var(--cyan);text-shadow:0 0 20px rgba(0,204,255,.35);}
+.hero-meta{display:flex;gap:16px;margin-top:20px;flex-wrap:wrap;}
+.hm{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);
+  border:1px solid var(--border);padding:3px 10px;}
+.hm span{color:var(--text);}
+
+/* ── SECTION TITLES ── */
+.sec-title{display:flex;align-items:center;gap:14px;margin-bottom:22px;margin-top:48px;}
+.sec-num{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--cyan);
+  background:rgba(0,204,255,.07);border:1px solid rgba(0,204,255,.2);
+  padding:3px 10px;letter-spacing:2px;}
+.sec-title h2{font-size:1.4rem;font-weight:700;}
+.sec-line{flex:1;height:1px;background:linear-gradient(to left,transparent,var(--border));}
+
+/* ── GOAL BOX ── */
+.goal-box{
+  background:var(--s1);border:1px solid var(--border);
+  border-right:3px solid var(--cyan);padding:20px 24px;margin-bottom:26px;
+}
+.goal-box h3{color:var(--cyan);font-family:'Fira Code',monospace;font-size:1.2rem;
+  letter-spacing:2px;margin-bottom:10px;}
+.goal-box ul{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.goal-box ul li{display:flex;gap:10px;align-items:flex-start;font-size:1.2rem;color:var(--text);}
+.goal-box ul li::before{content:'→';color:var(--cyan);font-family:'Fira Code',monospace;flex-shrink:0;}
+
+/* ── PHASE CARDS ── */
+.phase{background:var(--s1);border:1px solid var(--border);margin-bottom:16px;overflow:hidden;}
+.phase-hdr{
+  display:flex;align-items:center;gap:14px;padding:14px 20px;
+  cursor:pointer;transition:background .16s;user-select:none;
+}
+.phase-hdr:hover{background:rgba(0,204,255,.03);}
+.phase-num{
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--cyan);
+  background:rgba(0,204,255,.08);width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.phase-title{font-size:1.2rem;font-weight:700;flex:1;}
+.phase-badge{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid;}
+.pb-easy{color:var(--lime);border-color:rgba(170,255,51,.3);}
+.pb-med{color:var(--gold);border-color:rgba(255,170,0,.3);}
+.pb-hard{color:var(--red);border-color:rgba(255,34,68,.3);}
+.pb-bonus{color:var(--purple);border-color:rgba(170,102,255,.3);}
+.phase-pts{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold);}
+.phase-arrow{font-size:1.2rem;color:var(--dim);transition:transform .22s;}
+.phase.open .phase-arrow{transform:rotate(90deg);color:var(--cyan);}
+.phase-body{display:none;padding:0 20px 20px;}
+.phase.open .phase-body{display:block;}
+
+/* ── STEP BLOCKS ── */
+.step{
+  background:var(--s2);border:1px solid var(--border);
+  border-right:3px solid var(--cyan);
+  padding:14px 18px;margin-bottom:12px;
+}
+.step.gold{border-right-color:var(--gold);}
+.step.red{border-right-color:var(--red);}
+.step.green{border-right-color:var(--green);}
+.step.purple{border-right-color:var(--purple);}
+.step.teal{border-right-color:var(--teal);}
+.step.lime{border-right-color:var(--lime);}
+.step-lbl{font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:2px;margin-bottom:7px;}
+.step-lbl.lc{color:var(--cyan);}
+.step-lbl.lg{color:var(--gold);}
+.step-lbl.lr{color:var(--red);}
+.step-lbl.lgr{color:var(--green);}
+.step-lbl.lp{color:var(--purple);}
+.step-lbl.lt{color:var(--teal);}
+.step-lbl.ll{color:var(--lime);}
+.step p{font-size:1.2rem;color:var(--dim);line-height:1.7;}
+.step p strong{color:var(--text);}
+
+/* ── CODE BLOCKS ── */
+pre.cb{
+  background:#010305;border:1px solid var(--border);
+  border-right:3px solid var(--cyan);
+  padding:13px 17px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:#88aac0;line-height:1.85;
+  margin:8px 0;overflow:auto;max-height:500px;
+  direction:ltr;text-align:left;
+}
+pre.cb::-webkit-scrollbar{width:3px;height:3px;}
+pre.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+pre.cb::-webkit-scrollbar-thumb:hover{background:var(--cyan);}
+pre.cb.red{border-right-color:var(--red);}
+pre.cb.gold{border-right-color:var(--gold);}
+pre.cb.purple{border-right-color:var(--purple);}
+pre.cb.teal{border-right-color:var(--teal);}
+pre.cb.green{border-right-color:var(--green);}
+pre.cb.lime{border-right-color:var(--lime);}
+.kw{color:var(--red);} .fn{color:var(--cyan);}
+.cm{color:#1e3248;font-style:italic;} .st{color:var(--green);}
+.nm{color:var(--gold);} .ty{color:var(--purple);}
+.mc{color:var(--teal);} .pp{color:var(--orange);}
+.hl2{color:var(--lime);}
+
+/* ── INLINE CODE ── */
+code{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--cyan);
+  background:rgba(0,204,255,.07);padding:1px 5px;}
+
+/* ── CHECKLIST ── */
+.chklist{list-style:none;margin-top:12px;}
+.chklist li{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:1.2rem;color:var(--text);padding:7px 0;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:all .14s;
+}
+.chklist li:last-child{border-bottom:none;}
+.chklist li:hover{color:#fff;}
+.chkbox{width:20px;height:20px;border:1px solid var(--border2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fira Code',monospace;font-size:1.2rem;margin-top:1px;transition:all .14s;}
+.chklist li.done .chkbox{border-color:var(--cyan);background:rgba(0,204,255,.1);color:var(--cyan);}
+.chklist li.done{color:var(--dim);text-decoration:line-through;}
+
+/* ── HINT ── */
+.hint{
+  background:rgba(170,102,255,.05);border:1px solid rgba(170,102,255,.2);
+  padding:11px 15px;margin:9px 0;font-size:1.2rem;color:var(--dim);line-height:1.7;
+}
+.hint::before{content:'💡 רמז — ';color:var(--purple);font-family:'Fira Code',monospace;font-size:1.2rem;}
+.hint strong{color:var(--text);}
+
+/* ── WARN BOX ── */
+.warn{
+  background:rgba(255,34,68,.04);border:1px solid rgba(255,34,68,.2);
+  padding:11px 15px;margin:9px 0;font-size:1.2rem;color:var(--dim);line-height:1.7;
+}
+.warn::before{content:'⚠️ חשוב — ';color:var(--red);font-weight:700;}
+.warn strong{color:var(--text);}
+
+/* ── OUTPUT BOX ── */
+.outbox{
+  background:#010305;border:1px solid var(--border);border-right:3px solid var(--teal);
+  padding:12px 16px;font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--teal);margin:9px 0;direction:ltr;text-align:left;line-height:1.85;overflow-x:auto;
+}
+.outbox .ok{color:var(--lime);} .outbox .warn2{color:var(--red);}
+.outbox .key{color:var(--gold);} .outbox .val{color:var(--cyan);}
+.outbox .dim{color:var(--dim);}
+
+/* ── SCHEMA TABLE ── */
+.schema{width:100%;border-collapse:collapse;font-size:1.2rem;margin:9px 0;}
+.schema th{text-align:right;padding:7px 11px;background:var(--s2);
+  border-bottom:2px solid var(--cyan);color:var(--cyan);
+  font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:1px;}
+.schema td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:middle;}
+.schema tr:hover td{background:rgba(0,204,255,.02);}
+.schema .col{font-family:'Fira Code',monospace;color:var(--pink);font-size:1.2rem;}
+.schema .type{font-family:'Fira Code',monospace;color:var(--purple);font-size:1.2rem;}
+.schema .pk{color:var(--gold);}
+
+/* ── RUBRIC ── */
+.rubric{background:var(--s1);border:1px solid var(--border);overflow:hidden;margin-top:12px;}
+.rubric-hdr{background:var(--s2);padding:9px 15px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:var(--cyan);letter-spacing:2px;border-bottom:1px solid var(--border);}
+.rub-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);}
+.rub-row:last-child{border-bottom:none;}
+.rub-task{flex:2;padding:9px 13px;font-size:1.2rem;color:var(--text);border-left:1px solid var(--border);}
+.rub-pts{width:65px;padding:9px 13px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:var(--gold);text-align:center;flex-shrink:0;}
+.rub-crit{flex:3;padding:9px 13px;font-size:1.2rem;color:var(--dim);}
+.rub-head{background:var(--s2);font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:var(--dim);letter-spacing:1px;}
+
+/* ── SUBMIT BOX ── */
+.submit-box{
+  background:rgba(0,204,255,.04);border:1px solid rgba(0,204,255,.2);
+  padding:20px 24px;margin-top:26px;
+}
+.submit-box h3{color:var(--cyan);font-family:'Fira Code',monospace;
+  font-size:1.2rem;letter-spacing:2px;margin-bottom:12px;}
+.submit-box ul{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.submit-box ul li{font-size:1.2rem;color:var(--text);display:flex;gap:9px;align-items:flex-start;}
+.submit-box ul li::before{content:'📎';flex-shrink:0;}
+
+/* ── ARCH DIAGRAM ── */
+.arch{
+  background:var(--s2);border:1px solid var(--border);
+  padding:16px;display:flex;flex-direction:column;gap:8px;
+}
+.arch-layer{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 16px;border:1px solid;font-family:'Fira Code',monospace;
+  font-size:1.2rem;text-align:center;
+}
+.arch-arrow{text-align:center;color:var(--dim);font-size:1.2rem;}
+
+/* ── PRINT ── */
+@media print{
+  body::before,.topbar{display:none;}
+  .phase-body{display:block!important;}
+  .phase-arrow{display:none;}
+  .wrap{padding-top:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-dot"></span>
+    <span>// ASYNC_EXERCISE_08 · WINAPI MONITOR</span>
+  </div>
+  <div class="topbar-right">
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <span class="prog-txt" id="progTxt">0 / 8</span>
+    </div>
+    <div class="xp-badge">XP: <span id="xpVal">0</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ════════════════ HERO ════════════════ -->
+<div class="hero">
+  <div class="lesson-tag">// ASYNC_EXERCISE_08 · WINAPI + DATABASE MONITORING</div>
+  <h1>פיתוח <span class="hl">מערכת ניטור</span> עם WinAPI<br>ותיעוד בזמן אמת ב-Database</h1>
+  <p style="margin-top:10px;font-size:1.2rem;color:var(--dim);max-width:700px">
+    תרגיל אסינכרוני — בנו כלי ניטור אמיתי שאוסף מידע מWindows דרך WinAPI ושומר הכל ב-SQLite. תוצאה: כלי ניטור שכל analyst סייבר יכול להשתמש בו.
+  </p>
+  <div class="hero-meta">
+    <span class="hm">⏱ זמן: <span>120–150 דק׳</span></span>
+    <span class="hm">📋 הגשה: <span>GitHub + DB + דוח</span></span>
+    <span class="hm">🎯 ניקוד: <span>100 נקודות</span></span>
+    <span class="hm">🐍 Python: <span>3.8+ / Windows</span></span>
+    <span class="hm">🗄️ DB: <span>SQLite3</span></span>
+  </div>
+</div>
+
+<!-- ════════════════ GOALS ════════════════ -->
+<div class="goal-box">
+  <h3>// מטרות הלמידה</h3>
+  <ul>
+    <li>הבנת WinAPI — ctypes, windll, Handles, DWORD, byref ומבנה פונקציות</li>
+    <li>שליפת מידע מWindows: חלון פעיל, שם תהליך, clipboard, שם משתמש, זמן ריצה</li>
+    <li>עיצוב schema של DB לתיעוד ניטור מערכת בזמן אמת</li>
+    <li>כתיבת monitoring loop שרץ ברקע ומתעד כל שינוי</li>
+    <li>שאילתות SQL לניתוח הנתונים שנאספו</li>
+    <li>הבנת הקשר בין כלי ניטור לגיטימי לכלי תקיפה (keylogger / RAT)</li>
+  </ul>
+</div>
+
+<!-- ════════════════ ARCHITECTURE ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">ARCH</span>
+  <h2>ארכיטקטורת המערכת</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="arch">
+  <div class="arch-layer" style="border-color:var(--cyan);color:var(--cyan)">
+    🖥️ Windows OS — WinAPI (kernel32, user32, psapi)
+  </div>
+  <div class="arch-arrow">↓ ctypes.windll calls</div>
+  <div class="arch-layer" style="border-color:var(--purple);color:var(--purple)">
+    🐍 Python Monitor — Collector Threads
+    <span style="font-size:1.2rem;color:var(--dim);margin-right:12px">[ WindowTracker | ProcessScanner | ClipboardSpy | SysInfo ]</span>
+  </div>
+  <div class="arch-arrow">↓ INSERT INTO</div>
+  <div class="arch-layer" style="border-color:var(--gold);color:var(--gold)">
+    🗄️ SQLite Database — monitor.db
+    <span style="font-size:1.2rem;color:var(--dim);margin-right:12px">[ windows | processes | clipboard | system_snapshots ]</span>
+  </div>
+  <div class="arch-arrow">↓ SELECT queries</div>
+  <div class="arch-layer" style="border-color:var(--lime);color:var(--lime)">
+    📊 Reporter — Analysis & Output
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 1 ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">PHASE_1</span>
+  <h2>הכנה, DB Schema וסביבה</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="phase open" id="p1">
+  <div class="phase-hdr" onclick="tp('p1')">
+    <span class="phase-num">1</span>
+    <span class="phase-title">הגדרת סביבה + עיצוב Database Schema</span>
+    <span class="phase-badge pb-easy">EASY</span>
+    <span class="phase-pts">20 נק׳</span>
+    <span class="phase-arrow">▶</span>
+  </div>
+  <div class="phase-body">
+
+    <div class="step">
+      <div class="step-lbl lc">// 1.1 — התקנות והגדרת project</div>
+<pre class="cb">
+<span class="cm"># יצירת תיקיית project</span>
+mkdir winapi_monitor && cd winapi_monitor
+
+<span class="cm"># Python packages — רק stdlib, ללא pip!</span>
+<span class="cm"># ctypes — built-in</span>
+<span class="cm"># sqlite3 — built-in</span>
+<span class="cm"># threading — built-in</span>
+<span class="cm"># datetime — built-in</span>
+
+<span class="cm"># מבנה הקבצים:</span>
+winapi_monitor/
+├── monitor.py        <span class="cm"># הקוד הראשי</span>
+├── db.py             <span class="cm"># כל פעולות ה-DB</span>
+├── collectors/
+│   ├── __init__.py
+│   ├── windows.py    <span class="cm"># חלונות פעילים</span>
+│   ├── processes.py  <span class="cm"># סריקת תהליכים</span>
+│   ├── clipboard.py  <span class="cm"># Clipboard monitor</span>
+│   └── sysinfo.py    <span class="cm"># System information</span>
+├── reporter.py       <span class="cm"># ניתוח + דוח</span>
+└── monitor.db        <span class="cm"># ייווצר אוטומטית</span>
+</pre>
+    </div>
+
+    <div class="step gold">
+      <div class="step-lbl lg">// 1.2 — עיצוב Database Schema</div>
+      <p style="margin-bottom:10px">ה-DB מכיל 4 טבלאות — כל אחת אוספת סוג מידע אחר:</p>
+      <table class="schema">
+        <thead><tr><th>טבלה</th><th>עמודה</th><th>סוג</th><th>תיאור</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="5" style="color:var(--cyan);font-family:'Fira Code',monospace;font-weight:700">windows</td>
+            <td class="col">id</td><td class="type">INTEGER PK</td><td class="pk">Auto increment</td></tr>
+          <tr><td class="col">timestamp</td><td class="type">TEXT</td><td>זמן האירוע</td></tr>
+          <tr><td class="col">window_title</td><td class="type">TEXT</td><td>כותרת חלון פעיל</td></tr>
+          <tr><td class="col">process_name</td><td class="type">TEXT</td><td>שם התהליך</td></tr>
+          <tr><td class="col">pid</td><td class="type">INTEGER</td><td>PID של התהליך</td></tr>
+          <tr><td colspan="4" style="background:var(--border);height:2px;padding:0"></td></tr>
+          <tr><td rowspan="5" style="color:var(--purple);font-family:'Fira Code',monospace;font-weight:700">processes</td>
+            <td class="col">id</td><td class="type">INTEGER PK</td><td class="pk">Auto increment</td></tr>
+          <tr><td class="col">timestamp</td><td class="type">TEXT</td><td>זמן הסריקה</td></tr>
+          <tr><td class="col">pid</td><td class="type">INTEGER</td><td>Process ID</td></tr>
+          <tr><td class="col">name</td><td class="type">TEXT</td><td>שם הprocess</td></tr>
+          <tr><td class="col">path</td><td class="type">TEXT</td><td>מסלול מלא</td></tr>
+          <tr><td colspan="4" style="background:var(--border);height:2px;padding:0"></td></tr>
+          <tr><td rowspan="4" style="color:var(--gold);font-family:'Fira Code',monospace;font-weight:700">clipboard</td>
+            <td class="col">id</td><td class="type">INTEGER PK</td><td class="pk">Auto increment</td></tr>
+          <tr><td class="col">timestamp</td><td class="type">TEXT</td><td>זמן הזיהוי</td></tr>
+          <tr><td class="col">content</td><td class="type">TEXT</td><td>תוכן ה-clipboard</td></tr>
+          <tr><td class="col">content_type</td><td class="type">TEXT</td><td>text/url/credential</td></tr>
+          <tr><td colspan="4" style="background:var(--border);height:2px;padding:0"></td></tr>
+          <tr><td rowspan="6" style="color:var(--lime);font-family:'Fira Code',monospace;font-weight:700">system_snapshots</td>
+            <td class="col">id</td><td class="type">INTEGER PK</td><td class="pk">Auto increment</td></tr>
+          <tr><td class="col">timestamp</td><td class="type">TEXT</td><td>זמן הסנאפשוט</td></tr>
+          <tr><td class="col">computer_name</td><td class="type">TEXT</td><td>שם המחשב</td></tr>
+          <tr><td class="col">username</td><td class="type">TEXT</td><td>שם המשתמש</td></tr>
+          <tr><td class="col">is_admin</td><td class="type">INTEGER</td><td>0 / 1</td></tr>
+          <tr><td class="col">process_count</td><td class="type">INTEGER</td><td>כמות processes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="step green">
+      <div class="step-lbl lgr">// 1.3 — כתוב את db.py</div>
+      <p style="margin-bottom:8px">מודול לניהול כל פעולות ה-Database:</p>
+<pre class="cb green">
+<span class="cm">"""db.py — Database manager for WinAPI Monitor"""</span>
+<span class="kw">import</span> sqlite3
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+DB_PATH = Path(__file__).<span class="fn">parent</span> / <span class="st">"monitor.db"</span>
+
+<span class="kw">def</span> <span class="fn">get_conn</span>():
+    <span class="st">"""מחזיר חיבור ל-DB עם Row Factory"""</span>
+    conn = sqlite3.<span class="fn">connect</span>(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    <span class="kw">return</span> conn
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    <span class="st">"""יצירת כל הטבלאות אם לא קיימות"""</span>
+    conn = <span class="fn">get_conn</span>()
+    conn.<span class="fn">executescript</span>(<span class="st">"""
+        CREATE TABLE IF NOT EXISTS windows (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp    TEXT NOT NULL,
+            window_title TEXT,
+            process_name TEXT,
+            pid          INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS processes (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            pid       INTEGER,
+            name      TEXT,
+            path      TEXT
+        );
+        CREATE TABLE IF NOT EXISTS clipboard (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp    TEXT NOT NULL,
+            content      TEXT,
+            content_type TEXT
+        );
+        CREATE TABLE IF NOT EXISTS system_snapshots (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp     TEXT NOT NULL,
+            computer_name TEXT,
+            username      TEXT,
+            is_admin      INTEGER,
+            process_count INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_win_ts
+            ON windows(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_proc_name
+            ON processes(name);
+    """</span>)
+    conn.<span class="fn">commit</span>()
+    conn.<span class="fn">close</span>()
+    <span class="fn">print</span>(<span class="st">f"[DB] Initialized: {DB_PATH}"</span>)
+
+<span class="kw">def</span> <span class="fn">insert_window</span>(title: <span class="ty">str</span>, proc_name: <span class="ty">str</span>, pid: <span class="ty">int</span>):
+    ts = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="st">'seconds'</span>)
+    conn = <span class="fn">get_conn</span>()
+    conn.<span class="fn">execute</span>(
+        <span class="st">"INSERT INTO windows(timestamp,window_title,process_name,pid)"</span>
+        <span class="st">"VALUES(?,?,?,?)"</span>,
+        (ts, title, proc_name, pid)
+    )
+    conn.<span class="fn">commit</span>(); conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">insert_processes</span>(procs: <span class="ty">list</span>):
+    ts = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="st">'seconds'</span>)
+    conn = <span class="fn">get_conn</span>()
+    conn.<span class="fn">executemany</span>(
+        <span class="st">"INSERT INTO processes(timestamp,pid,name,path) VALUES(?,?,?,?)"</span>,
+        [(ts, p[<span class="st">'pid'</span>], p[<span class="st">'name'</span>], p[<span class="st">'path'</span>]) <span class="kw">for</span> p <span class="kw">in</span> procs]
+    )
+    conn.<span class="fn">commit</span>(); conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">insert_clipboard</span>(content: <span class="ty">str</span>, ctype: <span class="ty">str</span>):
+    ts = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="st">'seconds'</span>)
+    conn = <span class="fn">get_conn</span>()
+    conn.<span class="fn">execute</span>(
+        <span class="st">"INSERT INTO clipboard(timestamp,content,content_type) VALUES(?,?,?)"</span>,
+        (ts, content[:500], ctype)
+    )
+    conn.<span class="fn">commit</span>(); conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">insert_snapshot</span>(computer: <span class="ty">str</span>, user: <span class="ty">str</span>,
+                      admin: <span class="ty">bool</span>, proc_count: <span class="ty">int</span>):
+    ts = datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(timespec=<span class="st">'seconds'</span>)
+    conn = <span class="fn">get_conn</span>()
+    conn.<span class="fn">execute</span>(
+        <span class="st">"INSERT INTO system_snapshots"</span>
+        <span class="st">"(timestamp,computer_name,username,is_admin,process_count)"</span>
+        <span class="st">"VALUES(?,?,?,?,?)"</span>,
+        (ts, computer, user, <span class="nm">1</span> <span class="kw">if</span> admin <span class="kw">else</span> <span class="nm">0</span>, proc_count)
+    )
+    conn.<span class="fn">commit</span>(); conn.<span class="fn">close</span>()
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    <span class="fn">init_db</span>()
+    <span class="fn">print</span>(<span class="st">"DB schema created ✓"</span>)
+</pre>
+      <div class="hint"><strong>הרץ:</strong> <code>python db.py</code> — צריך להדפיס "DB schema created ✓"</div>
+    </div>
+
+    <!-- CHECKLIST 1 -->
+    <div class="step purple" style="margin-top:16px">
+      <div class="step-lbl lp">// Checklist — Phase 1</div>
+      <ul class="chklist" id="ck1">
+        <li onclick="tick(this)"><span class="chkbox"></span>תיקיית project + מבנה קבצים נוצרו</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>db.py נכתב ורץ ללא שגיאות</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>monitor.db נוצר עם 4 טבלאות (בדוק עם DB Browser)</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>Indexes נוצרו על timestamp ו-name</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 2 ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">PHASE_2</span>
+  <h2>Collectors — איסוף נתונים עם WinAPI</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="phase" id="p2">
+  <div class="phase-hdr" onclick="tp('p2')">
+    <span class="phase-num">2</span>
+    <span class="phase-title">ארבעת ה-Collectors — WinAPI בפועל</span>
+    <span class="phase-badge pb-med">MEDIUM</span>
+    <span class="phase-pts">40 נק׳</span>
+    <span class="phase-arrow">▶</span>
+  </div>
+  <div class="phase-body">
+
+    <!-- 2A: WINDOW TRACKER -->
+    <div class="step">
+      <div class="step-lbl lc">// 2A — collectors/windows.py — Active Window Tracker</div>
+      <p style="margin-bottom:8px">WinAPI שנדרשת: <code>GetForegroundWindow</code>, <code>GetWindowTextW</code>, <code>GetWindowThreadProcessId</code>, <code>GetModuleBaseName</code></p>
+<pre class="cb">
+<span class="cm">"""collectors/windows.py — Active Window Monitor"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt, time
+<span class="kw">import</span> db
+
+user32 = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
+psapi   = ctypes.windll.psapi
+
+<span class="kw">def</span> <span class="fn">get_active_window</span>() -> dict:
+    <span class="st">"""מחזיר dict עם פרטי החלון הפעיל"""</span>
+    hwnd = user32.<span class="fn">GetForegroundWindow</span>()
+    <span class="kw">if not</span> hwnd:
+        <span class="kw">return</span> {}
+
+    <span class="cm"># קבל כותרת חלון</span>
+    title_buf = ctypes.<span class="fn">create_unicode_buffer</span>(<span class="nm">512</span>)
+    user32.<span class="fn">GetWindowTextW</span>(hwnd, title_buf, <span class="nm">512</span>)
+    title = title_buf.value
+
+    <span class="cm"># קבל PID של התהליך שמחזיק את החלון</span>
+    pid = wt.<span class="fn">DWORD</span>()
+    user32.<span class="fn">GetWindowThreadProcessId</span>(hwnd, ctypes.<span class="fn">byref</span>(pid))
+
+    <span class="cm"># פתח handle לprocess וקבל את שמו</span>
+    h_proc = kernel32.<span class="fn">OpenProcess</span>(
+        <span class="nm">0x0400</span> | <span class="nm">0x0010</span>,  <span class="cm"># PROCESS_QUERY_INFO | PROCESS_VM_READ</span>
+        <span class="nm">False</span>,
+        pid.value
+    )
+    proc_name = <span class="st">"unknown"</span>
+    <span class="kw">if</span> h_proc:
+        name_buf = ctypes.<span class="fn">create_unicode_buffer</span>(<span class="nm">260</span>)
+        psapi.<span class="fn">GetModuleBaseNameW</span>(h_proc, <span class="nm">None</span>, name_buf, <span class="nm">260</span>)
+        proc_name = name_buf.value <span class="kw">or</span> <span class="st">"unknown"</span>
+        kernel32.<span class="fn">CloseHandle</span>(h_proc)   <span class="cm"># תמיד לסגור!</span>
+
+    <span class="kw">return</span> {
+        <span class="st">"hwnd"</span>:    hwnd,
+        <span class="st">"title"</span>:   title,
+        <span class="st">"pid"</span>:     pid.value,
+        <span class="st">"process"</span>: proc_name,
+    }
+
+<span class="kw">def</span> <span class="fn">run_window_tracker</span>(interval: <span class="ty">float</span> = <span class="nm">2.0</span>,
+                         stop_event=<span class="nm">None</span>):
+    <span class="st">"""
+    מריץ לולאת ניטור — שומר לDB כל פעם שהחלון משתנה.
+    stop_event: threading.Event לעצירה מסודרת.
+    """</span>
+    last_title = <span class="st">""</span>
+    <span class="fn">print</span>(<span class="st">"[WindowTracker] Started"</span>)
+
+    <span class="kw">while not</span> (stop_event <span class="kw">and</span> stop_event.<span class="fn">is_set</span>()):
+        info = <span class="fn">get_active_window</span>()
+        <span class="kw">if</span> info <span class="kw">and</span> info[<span class="st">"title"</span>] != last_title:
+            last_title = info[<span class="st">"title"</span>]
+            db.<span class="fn">insert_window</span>(
+                info[<span class="st">"title"</span>],
+                info[<span class="st">"process"</span>],
+                info[<span class="st">"pid"</span>]
+            )
+            <span class="fn">print</span>(<span class="st">f"  [WIN] {info['process']} → {info['title'][:60]}"</span>)
+        time.<span class="fn">sleep</span>(interval)
+
+    <span class="fn">print</span>(<span class="st">"[WindowTracker] Stopped"</span>)
+</pre>
+    </div>
+
+    <!-- 2B: PROCESS SCANNER -->
+    <div class="step gold">
+      <div class="step-lbl lg">// 2B — collectors/processes.py — Process Scanner</div>
+      <p style="margin-bottom:8px">WinAPI: <code>EnumProcesses</code>, <code>OpenProcess</code>, <code>GetModuleBaseName</code>, <code>QueryFullProcessImageName</code></p>
+<pre class="cb gold">
+<span class="cm">"""collectors/processes.py — Process List Scanner"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt, time
+<span class="kw">import</span> db
+
+kernel32 = ctypes.windll.kernel32
+psapi    = ctypes.windll.psapi
+
+<span class="kw">def</span> <span class="fn">get_all_processes</span>() -> list:
+    <span class="st">"""מחזיר list של כל ה-processes עם PID, שם ומסלול"""</span>
+    pids = (wt.DWORD * <span class="nm">1024</span>)()
+    needed = wt.<span class="fn">DWORD</span>()
+    psapi.<span class="fn">EnumProcesses</span>(pids, ctypes.<span class="fn">sizeof</span>(pids),
+                         ctypes.<span class="fn">byref</span>(needed))
+    count = needed.value // ctypes.<span class="fn">sizeof</span>(wt.DWORD)
+
+    results = []
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(count):
+        pid = pids[i]
+        <span class="kw">if</span> pid == <span class="nm">0</span>: <span class="kw">continue</span>
+
+        h = kernel32.<span class="fn">OpenProcess</span>(
+            <span class="nm">0x0400</span> | <span class="nm">0x0010</span> | <span class="nm">0x1000</span>,  <span class="cm"># QUERY + VM_READ + LIMITED</span>
+            <span class="nm">False</span>, pid
+        )
+        name, path = <span class="st">"unknown"</span>, <span class="st">""</span>
+        <span class="kw">if</span> h:
+            <span class="cm"># שם קצר</span>
+            nb = ctypes.<span class="fn">create_unicode_buffer</span>(<span class="nm">260</span>)
+            psapi.<span class="fn">GetModuleBaseNameW</span>(h, <span class="nm">None</span>, nb, <span class="nm">260</span>)
+            name = nb.value <span class="kw">or</span> <span class="st">"unknown"</span>
+
+            <span class="cm"># מסלול מלא</span>
+            pb   = ctypes.<span class="fn">create_unicode_buffer</span>(<span class="nm">1024</span>)
+            size = wt.<span class="fn">DWORD</span>(<span class="nm">1024</span>)
+            kernel32.<span class="fn">QueryFullProcessImageNameW</span>(h, <span class="nm">0</span>, pb,
+                                                 ctypes.<span class="fn">byref</span>(size))
+            path = pb.value
+            kernel32.<span class="fn">CloseHandle</span>(h)
+
+        results.<span class="fn">append</span>({<span class="st">"pid"</span>: pid, <span class="st">"name"</span>: name, <span class="st">"path"</span>: path})
+
+    <span class="kw">return</span> results
+
+<span class="kw">def</span> <span class="fn">run_process_scanner</span>(interval: <span class="ty">float</span> = <span class="nm">30.0</span>,
+                          stop_event=<span class="nm">None</span>):
+    <span class="st">"""סורק processes כל interval שניות ושומר לDB"""</span>
+    <span class="fn">print</span>(<span class="st">"[ProcessScanner] Started"</span>)
+    <span class="kw">while not</span> (stop_event <span class="kw">and</span> stop_event.<span class="fn">is_set</span>()):
+        procs = <span class="fn">get_all_processes</span>()
+        db.<span class="fn">insert_processes</span>(procs)
+        <span class="fn">print</span>(<span class="st">f"  [PROC] Scanned {len(procs)} processes"</span>)
+        time.<span class="fn">sleep</span>(interval)
+    <span class="fn">print</span>(<span class="st">"[ProcessScanner] Stopped"</span>)
+</pre>
+    </div>
+
+    <!-- 2C: CLIPBOARD -->
+    <div class="step red">
+      <div class="step-lbl lr">// 2C — collectors/clipboard.py — Clipboard Monitor</div>
+      <p style="margin-bottom:8px">WinAPI: <code>OpenClipboard</code>, <code>GetClipboardData</code>, <code>GlobalLock</code>, <code>CloseClipboard</code></p>
+<pre class="cb red">
+<span class="cm">"""collectors/clipboard.py — Clipboard Monitor"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt, time, re
+<span class="kw">import</span> db
+
+user32   = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
+
+CF_UNICODETEXT = <span class="nm">13</span>
+
+<span class="kw">def</span> <span class="fn">read_clipboard</span>() -> str:
+    <span class="st">"""קורא את תוכן ה-Clipboard. מחזיר מחרוזת ריקה אם נכשל."""</span>
+    <span class="kw">if not</span> user32.<span class="fn">OpenClipboard</span>(<span class="nm">0</span>):
+        <span class="kw">return</span> <span class="st">""</span>
+    <span class="kw">try</span>:
+        h = user32.<span class="fn">GetClipboardData</span>(CF_UNICODETEXT)
+        <span class="kw">if not</span> h:
+            <span class="kw">return</span> <span class="st">""</span>
+        ptr = kernel32.<span class="fn">GlobalLock</span>(h)
+        <span class="kw">if not</span> ptr:
+            <span class="kw">return</span> <span class="st">""</span>
+        text = ctypes.<span class="fn">wstring_at</span>(ptr)
+        kernel32.<span class="fn">GlobalUnlock</span>(h)
+        <span class="kw">return</span> text
+    <span class="kw">finally</span>:
+        user32.<span class="fn">CloseClipboard</span>()
+
+<span class="kw">def</span> <span class="fn">classify_content</span>(text: str) -> str:
+    <span class="st">"""מסווג תוכן clipboard לפי pattern"""</span>
+    <span class="kw">if</span> re.<span class="fn">search</span>(<span class="st">r'https?://'</span>, text):       <span class="kw">return</span> <span class="st">"url"</span>
+    <span class="kw">if</span> re.<span class="fn">search</span>(<span class="st">r'[\w.]+@[\w.]+\.\w+'</span>, text): <span class="kw">return</span> <span class="st">"email"</span>
+    <span class="kw">if</span> re.<span class="fn">search</span>(<span class="st">r'password|passwd|pwd'</span>,
+                  text, re.IGNORECASE):       <span class="kw">return</span> <span class="st">"credential"</span>
+    <span class="kw">if</span> re.<span class="fn">search</span>(<span class="st">r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'</span>,
+                  text):                     <span class="kw">return</span> <span class="st">"credit_card"</span>
+    <span class="kw">return</span> <span class="st">"text"</span>
+
+<span class="kw">def</span> <span class="fn">run_clipboard_monitor</span>(interval: <span class="ty">float</span> = <span class="nm">3.0</span>,
+                            stop_event=<span class="nm">None</span>):
+    <span class="st">"""מנטר clipboard ושומר לDB רק כשיש שינוי"""</span>
+    last = <span class="st">""</span>
+    <span class="fn">print</span>(<span class="st">"[ClipboardMon] Started"</span>)
+    <span class="kw">while not</span> (stop_event <span class="kw">and</span> stop_event.<span class="fn">is_set</span>()):
+        text = <span class="fn">read_clipboard</span>()
+        <span class="kw">if</span> text <span class="kw">and</span> text != last:
+            last = text
+            ctype = <span class="fn">classify_content</span>(text)
+            db.<span class="fn">insert_clipboard</span>(text, ctype)
+            <span class="fn">print</span>(<span class="st">f"  [CLIP] [{ctype.upper()}] {text[:50]}..."</span>
+                  <span class="kw">if</span> <span class="fn">len</span>(text) > <span class="nm">50</span> <span class="kw">else</span>
+                  <span class="st">f"  [CLIP] [{ctype.upper()}] {text}"</span>)
+        time.<span class="fn">sleep</span>(interval)
+    <span class="fn">print</span>(<span class="st">"[ClipboardMon] Stopped"</span>)
+</pre>
+    </div>
+
+    <!-- 2D: SYSINFO -->
+    <div class="step teal">
+      <div class="step-lbl lt">// 2D — collectors/sysinfo.py — System Snapshots</div>
+      <p style="margin-bottom:8px">WinAPI: <code>GetComputerNameW</code>, <code>GetUserNameW</code>, <code>IsUserAnAdmin</code>, <code>EnumProcesses</code></p>
+<pre class="cb teal">
+<span class="cm">"""collectors/sysinfo.py — System Snapshot Collector"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt, time
+<span class="kw">import</span> db
+
+kernel32 = ctypes.windll.kernel32
+shell32  = ctypes.windll.shell32
+psapi    = ctypes.windll.psapi
+
+<span class="kw">def</span> <span class="fn">get_snapshot</span>() -> dict:
+    <span class="st">"""מצלם מצב המערכת ברגע זה"""</span>
+    buf  = ctypes.<span class="fn">create_unicode_buffer</span>(<span class="nm">256</span>)
+    size = wt.<span class="fn">DWORD</span>(<span class="nm">256</span>)
+
+    <span class="cm"># שם מחשב</span>
+    kernel32.<span class="fn">GetComputerNameW</span>(buf, ctypes.<span class="fn">byref</span>(size))
+    computer = buf.value
+
+    <span class="cm"># שם משתמש</span>
+    size.value = <span class="nm">256</span>
+    kernel32.<span class="fn">GetUserNameW</span>(buf, ctypes.<span class="fn">byref</span>(size))
+    user = buf.value
+
+    <span class="cm"># הרשאות Admin</span>
+    is_admin = <span class="fn">bool</span>(shell32.<span class="fn">IsUserAnAdmin</span>())
+
+    <span class="cm"># כמות processes</span>
+    pids   = (wt.DWORD * <span class="nm">1024</span>)()
+    needed = wt.<span class="fn">DWORD</span>()
+    psapi.<span class="fn">EnumProcesses</span>(pids, ctypes.<span class="fn">sizeof</span>(pids),
+                         ctypes.<span class="fn">byref</span>(needed))
+    proc_count = needed.value // ctypes.<span class="fn">sizeof</span>(wt.DWORD)
+
+    <span class="kw">return</span> {
+        <span class="st">"computer"</span>:   computer,
+        <span class="st">"user"</span>:       user,
+        <span class="st">"is_admin"</span>:   is_admin,
+        <span class="st">"proc_count"</span>: proc_count,
+    }
+
+<span class="kw">def</span> <span class="fn">run_sysinfo</span>(interval: <span class="ty">float</span> = <span class="nm">60.0</span>, stop_event=<span class="nm">None</span>):
+    <span class="st">"""שומר snapshot של המערכת כל interval שניות"""</span>
+    <span class="fn">print</span>(<span class="st">"[SysInfo] Started"</span>)
+    <span class="kw">while not</span> (stop_event <span class="kw">and</span> stop_event.<span class="fn">is_set</span>()):
+        snap = <span class="fn">get_snapshot</span>()
+        db.<span class="fn">insert_snapshot</span>(snap[<span class="st">"computer"</span>], snap[<span class="st">"user"</span>],
+                            snap[<span class="st">"is_admin"</span>], snap[<span class="st">"proc_count"</span>])
+        <span class="fn">print</span>(<span class="st">f"  [SYS] {snap['user']}@{snap['computer']} | "</span>
+              <span class="st">f"Admin:{snap['is_admin']} | Procs:{snap['proc_count']}"</span>)
+        time.<span class="fn">sleep</span>(interval)
+    <span class="fn">print</span>(<span class="st">"[SysInfo] Stopped"</span>)
+</pre>
+    </div>
+
+    <!-- CHECKLIST 2 -->
+    <div class="step purple" style="margin-top:16px">
+      <div class="step-lbl lp">// Checklist — Phase 2</div>
+      <ul class="chklist" id="ck2">
+        <li onclick="tick(this)"><span class="chkbox"></span>windows.py — get_active_window() מחזיר dict עם title/process/pid</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>processes.py — get_all_processes() מחזיר רשימה מלאה</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>clipboard.py — classify_content() מסווג URL/email/credential</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>sysinfo.py — get_snapshot() מחזיר כל ה-4 שדות</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>כל collector שומר ל-DB ולא יש Handle leak (CloseHandle נקרא)</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 3 ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">PHASE_3</span>
+  <h2>Monitor Runner — Threading + ניהול חיים</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="phase" id="p3">
+  <div class="phase-hdr" onclick="tp('p3')">
+    <span class="phase-num">3</span>
+    <span class="phase-title">monitor.py — הרצת כל ה-Collectors במקביל</span>
+    <span class="phase-badge pb-med">MEDIUM</span>
+    <span class="phase-pts">20 נק׳</span>
+    <span class="phase-arrow">▶</span>
+  </div>
+  <div class="phase-body">
+
+    <div class="step">
+      <div class="step-lbl lc">// 3.1 — monitor.py המרכזי</div>
+<pre class="cb">
+<span class="cm">"""
+monitor.py — WinAPI System Monitor
+הרצת כל ה-collectors בthreads נפרדים
+"""</span>
+<span class="kw">import</span> threading, signal, sys, time
+<span class="kw">import</span> db
+<span class="kw">from</span> collectors.windows   <span class="kw">import</span> run_window_tracker
+<span class="kw">from</span> collectors.processes <span class="kw">import</span> run_process_scanner
+<span class="kw">from</span> collectors.clipboard <span class="kw">import</span> run_clipboard_monitor
+<span class="kw">from</span> collectors.sysinfo   <span class="kw">import</span> run_sysinfo
+
+<span class="kw">def</span> <span class="fn">banner</span>():
+    <span class="fn">print</span>(<span class="st">"""
+╔══════════════════════════════════════════╗
+║  WinAPI System Monitor v1.0              ║
+║  מגמת סייבר | תרגיל אסינכרוני 08        ║
+╚══════════════════════════════════════════╝
+  [Ctrl+C לעצירה מסודרת]
+"""</span>)
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    <span class="fn">banner</span>()
+    db.<span class="fn">init_db</span>()
+
+    <span class="cm"># Event לעצירה מסודרת של כל ה-threads</span>
+    stop = threading.<span class="fn">Event</span>()
+
+    <span class="cm"># הגדרת threads</span>
+    threads = [
+        threading.<span class="fn">Thread</span>(
+            target=run_window_tracker,
+            args=(<span class="nm">2.0</span>, stop),
+            name=<span class="st">"WindowTracker"</span>,
+            daemon=<span class="kw">True</span>
+        ),
+        threading.<span class="fn">Thread</span>(
+            target=run_process_scanner,
+            args=(<span class="nm">30.0</span>, stop),
+            name=<span class="st">"ProcessScanner"</span>,
+            daemon=<span class="kw">True</span>
+        ),
+        threading.<span class="fn">Thread</span>(
+            target=run_clipboard_monitor,
+            args=(<span class="nm">3.0</span>, stop),
+            name=<span class="st">"ClipboardMon"</span>,
+            daemon=<span class="kw">True</span>
+        ),
+        threading.<span class="fn">Thread</span>(
+            target=run_sysinfo,
+            args=(<span class="nm">60.0</span>, stop),
+            name=<span class="st">"SysInfo"</span>,
+            daemon=<span class="kw">True</span>
+        ),
+    ]
+
+    <span class="cm"># הפעל את כולם</span>
+    <span class="kw">for</span> t <span class="kw">in</span> threads:
+        t.<span class="fn">start</span>()
+        <span class="fn">print</span>(<span class="st">f"[+] {t.name} started"</span>)
+
+    <span class="cm"># טיפול ב-Ctrl+C</span>
+    <span class="kw">def</span> <span class="fn">handle_exit</span>(sig, frame):
+        <span class="fn">print</span>(<span class="st">"\n[!] Stopping all collectors..."</span>)
+        stop.<span class="fn">set</span>()
+
+    signal.<span class="fn">signal</span>(signal.SIGINT, handle_exit)
+    signal.<span class="fn">signal</span>(signal.SIGTERM, handle_exit)
+
+    <span class="cm"># המתן לsignal עצירה</span>
+    <span class="kw">while not</span> stop.<span class="fn">is_set</span>():
+        time.<span class="fn">sleep</span>(<span class="nm">1</span>)
+
+    <span class="cm"># המתן לסיום threads (מקסימום 5 שניות)</span>
+    <span class="kw">for</span> t <span class="kw">in</span> threads:
+        t.<span class="fn">join</span>(timeout=<span class="nm">5</span>)
+    <span class="fn">print</span>(<span class="st">"[✓] Monitor stopped cleanly."</span>)
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    <span class="fn">main</span>()
+</pre>
+      <div class="outbox">
+        <span class="o-label" style="display:block;font-size:1.2rem;color:var(--dim);margin-bottom:6px;letter-spacing:2px">// פלט צפוי</span>
+╔═══════════════════════════════════════╗
+║  WinAPI System Monitor v1.0           ║
+╚═══════════════════════════════════════╝
+[DB] Initialized: .../monitor.db
+<span class="ok">[+] WindowTracker started</span>
+<span class="ok">[+] ProcessScanner started</span>
+<span class="ok">[+] ClipboardMon started</span>
+<span class="ok">[+] SysInfo started</span>
+  [SYS] alice@DESKTOP-ABC | Admin:False | Procs:142
+  [PROC] Scanned 142 processes
+  [WIN] chrome.exe → GitHub - winapi_monitor
+  [WIN] Code.exe → monitor.py - VSCode
+  [CLIP] [URL] https://docs.python.org/3/library/ctypes...
+^C
+<span class="warn2">[!] Stopping all collectors...</span>
+<span class="ok">[✓] Monitor stopped cleanly.</span>
+      </div>
+      <div class="warn"><strong>daemon=True</strong> — אם תסיים את ה-main thread, ה-daemon threads ייסגרו אוטומטית. זו הסיבה ש-stop.Event() הכרחי לסגירה מסודרת.</div>
+    </div>
+
+    <!-- CHECKLIST 3 -->
+    <div class="step purple" style="margin-top:14px">
+      <div class="step-lbl lp">// Checklist — Phase 3</div>
+      <ul class="chklist" id="ck3">
+        <li onclick="tick(this)"><span class="chkbox"></span>monitor.py מריץ 4 threads במקביל</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>Ctrl+C עוצר הכל בצורה מסודרת</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>לאחר 5 דקות ריצה — monitor.db מכיל רשומות בכל 4 הטבלאות</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 4 ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">PHASE_4</span>
+  <h2>Reporter — ניתוח DB ושאילתות SQL</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="phase" id="p4">
+  <div class="phase-hdr" onclick="tp('p4')">
+    <span class="phase-num">4</span>
+    <span class="phase-title">reporter.py — ניתוח הנתונים שנאספו</span>
+    <span class="phase-badge pb-hard">HARD</span>
+    <span class="phase-pts">15 נק׳</span>
+    <span class="phase-arrow">▶</span>
+  </div>
+  <div class="phase-body">
+
+    <div class="step lime">
+      <div class="step-lbl ll">// 4.1 — reporter.py + שאילתות SQL</div>
+<pre class="cb lime">
+<span class="cm">"""reporter.py — ניתוח נתוני ה-monitor"""</span>
+<span class="kw">import</span> db
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">def</span> <span class="fn">report_top_windows</span>(limit=<span class="nm">10</span>):
+    <span class="st">"""TOP חלונות שביקרתי בהם"""</span>
+    <span class="fn">print</span>(<span class="st">"\n═══ TOP ACTIVE WINDOWS ═══"</span>)
+    conn = db.<span class="fn">get_conn</span>()
+    rows = conn.<span class="fn">execute</span>(<span class="st">"""
+        SELECT window_title, process_name,
+               COUNT(*) as visits
+        FROM windows
+        GROUP BY window_title
+        ORDER BY visits DESC
+        LIMIT ?
+    """</span>, (limit,)).<span class="fn">fetchall</span>()
+    <span class="kw">for</span> r <span class="kw">in</span> rows:
+        <span class="fn">print</span>(<span class="st">f"  {r['visits']:>4}x  [{r['process_name']}]  {r['window_title'][:55]}"</span>)
+    conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">report_suspicious_clips</span>():
+    <span class="st">"""clipboard entries עם תוכן רגיש"""</span>
+    <span class="fn">print</span>(<span class="st">"\n═══ SENSITIVE CLIPBOARD EVENTS ═══"</span>)
+    conn = db.<span class="fn">get_conn</span>()
+    rows = conn.<span class="fn">execute</span>(<span class="st">"""
+        SELECT timestamp, content_type, content
+        FROM clipboard
+        WHERE content_type IN ('credential','credit_card','url')
+        ORDER BY timestamp DESC
+    """</span>).<span class="fn">fetchall</span>()
+    <span class="kw">for</span> r <span class="kw">in</span> rows:
+        <span class="fn">print</span>(<span class="st">f"  {r['timestamp']}  [{r['content_type'].upper()}]"</span>
+              <span class="st">f"  {r['content'][:60]}"</span>)
+    conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">report_new_processes</span>():
+    <span class="st">"""תהליכים ב-C:\\Temp או %AppData% — חשוד!"""</span>
+    <span class="fn">print</span>(<span class="st">"\n═══ SUSPICIOUS PROCESS PATHS ═══"</span>)
+    conn = db.<span class="fn">get_conn</span>()
+    rows = conn.<span class="fn">execute</span>(<span class="st">"""
+        SELECT DISTINCT name, path, MIN(timestamp) as first_seen
+        FROM processes
+        WHERE path LIKE '%\\Temp\\%'
+           OR path LIKE '%\\AppData\\Local\\Temp\\%'
+           OR path LIKE '%\\Downloads\\%'
+        GROUP BY path
+        ORDER BY first_seen DESC
+    """</span>).<span class="fn">fetchall</span>()
+    <span class="kw">if not</span> rows:
+        <span class="fn">print</span>(<span class="st">"  לא נמצאו תהליכים חשודים ✓"</span>)
+    <span class="kw">for</span> r <span class="kw">in</span> rows:
+        <span class="fn">print</span>(<span class="st">f"  ⚠ {r['name']} — {r['path']}"</span>)
+    conn.<span class="fn">close</span>()
+
+<span class="kw">def</span> <span class="fn">report_summary</span>():
+    <span class="st">"""סיכום כללי"""</span>
+    <span class="fn">print</span>(<span class="st">"\n═══ MONITORING SUMMARY ═══"</span>)
+    conn = db.<span class="fn">get_conn</span>()
+    <span class="kw">for</span> table <span class="kw">in</span> [<span class="st">"windows"</span>, <span class="st">"processes"</span>,
+                   <span class="st">"clipboard"</span>, <span class="st">"system_snapshots"</span>]:
+        cnt = conn.<span class="fn">execute</span>(
+            <span class="st">f"SELECT COUNT(*) FROM {table}"</span>).<span class="fn">fetchone</span>()[<span class="nm">0</span>]
+        <span class="fn">print</span>(<span class="st">f"  {table:<22}: {cnt:>6} records"</span>)
+    conn.<span class="fn">close</span>()
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    <span class="fn">report_summary</span>()
+    <span class="fn">report_top_windows</span>()
+    <span class="fn">report_suspicious_clips</span>()
+    <span class="fn">report_new_processes</span>()
+</pre>
+    </div>
+
+    <div class="step gold">
+      <div class="step-lbl lg">// 4.2 — שאילתות SQL נוספות לכתוב בעצמכם</div>
+      <p style="margin-bottom:8px">כתבו את שלוש השאילתות הבאות ב-reporter.py:</p>
+      <ol style="display:flex;flex-direction:column;gap:10px;padding-right:18px;margin-top:8px">
+        <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+          <strong style="color:var(--cyan)">Timeline:</strong> כל האירועים (מ-4 הטבלאות) מסודרים לפי timestamp — כמו SIEM log.
+          <div class="hint">השתמשו ב-<strong>UNION ALL</strong> עם עמודה "source" שמזהה מאיזה collector האירוע</div>
+        </li>
+        <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+          <strong style="color:var(--cyan)">Process Change Detection:</strong> מצאו processes שהופיעו בסריקה אחת ולא בסריקה הבאה.
+          <div class="hint">השוו בין שתי scan timestamps שונות עם <strong>EXCEPT</strong> או <strong>LEFT JOIN IS NULL</strong></div>
+        </li>
+        <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+          <strong style="color:var(--cyan)">Activity Heatmap:</strong> כמות window switches לפי שעה ביום.
+          <div class="hint"><strong>strftime('%H', timestamp)</strong> מחלץ שעה מ-timestamp SQLite</div>
+        </li>
+      </ol>
+    </div>
+
+    <!-- CHECKLIST 4 -->
+    <div class="step purple" style="margin-top:14px">
+      <div class="step-lbl lp">// Checklist — Phase 4</div>
+      <ul class="chklist" id="ck4">
+        <li onclick="tick(this)"><span class="chkbox"></span>reporter.py רץ ומדפיס דוח מלא</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>3 שאילתות נוספות נכתבו ורצות</li>
+        <li onclick="tick(this)"><span class="chkbox"></span>שאילתת UNION ALL timeline עובדת</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 5 — BONUS ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">PHASE_5</span>
+  <h2>הרחבות ואתגרי בונוס</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="phase" id="p5">
+  <div class="phase-hdr" onclick="tp('p5')">
+    <span class="phase-num">★</span>
+    <span class="phase-title">בונוס — הרחבות מתקדמות</span>
+    <span class="phase-badge pb-bonus">BONUS</span>
+    <span class="phase-pts">+10 לכל אחד</span>
+    <span class="phase-arrow">▶</span>
+  </div>
+  <div class="phase-body">
+
+    <div class="cg2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+
+      <div class="step">
+        <div class="step-lbl lc">// BONUS A — Screenshot Collector</div>
+        <p>השתמש ב-<code>BitBlt</code> + <code>GetDesktopWindow</code> לצלם screenshots ולשמור ב-DB כ-blob.</p>
+<pre class="cb" style="max-height:120px">
+<span class="cm"># WinAPI לscreenshot:</span>
+hwnd = user32.<span class="fn">GetDesktopWindow</span>()
+hdc  = user32.<span class="fn">GetDC</span>(hwnd)
+<span class="cm"># BitBlt → שמירת PNG → DB blob</span>
+</pre>
+      </div>
+
+      <div class="step gold">
+        <div class="step-lbl lg">// BONUS B — Keyboard Hook</div>
+        <p>הוסף <code>SetWindowsHookExW(13, ...)</code> לאיסוף keystrokes ושמירתן עם context (חלון פעיל).</p>
+        <div class="warn" style="margin-top:8px">לחינוכי בלבד! רק על המחשב שלך. keylogger ללא רשות = עבירה פלילית.</div>
+      </div>
+
+      <div class="step teal">
+        <div class="step-lbl lt">// BONUS C — HTML Report</div>
+        <p>כתוב פונקציה שמייצאת את ה-DB לדוח HTML צבעוני עם timeline, גרפים (ASCII art), וסיכום.</p>
+      </div>
+
+      <div class="step lime">
+        <div class="step-lbl ll">// BONUS D — Network Detection</div>
+        <p>הוסף collector ששומר פתיחת connections ע"י <code>GetExtendedTcpTable</code> מ-<code>iphlpapi.dll</code>.</p>
+<pre class="cb lime" style="max-height:80px">
+iphlp = ctypes.windll.iphlpapi
+<span class="cm"># GetExtendedTcpTable</span>
+<span class="cm"># → IPs, ports, PIDs</span>
+</pre>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ QUESTIONS ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">QUESTIONS</span>
+  <h2>שאלות ניתוח — חובה בדוח</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="step red">
+  <div class="step-lbl lr">// 5 שאלות חובה בREADME</div>
+  <ol style="display:flex;flex-direction:column;gap:12px;padding-right:18px;margin-top:10px">
+    <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+      <strong style="color:var(--cyan)">Handle Management:</strong> למה חשוב לקרוא <code>CloseHandle</code> בכל collector? מה קורה אם לא? איפה בקוד שלכם זה הכי קריטי?
+    </li>
+    <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+      <strong style="color:var(--cyan)">Thread Safety:</strong> מדוע הגדרנו stop_event כ-<code>threading.Event</code> ולא כמשתנה boolean רגיל? מה היה קורה אחרת?
+    </li>
+    <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+      <strong style="color:var(--cyan)">Classify & Detect:</strong> הסבירו את <code>classify_content()</code> — איזה patterns בחרתם? איך malware מנצל clipboard שגנוב?
+    </li>
+    <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+      <strong style="color:var(--cyan)">Forensic Value:</strong> לאחר 10 דקות ריצה — מה ניתן ללמוד מה-DB? איזה שאילתה נתנה הכי הרבה מידע?
+    </li>
+    <li style="font-size:1.2rem;color:var(--text);line-height:1.6">
+      <strong style="color:var(--cyan)">Ethical Boundary:</strong> מה ההבדל בין הכלי שכתבתם לבין RAT/Spyware? אילו שינויים הפכו אותו לנוזקה?
+    </li>
+  </ol>
+</div>
+
+<!-- ════════════════ RUBRIC ════════════════ -->
+<div class="sec-title">
+  <span class="sec-num">RUBRIC</span>
+  <h2>מחוון הערכה</h2>
+  <div class="sec-line"></div>
+</div>
+
+<div class="rubric">
+  <div class="rubric-hdr">// GRADING — 100 נקודות</div>
+  <div class="rub-row rub-head">
+    <div class="rub-task">משימה</div>
+    <div class="rub-pts">נק׳</div>
+    <div class="rub-crit">קריטריונים</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 1 — DB Schema + db.py</div>
+    <div class="rub-pts">20</div>
+    <div class="rub-crit">4 טבלאות, indexes, init_db + 4 insert functions עובדים</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 2A — Window Tracker</div>
+    <div class="rub-pts">10</div>
+    <div class="rub-crit">GetForegroundWindow+GetWindowText+GetModuleBaseName, CloseHandle</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 2B — Process Scanner</div>
+    <div class="rub-pts">10</div>
+    <div class="rub-crit">EnumProcesses+GetModuleBaseName+QueryFullProcessImageName</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 2C — Clipboard Monitor</div>
+    <div class="rub-pts">10</div>
+    <div class="rub-crit">OpenClipboard+GetClipboardData+classify_content עם 4+ patterns</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 2D — SysInfo Snapshots</div>
+    <div class="rub-pts">10</div>
+    <div class="rub-crit">GetComputerName+GetUserName+IsUserAnAdmin+EnumProcesses</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 3 — monitor.py + Threading</div>
+    <div class="rub-pts">20</div>
+    <div class="rub-crit">4 threads רצים, stop_event, SIGINT/SIGTERM, join עם timeout</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">Phase 4 — Reporter + SQL</div>
+    <div class="rub-pts">15</div>
+    <div class="rub-crit">report_summary, report_top_windows, suspicious paths + 3 שאילתות נוספות</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task">5 שאלות ניתוח ב-README</div>
+    <div class="rub-pts">5</div>
+    <div class="rub-crit">תשובות מפורטות, מבוססות קוד ממשי שנכתב</div>
+  </div>
+  <div class="rub-row">
+    <div class="rub-task" style="color:var(--purple)">Bonus — כל הרחבה</div>
+    <div class="rub-pts" style="color:var(--purple)">+10</div>
+    <div class="rub-crit">Screenshot / KeyHook / HTML report / Network — עובד ומתועד</div>
+  </div>
+</div>
+
+<!-- ════════════════ SUBMIT ════════════════ -->
+<div class="submit-box">
+  <h3>// הגשה — GitHub Classroom</h3>
+  <ul>
+    <li><code>monitor.py</code>, <code>db.py</code>, <code>reporter.py</code>, <code>collectors/__init__.py</code></li>
+    <li><code>collectors/windows.py</code>, <code>processes.py</code>, <code>clipboard.py</code>, <code>sysinfo.py</code></li>
+    <li><code>monitor.db</code> — לאחר לפחות 10 דקות ריצה (עם רשומות אמיתיות)</li>
+    <li><code>README.md</code> — ארכיטקטורה, הוראות הרצה, תשובות ל-5 שאלות</li>
+    <li><code>screenshots/</code> — לפחות 5: terminal בריצה, DB Browser, reporter output</li>
+    <li>[BONUS] קבצים נוספים לפי מה שממשתם</li>
+  </ul>
+</div>
+
+<div style="height:1px;background:linear-gradient(to left,transparent,var(--border),transparent);margin:32px 0 0"></div>
+<p style="text-align:center;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);padding:18px 0">
+  // with great API access comes great responsibility · hack ethically
+</p>
+
+</div><!-- /wrap -->
+
+<script>
+// ── ACCORDION ──
+function tp(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ── CHECKLIST ──
+const TOTAL_ITEMS = 4+5+3+3; // ck1+ck2+ck3+ck4
+function tick(li){
+  li.classList.toggle('done');
+  li.querySelector('.chkbox').textContent = li.classList.contains('done') ? '✓' : '';
+  updateProgress();
+}
+function updateProgress(){
+  const done = document.querySelectorAll('.chklist li.done').length;
+  const pct  = Math.round((done / TOTAL_ITEMS) * 100);
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progTxt').textContent  = `${done} / ${TOTAL_ITEMS}`;
+  const xp = done * 8;
+  document.getElementById('xpVal').textContent    = xp;
+}
+</script>
+</body>
+</html>

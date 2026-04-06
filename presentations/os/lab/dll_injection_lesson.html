@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLL & DLL Injection | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030408;--s1:#060810;--s2:#090c18;--s3:#0c1020;
+  --border:#182238;--border2:#20304c;
+  --violet:#7744ff;--cyan:#00ddff;--green:#00ff88;
+  --red:#ff2244;--gold:#ffbb00;--pink:#ff44bb;
+  --orange:#ff6622;--teal:#00ccaa;--lime:#88ff22;
+  --text:#bccce8;--dim:#3a5270;--dim2:#243850;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);
+  font-family:'Heebo',sans-serif;
+  overflow:hidden;height:100vh;width:100vw;}
+
+/* GRID */
+body::before{content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(119,68,255,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(119,68,255,.012) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0;}
+
+/* ── ENGINE ── */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden;z-index:1;}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:40px 62px 86px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;
+  transform:translateX(-16px);}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.out{opacity:0;transform:translateX(16px);}
+
+/* ── PROGRESS ── */
+.pbar{position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(to left,var(--violet),var(--cyan),var(--pink));
+  transition:width .35s ease;z-index:100;}
+
+/* ── NAV ── */
+nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;
+  background:rgba(6,8,16,.97);border:1px solid var(--border);
+  padding:7px 15px;z-index:50;backdrop-filter:blur(20px);}
+.nb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:5px 14px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;transition:all .17s;letter-spacing:1px;}
+.nb:hover:not(:disabled){border-color:var(--violet);color:var(--violet);}
+.nb:disabled{opacity:.2;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:50px;text-align:center;}
+
+/* ── XP ── */
+.xp{position:fixed;top:13px;left:15px;z-index:50;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.xv{color:var(--violet);font-size:1.2rem;font-weight:700;}
+@keyframes xpop{0%{transform:scale(1)}45%{transform:scale(1.25)}100%{transform:scale(1)}}
+.xpop{animation:xpop .22s ease;}
+
+/* ── BADGE ── */
+.badge{font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 10px;display:inline-block;
+  margin-bottom:13px;border:1px solid;width:fit-content;}
+.b-i{color:var(--cyan);border-color:rgba(0,221,255,.3);background:rgba(0,221,255,.06);}
+.b-c{color:var(--violet);border-color:rgba(119,68,255,.3);background:rgba(119,68,255,.06);}
+.b-q{color:var(--gold);border-color:rgba(255,187,0,.3);background:rgba(255,187,0,.06);}
+.b-m{color:var(--red);border-color:rgba(255,34,68,.3);background:rgba(255,34,68,.06);}
+.b-g{color:var(--green);border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.06);}
+.b-t{color:var(--teal);border-color:rgba(0,204,170,.3);background:rgba(0,204,170,.06);}
+
+/* ── TYPE ── */
+h1{font-size:clamp(1.9rem,4vw,3rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.2rem,2.4vw,1.85rem);font-weight:700;line-height:1.2;margin-bottom:6px;}
+h3{font-size:1.2rem;font-weight:600;color:#fff;margin-bottom:5px;}
+p{color:var(--dim);line-height:1.7;font-size:1.2rem;}
+.gv{color:var(--violet);text-shadow:0 0 16px rgba(119,68,255,.4);}
+.gc{color:var(--cyan);}
+.gg{color:var(--green);}
+.gr{color:var(--red);}
+.gg2{color:var(--gold);}
+.gt{color:var(--teal);}
+.gp{color:var(--pink);}
+code{font-family:'Fira Code',monospace;color:var(--cyan);font-size:1.2rem;
+  background:rgba(0,221,255,.07);padding:1px 5px;}
+
+/* ── CODE BLOCKS ── */
+pre.cb{
+  background:#020407;border:1px solid var(--border);
+  border-right:3px solid var(--violet);
+  padding:12px 16px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:#88aacc;line-height:1.85;
+  margin:8px 0;overflow:auto;max-height:230px;
+  direction:ltr;text-align:left;}
+pre.cb::-webkit-scrollbar{width:3px;height:3px;}
+pre.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+pre.cb::-webkit-scrollbar-thumb:hover{background:var(--violet);}
+pre.cb.cyan{border-right-color:var(--cyan);}
+pre.cb.green{border-right-color:var(--green);}
+pre.cb.red{border-right-color:var(--red);}
+pre.cb.gold{border-right-color:var(--gold);}
+pre.cb.teal{border-right-color:var(--teal);}
+pre.cb.pink{border-right-color:var(--pink);}
+pre.cb.lime{border-right-color:var(--lime);}
+.kw{color:var(--red);}
+.fn{color:var(--cyan);}
+.cm{color:#1e3050;font-style:italic;}
+.st{color:var(--green);}
+.nm{color:var(--gold);}
+.ty{color:var(--violet);}
+.mc{color:var(--teal);}
+.pp{color:var(--orange);}
+.hl{color:var(--lime);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:10px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{background:var(--s1);border:1px solid var(--border);padding:13px 15px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.cv::before{background:var(--violet);}
+.cc::before{background:var(--cyan);}
+.cg2c::before{background:var(--green);}
+.cy::before{background:var(--gold);}
+.ct::before{background:var(--teal);}
+.cr::before{background:var(--red);}
+.cp::before{background:var(--pink);}
+.cl::before{background:var(--lime);}
+.card p{font-size:1.2rem;margin-top:4px;}
+.ci{font-size:1.4rem;margin-bottom:6px;display:block;}
+
+/* ── LAYOUTS ── */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.c6040{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;}
+.c4060{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;}
+.sc2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scr{flex:1;overflow-y:auto;padding-bottom:8px;}
+.scr::-webkit-scrollbar{width:3px;}
+.scr::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{font-family:'Fira Code',monospace;font-size:4.5rem;font-weight:900;line-height:1;margin-bottom:-14px;}
+.stit{font-size:clamp(1.7rem,3vw,2.7rem);font-weight:900;}
+
+/* ── TITLE HERO ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);letter-spacing:4px;margin-bottom:10px;}
+.ttags{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid var(--border);color:var(--dim2);}
+.bigbg{font-family:'Fira Code',monospace;font-size:8rem;font-weight:900;
+  color:rgba(119,68,255,.022);position:absolute;left:16px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.qo{background:var(--s1);border:1px solid var(--border);
+  padding:10px 14px;cursor:pointer;font-size:1.2rem;color:var(--text);
+  transition:all .16s;display:flex;align-items:center;gap:9px;}
+.qo:hover{border-color:rgba(119,68,255,.35);background:rgba(119,68,255,.03);}
+.qo.correct{border-color:var(--green);background:rgba(0,255,136,.07);color:#fff;}
+.qo.wrong{border-color:var(--red);background:rgba(255,34,68,.07);color:var(--red);}
+.qo.disabled{pointer-events:none;}
+.ql{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet);
+  background:rgba(119,68,255,.1);width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qfb{margin-top:9px;padding:9px 13px;font-size:1.2rem;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.ok{border-color:var(--green);background:rgba(0,255,136,.05);color:var(--green);}
+.qfb.no{border-color:var(--red);background:rgba(255,34,68,.05);color:var(--red);}
+
+/* ── FILL ── */
+.fi{background:rgba(255,187,0,.06);border:none;border-bottom:2px solid var(--gold);
+  color:var(--gold);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:1px 5px;outline:none;transition:border-color .17s;min-width:80px;}
+.fi:focus{border-color:var(--cyan);color:var(--cyan);}
+.fi.ok{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.06);}
+.fi.no{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.05);}
+.ck{margin-top:9px;background:none;border:1px solid var(--violet);
+  color:var(--violet);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:5px 14px;cursor:pointer;transition:all .16s;}
+.ck:hover{background:rgba(119,68,255,.08);}
+.ffb{margin-top:7px;font-size:1.2rem;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{background:rgba(255,34,68,.035);border:1px solid rgba(255,34,68,.2);
+  padding:15px 20px;margin-top:9px;position:relative;}
+.mbox::before{content:'▶ MISSION';position:absolute;top:-9px;right:13px;
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:var(--bg);color:var(--red);padding:0 6px;letter-spacing:2px;}
+.msteps{list-style:none;margin-top:10px;}
+.msteps li{display:flex;gap:9px;align-items:flex-start;
+  font-size:1.2rem;color:var(--text);margin-bottom:7px;}
+.msteps li::before{content:attr(data-n);font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--red);background:rgba(255,34,68,.1);
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;}
+
+/* ── TIMER ── */
+.tw{display:flex;align-items:center;gap:10px;
+  background:var(--s1);border:1px solid var(--border);
+  padding:7px 14px;margin-top:10px;width:fit-content;}
+.td{font-family:'Fira Code',monospace;font-size:1.45rem;color:var(--violet);
+  font-weight:600;min-width:64px;}
+.td.urg{color:var(--red);animation:urgt .48s ease infinite alternate;}
+@keyframes urgt{from{opacity:1}to{opacity:.25}}
+.tb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size:1.2rem;transition:all .16s;}
+.tb:hover{border-color:var(--violet);color:var(--violet);}
+
+/* ── RLIST ── */
+.rlist{list-style:none;}
+.rlist li{padding:8px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:9px;align-items:flex-start;
+  cursor:pointer;transition:all .16s;font-size:1.2rem;}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size:1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--violet);}
+
+/* ── PE/DLL STRUCTURE VIZ ── */
+.pe-struct{
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  display:flex;flex-direction:column;gap:3px;margin:8px 0;}
+.pe-section{
+  padding:8px 14px;border:1px solid;text-align:center;
+  transition:all .2s;cursor:pointer;position:relative;}
+.pe-section:hover{filter:brightness(1.2);}
+.pe-section .pe-lbl{font-size:1.2rem;display:block;margin-top:2px;opacity:.7;}
+.pe-dos{border-color:var(--dim);color:var(--dim);background:rgba(255,255,255,.03);}
+.pe-nt{border-color:var(--violet);color:var(--violet);background:rgba(119,68,255,.08);}
+.pe-opt{border-color:var(--cyan);color:var(--cyan);background:rgba(0,221,255,.06);}
+.pe-exp{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.08);}
+.pe-imp{border-color:var(--gold);color:var(--gold);background:rgba(255,187,0,.07);}
+.pe-text{border-color:var(--teal);color:var(--teal);background:rgba(0,204,170,.06);}
+.pe-data{border-color:var(--pink);color:var(--pink);background:rgba(255,68,187,.06);}
+.pe-reloc{border-color:var(--dim);color:var(--dim);background:rgba(255,255,255,.02);}
+
+/* ── INJECTION STEPS ── */
+.inj-step{
+  background:var(--s2);border:1px solid var(--border);
+  padding:11px 14px;cursor:pointer;transition:all .2s;position:relative;
+  margin-bottom:8px;}
+.inj-step.revealed{border-color:rgba(119,68,255,.35);background:rgba(119,68,255,.04);}
+.inj-num{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet);margin-bottom:3px;}
+.inj-title{font-weight:600;font-size:1.2rem;color:#fff;}
+.inj-body{display:none;margin-top:7px;}
+.inj-step.revealed .inj-body{display:block;}
+.inj-icon{position:absolute;top:10px;left:14px;font-size:1.2rem;transition:transform .2s;}
+.inj-step.revealed .inj-icon{transform:rotate(90deg);}
+.inj-api{
+  display:inline-block;font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--cyan);background:rgba(0,221,255,.08);
+  border:1px solid rgba(0,221,255,.2);padding:2px 8px;margin:2px;}
+
+/* ── MEMORY MAP VIZ ── */
+.mem-map{
+  display:flex;flex-direction:column;gap:3px;
+  font-family:'Fira Code',monospace;font-size:1.2rem;margin:8px 0;}
+.mem-block{
+  display:flex;align-items:center;gap:10px;
+  padding:6px 12px;border:1px solid;
+  transition:all .2s;cursor:pointer;}
+.mem-block:hover{filter:brightness(1.15);}
+.mem-addr{color:var(--dim);min-width:100px;font-size:1.2rem;}
+.mem-name{flex:1;}
+.mem-size{color:var(--dim);font-size:1.2rem;min-width:60px;text-align:right;}
+.mb-sys{border-color:var(--dim);color:var(--dim);}
+.mb-ntdll{border-color:var(--violet);color:var(--violet);background:rgba(119,68,255,.05);}
+.mb-k32{border-color:var(--cyan);color:var(--cyan);background:rgba(0,221,255,.05);}
+.mb-u32{border-color:var(--teal);color:var(--teal);background:rgba(0,204,170,.05);}
+.mb-exe{border-color:var(--gold);color:var(--gold);background:rgba(255,187,0,.06);}
+.mb-inject{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.08);
+  animation:pulse-mem 1.5s ease infinite alternate;}
+@keyframes pulse-mem{from{background:rgba(255,34,68,.08)}to{background:rgba(255,34,68,.18)}}
+.mb-heap{border-color:var(--pink);color:var(--pink);background:rgba(255,68,187,.05);}
+.mb-stack{border-color:var(--lime);color:var(--lime);background:rgba(136,255,34,.05);}
+
+/* ── DRAG & DROP ── */
+.dnd-wrap{display:flex;gap:13px;margin-top:10px;}
+.dnd-pool{flex:1;padding:9px;min-height:80px;border:1px dashed var(--border);background:var(--s1);}
+.dnd-zone{flex:2;display:flex;flex-direction:column;gap:7px;}
+.dnd-target{border:1px dashed rgba(119,68,255,.25);background:rgba(119,68,255,.02);
+  padding:7px 11px;min-height:42px;display:flex;align-items:center;gap:9px;}
+.dnd-target.over{border-color:var(--violet);background:rgba(119,68,255,.06);}
+.dnd-tlbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:95px;flex-shrink:0;}
+.dnd-chip{background:var(--s2);border:1px solid var(--border2);
+  padding:5px 10px;cursor:grab;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:var(--teal);user-select:none;transition:all .14s;
+  display:inline-block;width:100%;margin:3px 0;}
+.dnd-chip:hover{border-color:var(--teal);}
+.dnd-chip.dragging{opacity:.3;}
+.dnd-lbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:5px;letter-spacing:2px;}
+.dnd-result{margin-top:7px;font-size:1.2rem;display:none;}
+.dnd-result.show{display:block;}
+
+/* ── FLIP CARDS ── */
+.flip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:10px;}
+.flip-card{height:88px;cursor:pointer;perspective:800px;}
+.flip-inner{position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;transition:transform .38s ease;}
+.flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+.flip-front,.flip-back{position:absolute;inset:0;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;text-align:center;padding:8px;border:1px solid var(--border);}
+.flip-front{background:var(--s1);color:var(--dim);font-family:'Fira Code',monospace;}
+.flip-back{background:var(--s2);border-color:var(--violet);
+  transform:rotateY(180deg);color:var(--text);line-height:1.4;font-size:1.2rem;}
+
+/* ── KB ── */
+.kbh{position:fixed;bottom:18px;right:16px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--border2);}
+
+/* ── INJECTION SIMULATOR ── */
+.sim-wrap{background:var(--s1);border:1px solid var(--border);padding:14px;}
+.sim-stage{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  margin:10px 0;min-height:56px;flex-wrap:wrap;}
+.sim-proc{
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:8px 16px;border:1px solid;text-align:center;}
+.sim-arrow{color:var(--dim);font-size:1.2rem;transition:color .3s;}
+.sim-arrow.active{color:var(--red);}
+.sim-btn{
+  background:none;border:1px solid var(--violet);
+  color:var(--violet);font-family:'Fira Code',monospace;
+  font-size:1.2rem;padding:6px 14px;cursor:pointer;transition:all .18s;margin:4px;}
+.sim-btn:hover{background:rgba(119,68,255,.08);}
+.sim-btn:disabled{opacity:.3;cursor:default;}
+.sim-log{
+  background:#020407;border:1px solid var(--border);
+  padding:10px 14px;font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--green);direction:ltr;text-align:left;
+  min-height:70px;max-height:120px;overflow-y:auto;line-height:1.8;}
+.sim-log .sim-err{color:var(--red);}
+.sim-log .sim-ok{color:var(--green);}
+.sim-log .sim-info{color:var(--cyan);}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pb"></div>
+<div class="xp">XP: <span class="xv" id="xv">0</span></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════ S0: TITLE ══════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">DLL</div>
+  <div class="thero">
+    <div class="lnum">// LESSON_09B · DLL INTERNALS & INJECTION</div>
+    <h1><span class="gv">DLL</span> — מבנה,<br>טעינה ו<span class="gr">Injection</span></h1>
+    <p style="margin-top:9px;font-size:1.2rem">Exports · LoadLibrary · GetProcAddress · DLL Injection</p>
+    <div class="ttags">
+      <span class="ttag">Windows</span>
+      <span class="ttag">90 דקות</span>
+      <span class="ttag">מגמת סייבר</span>
+      <span class="ttag">C / Python</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S1: AGENDA ══════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-i">// סדר היום</span>
+  <h2>מה נלמד היום?</h2>
+  <div class="sc2" style="margin-top:12px">
+    <ul class="rlist">
+      <li onclick="rv(this)">
+        <span style="color:var(--violet);flex-shrink:0">📦</span>
+        <div><div><strong>מהי DLL?</strong> — Dynamic Link Library</div>
+        <div class="ri-d">קוד שמשותף בין תהליכים. חסכון בזיכרון. .dll = PE format. אותה DLL ב-RAM = mapped לכמה processes.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--violet);flex-shrink:0">🏗️</span>
+        <div><div><strong>מבנה DLL</strong> — PE Header, Export Table, Sections</div>
+        <div class="ri-d">DOS/NT Header, Optional Header, Export Directory, .text, .data, .reloc. DllMain = entry point.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--violet);flex-shrink:0">⚙️</span>
+        <div><div><strong>LoadLibrary &amp; GetProcAddress</strong> — טעינה דינמית</div>
+        <div class="ri-d">Implicit vs Explicit loading. LoadLibraryW, GetProcAddress, FreeLibrary. HMODULE handle.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--violet);flex-shrink:0">💉</span>
+        <div><div><strong>DLL Injection</strong> — הזרקה לתהליך פעיל</div>
+        <div class="ri-d">OpenProcess → VirtualAllocEx → WriteProcessMemory → CreateRemoteThread. 4 שלבים קלאסיים.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--violet);flex-shrink:0">🔐</span>
+        <div><div><strong>קשר לסייבר</strong> — malware, AV evasion, hooking</div>
+        <div class="ri-d">Process hollowing, DLL side-loading, API hooking, reflective DLL injection. EDR detection methods.</div></div>
+      </li>
+    </ul>
+    <p style="margin-top:8px;font-size:1.2rem;color:var(--dim2)">👆 לחץ לפרטים</p>
+  </div>
+</div>
+
+<!-- ══════════════ S2: WHAT IS DLL ══════════════ -->
+<div class="slide" id="s2">
+  <span class="badge b-c">// מושג</span>
+  <h2>DLL — <span class="gv">קוד משותף בין תהליכים</span></h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">DLL = Dynamic Link Library. קובץ PE שמכיל פונקציות שניתן לשתף בין תהליכים. ה-DLL נטענת <strong style="color:#fff">פעם אחת</strong> לזיכרון ו-mapped לכל process שצריך אותה.</p>
+      <div class="card cv" style="margin-bottom:9px">
+        <h3>💡 למה DLL ולא להכניס הכל ל-EXE?</h3>
+        <p><strong style="color:#fff">חסכון זיכרון:</strong> kernel32.dll טעונה פעם אחת ב-RAM. 100 תהליכים חולקים אותה.<br>
+        <strong style="color:#fff">Update בלי קומפילציה:</strong> עדכן DLL — כל תוכניות שמשתמשות בה מקבלות שיפור.<br>
+        <strong style="color:#fff">Modularity:</strong> plugins, extensibility.</p>
+      </div>
+      <div class="card cr" style="margin-bottom:9px">
+        <h3>🔐 DLL ב-Cybersecurity</h3>
+        <p>DLL Injection = הכנסת DLL זדונית לתהליך לגיטימי. Malware רץ תחת <code>explorer.exe</code> ועוקף AV. Hooking = יירוט API calls ע"י DLL זדונית.</p>
+      </div>
+      <div class="card ct">
+        <h3>📂 DLL Files בWindows</h3>
+        <p><code>kernel32.dll</code> — core Windows API<br>
+        <code>user32.dll</code> — GUI, windows, input<br>
+        <code>ntdll.dll</code> — NT native API<br>
+        <code>msvcrt.dll</code> — C runtime<br>
+        <code>ws2_32.dll</code> — Winsock (network)</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div style="background:var(--s2);border:1px solid var(--border);padding:14px">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:10px;letter-spacing:2px">// MEMORY SHARING</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-family:'Fira Code',monospace;font-size:1.2rem">
+          <div style="border:1px solid var(--gold);color:var(--gold);padding:6px 10px">chrome.exe → maps kernel32.dll</div>
+          <div style="border:1px solid var(--teal);color:var(--teal);padding:6px 10px">notepad.exe → maps kernel32.dll</div>
+          <div style="border:1px solid var(--pink);color:var(--pink);padding:6px 10px">explorer.exe → maps kernel32.dll</div>
+          <div style="text-align:center;color:var(--dim);margin-top:4px">↓ physical RAM</div>
+          <div style="border:2px solid var(--violet);color:var(--violet);padding:8px 10px;text-align:center">kernel32.dll — ONE COPY</div>
+        </div>
+      </div>
+      <div class="card cv">
+        <h3>DllMain</h3>
+        <p>נקודת הכניסה לכל DLL. נקרא בטעינה (DLL_PROCESS_ATTACH), ביציאה (DETACH), ובthread חדש.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S3: SECTION DLL STRUCTURE ══════════════ -->
+<div class="slide" id="s3">
+  <div class="shero">
+    <div class="snum" style="color:rgba(119,68,255,.06)">01</div>
+    <div class="stit"><span class="gv">מבנה</span></div>
+    <div class="stit"><span class="gv">DLL</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">PE Format, Export Table, Sections</p>
+  </div>
+</div>
+
+<!-- ══════════════ S4: DLL STRUCTURE ══════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-c">// מושג</span>
+  <h2>מבנה DLL — <span class="gv">PE Format</span></h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px">DLL = PE (Portable Executable) בדיוק כמו EXE. ההבדל: ה-Characteristics bit "DLL" מסומן ויש <strong style="color:#fff">Export Table</strong>.</p>
+      <div class="pe-struct" id="peStruct" onclick="clickPE(event)">
+        <div class="pe-section pe-dos" data-info="DOS Header — 64 bytes. מכיל 'MZ' signature. e_lfanew = offset ל-PE Header. Legacy compatibility.">
+          DOS Header (MZ)
+          <span class="pe-lbl">0x0000 — 64 bytes</span>
+        </div>
+        <div class="pe-section pe-nt" data-info="NT Header — 'PE\0\0' signature + FILE_HEADER. Machine (x86/x64), NumberOfSections, TimeDateStamp, Characteristics.">
+          NT Headers (PE Signature + File Header)
+          <span class="pe-lbl">COFF / Portable Executable</span>
+        </div>
+        <div class="pe-section pe-opt" data-info="Optional Header — Entry Point, ImageBase, SizeOfImage. DataDirectories: Export/Import/Resource tables.">
+          Optional Header
+          <span class="pe-lbl">AddressOfEntryPoint · ImageBase · DataDirectories</span>
+        </div>
+        <div class="pe-section pe-exp" data-info="Export Directory — הלב של DLL! מכיל: שמות פונקציות, ordinals, כתובות (RVA). GetProcAddress מחפש כאן.">
+          📤 Export Directory (חשוב לDLL!)
+          <span class="pe-lbl">Function Names · Ordinals · RVA Addresses</span>
+        </div>
+        <div class="pe-section pe-imp" data-info="Import Directory — DLLs ופונקציות שהקובץ הזה משתמש בהן. IAT (Import Address Table) מתמלא בטעינה.">
+          📥 Import Directory
+          <span class="pe-lbl">Imported DLLs · IAT (Import Address Table)</span>
+        </div>
+        <div class="pe-section pe-text" data-info=".text section — קוד הפונקציות. PAGE_EXECUTE_READ. הכי גדול בדרך כלל. Shellcode מוזרק לכאן.">
+          .text (Code)
+          <span class="pe-lbl">Executable · PAGE_EXECUTE_READ</span>
+        </div>
+        <div class="pe-section pe-data" data-info=".data section — משתנים גלובליים מאותחלים. PAGE_READWRITE. .rdata = read-only data, strings, constants.">
+          .data / .rdata
+          <span class="pe-lbl">Global Variables · Read-Only Data</span>
+        </div>
+        <div class="pe-section pe-reloc" data-info=".reloc section — Relocation table. כשDLL טענה לכתובת אחרת מה-ImageBase — כתובות מתוקנות כאן.">
+          .reloc (Base Relocations)
+          <span class="pe-lbl">Address Fix-ups</span>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div style="background:var(--s2);border:1px solid var(--border);padding:12px;margin-bottom:9px;min-height:80px" id="peInfo">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet)">// לחץ על section לפרטים</div>
+      </div>
+      <div class="card cv" style="margin-bottom:9px">
+        <h3>📤 Export Table</h3>
+        <pre class="cb" style="max-height:110px">
+<span class="cm">// כלי לצפייה ב-exports:</span>
+dumpbin /exports kernel32.dll
+
+<span class="cm">// פלט לדוגמה:</span>
+ordinal  name
+      1  AcquireSRWLockExclusive
+    117  CreateFileW
+    200  GetLastError
+    ...  <span class="cm">(1000+ exports)</span>
+        </pre>
+      </div>
+      <div class="card cr">
+        <h3>🔐 Malware &amp; Exports</h3>
+        <p>Malware מסתיר ב-DLL ב-בשם אקראי עם export אחד שנקרא ע"י DllMain. <strong style="color:#fff">Export ריק</strong> = סימן חשוד!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S5: QUIZ 1 ══════════════ -->
+<div class="slide" id="s5">
+  <span class="badge b-q">// שאלת הבנה #1</span>
+  <h2>Export Table — מה היא עושה?</h2>
+  <p style="margin-bottom:12px">חוקר מריץ <code>dumpbin /exports suspicious.dll</code> ומקבל:</p>
+  <pre class="cb" style="margin-bottom:14px">
+ordinal  name
+      1  (no name)
+      2  (no name)
+</pre>
+  <p style="margin-bottom:12px">מה ניתן להסיק?</p>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> DLL תקינה — לא חייב לתת שמות ל-exports</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ב</span> חשוד — DLL עם exports ללא שמות נפוץ ב-malware שמסתיר פונקציונליות</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ג</span> הDLL לא ניתנת לטעינה — חסרים שמות</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> זה DLL מערכת לגיטימית — ordinals בלי שמות = ביצועים גבוהים</div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+</div>
+
+<!-- ══════════════ S6: SECTION LOADLIBRARY ══════════════ -->
+<div class="slide" id="s6">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,221,255,.05)">02</div>
+    <div class="stit"><span class="gc">LoadLibrary</span></div>
+    <div class="stit"><span class="gc">GetProcAddress</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">טעינה דינמית של DLL</p>
+  </div>
+</div>
+
+<!-- ══════════════ S7: DYNAMIC LOADING ══════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gc">LoadLibrary</span> &amp; <span class="gc">GetProcAddress</span></h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="card cc" style="margin-bottom:9px">
+        <h3>Implicit vs Explicit Loading</h3>
+        <p>
+          <strong style="color:#fff">Implicit:</strong> מקשרים ב-compile time (lib file). DLL נטענת אוטומטית.<br>
+          <strong style="color:#fff">Explicit:</strong> LoadLibrary בזמן ריצה. גמיש יותר. Malware מעדיף — לא מופיע ב-Import Table!
+        </p>
+      </div>
+      <pre class="cb" style="max-height:180px">
+<span class="cm">// C — טעינה דינמית של DLL</span>
+<span class="ty">HMODULE</span> hLib = <span class="fn">LoadLibraryW</span>(<span class="st">L"mylib.dll"</span>);
+<span class="kw">if</span> (!hLib) {
+    <span class="fn">printf</span>(<span class="st">"Error: %d\n"</span>, <span class="fn">GetLastError</span>());
+    <span class="kw">return</span>;
+}
+
+<span class="cm">// קבל כתובת פונקציה</span>
+<span class="kw">typedef</span> <span class="ty">int</span> (*<span class="ty">AddFunc</span>)(<span class="ty">int</span>, <span class="ty">int</span>);
+<span class="ty">AddFunc</span> myAdd = (<span class="ty">AddFunc</span>)<span class="fn">GetProcAddress</span>(
+    hLib, <span class="st">"Add"</span>);
+
+<span class="kw">if</span> (myAdd) {
+    <span class="ty">int</span> result = <span class="fn">myAdd</span>(<span class="nm">3</span>, <span class="nm">4</span>);
+    <span class="fn">printf</span>(<span class="st">"Result: %d\n"</span>, result);
+}
+
+<span class="fn">FreeLibrary</span>(hLib); <span class="cm">// תמיד לשחרר!</span>
+      </pre>
+    </div>
+    <div class="scr">
+      <div class="card cg2c" style="margin-bottom:9px">
+        <h3>🐍 Python — ctypes</h3>
+        <pre class="cb green" style="max-height:130px">
+<span class="kw">import</span> ctypes
+
+<span class="cm"># LoadLibrary</span>
+lib = ctypes.windll.<span class="fn">LoadLibrary</span>(
+    <span class="st">"mylib.dll"</span>)
+
+<span class="cm"># או ישיר:</span>
+lib = ctypes.<span class="fn">CDLL</span>(<span class="st">"mylib.dll"</span>)
+
+<span class="cm"># קרא פונקציה</span>
+result = lib.<span class="fn">Add</span>(<span class="nm">3</span>, <span class="nm">4</span>)
+<span class="kw">print</span>(result)  <span class="cm"># 7</span>
+        </pre>
+      </div>
+      <div class="card cr" style="margin-bottom:9px">
+        <h3>🔴 Malware Pattern</h3>
+        <pre class="cb red" style="max-height:100px">
+<span class="cm">// לא נראה ב-Import Table!</span>
+<span class="ty">HMODULE</span> h = <span class="fn">LoadLibraryA</span>(<span class="st">"ws2_32.dll"</span>);
+<span class="kw">auto</span> pConnect = <span class="fn">GetProcAddress</span>(h, <span class="st">"connect"</span>);
+<span class="cm">// ← EDR מנטרת GetProcAddress!</span>
+        </pre>
+      </div>
+      <div class="card cy">
+        <h3>💡 DLL Search Order</h3>
+        <p>1. תיקיית ה-EXE<br>2. System32<br>3. Windows dir<br>4. %PATH%<br>DLL hijacking = הכנסת DLL זדונית בתיקייה 1!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S8: CODE FILL 1 ══════════════ -->
+<div class="slide" id="s8">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>🐍 Python — טען DLL ושלוף פונקציה</h2>
+  <p style="margin-bottom:9px">השלם קוד שטוען את <code>user32.dll</code> ומשתמש ב-<code>MessageBoxW</code>:</p>
+  <pre class="cb">
+<span class="kw">import</span> ctypes
+
+<span class="cm"># טעינת user32.dll</span>
+u32 = ctypes.windll.<span class="fn"><input class="fi" id="f1" placeholder="load DLL?" style="width:150px"></span>(<span class="st">"user32.dll"</span>)
+
+<span class="cm"># קבל פונקציה (GetProcAddress אוטומטי)</span>
+msgbox = u32.<span class="fn"><input class="fi" id="f2" placeholder="function name?" style="width:130px"></span>
+
+<span class="cm"># הגדר return type</span>
+msgbox.<span class="fn"><input class="fi" id="f3" placeholder="return type attr?" style="width:130px"></span> = ctypes.c_int
+
+<span class="cm"># קרא</span>
+<span class="fn">msgbox</span>(<span class="nm">0</span>, <span class="st">"DLL Demo!"</span>, <span class="st">"WinAPI"</span>, <span class="nm">0</span>)
+  </pre>
+  <button class="ck" onclick="checkFill1()">בדוק ✓</button>
+  <div class="ffb" id="fb1"></div>
+</div>
+
+<!-- ══════════════ S9: DLL FLIP CARDS ══════════════ -->
+<div class="slide" id="s9">
+  <span class="badge b-c">// APIs — לחץ לפרטים</span>
+  <h2>🃏 DLL Loading APIs</h2>
+  <div class="flip-grid">
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>LoadLibrary</code></div>
+        <div class="flip-back">טוען DLL לprocess. מחזיר HMODULE. DllMain נקרא עם DLL_PROCESS_ATTACH. kernel32.dll.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>GetProcAddress</code></div>
+        <div class="flip-back">מחזיר כתובת של exported function לפי שם או ordinal. מחזיר FARPROC. נמצא ב-kernel32.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>FreeLibrary</code></div>
+        <div class="flip-back">מוריד reference count של DLL. כשמגיע ל-0 — DllMain(DLL_PROCESS_DETACH) ו-unmap.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>GetModuleHandle</code></div>
+        <div class="flip-back">מחזיר HMODULE של DLL שכבר טעונה — ללא טעינה מחדש. NULL = EXE הנוכחי.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>DllMain</code></div>
+        <div class="flip-back">Entry point של DLL. נקרא ב-ATTACH/DETACH של process ו-thread. לא לעשות כאן כמעט כלום!</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>dumpbin /exports</code></div>
+        <div class="flip-back">MSVC tool — מראה כל exported function מ-DLL. שם, ordinal, כתובת RVA.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>DLL Hijacking</code></div>
+        <div class="flip-back">הכנסת DLL זדונית בתיקיית EXE לפני DLL לגיטימית. Windows מחפש שם ראשון → malware נטען!</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front">🔐 Cyber</div>
+        <div class="flip-back">EDR מנטרת LoadLibrary + GetProcAddress. Malware מתקדם קורא ntdll ישירות כדי לחמוק!</div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:9px;font-size:1.2rem;color:var(--dim2)">💡 לחץ לפרטים</p>
+</div>
+
+<!-- ══════════════ S10: SECTION INJECTION ══════════════ -->
+<div class="slide" id="s10">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,34,68,.06)">03</div>
+    <div class="stit"><span class="gr">DLL</span></div>
+    <div class="stit"><span class="gr">Injection</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">הזרקת DLL לתהליך פעיל</p>
+  </div>
+</div>
+
+<!-- ══════════════ S11: INJECTION THEORY ══════════════ -->
+<div class="slide" id="s11">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gr">DLL Injection</span> — 4 שלבים קלאסיים</h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="inj-step" onclick="revInj(this)" id="inj1">
+        <span class="inj-icon">▶</span>
+        <div class="inj-num">// שלב 1</div>
+        <div class="inj-title">OpenProcess — קבל handle לתהליך היעד</div>
+        <div class="inj-body">
+          <span class="inj-api">OpenProcess</span>
+          <pre class="cb" style="max-height:70px;font-size:1.2rem">
+<span class="ty">HANDLE</span> hProc = <span class="fn">OpenProcess</span>(
+    PROCESS_ALL_ACCESS,
+    <span class="ty">FALSE</span>, targetPID);
+          </pre>
+          <p style="font-size:1.2rem;margin-top:5px">דורש <strong style="color:var(--red)">PROCESS_ALL_ACCESS</strong> = Admin או SeDebugPrivilege</p>
+        </div>
+      </div>
+      <div class="inj-step" onclick="revInj(this)" id="inj2">
+        <span class="inj-icon">▶</span>
+        <div class="inj-num">// שלב 2</div>
+        <div class="inj-title">VirtualAllocEx — הקצה זיכרון בתהליך היעד</div>
+        <div class="inj-body">
+          <span class="inj-api">VirtualAllocEx</span>
+          <pre class="cb" style="max-height:70px;font-size:1.2rem">
+<span class="ty">LPVOID</span> pDllPath = <span class="fn">VirtualAllocEx</span>(
+    hProc, <span class="ty">NULL</span>,
+    dllPathLen,
+    MEM_COMMIT | MEM_RESERVE,
+    PAGE_READWRITE);
+          </pre>
+          <p style="font-size:1.2rem;margin-top:5px">מקצה מקום לנתיב ה-DLL בזיכרון של תהליך היעד</p>
+        </div>
+      </div>
+      <div class="inj-step" onclick="revInj(this)" id="inj3">
+        <span class="inj-icon">▶</span>
+        <div class="inj-num">// שלב 3</div>
+        <div class="inj-title">WriteProcessMemory — כתוב את נתיב ה-DLL</div>
+        <div class="inj-body">
+          <span class="inj-api">WriteProcessMemory</span>
+          <pre class="cb" style="max-height:70px;font-size:1.2rem">
+<span class="fn">WriteProcessMemory</span>(
+    hProc, pDllPath,
+    dllPath,
+    dllPathLen, <span class="ty">NULL</span>);
+          </pre>
+          <p style="font-size:1.2rem;margin-top:5px">כותב את המחרוזת עם נתיב ה-DLL לזיכרון שהוקצה</p>
+        </div>
+      </div>
+      <div class="inj-step" onclick="revInj(this)" id="inj4">
+        <span class="inj-icon">▶</span>
+        <div class="inj-num">// שלב 4</div>
+        <div class="inj-title">CreateRemoteThread — צור thread שיקרא LoadLibrary</div>
+        <div class="inj-body">
+          <span class="inj-api">CreateRemoteThread</span>
+          <span class="inj-api">GetProcAddress</span>
+          <pre class="cb" style="max-height:80px;font-size:1.2rem">
+<span class="ty">LPTHREAD_START_ROUTINE</span> pLoadLib =
+    (<span class="ty">LPTHREAD_START_ROUTINE</span>)<span class="fn">GetProcAddress</span>(
+        <span class="fn">GetModuleHandle</span>(<span class="st">L"kernel32"</span>),
+        <span class="st">"LoadLibraryW"</span>);
+
+<span class="fn">CreateRemoteThread</span>(
+    hProc, <span class="ty">NULL</span>, <span class="nm">0</span>,
+    pLoadLib, pDllPath,
+    <span class="nm">0</span>, <span class="ty">NULL</span>);
+          </pre>
+          <p style="font-size:1.2rem;margin-top:5px">Thread חדש בתהליך היעד קורא LoadLibrary → DLL נטענת!</p>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div style="background:var(--s2);border:1px solid var(--border);padding:12px;margin-bottom:9px">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:8px;letter-spacing:2px">// INJECTION FLOW</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Fira Code',monospace;font-size:1.2rem">
+          <div style="border:1px solid var(--violet);color:var(--violet);padding:6px 14px;width:100%;text-align:center">Injector Process</div>
+          <div style="color:var(--dim)">↓ OpenProcess(targetPID)</div>
+          <div style="border:1px solid var(--gold);color:var(--gold);padding:6px 14px;width:100%;text-align:center">Handle to Target</div>
+          <div style="color:var(--dim)">↓ VirtualAllocEx + WriteProcessMemory</div>
+          <div style="border:1px solid var(--cyan);color:var(--cyan);padding:6px 14px;width:100%;text-align:center">DLL path in target memory</div>
+          <div style="color:var(--dim)">↓ CreateRemoteThread(LoadLibraryW)</div>
+          <div style="border:1px solid var(--red);color:var(--red);padding:6px 14px;width:100%;text-align:center;animation:pulse-mem 1.5s ease infinite alternate">DLL loaded in target! 💉</div>
+        </div>
+      </div>
+      <div class="card cr">
+        <h3>⚠️ EDR Detection</h3>
+        <p>EDR מנטרות: VirtualAllocEx + WriteProcessMemory + CreateRemoteThread = injection signature. AV hooks ntdll functions.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S12: MEMORY MAP VIZ ══════════════ -->
+<div class="slide" id="s12">
+  <span class="badge b-q">// ויזואליזציה — Process Memory</span>
+  <h2>🗺️ Virtual Memory של Process לאחר Injection</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px;font-size:1.2rem">לחץ על כל block לפרטים:</p>
+      <div class="mem-map" id="memMap" onclick="clickMem(event)">
+        <div class="mem-block mb-sys" data-info="0x00000000–0x0000FFFF: Null region. גישה לכאן = ACCESS VIOLATION. הגנה מפני null dereference.">
+          <span class="mem-addr">0x00000000</span>
+          <span class="mem-name">NULL region (protected)</span>
+          <span class="mem-size">64KB</span>
+        </div>
+        <div class="mem-block mb-exe" data-info="Image Base של ה-EXE. ב-x64 בדרך כלל 0x140000000. מכיל את ה-PE sections: .text, .data, .rsrc.">
+          <span class="mem-addr">0x00400000</span>
+          <span class="mem-name">target.exe (Image)</span>
+          <span class="mem-size">~4MB</span>
+        </div>
+        <div class="mem-block mb-ntdll" data-info="ntdll.dll — DLL הנמוכה ביותר. מכיל syscall wrappers. Malware מחפש כאן את כתובות הsyscalls לDirect Syscall.">
+          <span class="mem-addr">0x77F00000</span>
+          <span class="mem-name">ntdll.dll</span>
+          <span class="mem-size">~1.8MB</span>
+        </div>
+        <div class="mem-block mb-k32" data-info="kernel32.dll — Core WinAPI. LoadLibrary, CreateProcess, VirtualAlloc. מוגן ע'י EDR hooks.">
+          <span class="mem-addr">0x76E00000</span>
+          <span class="mem-name">kernel32.dll</span>
+          <span class="mem-size">~1.1MB</span>
+        </div>
+        <div class="mem-block mb-u32" data-info="user32.dll — GUI, Windows, Messages. CreateWindowEx, MessageBox, SetWindowsHookEx.">
+          <span class="mem-addr">0x76400000</span>
+          <span class="mem-name">user32.dll</span>
+          <span class="mem-size">~800KB</span>
+        </div>
+        <div class="mem-block mb-inject" data-info="⚠️ הDLL המוזרקת! נטענה ע'י CreateRemoteThread(LoadLibraryW). DllMain שלה רץ ב-context של target. יכולה לבצע כל פעולה.">
+          <span class="mem-addr">0x10000000</span>
+          <span class="mem-name">💉 injected.dll (MALICIOUS!)</span>
+          <span class="mem-size">???</span>
+        </div>
+        <div class="mem-block mb-heap" data-info="Heap — זיכרון דינמי. malloc/new. VirtualAllocEx מקצה כאן. Shellcode לפעמים מוזרק לheap.">
+          <span class="mem-addr">dynamic</span>
+          <span class="mem-name">Process Heap</span>
+          <span class="mem-size">grows↑</span>
+        </div>
+        <div class="mem-block mb-stack" data-info="Stack — call frames, local variables, return addresses. Stack overflow → buffer overflow attack vector.">
+          <span class="mem-addr">0x7FFF0000</span>
+          <span class="mem-name">Thread Stack</span>
+          <span class="mem-size">1–8MB</span>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div style="background:var(--s2);border:1px solid var(--border);padding:12px;min-height:80px;margin-bottom:9px" id="memInfo">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet)">// לחץ על memory block לפרטים</div>
+      </div>
+      <div class="qc" id="q2" style="margin-top:0">
+        <p style="font-size:1.2rem;color:var(--dim);margin-bottom:7px">לאחר injection — מה יכולה injected.dll לעשות?</p>
+        <div class="qo" onclick="cq('q2',this,false)"><span class="ql">א</span> לקרוא בלבד — אין לה write access</div>
+        <div class="qo" onclick="cq('q2',this,true)"><span class="ql">ב</span> כל דבר — היא רצה בcontext של target, עם כל הרשאותיו</div>
+        <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ג</span> רק APIs שהיא import עצמה</div>
+        <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> תלוי ב-AppContainer sandbox</div>
+      </div>
+      <div class="qfb" id="q2-fb"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S13: FULL INJECTION CODE ══════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-c">// קוד מלא</span>
+  <h2><span class="gr">DLL Injection</span> — Python Implementation</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px;font-size:1.2rem;color:var(--red)">⚠️ לחינוכי בלבד! שימוש על מחשב עצמי בלבד.</p>
+      <pre class="cb red" style="max-height:310px">
+<span class="cm">"""dll_inject.py — DLL Injection Demo
+   Educational purposes ONLY
+   Run as Administrator on your own VM
+"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt, sys
+
+k32 = ctypes.windll.kernel32
+
+PROCESS_ALL_ACCESS = <span class="nm">0x1F0FFF</span>
+MEM_COMMIT         = <span class="nm">0x1000</span>
+MEM_RESERVE        = <span class="nm">0x2000</span>
+PAGE_READWRITE     = <span class="nm">0x04</span>
+
+<span class="kw">def</span> <span class="fn">inject_dll</span>(pid: <span class="ty">int</span>, dll_path: <span class="ty">str</span>) -> <span class="ty">bool</span>:
+    <span class="fn">print</span>(<span class="st">f"[*] Target PID: {pid}"</span>)
+    <span class="fn">print</span>(<span class="st">f"[*] DLL Path:   {dll_path}"</span>)
+
+    <span class="cm"># שלב 1: פתח handle לתהליך</span>
+    hProc = k32.<span class="fn">OpenProcess</span>(
+        PROCESS_ALL_ACCESS, <span class="nm">False</span>, pid)
+    <span class="kw">if not</span> hProc:
+        <span class="fn">print</span>(<span class="st">f"[-] OpenProcess failed: {k32.GetLastError()}"</span>)
+        <span class="kw">return False</span>
+    <span class="fn">print</span>(<span class="st">f"[+] Got process handle: {hProc:#x}"</span>)
+
+    <span class="cm"># שלב 2: הקצה זיכרון בתהליך היעד</span>
+    dll_bytes = (dll_path + <span class="st">'\0'</span>).<span class="fn">encode</span>(<span class="st">'utf-16-le'</span>)
+    pMem = k32.<span class="fn">VirtualAllocEx</span>(
+        hProc, <span class="nm">None</span>,
+        <span class="fn">len</span>(dll_bytes),
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE)
+    <span class="kw">if not</span> pMem:
+        <span class="fn">print</span>(<span class="st">f"[-] VirtualAllocEx failed"</span>)
+        k32.<span class="fn">CloseHandle</span>(hProc)
+        <span class="kw">return False</span>
+    <span class="fn">print</span>(<span class="st">f"[+] Allocated memory at: {pMem:#x}"</span>)
+
+    <span class="cm"># שלב 3: כתוב DLL path לזיכרון</span>
+    written = wt.<span class="fn">DWORD</span>()
+    k32.<span class="fn">WriteProcessMemory</span>(
+        hProc, pMem,
+        dll_bytes, <span class="fn">len</span>(dll_bytes),
+        ctypes.<span class="fn">byref</span>(written))
+    <span class="fn">print</span>(<span class="st">f"[+] Wrote {written.value} bytes"</span>)
+
+    <span class="cm"># שלב 4: CreateRemoteThread → LoadLibraryW</span>
+    load_lib = k32.<span class="fn">GetProcAddress</span>(
+        k32.<span class="fn">GetModuleHandleW</span>(<span class="st">"kernel32"</span>),
+        <span class="hx">b"LoadLibraryW"</span>)
+    <span class="fn">print</span>(<span class="st">f"[+] LoadLibraryW at: {load_lib:#x}"</span>)
+
+    hThread = k32.<span class="fn">CreateRemoteThread</span>(
+        hProc, <span class="nm">None</span>, <span class="nm">0</span>,
+        load_lib, pMem,
+        <span class="nm">0</span>, <span class="nm">None</span>)
+    <span class="kw">if not</span> hThread:
+        <span class="fn">print</span>(<span class="st">f"[-] CreateRemoteThread failed!"</span>)
+        <span class="kw">return False</span>
+
+    <span class="fn">print</span>(<span class="st">f"[+] Injection thread: {hThread:#x}"</span>)
+    k32.<span class="fn">WaitForSingleObject</span>(hThread, <span class="nm">5000</span>)
+    k32.<span class="fn">CloseHandle</span>(hThread)
+    k32.<span class="fn">CloseHandle</span>(hProc)
+    <span class="fn">print</span>(<span class="st">"[✓] DLL Injected!"</span>)
+    <span class="kw">return True</span>
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    <span class="kw">if</span> <span class="fn">len</span>(sys.argv) != <span class="nm">3</span>:
+        <span class="fn">print</span>(<span class="st">"Usage: inject.py &lt;PID&gt; &lt;DLL_PATH&gt;"</span>)
+        sys.<span class="fn">exit</span>(<span class="nm">1</span>)
+    <span class="fn">inject_dll</span>(<span class="fn">int</span>(sys.argv[<span class="nm">1</span>]), sys.argv[<span class="nm">2</span>])
+      </pre>
+    </div>
+    <div class="scr">
+      <div class="card cr" style="margin-bottom:9px">
+        <h3>⚠️ אזהרת אתיקה</h3>
+        <p>DLL Injection ללא רשות = עבירה פלילית. תמיד בVM מבודד שהוא שלך. Process Injection = עבירה לפי חוק מחשבים.</p>
+      </div>
+      <div class="card cv" style="margin-bottom:9px">
+        <h3>📋 פלט ריצה צפוי</h3>
+        <pre class="cb teal" style="max-height:120px;font-size:1.2rem">
+[*] Target PID: 4892
+[*] DLL Path: C:\test.dll
+[+] Got process handle: 0x1a4
+[+] Allocated at: 0x1b20000
+[+] Wrote 24 bytes
+[+] LoadLibraryW: 0x7ff8a3c01234
+[+] Injection thread: 0x1a8
+[✓] DLL Injected!
+        </pre>
+      </div>
+      <div class="card cy">
+        <h3>💡 DLL לבדיקה</h3>
+        <pre class="cb gold" style="max-height:80px;font-size:1.2rem">
+<span class="cm">// test.dll — DllMain מינימלי</span>
+<span class="ty">BOOL</span> <span class="fn">DllMain</span>(...) {
+  <span class="kw">if</span>(reason==DLL_PROCESS_ATTACH)
+    <span class="fn">MessageBoxA</span>(<span class="nm">0</span>,<span class="st">"Injected!"</span>,...);
+  <span class="kw">return</span> <span class="kw">TRUE</span>;
+}
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S14: INJECTION SIMULATOR ══════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-g">// סימולטור — DLL Injection</span>
+  <h2>💉 Injection Simulator — Step by Step</h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="sim-wrap">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:10px;letter-spacing:2px">// PROCESS MAP</div>
+        <div class="sim-stage">
+          <div class="sim-proc" style="border-color:var(--violet);color:var(--violet)" id="sp-injector">
+            Injector<br><span style="font-size:1.2rem">PID: 1234</span>
+          </div>
+          <div class="sim-arrow" id="sp-arrow1">→</div>
+          <div class="sim-proc" style="border-color:var(--gold);color:var(--gold)" id="sp-target">
+            notepad.exe<br><span style="font-size:1.2rem">PID: 5678</span>
+          </div>
+          <div class="sim-arrow" id="sp-arrow2">←</div>
+          <div class="sim-proc" style="border-color:var(--dim);color:var(--dim)" id="sp-dll">
+            evil.dll<br><span style="font-size:1.2rem">waiting...</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">
+          <button class="sim-btn" id="sbtn1" onclick="simStep(1)">1. OpenProcess</button>
+          <button class="sim-btn" id="sbtn2" onclick="simStep(2)" disabled>2. VirtualAllocEx</button>
+          <button class="sim-btn" id="sbtn3" onclick="simStep(3)" disabled>3. WriteProcessMemory</button>
+          <button class="sim-btn" id="sbtn4" onclick="simStep(4)" disabled>4. CreateRemoteThread</button>
+          <button class="sim-btn" onclick="simReset()" style="border-color:var(--dim);color:var(--dim)">↺ Reset</button>
+        </div>
+        <div class="sim-log" id="simLog">
+          <span class="sim-info">// לחץ על השלבים בסדר לסימולציה</span>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card cr" style="margin-bottom:9px">
+        <h3>🔍 Detection Methods</h3>
+        <p>
+          <strong style="color:#fff">EDR Hooks:</strong> ntdll functions מוחלפות לmonitor<br>
+          <strong style="color:#fff">Kernel Callbacks:</strong> PsSetCreateThreadNotifyRoutine<br>
+          <strong style="color:#fff">Memory Scanning:</strong> זיהוי RX regions ללא backing file<br>
+          <strong style="color:#fff">Event 10:</strong> Sysmon — ProcessAccess
+        </p>
+      </div>
+      <div class="card cv" style="margin-bottom:9px">
+        <h3>🛡️ Evasion Techniques</h3>
+        <p>
+          <strong style="color:#fff">Direct Syscalls:</strong> עקוף kernel32 hooks<br>
+          <strong style="color:#fff">Process Hollowing:</strong> החלף EXE content<br>
+          <strong style="color:#fff">Reflective Injection:</strong> DLL שטוענת את עצמה<br>
+          <strong style="color:#fff">Thread Hijacking:</strong> בלי CreateRemoteThread
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S15: DND MATCH ══════════════ -->
+<div class="slide" id="s15">
+  <span class="badge b-q">// פעילות — התאם API לשלב</span>
+  <h2>🎯 Injection API Matching</h2>
+  <p style="margin-bottom:8px">גרור כל API לשלב המתאים בתהליך ה-Injection:</p>
+  <div class="dnd-wrap">
+    <div class="dnd-pool" id="dndPool">
+      <div class="dnd-lbl">// APIs</div>
+      <div class="dnd-chip" draggable="true" data-v="wpm" ondragstart="ds(event)">WriteProcessMemory</div>
+      <div class="dnd-chip" draggable="true" data-v="op" ondragstart="ds(event)">OpenProcess</div>
+      <div class="dnd-chip" draggable="true" data-v="crt" ondragstart="ds(event)">CreateRemoteThread</div>
+      <div class="dnd-chip" draggable="true" data-v="vae" ondragstart="ds(event)">VirtualAllocEx</div>
+    </div>
+    <div class="dnd-zone">
+      <div class="dnd-target" id="dz1" ondragover="dov(event)" ondrop="dp(event,'dz1','op')" data-correct="op">
+        <span class="dnd-tlbl">שלב 1</span>
+        <span style="font-size:1.2rem;color:var(--dim)">קבל handle לתהליך היעד לפי PID</span>
+      </div>
+      <div class="dnd-target" id="dz2" ondragover="dov(event)" ondrop="dp(event,'dz2','vae')" data-correct="vae">
+        <span class="dnd-tlbl">שלב 2</span>
+        <span style="font-size:1.2rem;color:var(--dim)">הקצה זיכרון בתהליך היעד לנתיב DLL</span>
+      </div>
+      <div class="dnd-target" id="dz3" ondragover="dov(event)" ondrop="dp(event,'dz3','wpm')" data-correct="wpm">
+        <span class="dnd-tlbl">שלב 3</span>
+        <span style="font-size:1.2rem;color:var(--dim)">כתוב את נתיב ה-DLL לזיכרון</span>
+      </div>
+      <div class="dnd-target" id="dz4" ondragover="dov(event)" ondrop="dp(event,'dz4','crt')" data-correct="crt">
+        <span class="dnd-tlbl">שלב 4</span>
+        <span style="font-size:1.2rem;color:var(--dim)">קרא LoadLibraryW בתהליך היעד</span>
+      </div>
+    </div>
+  </div>
+  <div class="dnd-result" id="dndRes"></div>
+</div>
+
+<!-- ══════════════ S16: CODE FILL 2 ══════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>🔍 ניתוח DLL Exports — Python</h2>
+  <p style="margin-bottom:9px">השלם קוד שמדפיס את כל ה-exports של DLL:</p>
+  <pre class="cb">
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt
+
+k32 = ctypes.windll.kernel32
+psapi = ctypes.windll.psapi
+
+<span class="kw">def</span> <span class="fn">list_dll_exports</span>(dll_path: str):
+    <span class="cm"># טען DLL</span>
+    h = k32.<span class="fn"><input class="fi" id="f4" placeholder="load DLL?" style="width:150px"></span>(dll_path)
+    <span class="kw">if not</span> h:
+        <span class="fn">print</span>(<span class="st">"Failed to load"</span>); <span class="kw">return</span>
+
+    <span class="cm"># פונקציות ידועות לקרוא</span>
+    known_exports = [
+        <span class="st">"MessageBoxW"</span>, <span class="st">"CreateWindowExW"</span>,
+        <span class="st">"GetMessageW"</span>, <span class="st">"SendMessageW"</span>
+    ]
+    <span class="kw">for</span> name <span class="kw">in</span> known_exports:
+        addr = k32.<span class="fn"><input class="fi" id="f5" placeholder="get addr?" style="width:140px"></span>(h, name.<span class="fn">encode</span>())
+        status = <span class="st">"✓"</span> <span class="kw">if</span> addr <span class="kw">else</span> <span class="st">"✗"</span>
+        <span class="fn">print</span>(<span class="st">f"  {status} {name}: {hex(addr) if addr else 'N/A'}"</span>)
+
+    k32.<span class="fn"><input class="fi" id="f6" placeholder="release?" style="width:130px"></span>(h)
+
+<span class="fn">list_dll_exports</span>(<span class="st">"user32.dll"</span>)
+  </pre>
+  <button class="ck" onclick="checkFill2()">בדוק ✓</button>
+  <div class="ffb" id="fb2"></div>
+</div>
+
+<!-- ══════════════ S17: QUIZ 3 ══════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-q">// שאלת הבנה #3 — Scenario</span>
+  <h2>🔍 DLL Hijacking — זיהוי</h2>
+  <p style="margin-bottom:12px">חוקר מוצא ב-<code>C:\Program Files\LegitApp\</code>:</p>
+  <pre class="cb" style="margin-bottom:14px">
+C:\Program Files\LegitApp\
+  ├── LegitApp.exe
+  ├── version.dll       ← ← ← !
+  └── data\
+        config.xml
+
+C:\Windows\System32\
+  └── version.dll       (Microsoft official)
+  </pre>
+  <p style="margin-bottom:12px">מה מטרת <code>version.dll</code> בתיקיית האפליקציה?</p>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> גרסה מעודכנת של Windows — תקין לחלוטין</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ב</span> DLL Hijacking — LegitApp.exe תטען תחילה את ה-DLL בתיקייתה שלה לפני System32. הקובץ הזה יחסום/יחליף את הלגיטימי</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ג</span> Backup קובץ מערכת — לגיטימי</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> DLL Side-by-Side — Windows feature לגיטימי</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ══════════════ S18: MISSION ══════════════ -->
+<div class="slide" id="s18">
+  <span class="badge b-m">// משימה קבוצתית</span>
+  <h2>🔬 DLL Analysis + Safe Injection Lab</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3 — בVM מבודד:</strong></p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">DLL Analysis:</strong> הריצו <code>dumpbin /exports kernel32.dll</code> — כמה exports? מצאו 5 APIs מוכרים + 3 לא מוכרים</li>
+      <li data-n="2"><strong style="color:#fff">List Loaded DLLs:</strong> כתבו Python שמשתמש ב-<code>EnumProcessModules</code> לרשימת כל DLLs של process קיים</li>
+      <li data-n="3"><strong style="color:#fff">Create Simple DLL:</strong> בC++, כתבו DLL עם DllMain שכותב לקובץ log כשהיא נטענת (PROCESS_ATTACH)</li>
+      <li data-n="4"><strong style="color:#fff">Self-Injection:</strong> הזריקו את ה-DLL שכתבתם ל<strong>תהליך שלכם עצמכם</strong> (inject לPID שלכם)</li>
+      <li data-n="5"><strong style="color:#fff">Detection:</strong> פתחו Process Hacker → Views → Lower Pane → DLLs. ראו את ה-DLL שלכם?</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">18:00</div>
+    <button class="tb" onclick="st('t1',18)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',18)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ══════════════ S19: ADVANCED TECHNIQUES ══════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-c">// מתקדם</span>
+  <h2>🔬 טכניקות Injection מתקדמות</h2>
+  <div class="cg cg2" style="margin-top:12px;flex:1">
+    <div class="card cr">
+      <span class="ci">🌀</span>
+      <h3>Process Hollowing</h3>
+      <p>יוצרים process לגיטימי ב-SUSPENDED. מוחקים את ה-code שלו ומזריקים malware במקומו. Process נראה כ-svchost.exe!</p>
+      <pre class="cb red" style="max-height:60px;font-size:1.2rem;margin-top:7px">
+CreateProcess(SUSPENDED) →
+NtUnmapViewOfSection →
+VirtualAlloc → WriteProcessMemory →
+ResumeThread
+      </pre>
+    </div>
+    <div class="card cp">
+      <span class="ci">🪞</span>
+      <h3>Reflective DLL Injection</h3>
+      <p>DLL שמכילה loader משלה — יכולה לטעון את עצמה מזיכרון ללא LoadLibrary. לא מופיעה ב-module list!</p>
+      <pre class="cb pink" style="max-height:60px;font-size:1.2rem;margin-top:7px">
+VirtualAllocEx → WriteProcessMemory
+→ CreateRemoteThread(ReflectiveLoader)
+← no LoadLibrary call
+      </pre>
+    </div>
+    <div class="card cv">
+      <span class="ci">🧵</span>
+      <h3>Thread Hijacking</h3>
+      <p>SuspendThread קיים, שינוי RIP/EIP ל-shellcode, ResumeThread. ללא CreateRemoteThread — EDR detection קשה!</p>
+    </div>
+    <div class="card cy">
+      <span class="ci">🔧</span>
+      <h3>DLL Side-Loading</h3>
+      <p>לגיטימי EXE טוען DLL ממיקום גמיש. Malware מחליף את ה-DLL. Adobe, Microsoft Tools — כולם פגיעים.</p>
+    </div>
+    <div class="card ct" style="grid-column: span 2">
+      <h3>🛡️ כיצד EDR מגן — Detection Summary</h3>
+      <table style="width:100%;font-size:1.2rem;margin-top:6px">
+        <tr>
+          <td style="color:var(--dim);padding:4px 8px">טכניקה</td>
+          <td style="color:var(--dim);padding:4px 8px">סיגנל Detection</td>
+          <td style="color:var(--dim);padding:4px 8px">Event/Tool</td>
+        </tr>
+        <tr><td style="color:var(--text);padding:3px 8px">Classic Injection</td><td style="color:var(--cyan)">VirtualAllocEx+WPM+CRT</td><td style="color:var(--gold)">Sysmon ID 10</td></tr>
+        <tr><td style="color:var(--text);padding:3px 8px">Reflective</td><td style="color:var(--cyan)">RX memory without file</td><td style="color:var(--gold)">Memory scan</td></tr>
+        <tr><td style="color:var(--text);padding:3px 8px">Hollowing</td><td style="color:var(--cyan)">NtUnmapViewOfSection</td><td style="color:var(--gold)">Kernel callback</td></tr>
+        <tr><td style="color:var(--text);padding:3px 8px">DLL Hijack</td><td style="color:var(--cyan)">DLL load from unusual path</td><td style="color:var(--gold)">Sysmon ID 7</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S20: HOMEWORK ══════════════ -->
+<div class="slide" id="s20">
+  <span class="badge b-m">// שיעורי בית</span>
+  <h2>🏠 DLL Challenge</h2>
+  <div class="cg cg3" style="margin-top:13px">
+    <div class="card cg2c">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--green)">EASY</span>
+      <h3 style="margin-top:5px">DLL Inspector</h3>
+      <p style="font-size:1.2rem">Python script שמקבל שם DLL ומדפיס: האם טעונה בprocess הנוכחי? כמה modules טעונים סה"כ? השתמש ב-<code>EnumProcessModules</code>.</p>
+    </div>
+    <div class="card cy">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold)">MEDIUM</span>
+      <h3 style="margin-top:5px">Export Mapper</h3>
+      <p style="font-size:1.2rem">ניתוח כל ה-exports של DLL ע"י קריאה ל-PE Export Directory ישירות (ללא dumpbin). הדפס: שם, ordinal, RVA.</p>
+    </div>
+    <div class="card cr">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--red)">HARD ★</span>
+      <h3 style="margin-top:5px">DLL Watcher</h3>
+      <p style="font-size:1.2rem">כלי שמנטר process ומתריע כשנטענת DLL חדשה (polling EnumProcessModules). הדפס שם DLL + נתיב. מחשב baseline ומוצא שינויים.</p>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding:9px 14px;background:var(--s1);border:1px solid var(--border);font-size:1.2rem">
+    📌 <strong style="color:#fff">הגשה:</strong> קוד + README + screenshots של פלט → GitHub Classroom<br>
+    <strong style="color:var(--red)">⚠️</strong> Injection רק על VM שלך, בסביבה מבודדת, עם רשות מפורשת!
+  </div>
+</div>
+
+<!-- ══════════════ S21: SUMMARY ══════════════ -->
+<div class="slide" id="s21">
+  <span class="badge b-i">// סיכום</span>
+  <h2>מה למדנו?</h2>
+  <div class="cg cg3" style="gap:9px;margin-top:13px;flex:1">
+    <div class="card cv">
+      <h3>📦 DLL = PE + Exports</h3>
+      <p>DLL = PE file עם Export Table. DllMain = entry. Memory sharing. LoadLibrary = Implicit/Explicit.</p>
+    </div>
+    <div class="card cc">
+      <h3>⚙️ Dynamic Loading</h3>
+      <p>LoadLibraryW → HMODULE. GetProcAddress → function pointer. FreeLibrary חובה. לא נראה ב-IAT!</p>
+    </div>
+    <div class="card cr">
+      <h3>💉 Injection Flow</h3>
+      <p>OpenProcess → VirtualAllocEx → WriteProcessMemory → CreateRemoteThread(LoadLibraryW).</p>
+    </div>
+    <div class="card cg2c">
+      <h3>🗺️ Memory Map</h3>
+      <p>DLL מוזרקת מופיעה ב-memory. Process Hacker רואה הכל. Reflective = ללא backing file.</p>
+    </div>
+    <div class="card cp">
+      <h3>🔬 Advanced</h3>
+      <p>Hollowing, Reflective, Thread Hijacking, Side-Loading. כל טכניקה עוקפת detection אחר.</p>
+    </div>
+    <div class="card cy">
+      <h3>🛡️ Detection</h3>
+      <p>Sysmon ID 7/10. EDR hooks. Memory scan. VirtualAllocEx + CRT = injection signature.</p>
+    </div>
+  </div>
+  <div style="margin-top:9px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);text-align:center">
+    // next: Windows Kernel Objects & Security Descriptors — שיעור 10
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>הקודם ▶</button>
+  <span class="sc" id="sc">1 / 22</span>
+  <button class="nb" id="nb2" onclick="go(1)">◀ הבא</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──
+const TOTAL=22;let cur=0,xp=0;
+const slides=document.querySelectorAll('.slide');
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),300);
+  cur=n;slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')go(-1);
+});
+
+// ── XP ──
+function addXP(n){xp+=n;const el=document.getElementById('xv');
+  el.textContent=xp;el.classList.add('xpop');
+  setTimeout(()=>el.classList.remove('xpop'),220);}
+
+// ── QUIZ ──
+const okM=['🔥 מצוין! +10 XP','⚡ בול! +10 XP','💎 נכון! +10 XP','🎯 מדויק! +10 XP'];
+const noM=['❌ לא בדיוק.','❌ נסה שוב — שים לב למבנה.','❌ חשוב שוב.'];
+function cq(id,el,ok){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok)c.querySelectorAll('.qo').forEach(o=>{
+    if(o.getAttribute('onclick')?.includes(',true)'))o.classList.add('correct');
+  });
+  const fb=document.getElementById(`${id}-fb`);
+  const msgs=ok?okM:noM;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  if(ok)addXP(10);
+}
+
+// ── PE CLICK ──
+function clickPE(e){
+  const sec=e.target.closest('.pe-section');
+  if(!sec)return;
+  const info=sec.dataset.info;
+  if(!info)return;
+  document.getElementById('peInfo').innerHTML=
+    `<div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet);margin-bottom:6px">// ${sec.querySelector('.pe-lbl')?.textContent||''}</div>
+     <p style="font-size:1.2rem;color:var(--text)">${info}</p>`;
+  addXP(2);
+}
+
+// ── MEMORY CLICK ──
+function clickMem(e){
+  const b=e.target.closest('.mem-block');
+  if(!b)return;
+  document.getElementById('memInfo').innerHTML=
+    `<div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--violet);margin-bottom:6px">// ${b.querySelector('.mem-name')?.textContent||''}</div>
+     <p style="font-size:1.2rem;color:var(--text)">${b.dataset.info||''}</p>`;
+  addXP(2);
+}
+
+// ── INJECTION STEP REVEAL ──
+function revInj(el){
+  el.classList.toggle('revealed');
+  if(el.classList.contains('revealed'))addXP(3);
+}
+
+// ── FILL 1 ──
+function checkFill1(){
+  const v1=document.getElementById('f1').value.trim().toLowerCase();
+  const v2=document.getElementById('f2').value.trim();
+  const v3=document.getElementById('f3').value.trim().toLowerCase();
+  const ok1=v1==='loadlibrary'||v1==='loadlibrary()'||v1==='loadlibrarya';
+  const ok2=v2==='MessageBoxW'||v2==='MessageBoxW()';
+  const ok3=v3==='restype'||v3==='restype()';
+  ['f1','f2','f3'].forEach((id,i)=>{
+    document.getElementById(id).className='fi '+([ok1,ok2,ok3][i]?'ok':'no');
+  });
+  const fb=document.getElementById('fb1');
+  fb.className='ffb show';
+  if(ok1&&ok2&&ok3){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! LoadLibrary → MessageBoxW → restype. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok1?'רמז 1: windll.LoadLibrary("dll") ':''} ${!ok2?'רמז 2: שם הפונקציה הוא MessageBoxW ':''} ${!ok3?'רמז 3: attribute לsetting return type = restype ':''}`;
+  }
+}
+
+// ── FILL 2 ──
+function checkFill2(){
+  const v4=document.getElementById('f4').value.trim().toLowerCase();
+  const v5=document.getElementById('f5').value.trim().toLowerCase();
+  const v6=document.getElementById('f6').value.trim().toLowerCase();
+  const ok4=v4==='loadlibraryw'||v4==='loadlibraryw()'||v4==='loadlibrary'||v4==='loadlibrary()';
+  const ok5=v5==='getprocaddress'||v5==='getprocaddress()';
+  const ok6=v6==='freelibrary'||v6==='freelibrary()';
+  ['f4','f5','f6'].forEach((id,i)=>{
+    document.getElementById(id).className='fi '+([ok4,ok5,ok6][i]?'ok':'no');
+  });
+  const fb=document.getElementById('fb2');
+  fb.className='ffb show';
+  if(ok4&&ok5&&ok6){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! LoadLibraryW → GetProcAddress → FreeLibrary. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok4?'רמז 1: LoadLibraryW לטעינה ':''} ${!ok5?'רמז 2: GetProcAddress לכתובת ':''} ${!ok6?'רמז 3: FreeLibrary לשחרור ':''}`;
+  }
+}
+
+// ── REVEAL LIST ──
+function rv(li){li.classList.toggle('open');}
+
+// ── DND ──
+let dragged=null;
+function ds(e){dragged=e.target;e.target.classList.add('dragging');}
+function dov(e){e.preventDefault();e.currentTarget.classList.add('over');}
+function dp(e,zid,correct){
+  e.preventDefault();
+  const zone=document.getElementById(zid);
+  zone.classList.remove('over');
+  if(!dragged)return;
+  const val=dragged.dataset.v;
+  dragged.classList.remove('dragging');
+  zone.querySelectorAll('.dnd-chip').forEach(c=>c.remove());
+  const chip=document.createElement('div');
+  chip.className='dnd-chip';
+  chip.textContent=dragged.textContent;
+  chip.dataset.v=val;chip.draggable=true;
+  chip.addEventListener('dragstart',ds);
+  const isOk=val===correct;
+  chip.style.borderColor=isOk?'var(--green)':'var(--red)';
+  chip.style.color=isOk?'var(--green)':'var(--red)';
+  zone.appendChild(chip);
+  dragged.remove();
+  if(isOk)addXP(6);
+  const filled=document.querySelectorAll('.dnd-zone .dnd-target .dnd-chip').length;
+  if(filled===4){
+    const allOk=[...document.querySelectorAll('.dnd-target')].every(z=>{
+      const c=z.querySelector('.dnd-chip');
+      return c&&c.dataset.v===z.dataset.correct;
+    });
+    const res=document.getElementById('dndRes');
+    res.className='dnd-result show';
+    res.style.color=allOk?'var(--green)':'var(--red)';
+    res.textContent=allOk?'🎯 מושלם! 4/4 שלבים נכונים! +20 XP':'❌ חלק שגויים — נסה שוב.';
+    if(allOk)addXP(20);
+  }
+  dragged=null;
+}
+
+// ── INJECTION SIMULATOR ──
+let simPhase=0;
+const simSteps=[
+  {log:'<span class="sim-info">[*] Opening handle to notepad.exe (PID: 5678)...</span>\n<span class="sim-ok">[+] OpenProcess success → hProc: 0x1a4</span>\n<span class="sim-ok">[+] PROCESS_ALL_ACCESS granted</span>',
+   arrow1:'var(--violet)',arrow2:'var(--dim)',dll:'waiting...'},
+  {log:'<span class="sim-info">[*] Allocating memory in target process...</span>\n<span class="sim-ok">[+] VirtualAllocEx → pMem: 0x1b20000</span>\n<span class="sim-ok">[+] PAGE_READWRITE | MEM_COMMIT allocated</span>',
+   arrow1:'var(--violet)',arrow2:'var(--dim)',dll:'waiting...'},
+  {log:'<span class="sim-info">[*] Writing DLL path to target memory...</span>\n<span class="sim-ok">[+] WriteProcessMemory → wrote 28 bytes</span>\n<span class="sim-ok">[+] "C:\\evil.dll" at 0x1b20000</span>',
+   arrow1:'var(--cyan)',arrow2:'var(--dim)',dll:'path written'},
+  {log:'<span class="sim-info">[*] Creating remote thread with LoadLibraryW...</span>\n<span class="sim-ok">[+] CreateRemoteThread → hThread: 0x1a8</span>\n<span class="sim-ok">[+] LoadLibraryW called in notepad.exe</span>\n<span class="sim-err">[!] DLL INJECTED — evil.dll running in notepad.exe!</span>',
+   arrow1:'var(--red)',arrow2:'var(--red)',dll:'INJECTED! 💉'}
+];
+function simStep(n){
+  if(n-1!==simPhase&&n!==1)return;
+  const step=simSteps[n-1];
+  const log=document.getElementById('simLog');
+  log.innerHTML+='\n'+step.log;
+  log.scrollTop=log.scrollHeight;
+  document.getElementById('sp-arrow1').style.color=step.arrow1;
+  document.getElementById('sp-arrow2').style.color=step.arrow2;
+  document.getElementById('sp-dll').querySelector('span').textContent=step.dll;
+  if(n===4){
+    document.getElementById('sp-dll').style.borderColor='var(--red)';
+    document.getElementById('sp-dll').style.color='var(--red)';
+  }
+  // enable next
+  if(n<4)document.getElementById(`sbtn${n+1}`).disabled=false;
+  document.getElementById(`sbtn${n}`).disabled=true;
+  simPhase=n;
+  addXP(5);
+}
+function simReset(){
+  simPhase=0;
+  document.getElementById('simLog').innerHTML='<span class="sim-info">// לחץ על השלבים בסדר לסימולציה</span>';
+  document.getElementById('sp-arrow1').style.color='var(--dim)';
+  document.getElementById('sp-arrow2').style.color='var(--dim)';
+  document.getElementById('sp-dll').querySelector('span').textContent='waiting...';
+  document.getElementById('sp-dll').style.borderColor='var(--dim)';
+  document.getElementById('sp-dll').style.color='var(--dim)';
+  for(let i=1;i<=4;i++){
+    const b=document.getElementById(`sbtn${i}`);
+    b.disabled=(i!==1);
+  }
+}
+
+// ── TIMER ──
+const timers={};
+function st(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  let s=min*60;const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60)el.classList.add('urg');else el.classList.remove('urg');
+  }
+  tick();timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+goTo(0);
+</script>
+</body>
+</html>

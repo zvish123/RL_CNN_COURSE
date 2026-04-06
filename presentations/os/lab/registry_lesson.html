@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows Registry | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030509;--s1:#070a12;--s2:#0b0f1a;--s3:#0f1422;
+  --border:#1c2c42;--border2:#263a55;
+  --orange:#ff8800;--blue:#22aaff;--green:#00ee88;
+  --red:#ff2244;--purple:#aa55ff;--teal:#00ccbb;
+  --gold:#ffcc00;--pink:#ff44cc;--lime:#aaff22;
+  --text:#bdd0e8;--dim:#3e5672;--dim2:#283848;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;
+  overflow:hidden;height:100vh;width:100vw;}
+
+/* SCANLINES */
+body::before{content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+    rgba(255,136,0,.008) 2px,rgba(255,136,0,.008) 3px);
+  pointer-events:none;z-index:0;}
+
+/* ── ENGINE ── */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden;z-index:1;}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:40px 62px 86px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;
+  transform:translateX(-16px);}
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.out{opacity:0;transform:translateX(16px);}
+
+/* ── PROGRESS ── */
+.pbar{position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(to left,var(--orange),var(--gold),var(--red));
+  transition:width .35s ease;z-index:100;}
+
+/* ── NAV ── */
+nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;
+  background:rgba(7,10,18,.97);border:1px solid var(--border);
+  padding:7px 15px;z-index:50;backdrop-filter:blur(20px);}
+.nb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:5px 14px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;transition:all .17s;letter-spacing:1px;}
+.nb:hover:not(:disabled){border-color:var(--orange);color:var(--orange);}
+.nb:disabled{opacity:.2;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:50px;text-align:center;}
+
+/* ── XP ── */
+.xp{position:fixed;top:13px;left:15px;z-index:50;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.xv{color:var(--orange);font-size:1.2rem;font-weight:700;}
+@keyframes xpop{0%{transform:scale(1)}45%{transform:scale(1.25)}100%{transform:scale(1)}}
+.xpop{animation:xpop .22s ease;}
+
+/* ── BADGE ── */
+.badge{font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 10px;display:inline-block;
+  margin-bottom:13px;border:1px solid;width:fit-content;}
+.b-i{color:var(--blue);border-color:rgba(34,170,255,.3);background:rgba(34,170,255,.06);}
+.b-c{color:var(--orange);border-color:rgba(255,136,0,.3);background:rgba(255,136,0,.06);}
+.b-q{color:var(--gold);border-color:rgba(255,204,0,.3);background:rgba(255,204,0,.06);}
+.b-m{color:var(--red);border-color:rgba(255,34,68,.3);background:rgba(255,34,68,.06);}
+.b-g{color:var(--green);border-color:rgba(0,238,136,.3);background:rgba(0,238,136,.06);}
+.b-t{color:var(--teal);border-color:rgba(0,204,187,.3);background:rgba(0,204,187,.06);}
+
+/* ── TYPE ── */
+h1{font-size:clamp(1.9rem,4vw,3rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.2rem,2.4vw,1.85rem);font-weight:700;line-height:1.2;margin-bottom:6px;}
+h3{font-size:1.2rem;font-weight:600;color:#fff;margin-bottom:5px;}
+p{color:var(--dim);line-height:1.7;font-size:1.2rem;}
+.go{color:var(--orange);text-shadow:0 0 16px rgba(255,136,0,.4);}
+.gb{color:var(--blue);}
+.gg{color:var(--green);}
+.gr{color:var(--red);}
+.gp{color:var(--purple);}
+.gt{color:var(--teal);}
+.ggo{color:var(--gold);}
+code{font-family:'Fira Code',monospace;color:var(--orange);font-size:1.2rem;
+  background:rgba(255,136,0,.07);padding:1px 5px;}
+
+/* ── CODE BLOCKS ── */
+pre.cb{
+  background:#020407;border:1px solid var(--border);
+  border-right:3px solid var(--orange);
+  padding:12px 16px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:#88aacc;line-height:1.85;
+  margin:8px 0;overflow:auto;max-height:230px;
+  direction:ltr;text-align:left;}
+pre.cb::-webkit-scrollbar{width:3px;height:3px;}
+pre.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+pre.cb::-webkit-scrollbar-thumb:hover{background:var(--orange);}
+pre.cb.blue{border-right-color:var(--blue);}
+pre.cb.green{border-right-color:var(--green);}
+pre.cb.red{border-right-color:var(--red);}
+pre.cb.purple{border-right-color:var(--purple);}
+pre.cb.teal{border-right-color:var(--teal);}
+pre.cb.gold{border-right-color:var(--gold);}
+.kw{color:var(--red);}
+.fn{color:var(--blue);}
+.cm{color:#1e3050;font-style:italic;}
+.st{color:var(--green);}
+.nm{color:var(--gold);}
+.ty{color:var(--purple);}
+.rk{color:var(--orange);font-weight:600;}
+.rv{color:var(--teal);}
+.pp{color:var(--pink);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:10px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{background:var(--s1);border:1px solid var(--border);padding:13px 15px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.co::before{background:var(--orange);}
+.cb2::before{background:var(--blue);}
+.cg2c::before{background:var(--green);}
+.cy::before{background:var(--gold);}
+.ct::before{background:var(--teal);}
+.cr::before{background:var(--red);}
+.cp::before{background:var(--purple);}
+.cl::before{background:var(--lime);}
+.card p{font-size:1.2rem;margin-top:4px;}
+.ci{font-size:1.4rem;margin-bottom:6px;display:block;}
+
+/* ── LAYOUTS ── */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.c6040{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;}
+.c4060{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;}
+.sc2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scr{flex:1;overflow-y:auto;padding-bottom:8px;}
+.scr::-webkit-scrollbar{width:3px;}
+.scr::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{font-family:'Fira Code',monospace;font-size:4.5rem;font-weight:900;line-height:1;margin-bottom:-14px;}
+.stit{font-size:clamp(1.7rem,3vw,2.7rem);font-weight:900;}
+
+/* ── TITLE HERO ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);letter-spacing:4px;margin-bottom:10px;}
+.ttags{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid var(--border);color:var(--dim2);}
+.bigbg{font-family:'Fira Code',monospace;font-size:8rem;font-weight:900;
+  color:rgba(255,136,0,.022);position:absolute;left:16px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.qo{background:var(--s1);border:1px solid var(--border);
+  padding:10px 14px;cursor:pointer;font-size:1.2rem;color:var(--text);
+  transition:all .16s;display:flex;align-items:center;gap:9px;}
+.qo:hover{border-color:rgba(255,136,0,.35);background:rgba(255,136,0,.03);}
+.qo.correct{border-color:var(--green);background:rgba(0,238,136,.07);color:#fff;}
+.qo.wrong{border-color:var(--red);background:rgba(255,34,68,.07);color:var(--red);}
+.qo.disabled{pointer-events:none;}
+.ql{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--orange);
+  background:rgba(255,136,0,.1);width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qfb{margin-top:9px;padding:9px 13px;font-size:1.2rem;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.ok{border-color:var(--green);background:rgba(0,238,136,.05);color:var(--green);}
+.qfb.no{border-color:var(--red);background:rgba(255,34,68,.05);color:var(--red);}
+
+/* ── FILL ── */
+.fi{background:rgba(255,204,0,.06);border:none;border-bottom:2px solid var(--gold);
+  color:var(--gold);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:1px 5px;outline:none;transition:border-color .17s;min-width:80px;}
+.fi:focus{border-color:var(--blue);color:var(--blue);}
+.fi.ok{border-color:var(--green);color:var(--green);background:rgba(0,238,136,.06);}
+.fi.no{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.05);}
+.ck{margin-top:9px;background:none;border:1px solid var(--orange);
+  color:var(--orange);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:5px 14px;cursor:pointer;transition:all .16s;}
+.ck:hover{background:rgba(255,136,0,.08);}
+.ffb{margin-top:7px;font-size:1.2rem;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{background:rgba(255,34,68,.035);border:1px solid rgba(255,34,68,.2);
+  padding:15px 20px;margin-top:9px;position:relative;}
+.mbox::before{content:'▶ MISSION';position:absolute;top:-9px;right:13px;
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:var(--bg);color:var(--red);padding:0 6px;letter-spacing:2px;}
+.msteps{list-style:none;margin-top:10px;}
+.msteps li{display:flex;gap:9px;align-items:flex-start;
+  font-size:1.2rem;color:var(--text);margin-bottom:7px;}
+.msteps li::before{content:attr(data-n);font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--red);background:rgba(255,34,68,.1);
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;}
+
+/* ── TIMER ── */
+.tw{display:flex;align-items:center;gap:10px;
+  background:var(--s1);border:1px solid var(--border);
+  padding:7px 14px;margin-top:10px;width:fit-content;}
+.td{font-family:'Fira Code',monospace;font-size:1.45rem;color:var(--orange);
+  font-weight:600;min-width:64px;}
+.td.urg{color:var(--red);animation:urgt .48s ease infinite alternate;}
+@keyframes urgt{from{opacity:1}to{opacity:.25}}
+.tb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size:1.2rem;transition:all .16s;}
+.tb:hover{border-color:var(--orange);color:var(--orange);}
+
+/* ── REGISTRY TREE ── */
+.rtree{
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:#020407;border:1px solid var(--border);
+  padding:12px 16px;direction:ltr;text-align:left;
+  line-height:1.95;color:#88aacc;max-height:220px;overflow-y:auto;}
+.rtree::-webkit-scrollbar{width:3px;}
+.rtree::-webkit-scrollbar-thumb{background:var(--border2);}
+.rk-hive{color:var(--orange);font-weight:700;}
+.rk-key{color:var(--blue);}
+.rk-val{color:var(--teal);}
+.rk-data{color:var(--green);}
+.rk-type{color:var(--gold);font-size:1.2rem;}
+.rk-warn{color:var(--red);}
+.rk-dim{color:var(--dim);}
+.rk-click{cursor:pointer;transition:background .1s;}
+.rk-click:hover{background:rgba(255,136,0,.06);}
+
+/* ── TYPE TABLE ── */
+.tt{width:100%;border-collapse:collapse;font-size:1.2rem;}
+.tt th{text-align:right;padding:7px 11px;background:var(--s2);
+  border-bottom:2px solid var(--orange);color:var(--orange);
+  font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:1px;}
+.tt td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:middle;}
+.tt tr:hover td{background:rgba(255,136,0,.02);}
+.tt .mo{font-family:'Fira Code',monospace;color:var(--orange);font-size:1.2rem;}
+.tt .mb{font-family:'Fira Code',monospace;color:var(--blue);font-size:1.2rem;}
+.tt .mg{color:var(--green);}
+.tt .mr{color:var(--red);}
+
+/* ── RLIST ── */
+.rlist{list-style:none;}
+.rlist li{padding:8px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:9px;align-items:flex-start;
+  cursor:pointer;transition:all .16s;font-size:1.2rem;}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size:1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--orange);}
+
+/* ── DRAG & DROP ── */
+.dnd-wrap{display:flex;gap:13px;margin-top:10px;}
+.dnd-pool{flex:1;padding:9px;min-height:80px;border:1px dashed var(--border);background:var(--s1);}
+.dnd-zone{flex:2;display:flex;flex-direction:column;gap:7px;}
+.dnd-target{border:1px dashed rgba(255,136,0,.25);background:rgba(255,136,0,.02);
+  padding:7px 11px;min-height:42px;display:flex;align-items:center;gap:9px;}
+.dnd-target.over{border-color:var(--orange);background:rgba(255,136,0,.06);}
+.dnd-tlbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:90px;flex-shrink:0;}
+.dnd-chip{background:var(--s2);border:1px solid var(--border2);
+  padding:5px 10px;cursor:grab;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:var(--teal);user-select:none;transition:all .14s;
+  display:inline-block;width:100%;margin:3px 0;}
+.dnd-chip:hover{border-color:var(--teal);}
+.dnd-chip.dragging{opacity:.3;}
+.dnd-lbl{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);margin-bottom:5px;letter-spacing:2px;}
+.dnd-result{margin-top:7px;font-size:1.2rem;display:none;}
+.dnd-result.show{display:block;}
+
+/* ── FLIP CARDS ── */
+.flip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:10px;}
+.flip-card{height:88px;cursor:pointer;perspective:800px;}
+.flip-inner{position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;transition:transform .38s ease;}
+.flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+.flip-front,.flip-back{position:absolute;inset:0;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;text-align:center;padding:8px;border:1px solid var(--border);}
+.flip-front{background:var(--s1);color:var(--dim);font-family:'Fira Code',monospace;}
+.flip-back{background:var(--s2);border-color:var(--orange);
+  transform:rotateY(180deg);color:var(--text);line-height:1.4;font-size:1.2rem;}
+
+/* ── INTERACTIVE TREE ── */
+.itree{font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:#020407;border:1px solid var(--border);
+  padding:12px 16px;direction:ltr;text-align:left;
+  line-height:2;max-height:260px;overflow-y:auto;}
+.itree-node{cursor:pointer;transition:background .1s;display:block;}
+.itree-node:hover{background:rgba(255,136,0,.05);}
+.itree-node.selected{background:rgba(255,136,0,.1);}
+.itree-val-row{display:flex;gap:16px;padding:2px 0;font-size:1.2rem;}
+.itv-name{color:var(--teal);min-width:160px;}
+.itv-type{color:var(--gold);min-width:80px;}
+.itv-data{color:var(--green);}
+.itree-panel{background:var(--s2);border:1px solid var(--border);
+  padding:10px 14px;margin-top:8px;min-height:60px;font-size:1.2rem;}
+.itree-panel-title{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--orange);
+  margin-bottom:6px;}
+
+/* ── KB ── */
+.kbh{position:fixed;bottom:18px;right:16px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--border2);}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pb"></div>
+<div class="xp">XP: <span class="xv" id="xv">0</span></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════ S0: TITLE ══════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">REG</div>
+  <div class="thero">
+    <div class="lnum">// LESSON_09 · WINDOWS REGISTRY FUNDAMENTALS</div>
+    <h1>Windows<br><span class="go">Registry</span></h1>
+    <p style="margin-top:9px;font-size:1.2rem">מבנה · ניווט · הרשאות · ניטור · Python</p>
+    <div class="ttags">
+      <span class="ttag">Windows</span>
+      <span class="ttag">90 דקות</span>
+      <span class="ttag">מגמת סייבר</span>
+      <span class="ttag">regedit / PowerShell / Python</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S1: AGENDA ══════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-i">// סדר היום</span>
+  <h2>מה נלמד היום?</h2>
+  <div class="sc2" style="margin-top:12px">
+    <ul class="rlist">
+      <li onclick="rv(this)">
+        <span style="color:var(--orange);flex-shrink:0">🗄️</span>
+        <div><div><strong>מה זה Registry?</strong> — "מחסן" הגדרות Windows</div>
+        <div class="ri-d">מסד נתונים היררכי שמחליף קבצי .ini. Hives, Keys, Values, Data. כל הגדרה שתחשבו עליה — שם.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--orange);flex-shrink:0">🏗️</span>
+        <div><div><strong>מבנה ה-Registry</strong> — 5 Hives ומשמעותן</div>
+        <div class="ri-d">HKLM, HKCU, HKCR, HKU, HKCC. הבדל בין current user ל-all users. SAM ו-SECURITY — הכי רגיש.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--orange);flex-shrink:0">📝</span>
+        <div><div><strong>סוגי ערכים</strong> — REG_SZ, REG_DWORD, REG_BINARY...</div>
+        <div class="ri-d">REG_SZ = מחרוזת. REG_DWORD = מספר 32bit. REG_BINARY = bytes גולמיים. REG_MULTI_SZ = מחרוזות מרובות.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--orange);flex-shrink:0">🔐</span>
+        <div><div><strong>Registry ב-Cybersecurity</strong> — persistence, malware, forensics</div>
+        <div class="ri-d">Run keys = autorun. SAM = password hashes. Services. AV bypass. פורנזיקה מ-NTUSER.DAT.</div></div>
+      </li>
+      <li onclick="rv(this)">
+        <span style="color:var(--orange);flex-shrink:0">🐍</span>
+        <div><div><strong>winreg — Python לRegistry</strong></div>
+        <div class="ri-d">OpenKey, QueryValueEx, SetValueEx, EnumKey. קריאה, כתיבה וניטור ישירות מPython.</div></div>
+      </li>
+    </ul>
+    <p style="margin-top:8px;font-size:1.2rem;color:var(--dim2)">👆 לחץ לפרטים</p>
+  </div>
+</div>
+
+<!-- ══════════════ S2: WHAT IS REGISTRY ══════════════ -->
+<div class="slide" id="s2">
+  <span class="badge b-c">// מושג</span>
+  <h2>Registry — <span class="go">"מוח" Windows</span></h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">ה-Registry הוא <strong style="color:#fff">מסד נתונים היררכי</strong> שמאחסן <em>כל</em> הגדרה ב-Windows — עמוק בדיסק ובזיכרון. כל תוכנה, כל משתמש, כל התקן.</p>
+      <div class="card co" style="margin-bottom:10px">
+        <h3>🕰️ מה לפני Registry?</h3>
+        <p>Windows 3.1 השתמש בקבצי <code>.ini</code> (טקסט פשוט). Registry החליף אותם — <strong style="color:#fff">מהיר יותר, מאובטח יותר, היררכי יותר</strong>. עדיין יש קבצי .ini ישנים (win.ini, system.ini).</p>
+      </div>
+      <div class="card cr" style="margin-bottom:10px">
+        <h3>🔐 למה חשוב לסייבר?</h3>
+        <p>Registry = מפה של כל מה שקורה במחשב. Malware <strong style="color:#fff">חייב</strong> לגעת ב-Registry לpersistence. Forensics מוצא ראיות שם שנים אחרי. EDR מנטרת Registry changes.</p>
+      </div>
+      <div class="card ct">
+        <h3>📁 קבצי Registry בדיסק</h3>
+        <p><code>C:\Windows\System32\config\</code> — SYSTEM, SAM, SECURITY, SOFTWARE<br>
+        <code>C:\Users\&lt;user&gt;\NTUSER.DAT</code> — הגדרות משתמש<br>
+        <code>C:\Users\&lt;user&gt;\AppData\Local\Microsoft\Windows\UsrClass.dat</code></p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card co">
+        <h3>🏗️ מושגים בסיסיים</h3>
+        <p>
+          <strong style="color:var(--orange)">Hive</strong> = עץ ראשי (HKLM...)<br>
+          <strong style="color:var(--blue)">Key</strong> = "תיקייה" ב-Registry<br>
+          <strong style="color:var(--teal)">Value</strong> = שם הערך (כמו שם קובץ)<br>
+          <strong style="color:var(--green)">Data</strong> = הנתון עצמו<br>
+          <strong style="color:var(--gold)">Type</strong> = סוג הנתון
+        </p>
+      </div>
+      <div class="card cb2">
+        <h3>📂 בדיאגרמה</h3>
+        <pre class="cb blue" style="max-height:100px;font-size:1.2rem">
+HKLM\Software\MyApp
+  └── Version  REG_SZ  "1.0"
+  └── Debug    REG_DWORD  0
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S3: SECTION HIVES ══════════════ -->
+<div class="slide" id="s3">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,136,0,.06)">01</div>
+    <div class="stit"><span class="go">5 Hives</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">עצי ה-Registry הראשיים</p>
+  </div>
+</div>
+
+<!-- ══════════════ S4: HIVES ══════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-c">// מושג</span>
+  <h2>5 ה-<span class="go">Hives</span> — שנה מה הן עושות</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="rtree" style="margin-bottom:10px">
+<span class="rk-hive">HKEY_LOCAL_MACHINE (HKLM)</span>
+├── <span class="rk-key">HARDWARE\</span>         <span class="rk-dim">← donat עצ — נוצר בכל boot</span>
+├── <span class="rk-key">SAM\</span>               <span class="rk-warn">← password hashes — נעול!</span>
+├── <span class="rk-key">SECURITY\</span>          <span class="rk-warn">← policies — נעול!</span>
+├── <span class="rk-key">SOFTWARE\</span>          <span class="rk-val">← כל התוכנות המותקנות</span>
+│   └── <span class="rk-key">Microsoft\Windows\CurrentVersion\</span>
+│       └── <span class="rk-key">Run\</span>       <span class="rk-warn">← AUTORUN — Persistence!</span>
+└── <span class="rk-key">SYSTEM\</span>            <span class="rk-val">← services, drivers</span>
+
+<span class="rk-hive">HKEY_CURRENT_USER (HKCU)</span>
+└── <span class="rk-key">SOFTWARE\Microsoft\Windows\CurrentVersion\</span>
+    └── <span class="rk-key">Run\</span>           <span class="rk-warn">← AUTORUN per-user</span>
+
+<span class="rk-hive">HKEY_CLASSES_ROOT (HKCR)</span>   <span class="rk-dim">← file associations</span>
+<span class="rk-hive">HKEY_USERS (HKU)</span>            <span class="rk-dim">← כל המשתמשים</span>
+<span class="rk-hive">HKEY_CURRENT_CONFIG (HKCC)</span>  <span class="rk-dim">← hardware config נוכחי</span>
+      </div>
+      <div class="card cr">
+        <h3>🔴 SAM — Security Account Manager</h3>
+        <p>HKLM\SAM מכיל password hashes של כל המשתמשים המקומיים. נעול ב-runtime. Attackers משתמשים ב-<strong style="color:#fff">Volume Shadow Copy</strong> לגניבה. פקודה: <code>reg save HKLM\SAM</code> דורש SYSTEM.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card co">
+        <h3>🔑 HKLM vs HKCU</h3>
+        <p><strong style="color:#fff">HKLM</strong> = כל המשתמשים. דורש Admin.<br>
+        <strong style="color:#fff">HKCU</strong> = משתמש נוכחי בלבד. ללא Admin.<br>
+        malware מעדיף HKCU — לא צריך הרשאות!</p>
+      </div>
+      <div class="card ct">
+        <h3>📝 Persistence Locations</h3>
+        <p>
+          <code style="font-size:1.2rem">HKLM\...\Run</code><br>
+          <code style="font-size:1.2rem">HKCU\...\Run</code><br>
+          <code style="font-size:1.2rem">HKLM\...\RunOnce</code><br>
+          <code style="font-size:1.2rem">HKLM\System\CurrentControlSet\Services</code>
+        </p>
+      </div>
+      <div class="card cy">
+        <h3>💡 קיצורים</h3>
+        <p>HKCU = HKEY_CURRENT_USER<br>HKLM = HKEY_LOCAL_MACHINE<br>HKCR = HKEY_CLASSES_ROOT<br>
+        regedit מציג את כולם.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S5: QUIZ HIVES ══════════════ -->
+<div class="slide" id="s5">
+  <span class="badge b-q">// שאלת הבנה #1</span>
+  <h2>Malware ב-Registry — איפה?</h2>
+  <p style="margin-bottom:12px">תוקף רוצה persistence שתפעל <strong style="color:#fff">ללא הרשאות Admin</strong> ותרוץ בכל התחברות של המשתמש. איזה מפתח הוא ישתמש?</p>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> <code>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code> — HKLM כי הוא יציב יותר</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ב</span> <code>HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code> — לא דורש Admin, רץ עם logon</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ג</span> <code>HKLM\SAM</code> — SAM מכיל passwords</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> <code>HKCR\.exe</code> — שינוי file associations</div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+</div>
+
+<!-- ══════════════ S6: SECTION VALUE TYPES ══════════════ -->
+<div class="slide" id="s6">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,204,187,.05)">02</div>
+    <div class="stit"><span class="gt">סוגי</span></div>
+    <div class="stit"><span class="gt">ערכים</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">REG_SZ · REG_DWORD · REG_BINARY · ועוד</p>
+  </div>
+</div>
+
+<!-- ══════════════ S7: VALUE TYPES ══════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-c">// מושג</span>
+  <h2>סוגי <span class="gt">Value Types</span></h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <table class="tt" style="margin-bottom:10px">
+        <thead><tr><th>סוג</th><th>תיאור</th><th>דוגמה</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mo">REG_SZ</td>
+            <td>מחרוזת טקסט Unicode</td>
+            <td class="mb">"C:\program.exe"</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_EXPAND_SZ</td>
+            <td>מחרוזת עם משתני סביבה</td>
+            <td class="mb">"%SystemRoot%\calc.exe"</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_DWORD</td>
+            <td>מספר שלם 32-bit</td>
+            <td class="mb">0x00000001</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_QWORD</td>
+            <td>מספר שלם 64-bit</td>
+            <td class="mb">0x000000000000001</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_BINARY</td>
+            <td>נתונים בינאריים גולמיים</td>
+            <td class="mb">01 00 00 00 ...</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_MULTI_SZ</td>
+            <td>מחרוזות מרובות (null separated)</td>
+            <td class="mb">"val1\0val2\0\0"</td>
+          </tr>
+          <tr>
+            <td class="mo">REG_NONE</td>
+            <td>ללא סוג מוגדר</td>
+            <td class="mb">—</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="card cr">
+        <h3>🔴 REG_BINARY ב-Malware</h3>
+        <p>Malware מאחסן shellcode מוצפן ב-REG_BINARY. נראה כנתון לגיטימי, קשה לזיהוי. Base64 ב-REG_SZ — תמרור נוסף.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card co" style="margin-bottom:0">
+        <h3>🐍 Python — קריאת ערך</h3>
+        <pre class="cb" style="max-height:120px">
+<span class="kw">import</span> winreg
+
+key = winreg.<span class="fn">OpenKey</span>(
+    winreg.HKEY_LOCAL_MACHINE,
+    <span class="st">r"SOFTWARE\Microsoft"</span>
+)
+val, typ = winreg.<span class="fn">QueryValueEx</span>(
+    key, <span class="st">"SomeValue"</span>)
+<span class="fn">print</span>(<span class="st">f"Value: {val}"</span>)
+<span class="fn">print</span>(<span class="st">f"Type:  {typ}"</span>)
+winreg.<span class="fn">CloseKey</span>(key)
+        </pre>
+      </div>
+      <div class="card cy">
+        <h3>💡 (Default) Value</h3>
+        <p>כל key יכול לאחסן ערך ברירת מחדל ריק בשם <code>(Default)</code>. HKCR משתמש בו הרבה לfile associations.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S8: INTERACTIVE REGISTRY EXPLORER ══════════════ -->
+<div class="slide" id="s8">
+  <span class="badge b-g">// Registry Explorer — אינטראקטיבי</span>
+  <h2>🗄️ גלה את ה-Registry — לחץ לניווט</h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px;font-size:1.2rem">בחר מפתח לצפייה בערכיו:</p>
+      <div class="itree" id="regTree">
+        <div class="itree-node" onclick="selectKey(this,'run_hklm')" style="color:var(--red)">▶ HKLM\...\CurrentVersion\Run</div>
+        <div class="itree-node" onclick="selectKey(this,'run_hkcu')" style="color:var(--red)">▶ HKCU\...\CurrentVersion\Run</div>
+        <div class="itree-node" onclick="selectKey(this,'os_ver')" style="color:var(--blue)">▶ HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion</div>
+        <div class="itree-node" onclick="selectKey(this,'services')" style="color:var(--purple)">▶ HKLM\SYSTEM\CurrentControlSet\Services</div>
+        <div class="itree-node" onclick="selectKey(this,'uninstall')" style="color:var(--teal)">▶ HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall</div>
+        <div class="itree-node" onclick="selectKey(this,'env')" style="color:var(--gold)">▶ HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment</div>
+        <div class="itree-node" onclick="selectKey(this,'sam')" style="color:var(--red)">▶ HKLM\SAM\SAM</div>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="itree-panel" id="regPanel">
+        <div class="itree-panel-title">// בחר מפתח משמאל</div>
+        <p style="font-size:1.2rem">לחץ על מפתח לצפייה בתוכנו ובמשמעות הסייברית שלו.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S9: REGEDIT + POWERSHELL ══════════════ -->
+<div class="slide" id="s9">
+  <span class="badge b-c">// כלים</span>
+  <h2>ניווט ב-Registry — <span class="go">regedit · reg · PowerShell</span></h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="card co" style="margin-bottom:9px">
+        <h3>🖱️ regedit.exe — ממשק גרפי</h3>
+        <p>Win+R → regedit. ניווט כמו Explorer. Ctrl+F לחיפוש. <strong style="color:var(--red)">זהירות</strong> — שינוי שגוי = מחשב לא עולה!</p>
+      </div>
+      <div class="card cb2" style="margin-bottom:9px">
+        <h3>💻 reg.exe — שורת פקודה</h3>
+        <pre class="cb blue" style="max-height:130px">
+<span class="cm"># קריאה</span>
+reg query HKCU\...\Run
+
+<span class="cm"># כתיבה</span>
+reg add HKCU\...\Run /v MyApp \
+    /t REG_SZ /d "C:\app.exe"
+
+<span class="cm"># מחיקה</span>
+reg delete HKCU\...\Run /v MyApp
+
+<span class="cm"># ייצוא</span>
+reg export HKLM\SOFTWARE backup.reg
+        </pre>
+      </div>
+      <div class="card ct">
+        <h3>⚡ PowerShell</h3>
+        <pre class="cb teal" style="max-height:110px">
+<span class="cm"># Get</span>
+Get-ItemProperty -Path \
+  "HKCU:\Software\...\Run"
+
+<span class="cm"># Set</span>
+Set-ItemProperty -Path \
+  "HKCU:\Software\...\Run" \
+  -Name "MyTool" \
+  -Value "C:\tool.exe"
+
+<span class="cm"># New Key</span>
+New-Item "HKCU:\MyKey"
+        </pre>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card co" style="margin-bottom:9px">
+        <h3>🐍 Python winreg</h3>
+        <pre class="cb" style="max-height:140px">
+<span class="kw">import</span> winreg <span class="kw">as</span> reg
+
+<span class="cm"># פתח key</span>
+k = reg.<span class="fn">OpenKey</span>(
+    reg.HKEY_CURRENT_USER,
+    <span class="st">r"Software\Microsoft"</span>
+                <span class="cm"># ,0, reg.KEY_READ</span>
+)
+
+<span class="cm"># enumerate values</span>
+i = <span class="nm">0</span>
+<span class="kw">while True</span>:
+    <span class="kw">try</span>:
+        name, data, typ = reg.<span class="fn">EnumValue</span>(k, i)
+        <span class="fn">print</span>(<span class="st">f"{name}: {data}"</span>)
+        i += <span class="nm">1</span>
+    <span class="kw">except</span> OSError:
+        <span class="kw">break</span>
+reg.<span class="fn">CloseKey</span>(k)
+        </pre>
+      </div>
+      <div class="card cr">
+        <h3>⚠️ Registry Backup</h3>
+        <p>לפני כל שינוי — <code>reg export</code> לגיבוי. שגיאה ב-HKLM\SYSTEM = BSOD. תמיד בדוק בVM קודם.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S10: FLIP CARDS — KEY LOCATIONS ══════════════ -->
+<div class="slide" id="s10">
+  <span class="badge b-c">// מיקומי מפתח — לחץ לפרטים</span>
+  <h2>🗂️ מיקומים חשובים ב-Registry</h2>
+  <div class="flip-grid">
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>Run / RunOnce</code></div>
+        <div class="flip-back">HKLM\...\CurrentVersion\Run<br>תוכניות שמופעלות עם Windows. #1 persistence location.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>Services</code></div>
+        <div class="flip-back">HKLM\SYSTEM\CurrentControlSet\Services<br>כל ה-services. malware מוסיף service כאן. ImagePath = executable.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>Winlogon</code></div>
+        <div class="flip-back">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon<br>Userinit, Shell — malware מחליף explorer.exe!</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>AppInit_DLLs</code></div>
+        <div class="flip-back">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows<br>DLL injection לכל תהליך. persistence נסתרת. מנוטרת ע"י AV.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>CurrentVersion</code></div>
+        <div class="flip-back">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion<br>גרסת OS, ProductName, InstallDate, RegisteredOwner.</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>MRU Lists</code></div>
+        <div class="flip-back">Most Recently Used — HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs<br>Forensics: מה פתח המשתמש?</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front"><code>UserAssist</code></div>
+        <div class="flip-back">HKCU\...\UserAssist — כל תוכנה שהמשתמש הריץ, מתי, כמה פעמים. מוצפן ROT13!</div>
+      </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-front">🔐 Cyber</div>
+        <div class="flip-back">כל forensics כלי (Autoruns, RegRipper) מחפש קודם ב-Run, Services, Winlogon, AppInit!</div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:9px;font-size:1.2rem;color:var(--dim2)">💡 לחץ לפרטים · ... = SOFTWARE\Microsoft\Windows\CurrentVersion</p>
+</div>
+
+<!-- ══════════════ S11: CODE FILL ══════════════ -->
+<div class="slide" id="s11">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>🐍 Python — קרא ערכי Run key</h2>
+  <p style="margin-bottom:10px">כתוב פונקציה שמחזירה את כל תוכניות ה-autorun של המשתמש הנוכחי:</p>
+  <pre class="cb">
+<span class="kw">import</span> winreg
+
+<span class="kw">def</span> <span class="fn">get_autorun</span>():
+    RUN_KEY = <span class="st">r"Software\Microsoft\Windows\CurrentVersion\Run"</span>
+    results = []
+    <span class="kw">try</span>:
+        key = winreg.<span class="fn">OpenKey</span>(
+            winreg.<input class="fi" id="f1" placeholder="איזה Hive?" style="width:160px">,
+            RUN_KEY
+        )
+        i = <span class="nm">0</span>
+        <span class="kw">while True</span>:
+            <span class="kw">try</span>:
+                name, data, _ = winreg.<span class="fn"><input class="fi" id="f2" placeholder="איזה פונקציה?" style="width:130px"></span>(key, i)
+                results.<span class="fn">append</span>((name, data))
+                i += <span class="nm">1</span>
+            <span class="kw">except</span> OSError:
+                <span class="kw">break</span>
+        winreg.<span class="fn">CloseKey</span>(key)
+    <span class="kw">except</span> FileNotFoundError:
+        <span class="fn">print</span>(<span class="st">"Key לא קיים"</span>)
+    <span class="kw">return</span> results
+
+<span class="kw">for</span> name, path <span class="kw">in</span> <span class="fn">get_autorun</span>():
+    <span class="fn">print</span>(<span class="st">f"{name}: {path}"</span>)
+  </pre>
+  <button class="ck" onclick="checkFill1()">בדוק ✓</button>
+  <div class="ffb" id="fb1"></div>
+</div>
+
+<!-- ══════════════ S12: SECTION SECURITY ══════════════ -->
+<div class="slide" id="s12">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,34,68,.05)">03</div>
+    <div class="stit"><span class="gr">הרשאות</span></div>
+    <div class="stit"><span class="gr">&amp; אבטחה</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">ACL, SACL, Registry Auditing</p>
+  </div>
+</div>
+
+<!-- ══════════════ S13: PERMISSIONS ══════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gr">הרשאות Registry</span> — ACL ו-SACL</h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:9px">כמו קבצים — כל Registry key יש לו <strong style="color:#fff">ACL (Access Control List)</strong> שקובע מי יכול לקרוא, לכתוב ולמחוק.</p>
+      <div class="card co" style="margin-bottom:9px">
+        <h3>🔑 הרשאות Registry עיקריות</h3>
+        <pre class="cb" style="max-height:110px">
+KEY_READ           = 0x20019  <span class="cm"># קריאה בלבד</span>
+KEY_WRITE          = 0x20006  <span class="cm"># כתיבה</span>
+KEY_ALL_ACCESS     = 0xF003F  <span class="cm"># הכל</span>
+KEY_QUERY_VALUE    = 0x0001   <span class="cm"># קריאת ערכים</span>
+KEY_SET_VALUE      = 0x0002   <span class="cm"># כתיבת ערכים</span>
+KEY_CREATE_SUB_KEY = 0x0004   <span class="cm"># יצירת subkeys</span>
+KEY_ENUMERATE_SUB_KEYS = 0x0008
+        </pre>
+      </div>
+      <div class="card ct" style="margin-bottom:9px">
+        <h3>🐍 Python — פתיחה עם הרשאות</h3>
+        <pre class="cb teal" style="max-height:110px">
+<span class="kw">import</span> winreg
+
+<span class="cm"># רק קריאה (ברירת מחדל)</span>
+k = winreg.<span class="fn">OpenKey</span>(
+    winreg.HKEY_LOCAL_MACHINE,
+    <span class="st">r"SOFTWARE\Microsoft"</span>,
+    <span class="nm">0</span>, winreg.KEY_READ
+)
+
+<span class="cm"># כתיבה — דורש Admin עבור HKLM</span>
+k = winreg.<span class="fn">OpenKey</span>(
+    winreg.HKEY_CURRENT_USER,
+    <span class="st">r"Software\MyApp"</span>,
+    <span class="nm">0</span>, winreg.KEY_WRITE
+)
+        </pre>
+      </div>
+      <div class="card cr">
+        <h3>⚠️ SACL — System Audit</h3>
+        <p>SACL מגדיר <em>מה לרשום בלוג</em>. ניתן לבקש שכל גישה ל-HKLM\SAM תירשם ב-Security Event Log. SIEM מנטר!</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card cb2">
+        <h3>📋 PowerShell — הרשאות</h3>
+        <pre class="cb blue" style="max-height:120px">
+<span class="cm"># ראה ACL של key</span>
+Get-Acl "HKLM:\SOFTWARE\MyApp" |
+  Format-List
+
+<span class="cm"># תן הרשאה</span>
+$acl = Get-Acl "HKCU:\MyKey"
+$rule = New-Object \
+  System.Security.AccessControl\
+  .RegistryAccessRule(
+    "Users","FullControl","Allow")
+$acl.AddAccessRule($rule)
+Set-Acl "HKCU:\MyKey" $acl
+        </pre>
+      </div>
+      <div class="card cp">
+        <h3>🔐 Registry Auditing</h3>
+        <p>Event ID <strong style="color:#fff">4657</strong> = Registry value modified. הגדר auditing ב-Group Policy → Advanced Audit → Object Access.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S14: QUIZ PERMISSIONS ══════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-q">// שאלת הבנה #2</span>
+  <h2>הרשאות Registry — מה יקרה?</h2>
+  <pre class="cb" style="margin:12px 0">
+<span class="kw">import</span> winreg
+
+<span class="cm"># תוכנית רצה ללא Admin</span>
+<span class="kw">try</span>:
+    k = winreg.<span class="fn">OpenKey</span>(
+        winreg.HKEY_LOCAL_MACHINE,
+        <span class="st">r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"</span>,
+        <span class="nm">0</span>, winreg.KEY_WRITE  <span class="cm">← כתיבה!</span>
+    )
+<span class="kw">except</span> PermissionError <span class="kw">as</span> e:
+    <span class="fn">print</span>(<span class="st">f"שגיאה: {e}"</span>)
+  </pre>
+  <div class="qc" id="q2">
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">א</span> הקוד יעבוד — CurrentVersion הוא public key</div>
+    <div class="qo" onclick="cq('q2',this,true)"><span class="ql">ב</span> PermissionError — HKLM דורש Admin לכתיבה, גם ב-CurrentVersion</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ג</span> הקוד ייכשל רק כי winreg.KEY_WRITE לא קיים</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> הקוד יעבוד אך הכתיבה לא תישמר</div>
+  </div>
+  <div class="qfb" id="q2-fb"></div>
+</div>
+
+<!-- ══════════════ S15: SECTION FORENSICS ══════════════ -->
+<div class="slide" id="s15">
+  <div class="shero">
+    <div class="snum" style="color:rgba(170,85,255,.05)">04</div>
+    <div class="stit"><span class="gp">Registry</span></div>
+    <div class="stit"><span class="gp">Forensics</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">חקירה וניטור</p>
+  </div>
+</div>
+
+<!-- ══════════════ S16: FORENSICS TOOLS ══════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-c">// מושג</span>
+  <h2><span class="gp">Forensics</span> — מה Registry מגלה?</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <div class="card cp" style="margin-bottom:9px">
+        <h3>🔍 Autoruns (Sysinternals)</h3>
+        <p>הכלי הטוב ביותר לראות <strong style="color:#fff">כל</strong> persistence mechanisms. מציג Run keys, Services, Drivers, Browser extensions, Scheduled Tasks — כולם יחד.</p>
+        <pre class="cb purple" style="max-height:80px;font-size:1.2rem">
+autorunsc.exe -a * > autorun.txt
+<span class="cm"># -a * = כל categories</span>
+<span class="cm"># VirusTotal integration!</span>
+        </pre>
+      </div>
+      <div class="card ct" style="margin-bottom:9px">
+        <h3>🕵️ Python — סריקת Run Keys</h3>
+        <pre class="cb teal" style="max-height:170px">
+<span class="kw">import</span> winreg, json
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">def</span> <span class="fn">scan_autoruns</span>():
+    HIVES = [
+        (winreg.HKEY_LOCAL_MACHINE, <span class="st">"HKLM"</span>),
+        (winreg.HKEY_CURRENT_USER,  <span class="st">"HKCU"</span>),
+    ]
+    RUN_PATHS = [
+        <span class="st">r"SOFTWARE\Microsoft\Windows"</span>
+        <span class="st">r"\CurrentVersion\Run"</span>,
+        <span class="st">r"SOFTWARE\Microsoft\Windows"</span>
+        <span class="st">r"\CurrentVersion\RunOnce"</span>,
+    ]
+    results = []
+    <span class="kw">for</span> hive, hive_name <span class="kw">in</span> HIVES:
+        <span class="kw">for</span> path <span class="kw">in</span> RUN_PATHS:
+            <span class="kw">try</span>:
+                k = winreg.<span class="fn">OpenKey</span>(hive, path)
+                i = <span class="nm">0</span>
+                <span class="kw">while True</span>:
+                    <span class="kw">try</span>:
+                        n, d, _ = winreg.<span class="fn">EnumValue</span>(k, i)
+                        results.<span class="fn">append</span>({
+                          <span class="st">"hive"</span>: hive_name,
+                          <span class="st">"name"</span>: n, <span class="st">"value"</span>: d,
+                          <span class="st">"scanned"</span>: datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>()
+                        })
+                        i += <span class="nm">1</span>
+                    <span class="kw">except</span> OSError: <span class="kw">break</span>
+                winreg.<span class="fn">CloseKey</span>(k)
+            <span class="kw">except</span>: <span class="kw">pass</span>
+    <span class="kw">return</span> results
+
+runs = <span class="fn">scan_autoruns</span>()
+<span class="fn">print</span>(<span class="st">f"נמצאו {len(runs)} autorun entries"</span>)
+<span class="kw">for</span> r <span class="kw">in</span> runs:
+    <span class="fn">print</span>(<span class="st">f"  [{r['hive']}] {r['name']}: {r['value']}"</span>)
+        </pre>
+      </div>
+    </div>
+    <div class="scr">
+      <div class="card co" style="margin-bottom:9px">
+        <h3>📋 MRU — Most Recently Used</h3>
+        <pre class="cb" style="max-height:100px">
+<span class="cm"># קבצים שנפתחו לאחרונה</span>
+HKCU\Software\Microsoft\Windows\
+  CurrentVersion\Explorer\RecentDocs
+
+<span class="cm"># חיפושים ב-Explorer</span>
+HKCU\Software\Microsoft\Windows\
+  CurrentVersion\Explorer\WordWheelQuery
+        </pre>
+      </div>
+      <div class="card cr" style="margin-bottom:9px">
+        <h3>🔴 ShimCache / AmCache</h3>
+        <p><strong style="color:#fff">ShimCache</strong>: HKLM\SYSTEM\...\AppCompatCache — כל קובץ EXE שרץ, גם אם נמחק! <strong style="color:#fff">AmCache.hve</strong>: hash של executables. Forensics gold.</p>
+      </div>
+      <div class="card cy">
+        <h3>🔑 RegRipper</h3>
+        <p>כלי forensics שמנתח NTUSER.DAT ו-SYSTEM hive offline. מוציא MRU, USB history, Network connections, typed URLs.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S17: DND MATCH ══════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-q">// פעילות — התאם מפתח למשמעות</span>
+  <h2>🎯 Registry Key Matching</h2>
+  <p style="margin-bottom:8px">גרור כל מפתח למשמעות המתאימה:</p>
+  <div class="dnd-wrap">
+    <div class="dnd-pool" id="dndPool">
+      <div class="dnd-lbl">// מפתחות</div>
+      <div class="dnd-chip" draggable="true" data-v="run" ondragstart="ds(event)">HKCU\...\Run</div>
+      <div class="dnd-chip" draggable="true" data-v="sam" ondragstart="ds(event)">HKLM\SAM\SAM</div>
+      <div class="dnd-chip" draggable="true" data-v="shimcache" ondragstart="ds(event)">AppCompatCache</div>
+      <div class="dnd-chip" draggable="true" data-v="mru" ondragstart="ds(event)">RecentDocs</div>
+    </div>
+    <div class="dnd-zone">
+      <div class="dnd-target" id="dz1" ondragover="dov(event)" ondrop="dp(event,'dz1','run')" data-correct="run">
+        <span class="dnd-tlbl">Persistence</span>
+        <span style="font-size:1.2rem;color:var(--dim)">תוכניות שמופעלות עם logon</span>
+      </div>
+      <div class="dnd-target" id="dz2" ondragover="dov(event)" ondrop="dp(event,'dz2','sam')" data-correct="sam">
+        <span class="dnd-tlbl">Credentials</span>
+        <span style="font-size:1.2rem;color:var(--dim)">Password hashes של משתמשים מקומיים</span>
+      </div>
+      <div class="dnd-target" id="dz3" ondragover="dov(event)" ondrop="dp(event,'dz3','shimcache')" data-correct="shimcache">
+        <span class="dnd-tlbl">Execution History</span>
+        <span style="font-size:1.2rem;color:var(--dim)">EXE files שרצו — גם אם נמחקו</span>
+      </div>
+      <div class="dnd-target" id="dz4" ondragover="dov(event)" ondrop="dp(event,'dz4','mru')" data-correct="mru">
+        <span class="dnd-tlbl">User Activity</span>
+        <span style="font-size:1.2rem;color:var(--dim)">קבצים שנפתחו לאחרונה</span>
+      </div>
+    </div>
+  </div>
+  <div class="dnd-result" id="dndRes"></div>
+</div>
+
+<!-- ══════════════ S18: QUIZ 3 ══════════════ -->
+<div class="slide" id="s18">
+  <span class="badge b-q">// שאלת הבנה #3 — Forensics</span>
+  <h2>ShimCache — מה ניתן ללמוד?</h2>
+  <p style="margin-bottom:12px">חוקר בודק ShimCache ומוצא:</p>
+  <pre class="cb" style="margin-bottom:14px">
+AppCompatCache entries:
+  C:\Users\alice\AppData\Local\Temp\update.exe  [2024-01-15 23:47]
+  C:\Windows\System32\cmd.exe                   [2024-01-15 23:47]
+  C:\Windows\System32\powershell.exe            [2024-01-15 23:48]
+  C:\Users\alice\Downloads\invoice.pdf.exe      [2024-01-15 23:49]
+  </pre>
+  <p style="margin-bottom:12px">מה מסקנת החוקר?</p>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> לא ניתן להסיק כלום — ShimCache הוא metadata שגרתי</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ב</span> אירוע חשוד ב-23:47 — update.exe ב-Temp, cmd, powershell, ו-EXE מוסווה כ-PDF. רצף classique של malware</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ג</span> הכל תקין — powershell ו-cmd הם כלים לגיטימיים</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> ShimCache לא אמין — מציג קבצים שלא בהכרח רצו</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ══════════════ S19: MISSION ══════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-m">// משימה קבוצתית</span>
+  <h2>🔍 Registry Audit Scanner</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3:</strong> כתבו Python script שסורק ה-Registry ומייצר דוח אבטחה.</p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">Autorun Scanner:</strong> סרוק HKLM\Run ו-HKCU\Run — הדפס כל entry עם VirusTotal link (לא API, רק URL עם hash)</li>
+      <li data-n="2"><strong style="color:#fff">Suspicious Detection:</strong> סמן בצבע כל autorun שמסלולו ב-<code>%Temp%</code>, <code>Downloads</code>, <code>AppData</code></li>
+      <li data-n="3"><strong style="color:#fff">OS Info:</strong> שלוף מ-HKLM\CurrentVersion — גרסת OS, שם מחשב, InstallDate, RegisteredOwner</li>
+      <li data-n="4"><strong style="color:#fff">MRU Reader:</strong> קרא מ-HKCU\RecentDocs — הצג 5 קבצים אחרונים שנפתחו</li>
+      <li data-n="5"><strong style="color:#fff">בונוס:</strong> שמור דוח כ-JSON עם timestamp + השלם לHTML report</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">15:00</div>
+    <button class="tb" onclick="st('t1',15)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',15)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ══════════════ S20: CODE FILL 2 ══════════════ -->
+<div class="slide" id="s20">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>🐍 כתוב ערך ל-Registry</h2>
+  <p style="margin-bottom:9px">פונקציה שיוצרת key ב-HKCU וכותבת ערך REG_SZ:</p>
+  <pre class="cb">
+<span class="kw">import</span> winreg
+
+<span class="kw">def</span> <span class="fn">write_reg_value</span>(key_path: str, name: str, data: str):
+    <span class="kw">try</span>:
+        <span class="cm"># פתח/צור key</span>
+        key = winreg.<span class="fn"><input class="fi" id="f3" placeholder="יצירת key?" style="width:135px"></span>(
+            winreg.HKEY_CURRENT_USER,
+            key_path,
+            <span class="nm">0</span>, winreg.KEY_WRITE
+        )
+        <span class="cm"># כתוב ערך REG_SZ</span>
+        winreg.<span class="fn"><input class="fi" id="f4" placeholder="כתיבת ערך?" style="width:130px"></span>(
+            key, name,
+            <span class="nm">0</span>,
+            winreg.<input class="fi" id="f5" placeholder="סוג?" style="width:100px">,
+            data
+        )
+        winreg.<span class="fn">CloseKey</span>(key)
+        <span class="fn">print</span>(<span class="st">f"✓ נכתב: {name} = {data}"</span>)
+    <span class="kw">except</span> PermissionError:
+        <span class="fn">print</span>(<span class="st">"✗ אין הרשאות כתיבה"</span>)
+
+<span class="fn">write_reg_value</span>(<span class="st">r"Software\MyTool"</span>,
+               <span class="st">"Version"</span>, <span class="st">"1.0"</span>)
+  </pre>
+  <button class="ck" onclick="checkFill2()">בדוק ✓</button>
+  <div class="ffb" id="fb2"></div>
+</div>
+
+<!-- ══════════════ S21: HOMEWORK ══════════════ -->
+<div class="slide" id="s21">
+  <span class="badge b-m">// שיעורי בית</span>
+  <h2>🏠 Registry Challenge</h2>
+  <div class="cg cg3" style="margin-top:13px">
+    <div class="card cg2c">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--green)">EASY</span>
+      <h3 style="margin-top:5px">OS Info Reader</h3>
+      <p style="font-size:1.2rem">שלוף מ-<code>HKLM\...NT\CurrentVersion</code>: גרסה, build, InstallDate, RegisteredOwner, ProductName. הדפס דוח מסודר.</p>
+    </div>
+    <div class="card cy">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold)">MEDIUM</span>
+      <h3 style="margin-top:5px">Persistence Monitor</h3>
+      <p style="font-size:1.2rem">כתוב script שסורק Run keys כל 30 שניות ומתריע אם נוסף entry חדש מאז ה-scan הקודם. שמור baseline ב-JSON.</p>
+    </div>
+    <div class="card cr">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--red)">HARD ★</span>
+      <h3 style="margin-top:5px">USB History Extractor</h3>
+      <p style="font-size:1.2rem">מצא ב-<code>HKLM\SYSTEM\...\Enum\USBSTOR</code> את כל התקני USB שחוברו. שלוף: שם, serial, תאריך ראשון. הסבר forensic value.</p>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding:9px 14px;background:var(--s1);border:1px solid var(--border);font-size:1.2rem">
+    📌 <strong style="color:#fff">הגשה:</strong> קוד + README + screenshots + הסבר forensic → GitHub Classroom
+  </div>
+</div>
+
+<!-- ══════════════ S22: SUMMARY ══════════════ -->
+<div class="slide" id="s22">
+  <span class="badge b-i">// סיכום</span>
+  <h2>מה למדנו?</h2>
+  <div class="cg cg3" style="gap:9px;margin-top:13px;flex:1">
+    <div class="card co">
+      <h3>🗄️ Registry מבנה</h3>
+      <p>Hive → Key → Value → Data. 5 Hives. HKLM=מערכת, HKCU=משתמש. קבצים: NTUSER.DAT, SAM.</p>
+    </div>
+    <div class="card ct">
+      <h3>📝 Value Types</h3>
+      <p>REG_SZ=מחרוזת. REG_DWORD=מספר. REG_BINARY=bytes. REG_MULTI_SZ=מרובות.</p>
+    </div>
+    <div class="card cr">
+      <h3>🔐 Persistence</h3>
+      <p>Run/RunOnce = #1 location. HKCU לא דורש Admin. Services, Winlogon, AppInit_DLLs.</p>
+    </div>
+    <div class="card cp">
+      <h3>🔒 הרשאות</h3>
+      <p>ACL לכל key. HKLM כתיבה = Admin. KEY_READ / KEY_WRITE / KEY_ALL_ACCESS. Event ID 4657.</p>
+    </div>
+    <div class="card cg2c">
+      <h3>🕵️ Forensics</h3>
+      <p>ShimCache=history. MRU=activity. SAM=hashes. Autoruns, RegRipper. SACL auditing.</p>
+    </div>
+    <div class="card cb2">
+      <h3>🐍 Python winreg</h3>
+      <p>OpenKey, QueryValueEx, SetValueEx, EnumValue, CreateKey, CloseKey.</p>
+    </div>
+  </div>
+  <div style="margin-top:9px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);text-align:center">
+    // next: Windows Internals — Processes, Memory, Kernel Objects — שיעור 10
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>הקודם ▶</button>
+  <span class="sc" id="sc">1 / 23</span>
+  <button class="nb" id="nb2" onclick="go(1)">◀ הבא</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──
+const TOTAL=23;let cur=0,xp=0;
+const slides=document.querySelectorAll('.slide');
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),300);
+  cur=n;slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')go(-1);
+});
+
+// ── XP ──
+function addXP(n){
+  xp+=n;const el=document.getElementById('xv');
+  el.textContent=xp;el.classList.add('xpop');
+  setTimeout(()=>el.classList.remove('xpop'),220);
+}
+
+// ── QUIZ ──
+const okM=['🔥 מצוין! +10 XP','⚡ בול! +10 XP','💎 נכון! +10 XP','🎯 מדויק! +10 XP'];
+const noM=['❌ לא בדיוק — שים לב להרשאות.','❌ נסה שוב.','❌ חשוב שוב.'];
+function cq(id,el,ok){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok)c.querySelectorAll('.qo').forEach(o=>{
+    if(o.getAttribute('onclick')?.includes(',true)'))o.classList.add('correct');
+  });
+  const fb=document.getElementById(`${id}-fb`);
+  const msgs=ok?okM:noM;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  if(ok)addXP(10);
+}
+
+// ── FILL 1 ──
+function checkFill1(){
+  const v1=document.getElementById('f1').value.trim();
+  const v2=document.getElementById('f2').value.trim();
+  const ok1=v1==='HKEY_CURRENT_USER'||v1==='winreg.HKEY_CURRENT_USER';
+  const ok2=v2==='EnumValue'||v2==='EnumValue()';
+  ['f1','f2'].forEach((id,i)=>{
+    document.getElementById(id).className='fi '+([ok1,ok2][i]?'ok':'no');
+  });
+  const fb=document.getElementById('fb1');
+  fb.className='ffb show';
+  if(ok1&&ok2){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! HKEY_CURRENT_USER + EnumValue לscan ערכים. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok1?'רמז 1: HKCU = HKEY_CURRENT_USER ':''}${!ok2?'רמז 2: לenderation של values = EnumValue ':''}`;
+  }
+}
+
+// ── FILL 2 ──
+function checkFill2(){
+  const v3=document.getElementById('f3').value.trim();
+  const v4=document.getElementById('f4').value.trim();
+  const v5=document.getElementById('f5').value.trim();
+  const ok3=v3==='CreateKey'||v3==='CreateKey()';
+  const ok4=v4==='SetValueEx'||v4==='SetValueEx()';
+  const ok5=v5==='REG_SZ'||v5==='winreg.REG_SZ';
+  ['f3','f4','f5'].forEach((id,i)=>{
+    document.getElementById(id).className='fi '+([ok3,ok4,ok5][i]?'ok':'no');
+  });
+  const fb=document.getElementById('fb2');
+  fb.className='ffb show';
+  if(ok3&&ok4&&ok5){
+    fb.style.color='var(--green)';
+    fb.textContent='✓ מושלם! CreateKey → SetValueEx → REG_SZ. +15 XP';
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok3?'רמז 1: יצירה/פתיחה של key = CreateKey ':''}${!ok4?'רמז 2: כתיבת ערך = SetValueEx ':''}${!ok5?'רמז 3: מחרוזת = REG_SZ ':''}`;
+  }
+}
+
+// ── REVEAL LIST ──
+function rv(li){li.classList.toggle('open');}
+
+// ── INTERACTIVE REGISTRY EXPLORER ──
+const regData={
+  run_hklm:{
+    title:'HKLM\\...\\CurrentVersion\\Run',
+    values:[
+      {name:'WindowsDefender',type:'REG_SZ',data:'%ProgramFiles%\\Windows Defender\\MSASCui.exe'},
+      {name:'OneDrive',type:'REG_SZ',data:'"C:\\Program Files\\Microsoft OneDrive\\OneDrive.exe" /background'},
+      {name:'⚠️ svchost32',type:'REG_SZ',data:'C:\\Users\\alice\\AppData\\Local\\Temp\\svchost32.exe',warn:true},
+    ],
+    note:'🔴 מפתח הכי נבדק על ידי malware analysts! כל entry כאן רץ עם כל boot. svchost32 ב-Temp = חשוד מאוד.',
+    noteColor:'var(--red)'
+  },
+  run_hkcu:{
+    title:'HKCU\\...\\CurrentVersion\\Run',
+    values:[
+      {name:'Discord',type:'REG_SZ',data:'C:\\Users\\alice\\AppData\\Local\\Discord\\Update.exe --processStart Discord.exe'},
+      {name:'Spotify',type:'REG_SZ',data:'C:\\Users\\alice\\AppData\\Roaming\\Spotify\\Spotify.exe'},
+    ],
+    note:'💡 HKCU\\Run לא דורש Admin! Malware מעדיף לשים כאן persistence כדי לא להזדקק להרשאות מוגבהות.',
+    noteColor:'var(--gold)'
+  },
+  os_ver:{
+    title:'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion',
+    values:[
+      {name:'ProductName',type:'REG_SZ',data:'Windows 11 Pro'},
+      {name:'CurrentBuild',type:'REG_SZ',data:'22621'},
+      {name:'RegisteredOwner',type:'REG_SZ',data:'Alice Smith'},
+      {name:'InstallDate',type:'REG_DWORD',data:'0x62A3F5B0 (Unix timestamp)'},
+    ],
+    note:'📋 Forensics gold! RegisteredOwner, InstallDate, גרסה מדויקת. InstallDate = Unix timestamp.',
+    noteColor:'var(--blue)'
+  },
+  services:{
+    title:'HKLM\\SYSTEM\\CurrentControlSet\\Services',
+    values:[
+      {name:'wuauserv',type:'(subkey)',data:'Windows Update Service'},
+      {name:'WinDefend',type:'(subkey)',data:'Windows Defender Antivirus Service'},
+      {name:'⚠️ SuspiciousSvc',type:'(subkey)',data:'ImagePath: C:\\Temp\\malicious.exe',warn:true},
+    ],
+    note:'🔴 Services = persistence חזקה! ImagePath = נתיב ה-executable. DependOnService, Start=2 (Auto). Malware אוהב services.',
+    noteColor:'var(--red)'
+  },
+  uninstall:{
+    title:'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    values:[
+      {name:'DisplayName',type:'REG_SZ',data:'Google Chrome'},
+      {name:'DisplayVersion',type:'REG_SZ',data:'120.0.6099.130'},
+      {name:'InstallDate',type:'REG_SZ',data:'20240115'},
+      {name:'UninstallString',type:'REG_SZ',data:'"C:\\Program Files\\...\\uninstall.exe"'},
+    ],
+    note:'📋 Forensics: רשימת כל התוכנות המותקנות עם תאריכי התקנה. Malware לעיתים מוסיף כאן entry מזויף.',
+    noteColor:'var(--teal)'
+  },
+  env:{
+    title:'HKLM\\SYSTEM\\...\\Environment',
+    values:[
+      {name:'Path',type:'REG_EXPAND_SZ',data:'%SystemRoot%\\system32;%SystemRoot%;...'},
+      {name:'PATHEXT',type:'REG_SZ',data:'.COM;.EXE;.BAT;.CMD;.VBS;.PS1'},
+      {name:'TEMP',type:'REG_EXPAND_SZ',data:'%SystemRoot%\\TEMP'},
+    ],
+    note:'⚠️ PATH hijacking! אם תוקף מוסיף C:\\Malware לפני %SystemRoot% ב-PATH — CMD ייטען קבצים משם!',
+    noteColor:'var(--orange)'
+  },
+  sam:{
+    title:'HKLM\\SAM\\SAM',
+    values:[
+      {name:'(Access Denied)',type:'—',data:'נעול למשתמשים רגילים. SYSTEM בלבד.',warn:true},
+      {name:'Contains',type:'—',data:'NTLM hashes של כל local accounts',warn:true},
+    ],
+    note:'🔴 SAM = המטרה! Pass-the-Hash, credential dumping (mimikatz), Shadow Copy extraction. נעול ב-runtime אפילו כ-Admin.',
+    noteColor:'var(--red)'
+  }
+};
+
+function selectKey(el,key){
+  document.querySelectorAll('.itree-node').forEach(n=>n.classList.remove('selected'));
+  el.classList.add('selected');
+  const d=regData[key];
+  if(!d)return;
+  let html=`<div class="itree-panel-title">// ${d.title}</div>`;
+  html+=`<table style="width:100%;border-collapse:collapse;margin-top:8px">`;
+  html+=`<tr><td style="color:var(--dim);font-family:'Fira Code',monospace;font-size:1.2rem;padding-bottom:4px">Name</td>
+             <td style="color:var(--dim);font-family:'Fira Code',monospace;font-size:1.2rem;padding-bottom:4px">Type</td>
+             <td style="color:var(--dim);font-family:'Fira Code',monospace;font-size:1.2rem;padding-bottom:4px">Data</td></tr>`;
+  d.values.forEach(v=>{
+    const nc=v.warn?'var(--red)':'var(--teal)';
+    const dc=v.warn?'var(--red)':'var(--green)';
+    html+=`<tr>
+      <td style="font-family:'Fira Code',monospace;font-size:1.2rem;color:${nc};padding:2px 4px">${v.name}</td>
+      <td style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold);padding:2px 4px">${v.type}</td>
+      <td style="font-family:'Fira Code',monospace;font-size:1.2rem;color:${dc};padding:2px 4px;word-break:break-all">${v.data}</td>
+    </tr>`;
+  });
+  html+=`</table>`;
+  html+=`<div style="margin-top:10px;padding:8px 12px;border-right:3px solid ${d.noteColor};background:rgba(0,0,0,.3);font-size:1.2rem;color:var(--dim)">${d.note}</div>`;
+  document.getElementById('regPanel').innerHTML=html;
+  addXP(2);
+}
+
+// ── DND ──
+let dragged=null;
+function ds(e){dragged=e.target;e.target.classList.add('dragging');}
+function dov(e){e.preventDefault();e.currentTarget.classList.add('over');}
+function dp(e,zid,correct){
+  e.preventDefault();
+  const zone=document.getElementById(zid);
+  zone.classList.remove('over');
+  if(!dragged)return;
+  const val=dragged.dataset.v;
+  dragged.classList.remove('dragging');
+  zone.querySelectorAll('.dnd-chip').forEach(c=>c.remove());
+  const chip=document.createElement('div');
+  chip.className='dnd-chip';
+  chip.textContent=dragged.textContent;
+  chip.dataset.v=val;chip.draggable=true;
+  chip.addEventListener('dragstart',ds);
+  const isOk=val===correct;
+  chip.style.borderColor=isOk?'var(--green)':'var(--red)';
+  chip.style.color=isOk?'var(--green)':'var(--red)';
+  zone.appendChild(chip);
+  dragged.remove();
+  if(isOk)addXP(6);
+  const filled=document.querySelectorAll('.dnd-zone .dnd-target .dnd-chip').length;
+  if(filled===4){
+    const allOk=[...document.querySelectorAll('.dnd-target')].every(z=>{
+      const c=z.querySelector('.dnd-chip');
+      return c&&c.dataset.v===z.dataset.correct;
+    });
+    const res=document.getElementById('dndRes');
+    res.className='dnd-result show';
+    res.style.color=allOk?'var(--green)':'var(--red)';
+    res.textContent=allOk?'🎯 מושלם! כל ההתאמות נכונות! +20 XP':'❌ חלק שגויות — נסה שוב.';
+    if(allOk)addXP(20);
+  }
+  dragged=null;
+}
+
+// ── TIMER ──
+const timers={};
+function st(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  let s=min*60;const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60)el.classList.add('urg');else el.classList.remove('urg');
+  }
+  tick();timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+goTo(0);
+</script>
+</body>
+</html>

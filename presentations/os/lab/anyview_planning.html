@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>anyView — תכנון פרויקט מסכם | מגמת סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030508;--s1:#060910;--s2:#090d18;--s3:#0d1220;
+  --border:#1a2840;--border2:#223650;
+  --indigo:#5566ff;--sky:#00bbff;--green:#00ff88;
+  --red:#ff2244;--gold:#ffbb00;--pink:#ff44cc;
+  --orange:#ff6633;--teal:#00ccbb;--lime:#88ff22;--purple:#aa55ff;
+  --text:#bccde8;--dim:#3a5070;--dim2:#243858;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;
+  overflow:hidden;height:100vh;width:100vw;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(85,102,255,.01) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(85,102,255,.01) 1px,transparent 1px);
+  background-size:42px 42px;pointer-events:none;z-index:0;}
+
+/* ── ENGINE ── */
+.deck{width:100%;height:100vh;position:relative;overflow:hidden;z-index:1;}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:40px 62px 86px;opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;transform:translateX(-16px);
+  overflow-y:auto;
+  }
+.slide.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.slide.out{opacity:0;transform:translateX(16px);}
+
+/* ── PROGRESS ── */
+.pbar{position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(to left,var(--indigo),var(--sky),var(--green));
+  transition:width .35s ease;z-index:100;}
+
+/* ── NAV ── */
+nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;
+  background:rgba(6,9,16,.97);border:1px solid var(--border);
+  padding:7px 15px;z-index:50;backdrop-filter:blur(20px);}
+.nb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:5px 14px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;transition:all .17s;letter-spacing:1px;}
+.nb:hover:not(:disabled){border-color:var(--indigo);color:var(--indigo);}
+.nb:disabled{opacity:.2;cursor:default;}
+.sc{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);min-width:50px;text-align:center;}
+
+/* ── XP ── */
+.xp{position:fixed;top:13px;left:15px;z-index:50;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.xv{color:var(--indigo);font-size:1.2rem;font-weight:700;}
+@keyframes xpop{0%{transform:scale(1)}45%{transform:scale(1.25)}100%{transform:scale(1)}}
+.xpop{animation:xpop .22s ease;}
+
+/* ── BADGE ── */
+.badge{font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:3px;
+  text-transform:uppercase;padding:3px 10px;display:inline-block;
+  margin-bottom:13px;border:1px solid;width:fit-content;}
+.b-i{color:var(--sky);border-color:rgba(0,187,255,.3);background:rgba(0,187,255,.06);}
+.b-c{color:var(--indigo);border-color:rgba(85,102,255,.3);background:rgba(85,102,255,.06);}
+.b-q{color:var(--gold);border-color:rgba(255,187,0,.3);background:rgba(255,187,0,.06);}
+.b-m{color:var(--red);border-color:rgba(255,34,68,.3);background:rgba(255,34,68,.06);}
+.b-g{color:var(--green);border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.06);}
+.b-t{color:var(--teal);border-color:rgba(0,204,187,.3);background:rgba(0,204,187,.06);}
+.b-p{color:var(--purple);border-color:rgba(170,85,255,.3);background:rgba(170,85,255,.06);}
+
+/* ── TYPE ── */
+h1{font-size:clamp(1.9rem,4vw,3rem);font-weight:900;line-height:1.1;}
+h2{font-size:clamp(1.2rem,2.4vw,1.85rem);font-weight:700;line-height:1.2;margin-bottom:6px;}
+h3{font-size:1.2rem;font-weight:600;color:#fff;margin-bottom:5px;}
+p{color:var(--dim);line-height:1.7;font-size:1.2rem;}
+.gi{color:var(--indigo);text-shadow:0 0 16px rgba(85,102,255,.4);}
+.gs{color:var(--sky);}
+.gg{color:var(--green);}
+.gr{color:var(--red);}
+.gg2{color:var(--gold);}
+.gt{color:var(--teal);}
+.gp{color:var(--purple);}
+code{font-family:'Fira Code',monospace;color:var(--sky);font-size:1.2rem;
+  background:rgba(0,187,255,.07);padding:1px 5px;}
+
+/* ── CODE ── */
+pre.cb{background:#020407;border:1px solid var(--border);
+  border-right:3px solid var(--indigo);
+  padding:12px 16px;font-family:'Fira Code',monospace;
+  font-size:1.2rem;color:#88aacc;line-height:1.85;
+  margin:8px 0;overflow:auto;max-height:350px;direction:ltr;text-align:left;}
+pre.cb::-webkit-scrollbar{width:3px;height:3px;}
+pre.cb::-webkit-scrollbar-thumb{background:var(--border2);}
+pre.cb.sky{border-right-color:var(--sky);}
+pre.cb.green{border-right-color:var(--green);}
+pre.cb.red{border-right-color:var(--red);}
+pre.cb.gold{border-right-color:var(--gold);}
+pre.cb.teal{border-right-color:var(--teal);}
+pre.cb.purple{border-right-color:var(--purple);}
+.kw{color:var(--red);}
+.fn{color:var(--sky);}
+.cm{color:#1e3050;font-style:italic;}
+.st{color:var(--green);}
+.nm{color:var(--gold);}
+.ty{color:var(--purple);}
+
+/* ── CARDS ── */
+.cg{display:grid;gap:10px;}
+.cg2{grid-template-columns:1fr 1fr;}
+.cg3{grid-template-columns:1fr 1fr 1fr;}
+.cg4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.card{background:var(--s1);border:1px solid var(--border);padding:13px 15px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;}
+.ci2::before{background:var(--indigo);}
+.cs::before{background:var(--sky);}
+.cg2c::before{background:var(--green);}
+.cy::before{background:var(--gold);}
+.ct::before{background:var(--teal);}
+.cr::before{background:var(--red);}
+.cp::before{background:var(--purple);}
+.cl::before{background:var(--lime);}
+.co::before{background:var(--orange);}
+.card p{font-size:1.2rem;margin-top:4px;}
+.cicon{font-size:1.4rem;margin-bottom:6px;display:block;}
+
+/* ── LAYOUTS ── */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.c6040{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;}
+.c4060{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;}
+.c3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.sc2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.scr{flex:1;overflow-y:auto;padding-bottom:8px;}
+.scr::-webkit-scrollbar{width:3px;}
+.scr::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* ── SECTION HERO ── */
+.shero{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.snum{font-family:'Fira Code',monospace;font-size:4.5rem;font-weight:900;line-height:1;margin-bottom:-14px;}
+.stit{font-size:clamp(1.7rem,3vw,2.7rem);font-weight:900;}
+
+/* ── TITLE HERO ── */
+.thero{display:flex;flex-direction:column;justify-content:center;height:100%;position:relative;}
+.lnum{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);letter-spacing:4px;margin-bottom:10px;}
+.ttags{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap;}
+.ttag{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid var(--border);color:var(--dim2);}
+.bigbg{font-family:'Fira Code',monospace;font-size:7rem;font-weight:900;
+  color:rgba(85,102,255,.022);position:absolute;left:16px;top:50%;
+  transform:translateY(-50%);line-height:1;pointer-events:none;user-select:none;}
+
+/* ── QUIZ ── */
+.qc{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.qo{background:var(--s1);border:1px solid var(--border);
+  padding:10px 14px;cursor:pointer;font-size:1.2rem;color:var(--text);
+  transition:all .16s;display:flex;align-items:center;gap:9px;}
+.qo:hover{border-color:rgba(85,102,255,.35);background:rgba(85,102,255,.03);}
+.qo.correct{border-color:var(--green);background:rgba(0,255,136,.07);color:#fff;}
+.qo.wrong{border-color:var(--red);background:rgba(255,34,68,.07);color:var(--red);}
+.qo.disabled{pointer-events:none;}
+.ql{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--indigo);
+  background:rgba(85,102,255,.1);width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qfb{margin-top:9px;padding:9px 13px;font-size:1.2rem;display:none;border:1px solid;}
+.qfb.show{display:block;}
+.qfb.ok{border-color:var(--green);background:rgba(0,255,136,.05);color:var(--green);}
+.qfb.no{border-color:var(--red);background:rgba(255,34,68,.05);color:var(--red);}
+
+/* ── FILL ── */
+.fi{background:rgba(255,187,0,.06);border:none;border-bottom:2px solid var(--gold);
+  color:var(--gold);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:1px 5px;outline:none;transition:border-color .17s;min-width:80px;}
+.fi:focus{border-color:var(--sky);color:var(--sky);}
+.fi.ok{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.06);}
+.fi.no{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.05);}
+.ck{margin-top:9px;background:none;border:1px solid var(--indigo);
+  color:var(--indigo);font-family:'Fira Code',monospace;font-size:1.2rem;
+  padding:5px 14px;cursor:pointer;transition:all .16s;}
+.ck:hover{background:rgba(85,102,255,.08);}
+.ffb{margin-top:7px;font-size:1.2rem;display:none;}
+.ffb.show{display:block;}
+
+/* ── MISSION ── */
+.mbox{background:rgba(255,34,68,.035);border:1px solid rgba(255,34,68,.2);
+  padding:15px 20px;margin-top:9px;position:relative;}
+.mbox::before{content:'▶ MISSION';position:absolute;top:-9px;right:13px;
+  font-family:'Fira Code',monospace;font-size:1.2rem;
+  background:var(--bg);color:var(--red);padding:0 6px;letter-spacing:2px;}
+.msteps{list-style:none;margin-top:10px;}
+.msteps li{display:flex;gap:9px;align-items:flex-start;
+  font-size:1.2rem;color:var(--text);margin-bottom:7px;}
+.msteps li::before{content:attr(data-n);font-family:'Fira Code',monospace;font-size:1.2rem;
+  color:var(--red);background:rgba(255,34,68,.1);
+  width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;}
+
+/* ── TIMER ── */
+.tw{display:flex;align-items:center;gap:10px;
+  background:var(--s1);border:1px solid var(--border);
+  padding:7px 14px;margin-top:10px;width:fit-content;}
+.td{font-family:'Fira Code',monospace;font-size:1.45rem;color:var(--indigo);font-weight:600;min-width:64px;}
+.td.urg{color:var(--red);animation:urgt .48s ease infinite alternate;}
+@keyframes urgt{from{opacity:1}to{opacity:.25}}
+.tb{background:none;border:1px solid var(--border);color:var(--dim);
+  cursor:pointer;padding:4px 10px;font-family:'Fira Code',monospace;font-size:1.2rem;transition:all .16s;}
+.tb:hover{border-color:var(--indigo);color:var(--indigo);}
+
+/* ── RLIST ── */
+.rlist{list-style:none;}
+.rlist li{padding:8px 0;border-bottom:1px solid var(--border);
+  display:flex;gap:9px;align-items:flex-start;
+  cursor:pointer;transition:all .16s;font-size:1.2rem;}
+.rlist li:hover{color:#fff;}
+.ri-d{display:none;font-size:1.2rem;color:var(--dim);margin-top:3px;}
+.rlist li.open .ri-d{display:block;}
+.rlist li.open{color:var(--indigo);}
+
+/* ── ARCH DIAGRAM ── */
+.arch-box{
+  background:var(--s2);border:1px solid;
+  padding:10px 16px;text-align:center;font-family:'Fira Code',monospace;
+  font-size:1.2rem;transition:all .2s;cursor:pointer;position:relative;}
+.arch-box:hover{filter:brightness(1.18);}
+.arch-box .ab-sub{font-size:1.2rem;display:block;margin-top:3px;opacity:.7;}
+.ab-client{border-color:var(--sky);color:var(--sky);background:rgba(0,187,255,.07);}
+.ab-server{border-color:var(--indigo);color:var(--indigo);background:rgba(85,102,255,.07);}
+.ab-db{border-color:var(--gold);color:var(--gold);background:rgba(255,187,0,.07);}
+.ab-net{border-color:var(--teal);color:var(--teal);background:rgba(0,204,187,.07);}
+.ab-sec{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.07);}
+.ab-capture{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.07);}
+.ab-compress{border-color:var(--lime);color:var(--lime);background:rgba(136,255,34,.07);}
+.ab-control{border-color:var(--purple);color:var(--purple);background:rgba(170,85,255,.07);}
+.arch-arrow{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);
+  gap:4px;}
+.arch-arrow.active{color:var(--green);}
+
+/* ── SPRINT BOARD ── */
+.sprint{margin-bottom:14px;}
+.sprint-hdr{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 14px;cursor:pointer;user-select:none;
+  background:var(--s2);border:1px solid var(--border);transition:all .16s;}
+.sprint-hdr:hover{border-color:rgba(85,102,255,.3);}
+.sprint-num{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--indigo);
+  background:rgba(85,102,255,.1);padding:2px 8px;flex-shrink:0;}
+.sprint-title{font-weight:600;font-size:1.2rem;flex:1;}
+.sprint-pts{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold);}
+.sprint-badge{font-family:'Fira Code',monospace;font-size:1.2rem;padding:2px 8px;border:1px solid;flex-shrink:0;}
+.sb-done{color:var(--green);border-color:rgba(0,255,136,.3);}
+.sb-wip{color:var(--gold);border-color:rgba(255,187,0,.3);}
+.sb-plan{color:var(--dim);border-color:rgba(58,80,112,.3);}
+.sprint-arrow{color:var(--dim);transition:transform .2s;flex-shrink:0;}
+.sprint.open .sprint-arrow{transform:rotate(90deg);color:var(--indigo);}
+.sprint-body{display:none;border:1px solid var(--border);border-top:none;}
+.sprint.open .sprint-body{display:block;}
+.task{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 14px;border-bottom:1px solid var(--border2);
+  font-size:1.2rem;transition:background .14s;cursor:pointer;}
+.task:last-child{border-bottom:none;}
+.task:hover{background:rgba(85,102,255,.03);}
+.task.done{opacity:.55;}
+.task-chk{
+  width:18px;height:18px;border:1px solid var(--border2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fira Code',monospace;font-size:1.2rem;margin-top:1px;transition:all .14s;}
+.task.done .task-chk{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.1);}
+.task-label{flex:1;}
+.task-tag{font-family:'Fira Code',monospace;font-size:1.2rem;padding:1px 6px;border:1px solid;flex-shrink:0;}
+.tt-fe{color:var(--sky);border-color:rgba(0,187,255,.25);}
+.tt-be{color:var(--indigo);border-color:rgba(85,102,255,.25);}
+.tt-db{color:var(--gold);border-color:rgba(255,187,0,.25);}
+.tt-sec{color:var(--red);border-color:rgba(255,34,68,.25);}
+.tt-infra{color:var(--teal);border-color:rgba(0,204,187,.25);}
+.tt-media{color:var(--green);border-color:rgba(0,255,136,.25);}
+
+/* ── PIPELINE VIZ ── */
+.pipeline{
+  display:flex;align-items:stretch;gap:0;margin:10px 0;flex-wrap:wrap;}
+.pip-stage{
+  flex:1;min-width:100px;padding:10px 12px;text-align:center;
+  border:1px solid;font-family:'Fira Code',monospace;font-size:1.2rem;
+  transition:all .2s;cursor:pointer;position:relative;}
+.pip-stage:hover{filter:brightness(1.15);}
+.pip-stage .pip-sub{display:block;font-size:1.2rem;margin-top:3px;opacity:.7;}
+.pip-stage .pip-ms{
+  position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+  font-size:1.2rem;color:var(--dim);white-space:nowrap;}
+.pip-arrow{
+  display:flex;align-items:center;padding:0 4px;
+  color:var(--dim);font-size:1.2rem;align-self:center;}
+.ps-capture{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.06);}
+.ps-diff{border-color:var(--sky);color:var(--sky);background:rgba(0,187,255,.06);}
+.ps-compress{border-color:var(--lime);color:var(--lime);background:rgba(136,255,34,.06);}
+.ps-encrypt{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.06);}
+.ps-transmit{border-color:var(--indigo);color:var(--indigo);background:rgba(85,102,255,.06);}
+.ps-decode{border-color:var(--gold);color:var(--gold);background:rgba(255,187,0,.06);}
+.ps-render{border-color:var(--purple);color:var(--purple);background:rgba(170,85,255,.06);}
+
+/* ── TECH TABLE ── */
+.tt-table{width:100%;border-collapse:collapse;font-size:1.2rem;}
+.tt-table th{text-align:right;padding:7px 11px;background:var(--s2);
+  border-bottom:2px solid var(--indigo);color:var(--indigo);
+  font-family:'Fira Code',monospace;font-size:1.2rem;letter-spacing:1px;}
+.tt-table td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:middle;}
+.tt-table tr:hover td{background:rgba(85,102,255,.02);}
+.tt-mo{font-family:'Fira Code',monospace;color:var(--sky);font-size:1.2rem;}
+.tt-g{color:var(--green);}
+.tt-r{color:var(--red);}
+.tt-y{color:var(--gold);}
+
+/* ── LATENCY CHART ── */
+.lat-bar{display:flex;align-items:center;gap:10px;margin:5px 0;}
+.lat-label{font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);min-width:120px;}
+.lat-track{flex:1;height:20px;background:var(--s2);border:1px solid var(--border);overflow:hidden;}
+.lat-fill{height:100%;transition:width 1s ease;}
+.lat-val{font-family:'Fira Code',monospace;font-size:1.2rem;min-width:55px;text-align:left;}
+
+/* ── KB ── */
+.kbh{position:fixed;bottom:18px;right:16px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--border2);}
+
+/* ── PROGRESS TRACKER ── */
+.sprint-progress{
+  position:fixed;top:13px;right:20px;z-index:50;
+  font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim);}
+.sp-val{color:var(--green);}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pb"></div>
+<div class="xp">XP: <span class="xv" id="xv">0</span></div>
+<div class="sprint-progress">Tasks: <span class="sp-val" id="tasksDone">0</span>/<span id="tasksTotal">0</span></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════ S0: TITLE ══════════════ -->
+<div class="slide active" id="s0">
+  <div class="bigbg">AV</div>
+  <div class="thero">
+    <div class="lnum">// FINAL_PROJECT · ANYVIEW · END-TO-END PLANNING</div>
+    <h1><span class="gi">anyView</span><br>תכנון פרויקט מסכם</h1>
+    <p style="margin-top:9px;font-size:1.2rem">ארכיטקטורה · ספרינטים · Pipeline · Remote Control</p>
+    <div class="ttags">
+      <span class="ttag">Python</span>
+      <span class="ttag">TCP Socket (asyncio)</span>
+      <span class="ttag">PostgreSQL</span>
+      <span class="ttag">WinAPI</span>
+      <span class="ttag">TLS</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S1: WHAT IS ANYVIEW ══════════════ -->
+<div class="slide" id="s1">
+  <span class="badge b-i">// מה אנחנו בונים?</span>
+  <h2><span class="gi">anyView</span> — מערכת שליטה מרחוק</h2>
+  <div class="c6040" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">anyView היא מערכת Remote Desktop Control מלאה — כמו TeamViewer או AnyDesk, אבל אתם כותבים אותה מאפס.</p>
+      <div class="cg cg2" style="gap:9px;margin-bottom:10px">
+        <div class="card cs">
+          <span class="cicon">🖥️</span>
+          <h3>Screen Capture</h3>
+          <p>לכידת מסך ב-30 FPS. רק שינויים (diff). דחיסה JPEG/WebP.</p>
+        </div>
+        <div class="card cg2c">
+          <span class="cicon">🖱️</span>
+          <h3>Input Control</h3>
+          <p>שליחת אירועי עכבר ומקלדת מרחוק. WinAPI SendInput.</p>
+        </div>
+        <div class="card ci2">
+          <span class="cicon">🔐</span>
+          <h3>Secure Transport</h3>
+          <p>TLS 1.3 + Authentication. JWT tokens. הצפנת data.</p>
+        </div>
+        <div class="card cy">
+          <span class="cicon">🗄️</span>
+          <h3>Session Logging</h3>
+          <p>PostgreSQL לתיעוד sessions, events, auditing.</p>
+        </div>
+      </div>
+      <div class="card cr">
+        <h3>🔐 קשר לסייבר</h3>
+        <p>anyView היא <strong style="color:#fff">לגיטימית</strong>. אבל RAT (Remote Access Trojan) = אותה טכנולוגיה, <strong style="color:#fff">בלי רשות</strong>. לימוד anyView = הבנת איך malware עובד מבפנים.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card ci2">
+        <h3>📊 מדדי הצלחה</h3>
+        <p>
+          ⏱ Latency &lt; <strong style="color:#fff">150ms</strong><br>
+          🎬 FPS &gt; <strong style="color:#fff">20 FPS</strong><br>
+          📦 Bandwidth &lt; <strong style="color:#fff">500 KB/s</strong><br>
+          🔐 TLS מאומת<br>
+          📝 כל action מתועד
+        </p>
+      </div>
+      <div class="card ct">
+        <h3>🛠️ Stack</h3>
+        <p>
+          Python 3.11+<br>
+          mss / PIL לcapture<br>
+          asyncio / TCP Socket<br>
+          ctypes / WinAPI<br>
+          PostgreSQL3<br>
+          tkinter / HTML UI
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S2: SECTION ARCHITECTURE ══════════════ -->
+<div class="slide" id="s2">
+  <div class="shero">
+    <div class="snum" style="color:rgba(85,102,255,.06)">01</div>
+    <div class="stit"><span class="gi">ארכיטקטורה</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">פירוק המערכת לרכיבים וקשרי גומלין</p>
+  </div>
+</div>
+
+<!-- ══════════════ S3: SYSTEM ARCHITECTURE ══════════════ -->
+<div class="slide" id="s3">
+  <span class="badge b-c">// ארכיטקטורה</span>
+  <h2>דיאגרמת המערכת — <span class="gi">anyView</span></h2>
+  <div class="c4060" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:8px;font-size:1.2rem">לחץ על רכיב לפרטים:</p>
+      <!-- ARCHITECTURE DIAGRAM -->
+      <div style="display:flex;flex-direction:column;gap:6px" id="archDiag">
+
+        <!-- CLIENT SIDE -->
+        <div style="border:1px solid rgba(0,187,255,.2);padding:10px;background:rgba(0,187,255,.03)">
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--sky);margin-bottom:6px">// VIEWER (Client)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div class="arch-box ab-client" onclick="showArch('viewer-ui')" data-k="viewer-ui">UI / Display<span class="ab-sub">tkinter / HTML</span></div>
+            <div class="arch-box ab-control" onclick="showArch('input-handler')" data-k="input-handler">Input Handler<span class="ab-sub">mouse & keyboard</span></div>
+          </div>
+        </div>
+
+        <!-- NETWORK -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:2px;background:linear-gradient(to left,var(--indigo),var(--teal))"></div>
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--teal);padding:4px 10px;border:1px solid rgba(0,204,187,.3)">TLS 1.3 / TCP Socket</div>
+          <div style="flex:1;height:2px;background:linear-gradient(to right,var(--indigo),var(--teal))"></div>
+        </div>
+
+        <!-- SERVER SIDE -->
+        <div style="border:1px solid rgba(85,102,255,.2);padding:10px;background:rgba(85,102,255,.03)">
+          <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--indigo);margin-bottom:6px">// HOST (Server)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <div class="arch-box ab-capture" onclick="showArch('screen-capture')" data-k="screen-capture">Screen Capture<span class="ab-sub">mss + diff</span></div>
+            <div class="arch-box ab-compress" onclick="showArch('encoder')" data-k="encoder">Encoder<span class="ab-sub">JPEG / WebP</span></div>
+            <div class="arch-box ab-server" onclick="showArch('session-mgr')" data-k="session-mgr">Session Manager<span class="ab-sub">asyncio TCP</span></div>
+          </div>
+        </div>
+
+        <!-- AUTH & DB -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="arch-box ab-sec" onclick="showArch('auth')" data-k="auth">Auth Service<span class="ab-sub">JWT + bcrypt</span></div>
+          <div class="arch-box ab-db" onclick="showArch('db')" data-k="db">PostgreSQL DB<span class="ab-sub">sessions + events</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="scr">
+      <div style="background:var(--s2);border:1px solid var(--border);padding:12px;min-height:100px;margin-bottom:9px" id="archPanel">
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--indigo)">// לחץ על רכיב לפרטים</div>
+      </div>
+      <div class="card cy">
+        <h3>📡 פרוטוקולי תקשורת</h3>
+        <p><strong style="color:#fff">Video stream:</strong> TCP Socket (binary frames)<br>
+        <strong style="color:#fff">Input events:</strong> TCP Socket (JSON messages)<br>
+        <strong style="color:#fff">Auth:</strong> HTTPS REST (JWT)<br>
+        <strong style="color:#fff">DB:</strong> Local PostgreSQL file</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S4: QUIZ 1 ══════════════ -->
+<div class="slide" id="s4">
+  <span class="badge b-q">// שאלת הבנה #1</span>
+  <h2>ארכיטקטורה — מה בונים קודם?</h2>
+  <p style="margin-bottom:12px">בבניית anyView, מה <strong style="color:#fff">חייב להיות מוכן ראשון</strong> לפני שאפשר לבדוק screen streaming?</p>
+  <div class="qc" id="q1">
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">א</span> ממשק המשתמש (UI) — כדי שנוכל לראות משהו</div>
+    <div class="qo" onclick="cq('q1',this,true)"><span class="ql">ב</span> Server socket + Screen Capture + Encoder — הפיפליין הבסיסי חייב לעבוד לפני שיש מה להציג</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ג</span> Auth system — אי אפשר לפעול בלי אבטחה</div>
+    <div class="qo" onclick="cq('q1',this,false)"><span class="ql">ד</span> DB schema — צריך לתעד הכל מההתחלה</div>
+  </div>
+  <div class="qfb" id="q1-fb"></div>
+</div>
+
+<!-- ══════════════ S5: SECTION PIPELINE ══════════════ -->
+<div class="slide" id="s5">
+  <div class="shero">
+    <div class="snum" style="color:rgba(0,255,136,.05)">02</div>
+    <div class="stit"><span class="gg">Video</span></div>
+    <div class="stit"><span class="gg">Pipeline</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">לכידה → דחיסה → שידור → רינדור</p>
+  </div>
+</div>
+
+<!-- ══════════════ S6: PIPELINE VIZ ══════════════ -->
+<div class="slide" id="s6">
+  <span class="badge b-t">// Pipeline</span>
+  <h2>צינור העבודה — <span class="gg">Frame → Display</span></h2>
+  <div style="margin-top:12px">
+    <div class="pipeline" id="pipelineViz">
+      <div class="pip-stage ps-capture" onclick="showPipe(this,'capture')">
+        📷 Capture<span class="pip-sub">mss.grab()</span>
+        <span class="pip-ms">~5ms</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-diff" onclick="showPipe(this,'diff')">
+        🔍 Diff<span class="pip-sub">XOR / compare</span>
+        <span class="pip-ms">~2ms</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-compress" onclick="showPipe(this,'compress')">
+        📦 Compress<span class="pip-sub">JPEG Q=60</span>
+        <span class="pip-ms">~8ms</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-encrypt" onclick="showPipe(this,'encrypt')">
+        🔐 TLS wrap<span class="pip-sub">AES-256-GCM</span>
+        <span class="pip-ms">~1ms</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-transmit" onclick="showPipe(this,'transmit')">
+        📡 Transmit<span class="pip-sub">TCP Socket</span>
+        <span class="pip-ms">~20ms LAN</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-decode" onclick="showPipe(this,'decode')">
+        🔓 Decode<span class="pip-sub">JPEG→PIL</span>
+        <span class="pip-ms">~5ms</span>
+      </div>
+      <div class="pip-arrow">→</div>
+      <div class="pip-stage ps-render" onclick="showPipe(this,'render')">
+        🖥️ Render<span class="pip-sub">tkinter/canvas</span>
+        <span class="pip-ms">~3ms</span>
+      </div>
+    </div>
+    <div style="margin-top:24px;display:flex;align-items:center;gap:8px;font-family:'Fira Code',monospace;font-size:1.2rem">
+      <span style="color:var(--dim)">Total latency (LAN):</span>
+      <span style="color:var(--green);font-size:1.2rem">~44ms</span>
+      <span style="color:var(--dim)">→ ~22 FPS theoretical max</span>
+      <span style="color:var(--gold)">✓ target achieved</span>
+    </div>
+  </div>
+  <div style="background:var(--s2);border:1px solid var(--border);padding:12px;min-height:80px;margin-top:10px" id="pipePanel">
+    <div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--green)">// לחץ על שלב לפרטי מימוש</div>
+  </div>
+</div>
+
+<!-- ══════════════ S7: LATENCY BREAKDOWN ══════════════ -->
+<div class="slide" id="s7">
+  <span class="badge b-c">// ביצועים</span>
+  <h2>⏱ Latency Budget — <span class="gg2">כמה זמן יש לנו?</span></h2>
+  <div class="c2" style="margin-top:12px;flex:1">
+    <div class="scr">
+      <p style="margin-bottom:10px">מטרה: <strong style="color:#fff">מתחת ל-150ms</strong> מלחיצת עכבר ועד שהמשתמש רואה תגובה על מסך ה-Viewer.</p>
+      <div id="latencyBars" style="margin:12px 0">
+        <div class="lat-bar"><span class="lat-label">Screen Capture</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--green)"></div></div><span class="lat-val" style="color:var(--green)">5ms</span></div>
+        <div class="lat-bar"><span class="lat-label">Frame Diff</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--sky)"></div></div><span class="lat-val" style="color:var(--sky)">2ms</span></div>
+        <div class="lat-bar"><span class="lat-label">JPEG Encode</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--lime)"></div></div><span class="lat-val" style="color:var(--lime)">8ms</span></div>
+        <div class="lat-bar"><span class="lat-label">Network (LAN)</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--indigo)"></div></div><span class="lat-val" style="color:var(--indigo)">20ms</span></div>
+        <div class="lat-bar"><span class="lat-label">Decode+Render</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--purple)"></div></div><span class="lat-val" style="color:var(--purple)">8ms</span></div>
+        <div class="lat-bar"><span class="lat-label" style="color:var(--gold)">TOTAL</span><div class="lat-track"><div class="lat-fill" style="width:0%;background:var(--gold)"></div></div><span class="lat-val" style="color:var(--gold)">43ms</span></div>
+      </div>
+      <button class="ck" id="latBtn" onclick="animateBars()">▶ הצג</button>
+    </div>
+    <div class="scr">
+      <div class="card cg2c" style="margin-bottom:9px">
+        <h3>🔑 מפתח לביצועים</h3>
+        <p>
+          <strong style="color:#fff">Diff only:</strong> שלח רק pixels שהשתנו<br>
+          <strong style="color:#fff">JPEG Q=60:</strong> איזון איכות/גודל<br>
+          <strong style="color:#fff">asyncio:</strong> Non-blocking I/O<br>
+          <strong style="color:#fff">Threading:</strong> Capture thread נפרד<br>
+          <strong style="color:#fff">Buffer:</strong> Double-buffering למניעת tearing
+        </p>
+      </div>
+      <div class="card cr">
+        <h3>⚠️ רוצחי ביצועים</h3>
+        <p>
+          ❌ PIL.open() בלולאה ראשית<br>
+          ❌ Blocking socket.recv()<br>
+          ❌ Full frame בכל פריים<br>
+          ❌ PNG במקום JPEG<br>
+          ❌ GIL bottleneck ב-threads
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S8: CODE — SCREEN CAPTURE ══════════════ -->
+<div class="slide" id="s8">
+  <span class="badge b-g">// קוד — Screen Capture Pipeline</span>
+  <h2>🎬 לכידה + Diff + Encode</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <pre class="cb green" style="max-height:600px">
+<span class="cm">"""screen_capture.py — Host side pipeline"""</span>
+<span class="kw">import</span> mss, io, time, asyncio
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> PIL <span class="kw">import</span> Image
+
+<span class="kw">class</span> <span class="ty">ScreenCapture</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, quality=<span class="nm">60</span>, fps=<span class="nm">30</span>):
+        self.sct     = mss.mss()
+        self.quality = quality
+        self.interval = <span class="nm">1.0</span> / fps
+        self.prev_frame = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">capture_frame</span>(self) -> bytes:
+        <span class="cm"># לכוד מסך</span>
+        monitor = self.sct.monitors[<span class="nm">1</span>]  <span class="cm"># מסך ראשי</span>
+        raw = self.sct.<span class="fn">grab</span>(monitor)
+        img = Image.<span class="fn">frombytes</span>(
+            <span class="st">"RGB"</span>, raw.size, raw.bgra,
+            <span class="st">"raw"</span>, <span class="st">"BGRX"</span>)
+        <span class="kw">return</span> img
+
+    <span class="kw">def</span> <span class="fn">encode_frame</span>(self, img) -> bytes | <span class="kw">None</span>:
+        <span class="cm"># Diff — שלח רק שינויים</span>
+        arr = np.<span class="fn">array</span>(img)
+        <span class="kw">if</span> self.prev_frame <span class="kw">is not None</span>:
+            diff = np.<span class="fn">abs</span>(
+                arr.<span class="fn">astype</span>(<span class="st">"int16"</span>) -
+                self.prev_frame.<span class="fn">astype</span>(<span class="st">"int16"</span>))
+            <span class="kw">if</span> diff.<span class="fn">max</span>() < <span class="nm">8</span>:
+                <span class="kw">return None</span>  <span class="cm"># אין שינוי</span>
+        self.prev_frame = arr
+
+        <span class="cm"># דחוס ל-JPEG</span>
+        buf = io.<span class="fn">BytesIO</span>()
+        img.<span class="fn">save</span>(buf, <span class="st">"JPEG"</span>,
+                quality=self.quality,
+                optimize=<span class="kw">True</span>)
+        <span class="kw">return</span> buf.<span class="fn">getvalue</span>()
+
+    <span class="kw">async def</span> <span class="fn">stream</span>(self,
+                       writer: asyncio.<span class="ty">StreamWriter</span>):
+        <span class="st">"""שולח frames לclient דרך TCP"""</span>
+        <span class="kw">while True</span>:
+            t0 = time.<span class="fn">perf_counter</span>()
+            img  = self.<span class="fn">capture_frame</span>()
+            data = self.<span class="fn">encode_frame</span>(img)
+            <span class="kw">if</span> data:
+                <span class="cm"># 4-byte header: גודל ה-frame</span>
+                hdr = <span class="fn">len</span>(data).<span class="fn">to_bytes</span>(<span class="nm">4</span>,<span class="st">"big"</span>)
+                writer.<span class="fn">write</span>(hdr + data)
+                <span class="kw">await</span> writer.<span class="fn">drain</span>()
+            elapsed = time.<span class="fn">perf_counter</span>() - t0
+            <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(
+                <span class="fn">max</span>(<span class="nm">0</span>, self.interval - elapsed))
+      </pre>
+    </div>
+    <div class="scr">
+      <div class="card cg2c" style="margin-bottom:9px">
+        <h3>💡 מה הקוד עושה?</h3>
+        <p><code>mss.grab()</code> — לכידה מהירה (מהיר מ-PIL)<br>
+        <code>numpy diff</code> — השוואה לframe קודם<br>
+        <code>JPEG encode</code> — דחיסה עם quality שניתן לשנות<br>
+        <code>asyncio.sleep</code> — throttle ל-FPS מטרה</p>
+      </div>
+      <pre class="cb sky" style="max-height:600px">
+<span class="cm"># client.py — קבלת frames over TCP</span>
+<span class="kw">async def</span> <span class="fn">receive_frames</span>(
+        reader: asyncio.<span class="ty">StreamReader</span>, canvas):
+    <span class="kw">while True</span>:
+        <span class="cm"># קרא 4 bytes header = גודל frame</span>
+        hdr  = <span class="kw">await</span> reader.<span class="fn">readexactly</span>(<span class="nm">4</span>)
+        size = <span class="fn">int</span>.<span class="fn">from_bytes</span>(hdr, <span class="st">"big"</span>)
+        <span class="cm"># קרא בדיוק size bytes</span>
+        data = <span class="kw">await</span> reader.<span class="fn">readexactly</span>(size)
+        img  = Image.<span class="fn">open</span>(io.<span class="fn">BytesIO</span>(data))
+        photo = ImageTk.<span class="fn">PhotoImage</span>(img)
+        canvas.<span class="fn">configure</span>(image=photo)
+        canvas.image = photo  <span class="cm"># מניעת GC</span>
+      </pre>
+      <div class="card cr">
+        <h3>⚠️ מה הבא?</h3>
+        <p>הוספת WebP לדחיסה טובה יותר. Region-based diff (רק BBox שהשתנה). H.264/VP8 לstreaming ברמה גבוהה.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S9: CODE — INPUT CONTROL ══════════════ -->
+<div class="slide" id="s9">
+  <span class="badge b-c">// קוד — Input Control</span>
+  <h2>🖱️ שליחת אירועי עכבר ומקלדת</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <pre class="cb purple" style="max-height:600px">
+<span class="cm">"""input_handler.py — Host side input"""</span>
+<span class="kw">import</span> ctypes, ctypes.wintypes <span class="kw">as</span> wt
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">import</span> json
+
+<span class="ty">MOUSEEVENTF_MOVE</span>        = <span class="nm">0x0001</span>
+<span class="ty">MOUSEEVENTF_LEFTDOWN</span>    = <span class="nm">0x0002</span>
+<span class="ty">MOUSEEVENTF_LEFTUP</span>      = <span class="nm">0x0004</span>
+<span class="ty">MOUSEEVENTF_ABSOLUTE</span>    = <span class="nm">0x8000</span>
+<span class="ty">INPUT_KEYBOARD</span>          = <span class="nm">1</span>
+<span class="ty">INPUT_MOUSE</span>             = <span class="nm">0</span>
+<span class="ty">KEYEVENTF_KEYUP</span>         = <span class="nm">0x0002</span>
+
+k32 = ctypes.windll.kernel32
+u32 = ctypes.windll.user32
+
+<span class="kw">def</span> <span class="fn">move_mouse</span>(x: <span class="ty">int</span>, y: <span class="ty">int</span>,
+               screen_w: <span class="ty">int</span>,
+               screen_h: <span class="ty">int</span>):
+    <span class="cm"># המרה לקואורדינטות מוחלטות 0-65535</span>
+    ax = <span class="ty">int</span>(x / screen_w * <span class="nm">65535</span>)
+    ay = <span class="ty">int</span>(y / screen_h * <span class="nm">65535</span>)
+    u32.<span class="fn">SetCursorPos</span>(ax, ay)
+
+<span class="kw">def</span> <span class="fn">click_mouse</span>(button=<span class="st">'left'</span>,
+                 down=<span class="kw">True</span>):
+    flags = {
+        (<span class="st">'left'</span>,  <span class="kw">True</span>):  <span class="ty">MOUSEEVENTF_LEFTDOWN</span>,
+        (<span class="st">'left'</span>,  <span class="kw">False</span>): <span class="ty">MOUSEEVENTF_LEFTUP</span>,
+    }
+    f = flags.<span class="fn">get</span>((button, down), <span class="nm">0</span>)
+    u32.<span class="fn">mouse_event</span>(f, <span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>, <span class="nm">0</span>)
+
+<span class="kw">def</span> <span class="fn">press_key</span>(vk_code: <span class="ty">int</span>,
+               key_up=<span class="kw">False</span>):
+    flag = <span class="ty">KEYEVENTF_KEYUP</span> <span class="kw">if</span> key_up <span class="kw">else</span> <span class="nm">0</span>
+    u32.<span class="fn">keybd_event</span>(vk_code, <span class="nm">0</span>, flag, <span class="nm">0</span>)
+
+<span class="kw">def</span> <span class="fn">handle_input_event</span>(msg: <span class="ty">str</span>):
+    <span class="cm"># מקבל JSON מה-Viewer</span>
+    data = json.<span class="fn">loads</span>(msg)
+    etype = data[<span class="st">'type'</span>]
+    <span class="kw">if</span> etype == <span class="st">'mouse_move'</span>:
+        <span class="fn">move_mouse</span>(data[<span class="st">'x'</span>], data[<span class="st">'y'</span>],
+                   data[<span class="st">'sw'</span>], data[<span class="st">'sh'</span>])
+    <span class="kw">elif</span> etype == <span class="st">'mouse_click'</span>:
+        <span class="fn">click_mouse</span>(data[<span class="st">'button'</span>],
+                    data[<span class="st">'down'</span>])
+    <span class="kw">elif</span> etype == <span class="st">'key'</span>:
+        <span class="fn">press_key</span>(data[<span class="st">'vk'</span>],
+                   data.<span class="fn">get</span>(<span class="st">'up'</span>, <span class="kw">False</span>))
+      </pre>
+    </div>
+    <div class="scr">
+      <div class="card cp" style="margin-bottom:9px">
+        <h3>📨 Input Event Protocol</h3>
+        <pre class="cb purple" style="max-height:600px;font-size:1.2rem">
+<span class="cm">// JSON messages sent by Viewer:</span>
+{"type":"mouse_move","x":500,"y":300,
+ "sw":1920,"sh":1080}
+
+{"type":"mouse_click","button":"left",
+ "down":true}
+
+{"type":"key","vk":65,"up":false}
+<span class="cm">// vk=65 = 'A' key</span>
+        </pre>
+      </div>
+      <div class="card cy">
+        <h3>💡 Coordinate Mapping</h3>
+        <p>ה-Viewer יכול להיות בחלון קטן, ה-Host בRES גדולה. חייב לנרמל קואורדינטות: <code>host_x = viewer_x * (host_w / viewer_w)</code></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S10: CODE FILL ══════════════ -->
+<div class="slide" id="s10">
+  <span class="badge b-g">// השלם את הקוד</span>
+  <h2>🗄️ DB Schema — Sessions & Events</h2>
+  <p style="margin-bottom:9px">השלם את ה-schema של ה-PostgreSQL ל-anyView:</p>
+  <pre class="cb">
+<span class="kw">import</span> psycopg2, psycopg2.pool
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="cm"># Connection pool — מומלץ מאוד לPG</span>
+pool = psycopg2.pool.<span class="fn">ThreadedConnectionPool</span>(
+    minconn=<span class="nm">1</span>, maxconn=<span class="nm">10</span>,
+    host=<span class="st">"localhost"</span>, dbname=<span class="st">"anyview_db"</span>,
+    user=<span class="st">"anyview"</span>, password=<span class="st">"SECRET"</span>
+)
+
+<span class="kw">def</span> <span class="fn">init_db</span>():
+    conn = pool.<span class="fn">getconn</span>()
+    cur  = conn.<span class="fn">cursor</span>()
+    cur.<span class="fn">execute</span>(<span class="st">"""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id         SERIAL PRIMARY KEY,
+            host_ip    TEXT NOT NULL,
+            viewer_ip  TEXT NOT NULL,
+            started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            ended_at   TIMESTAMPTZ,
+            status     TEXT DEFAULT '<input class="fi" id="f1" placeholder="ערך?" style="width:80px">'
+        )"""</span>)
+    cur.<span class="fn">execute</span>(<span class="st">"""
+        CREATE TABLE IF NOT EXISTS events (
+            id         SERIAL PRIMARY KEY,
+            session_id INTEGER REFERENCES sessions(id),
+            timestamp  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            event_type TEXT,
+            <input class="fi" id="f2" placeholder="עמודה חסרה?" style="width:200px">  JSONB
+        )"""</span>)
+    cur.<span class="fn">execute</span>(<span class="st">"""
+        CREATE INDEX IF NOT EXISTS idx_events_session
+            ON events(<input class="fi" id="f3" placeholder="על מה?" style="width:120px">)"""</span>)
+    conn.<span class="fn">commit</span>()
+    cur.<span class="fn">close</span>()
+    pool.<span class="fn">putconn</span>(conn)
+  </pre>
+  <button class="ck" onclick="checkFill()">בדוק ✓</button>
+  <div class="ffb" id="fb1"></div>
+</div>
+
+<!-- ══════════════ S11: SECTION SPRINTS ══════════════ -->
+<div class="slide" id="s11">
+  <div class="shero">
+    <div class="snum" style="color:rgba(255,187,0,.05)">03</div>
+    <div class="stit"><span class="gg2">תוכנית</span></div>
+    <div class="stit"><span class="gg2">ספרינטים</span></div>
+    <p style="margin-top:8px;font-size:1.2rem">מה בונים, מתי, ובאיזה סדר</p>
+  </div>
+</div>
+
+<!-- ══════════════ S12: SPRINT BOARD ══════════════ -->
+<div class="slide" id="s12">
+  <span class="badge b-p">// Sprint Board</span>
+  <h2>📋 תוכנית עבודה — <span class="gg2">6 ספרינטים</span></h2>
+  <div class="sc2" style="margin-top:10px">
+    <div class="scr" id="sprintBoard">
+
+      <!-- SPRINT 1 -->
+      <div class="sprint open" id="sp1">
+        <div class="sprint-hdr" onclick="toggleSprint('sp1')">
+          <span class="sprint-num">Sprint 1</span>
+          <span class="sprint-title">Foundation — Server Core + Screen Capture</span>
+          <span class="sprint-badge sb-done">✓ BASE</span>
+          <span class="sprint-pts">~2 שבועות</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">הגדרת project structure + venv + requirements.txt</span><span class="task-tag tt-infra">INFRA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">TCP server עם asyncio.start_server() — accept connections</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Screen Capture עם mss — לכידת מסך בסיסית</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">JPEG encoding + שליחה דרך TCP socket (4-byte header + binary)</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Viewer client בסיסי — קבלת frames והצגה בtkinter</span><span class="task-tag tt-fe">FRONTEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">FPS meter + latency display ב-Viewer</span><span class="task-tag tt-fe">FRONTEND</span></div>
+        </div>
+      </div>
+
+      <!-- SPRINT 2 -->
+      <div class="sprint" id="sp2">
+        <div class="sprint-hdr" onclick="toggleSprint('sp2')">
+          <span class="sprint-num">Sprint 2</span>
+          <span class="sprint-title">Performance — Diff + Compression Optimization</span>
+          <span class="sprint-badge sb-wip">⚡ PERF</span>
+          <span class="sprint-pts">~1.5 שבועות</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Frame Diff — numpy XOR, שלח רק changed regions</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Bounding Box detection — מצא מלבן מינימלי של שינויים</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Dynamic quality — הורד JPEG quality כשlatency גבוה</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Threaded capture — thread נפרד ללכידה</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Benchmark dashboard: FPS, bandwidth, latency per frame</span><span class="task-tag tt-fe">FRONTEND</span></div>
+        </div>
+      </div>
+
+      <!-- SPRINT 3 -->
+      <div class="sprint" id="sp3">
+        <div class="sprint-hdr" onclick="toggleSprint('sp3')">
+          <span class="sprint-num">Sprint 3</span>
+          <span class="sprint-title">Input Control — Mouse + Keyboard</span>
+          <span class="sprint-badge sb-plan">🖱️ INPUT</span>
+          <span class="sprint-pts">~1 שבוע</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Viewer — לכוד events עכבר (hover, click, scroll)</span><span class="task-tag tt-fe">FRONTEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Input protocol JSON over TCP — mouse_move, click, key events</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Host — WinAPI input injection (SetCursorPos, keybd_event)</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Coordinate normalization — Viewer window → Host screen</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Keyboard mapping — VK codes, special keys, modifiers</span><span class="task-tag tt-be">BACKEND</span></div>
+        </div>
+      </div>
+
+      <!-- SPRINT 4 -->
+      <div class="sprint" id="sp4">
+        <div class="sprint-hdr" onclick="toggleSprint('sp4')">
+          <span class="sprint-num">Sprint 4</span>
+          <span class="sprint-title">Security — TLS + Authentication + JWT</span>
+          <span class="sprint-badge sb-plan">🔐 SEC</span>
+          <span class="sprint-pts">~2 שבועות</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">TLS 1.3 — גנרציית self-signed cert + ssl.wrap_socket() על TCP</span><span class="task-tag tt-sec">SECURITY</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Auth handshake over TCP — JWT שנשלח כline ראשון לserver</span><span class="task-tag tt-sec">SECURITY</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">JWT token generation + validation (PyJWT)</span><span class="task-tag tt-sec">SECURITY</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Token expiry + refresh flow</span><span class="task-tag tt-sec">SECURITY</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Login screen ב-Viewer — IP/port/password</span><span class="task-tag tt-fe">FRONTEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Rate limiting — מקסימום N ניסיונות login</span><span class="task-tag tt-sec">SECURITY</span></div>
+        </div>
+      </div>
+
+      <!-- SPRINT 5 -->
+      <div class="sprint" id="sp5">
+        <div class="sprint-hdr" onclick="toggleSprint('sp5')">
+          <span class="sprint-num">Sprint 5</span>
+          <span class="sprint-title">Logging & Database — Session Audit</span>
+          <span class="sprint-badge sb-plan">🗄️ DATA</span>
+          <span class="sprint-pts">~1 שבוע</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">PostgreSQL schema — sessions + events + users tables</span><span class="task-tag tt-db">DB</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Session lifecycle — start, active, ended, forced-close</span><span class="task-tag tt-db">DB</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Event logging — כל click/key נשמר עם timestamp</span><span class="task-tag tt-db">DB</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Admin panel — טבלת sessions + search + export CSV</span><span class="task-tag tt-fe">FRONTEND</span></div>
+        </div>
+      </div>
+
+      <!-- SPRINT 6 -->
+      <div class="sprint" id="sp6">
+        <div class="sprint-hdr" onclick="toggleSprint('sp6')">
+          <span class="sprint-num">Sprint 6</span>
+          <span class="sprint-title">Polish — UI, Extras & Demo</span>
+          <span class="sprint-badge sb-plan">✨ FINAL</span>
+          <span class="sprint-pts">~1 שבוע</span>
+          <span class="sprint-arrow">▶</span>
+        </div>
+        <div class="sprint-body">
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Multi-monitor support — בחירת מסך ב-Viewer</span><span class="task-tag tt-media">MEDIA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Clipboard sync — העתק/הדבק בין Viewer ל-Host</span><span class="task-tag tt-fe">FRONTEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">File transfer בסיסי — שלח קובץ מ-Viewer ל-Host</span><span class="task-tag tt-be">BACKEND</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">README + architecture diagram + API docs</span><span class="task-tag tt-infra">INFRA</span></div>
+          <div class="task" onclick="toggleTask(this)"><span class="task-chk"></span><span class="task-label">Demo + presentation להצגה לכיתה</span><span class="task-tag tt-infra">INFRA</span></div>
+        </div>
+      </div>
+
+    </div><!-- /scr -->
+  </div>
+</div>
+
+<!-- ══════════════ S13: QUIZ 2 ══════════════ -->
+<div class="slide" id="s13">
+  <span class="badge b-q">// שאלת הבנה #2</span>
+  <h2>תלויות בין ספרינטים</h2>
+  <p style="margin-bottom:12px">למה אי אפשר לבנות את Sprint 4 (Security) לפני Sprint 1?</p>
+  <div class="qc" id="q2">
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">א</span> אין סיבה — אפשר לבנות Security בכל שלב</div>
+    <div class="qo" onclick="cq('q2',this,true)"><span class="ql">ב</span> TLS + Auth מגנים על connection שעדיין לא קיים. חייבים TCP Socket server עובד לפני שמוסיפים אבטחה עליו</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ג</span> הספרייה PyJWT דורשת asyncio שנבנה בSprint 1</div>
+    <div class="qo" onclick="cq('q2',this,false)"><span class="ql">ד</span> אין צורך ב-Security בפרויקט לכיתה</div>
+  </div>
+  <div class="qfb" id="q2-fb"></div>
+</div>
+
+<!-- ══════════════ S14: TECH DECISIONS ══════════════ -->
+<div class="slide" id="s14">
+  <span class="badge b-c">// בחירות טכנולוגיות</span>
+  <h2>⚙️ טבלת החלטות — למה X ולא Y?</h2>
+  <div class="sc2" style="margin-top:10px">
+    <div class="scr">
+      <table class="tt-table">
+        <thead><tr><th>החלטה</th><th>בחרנו</th><th>חלופה</th><th>סיבה</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Screen Capture</td>
+            <td class="tt-mo">mss</td>
+            <td>PIL / pyautogui</td>
+            <td class="tt-g">mss מהיר פי 3 מPIL.grab, cross-platform</td>
+          </tr>
+          <tr>
+            <td>Image Codec</td>
+            <td class="tt-mo">JPEG Q=60</td>
+            <td>PNG / WebP</td>
+            <td class="tt-g">PNG = גדול פי 10. WebP = מהיר אבל less support</td>
+          </tr>
+          <tr>
+            <td>Transport</td>
+            <td class="tt-mo">TCP Socket</td>
+            <td>HTTP polling / UDP</td>
+            <td class="tt-g">TCP = full-duplex, low overhead, asyncio StreamReader/Writer, no framing protocol overhead</td>
+          </tr>
+          <tr>
+            <td>Async Framework</td>
+            <td class="tt-mo">asyncio</td>
+            <td>threading</td>
+            <td class="tt-g">asyncio = scalable I/O. Threading = GIL bottleneck</td>
+          </tr>
+          <tr>
+            <td>Auth Token</td>
+            <td class="tt-mo">JWT</td>
+            <td>session cookies</td>
+            <td class="tt-g">JWT = stateless, portable, easy expiry</td>
+          </tr>
+          <tr>
+            <td>Password Hash</td>
+            <td class="tt-mo">bcrypt</td>
+            <td>SHA-256 / MD5</td>
+            <td class="tt-g">bcrypt = adaptive, slow by design, salted. MD5 = broken!</td>
+          </tr>
+          <tr>
+            <td>Database</td>
+            <td class="tt-mo">PostgreSQL</td>
+            <td>MongoDB / MySQL</td>
+            <td class="tt-g">PostgreSQL = zero-config, file-based, perfect for single-server</td>
+          </tr>
+          <tr>
+            <td>UI (Viewer)</td>
+            <td class="tt-mo">tkinter</td>
+            <td>PyQt / Electron</td>
+            <td class="tt-g">tkinter = built-in, no install. PyQt = better but bigger</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S15: QUIZ 3 ══════════════ -->
+<div class="slide" id="s15">
+  <span class="badge b-q">// שאלת הבנה #3</span>
+  <h2>Latency — מה ישפר הכי הרבה?</h2>
+  <p style="margin-bottom:12px">anyView שלנו מציג 15 FPS. רוצים להגיע ל-25 FPS. מה השינוי בעל הצלחה הגבוהה ביותר?</p>
+  <div class="qc" id="q3">
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">א</span> שינוי JPEG quality מ-60 ל-80 — תמונה יפה יותר = UX טוב יותר</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ב</span> הוספת עוד thread ל-encoding — parallelism</div>
+    <div class="qo" onclick="cq('q3',this,true)"><span class="ql">ג</span> מימוש Frame Diff — שליחת רק הpixels שהשתנו מקטינה bandwidth ב-90% ומאפשרת שידור מהיר יותר</div>
+    <div class="qo" onclick="cq('q3',this,false)"><span class="ql">ד</span> שדרוג מ-TCP Socket ל-raw TCP</div>
+  </div>
+  <div class="qfb" id="q3-fb"></div>
+</div>
+
+<!-- ══════════════ S16: MISSION ══════════════ -->
+<div class="slide" id="s16">
+  <span class="badge b-m">// משימת תכנון קבוצתית</span>
+  <h2>🗺️ תכנן את Sprint 1 שלך</h2>
+  <div class="mbox">
+    <p><strong style="color:#fff">בקבוצות של 3:</strong> תכנן את Sprint 1 לפרויקט anyView.</p>
+    <ol class="msteps">
+      <li data-n="1"><strong style="color:#fff">ארכיטקטורה:</strong> ציירו את הדיאגרמה של Sprint 1 — אילו רכיבים? מה מדבר עם מה? (whiteboard/draw.io)</li>
+      <li data-n="2"><strong style="color:#fff">Data Flow:</strong> תארו בטקסט את המסלול: Screenshot → encode → send → receive → display. מה קורה בכל שלב?</li>
+      <li data-n="3"><strong style="color:#fff">Task Breakdown:</strong> חלקו את 6 ה-tasks ל-3 חברי הקבוצה. מי עושה מה? מה התלויות?</li>
+      <li data-n="4"><strong style="color:#fff">API Contract:</strong> הגדירו את ה-message format שה-Server שולח ל-Client (TCP Socket binary frame + header)</li>
+      <li data-n="5"><strong style="color:#fff">Definition of Done:</strong> מה אומר "Sprint 1 הושלם"? כתבו 3 קריטריוני קבלה ברורים</li>
+    </ol>
+  </div>
+  <div class="tw">
+    <div>⏱</div>
+    <div class="td" id="t1">20:00</div>
+    <button class="tb" onclick="st('t1',20)">▶ התחל</button>
+    <button class="tb" onclick="rt('t1',20)">↺ אפס</button>
+  </div>
+</div>
+
+<!-- ══════════════ S17: SECURITY DEEP DIVE ══════════════ -->
+<div class="slide" id="s17">
+  <span class="badge b-c">// אבטחה</span>
+  <h2>🔐 Security Architecture — TLS over TCP + Auth</h2>
+  <div class="c2" style="margin-top:10px;flex:1">
+    <div class="scr">
+      <pre class="cb red" style="max-height:600px">
+<span class="cm">"""server.py — asyncio TCP Server + TLS"""</span>
+<span class="kw">import</span> asyncio, ssl, json, jwt, bcrypt
+<span class="kw">from</span> screen_capture <span class="kw">import</span> ScreenCapture
+<span class="kw">from</span> input_handler  <span class="kw">import</span> handle_input_event
+
+SECRET = <span class="st">"anyview-secret-CHANGE-ME"</span>
+VIDEO_PORT = <span class="nm">9000</span>
+INPUT_PORT = <span class="nm">9001</span>
+
+<span class="kw">def</span> <span class="fn">make_tls_ctx</span>() -> ssl.SSLContext:
+    ctx = ssl.<span class="fn">SSLContext</span>(ssl.PROTOCOL_TLS_SERVER)
+    ctx.<span class="fn">load_cert_chain</span>(<span class="st">"cert.pem"</span>, <span class="st">"key.pem"</span>)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+    <span class="kw">return</span> ctx
+
+<span class="kw">async def</span> <span class="fn">video_handler</span>(
+        reader: asyncio.<span class="ty">StreamReader</span>,
+        writer: asyncio.<span class="ty">StreamWriter</span>):
+    <span class="cm"># 1. Auth handshake — קבל JWT</span>
+    token_line = <span class="kw">await</span> reader.<span class="fn">readline</span>()
+    token = token_line.<span class="fn">decode</span>().<span class="fn">strip</span>()
+    <span class="kw">try</span>:
+        jwt.<span class="fn">decode</span>(token, SECRET,
+                   algorithms=[<span class="st">"HS256"</span>])
+    <span class="kw">except</span> Exception:
+        writer.<span class="fn">write</span>(<span class="hx">b"ERR:UNAUTHORIZED\n"</span>)
+        <span class="kw">await</span> writer.<span class="fn">drain</span>()
+        writer.<span class="fn">close</span>(); <span class="kw">return</span>
+
+    writer.<span class="fn">write</span>(<span class="hx">b"OK\n"</span>)
+    <span class="kw">await</span> writer.<span class="fn">drain</span>()
+
+    <span class="cm"># 2. Stream frames</span>
+    cap = <span class="fn">ScreenCapture</span>(quality=<span class="nm">60</span>, fps=<span class="nm">30</span>)
+    <span class="kw">await</span> cap.<span class="fn">stream</span>(writer)
+
+<span class="kw">async def</span> <span class="fn">input_handler</span>(reader, writer):
+    <span class="cm"># קבל events JSON line-by-line</span>
+    <span class="kw">async for</span> line <span class="kw">in</span> reader:
+        <span class="fn">handle_input_event</span>(line.<span class="fn">decode</span>())
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    ctx = <span class="fn">make_tls_ctx</span>()
+    srv_v = <span class="kw">await</span> asyncio.<span class="fn">start_server</span>(
+        video_handler, <span class="st">"0.0.0.0"</span>, VIDEO_PORT,
+        ssl=ctx)
+    srv_i = <span class="kw">await</span> asyncio.<span class="fn">start_server</span>(
+        input_handler, <span class="st">"0.0.0.0"</span>, INPUT_PORT,
+        ssl=ctx)
+    <span class="fn">print</span>(<span class="st">f"Video :{VIDEO_PORT} | Input :{INPUT_PORT}"</span>)
+    <span class="kw">async with</span> srv_v, srv_i:
+        <span class="kw">await</span> asyncio.<span class="fn">gather</span>(
+            srv_v.<span class="fn">serve_forever</span>(),
+            srv_i.<span class="fn">serve_forever</span>())
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())
+      </pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="card ct">
+        <h3>🔑 TLS + Client Connect</h3>
+        <pre class="cb teal" style="max-height:600px;font-size:1.2rem">
+<span class="cm"># גנרציית cert:</span>
+openssl req -x509 -newkey rsa:4096 \
+  -keyout key.pem -out cert.pem \
+  -days 365 -nodes
+
+<span class="cm"># client.py — connect with TLS:</span>
+ctx = ssl.<span class="fn">create_default_context</span>()
+ctx.check_hostname = <span class="kw">False</span>
+ctx.verify_mode = ssl.CERT_NONE
+reader, writer = <span class="kw">await</span> asyncio.\
+  <span class="fn">open_connection</span>(HOST, <span class="nm">9000</span>, ssl=ctx)
+        </pre>
+      </div>
+      <div class="card cr">
+        <h3>🔐 Auth Flow — TCP</h3>
+        <div style="font-family:'Fira Code',monospace;font-size:1.2rem;display:flex;flex-direction:column;gap:3px;margin-top:6px">
+          <div style="color:var(--sky)">1. Client → connect(:9000 TLS)</div>
+          <div style="color:var(--sky)">2. Client → send JWT token\n</div>
+          <div style="color:var(--dim)">↓ server: jwt.decode()</div>
+          <div style="color:var(--green)">3. Server → b"OK\n"</div>
+          <div style="color:var(--dim)">↓ stream begins</div>
+          <div style="color:var(--green)">4. Server → [4-byte hdr][JPEG data]...</div>
+        </div>
+      </div>
+      <div class="card cy">
+        <h3>⚠️ Security Checklist</h3>
+        <p>
+          ✅ TLS 1.3 — ssl.SSLContext<br>
+          ✅ bcrypt — לא MD5/SHA1<br>
+          ✅ JWT exp — tokens expire<br>
+          ✅ 2 ports נפרדים: video/input<br>
+          ❌ cert.pem ב-git<br>
+          ❌ SECRET ב-hardcode
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ S18: HOMEWORK ══════════════ -->
+<div class="slide" id="s18">
+  <span class="badge b-m">// שיעורי בית</span>
+  <h2>🏠 anyView — Sprint 1 סטארט</h2>
+  <div class="cg cg3" style="margin-top:13px">
+    <div class="card cg2c">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--green)">TASK A</span>
+      <h3 style="margin-top:5px">TCP Socket Server</h3>
+      <p style="font-size:1.2rem">כתוב TCP Socket server ב-asyncio שמקבל חיבור, שולח "hello" ומחכה לhello חזרה. בדוק עם websocat/wscat.</p>
+    </div>
+    <div class="card cy">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--gold)">TASK B</span>
+      <h3 style="margin-top:5px">Screen → JPEG → Send</h3>
+      <p style="font-size:1.2rem">הוסף ל-server: לכוד frame עם mss, encode ל-JPEG, שלח כ-binary ל-client שמציג אותו. מדוד FPS.</p>
+    </div>
+    <div class="card cr">
+      <span style="font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--red)">TASK C ★</span>
+      <h3 style="margin-top:5px">Diff Engine</h3>
+      <p style="font-size:1.2rem">מדוד bandwidth עם full frame. הוסף numpy diff. מדוד שוב. כמה אחוז חסכת? הסבר בREADME.</p>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding:9px 14px;background:var(--s1);border:1px solid var(--border);font-size:1.2rem">
+    📌 <strong style="color:#fff">הגשה:</strong> GitHub repo עם README, architecture diagram, screenshots של FPS meter → GitHub Classroom
+  </div>
+</div>
+
+<!-- ══════════════ S19: SUMMARY ══════════════ -->
+<div class="slide" id="s19">
+  <span class="badge b-i">// סיכום</span>
+  <h2>מה תכננו היום?</h2>
+  <div class="cg cg3" style="gap:9px;margin-top:13px;flex:1">
+    <div class="card ci2">
+      <h3>🏗️ ארכיטקטורה</h3>
+      <p>Client/Host/DB. TCP Socket TLS. Auth Service. Screen Capture. Input Handler.</p>
+    </div>
+    <div class="card cg2c">
+      <h3>🎬 Pipeline</h3>
+      <p>Capture→Diff→JPEG→TLS→WS→Decode→Render. ~44ms LAN latency. 20+ FPS.</p>
+    </div>
+    <div class="card cy">
+      <h3>📋 Sprints</h3>
+      <p>6 ספרינטים. Foundation → Perf → Input → Security → DB → Polish. תלויות ברורות.</p>
+    </div>
+    <div class="card cr">
+      <h3>🔐 Security</h3>
+      <p>TLS 1.3. bcrypt passwords. JWT tokens. Rate limiting. Auth before stream.</p>
+    </div>
+    <div class="card ct">
+      <h3>⚙️ Stack</h3>
+      <p>Python + asyncio + mss + TCP Socket + PostgreSQL + tkinter. Zero external deps.</p>
+    </div>
+    <div class="card cp">
+      <h3>🔑 Key Insight</h3>
+      <p>Frame Diff = הסוד לביצועים. 90% bandwidth reduction. RAT = אותו קוד, בלי רשות.</p>
+    </div>
+  </div>
+  <div style="margin-top:9px;font-family:'Fira Code',monospace;font-size:1.2rem;color:var(--dim2);text-align:center">
+    // next: Sprint 1 Implementation — שיעור הבא
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav>
+  <button class="nb" id="pb2" onclick="go(-1)" disabled>הקודם ▶</button>
+  <span class="sc" id="sc">1 / 20</span>
+  <button class="nb" id="nb2" onclick="go(1)">◀ הבא</button>
+</nav>
+<div class="kbh">← → ניווט</div>
+
+<script>
+// ── ENGINE ──
+const TOTAL=20;let cur=0,xp=0;
+const slides=document.querySelectorAll('.slide');
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  setTimeout(()=>slides[cur].classList.remove('out'),300);
+  cur=n;slides[cur].classList.add('active');
+  document.getElementById('sc').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pb2').disabled=cur===0;
+  document.getElementById('nb2').disabled=cur===TOTAL-1;
+  document.getElementById('pb').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function go(d){goTo(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(1);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')go(-1);
+});
+
+// ── XP ──
+function addXP(n){xp+=n;const el=document.getElementById('xv');
+  el.textContent=xp;el.classList.add('xpop');
+  setTimeout(()=>el.classList.remove('xpop'),220);}
+
+// ── QUIZ ──
+const okM=['🔥 מצוין! +10 XP','⚡ בול! +10 XP','💎 נכון! +10 XP','🎯 מדויק! +10 XP'];
+const noM=['❌ לא בדיוק — חשוב על תלויות.','❌ נסה שוב.','❌ שים לב לסדר הבנייה.'];
+function cq(id,el,ok){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.qo').forEach(o=>o.classList.add('disabled'));
+  el.classList.add(ok?'correct':'wrong');
+  if(!ok)c.querySelectorAll('.qo').forEach(o=>{
+    if(o.getAttribute('onclick')?.includes(',true)'))o.classList.add('correct');
+  });
+  const fb=document.getElementById(`${id}-fb`);
+  const msgs=ok?okM:noM;
+  fb.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  if(ok)addXP(10);
+}
+
+// ── FILL ──
+function checkFill(){
+  const v1=document.getElementById('f1').value.trim().toLowerCase();
+  const v2=document.getElementById('f2').value.trim().toLowerCase();
+  const v3=document.getElementById('f3').value.trim().toLowerCase();
+  const ok1=v1==='active'||v1==="'active'";
+  const ok2=v2.includes('payload')||v2.includes('data')||v2.includes('event_data');
+  const ok3=v3==='session_id';
+  ['f1','f2','f3'].forEach((id,i)=>{
+    document.getElementById(id).className='fi '+([ok1,ok2,ok3][i]?'ok':'no');
+  });
+  const fb=document.getElementById('fb1');
+  fb.className='ffb show';
+  if(ok1&&ok2&&ok3){
+    fb.style.color='var(--green)';
+    fb.textContent="✓ מושלם! 'active', payload TEXT, session_id. +15 XP";
+    addXP(15);
+  } else {
+    fb.style.color='var(--red)';
+    fb.textContent=`✗ ${!ok1?'רמז 1: status ברירת מחדל = active ':''}${!ok2?'רמז 2: עמודה לנתונים של event = payload ':''}${!ok3?'רמז 3: index על foreign key = session_id ':''}`;
+  }
+}
+
+// ── REVEAL LIST ──
+function rv(li){li.classList.toggle('open');}
+
+// ── ARCH PANEL ──
+const archData={
+  'viewer-ui':{title:'UI / Display (Viewer)',color:'var(--sky)',
+    body:'טכנולוגיה: <b>tkinter Canvas</b><br>קולט frames מTCP Socket ומציגם.<br>מעדכן <b>PhotoImage</b> בכל frame.<br>מציג FPS/latency counter.<br>→ שולח input events ל-InputHandler'},
+  'input-handler':{title:'Input Handler (Viewer)',color:'var(--purple)',
+    body:'מאזין ל-events: <b>mouse_motion, Button, Key</b><br>ממיר לJSON: {type, x, y, vk}<br>שולח דרך TCP Socket ל-Host<br>מנרמל קואורדינטות לגודל Host'},
+  'screen-capture':{title:'Screen Capture (Host)',color:'var(--green)',
+    body:'<b>mss.grab()</b> → raw pixels<br>numpy diff vs previous frame<br>מחזיר רק bounding box שהשתנה<br>~5ms per capture @ 1080p'},
+  'encoder':{title:'Encoder (Host)',color:'var(--lime)',
+    body:'<b>PIL.Image.save(format="JPEG", quality=60)</b><br>Dynamic quality: אם latency גבוה → הורד quality<br>Header: 4 bytes = frame size<br>Binary TCP Socket send'},
+  'session-mgr':{title:'Session Manager (Host)',color:'var(--indigo)',
+    body:'asyncio event loop<br>מנהל חיבורים מרובים<br>JWT token validation<br>Port 9000: video stream, Port 9001: input events<br>כותב session_start לDB'},
+  'auth':{title:'Auth Service',color:'var(--red)',
+    body:'bcrypt password verification<br>JWT token generation (exp: 2h)<br>ssl.SSLContext(PROTOCOL_TLS_SERVER)<br>cert.pem + key.pem על כל TCP connection<br>חיבור ל-users table ב-PostgreSQL'},
+  'db':{title:'PostgreSQL Database',color:'var(--gold)',
+    body:'קבצי DB: anyview_db<br>Tables: sessions, events, users<br>Index על session_id ב-events<br>WAL mode לביצועים<br>Audit trail לכל action'},
+};
+function showArch(key){
+  const d=archData[key];
+  if(!d)return;
+  document.getElementById('archPanel').innerHTML=
+    `<div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:${d.color};margin-bottom:8px">// ${d.title}</div>
+     <p style="font-size:1.2rem;color:var(--text);line-height:1.8">${d.body}</p>`;
+  addXP(2);
+}
+
+// ── PIPELINE PANEL ──
+const pipeData={
+  capture:{color:'var(--green)',title:'Screen Capture',
+    body:'<b>mss.grab(monitor)</b> → BGRA raw pixels → PIL.Image<br>~5ms @ 1920×1080. mss מהיר פי 3 מ-PIL.grab<br>→ מחזיר PIL Image object'},
+  diff:{color:'var(--sky)',title:'Frame Diff',
+    body:'<b>numpy XOR</b> של current vs previous frame<br>אם max diff < threshold (8) → skip frame (no change)<br>מחשב bounding box של אזור שהשתנה<br>חוסך ~90% bandwidth כשהמסך סטטי'},
+  compress:{color:'var(--lime)',title:'JPEG Compression',
+    body:'<b>PIL.Image.save(BytesIO, "JPEG", quality=60)</b><br>Q=60: 95% compression ratio. Q=80: 80%<br>Dynamic quality: monitor RTT, הורד Q אם RTT גבוה<br>~8ms @ 1080p. WebP = איכות יותר טובה באותו גודל'},
+  encrypt:{color:'var(--red)',title:'TLS Encryption',
+    body:'<b>ssl.wrap_socket()</b> עוטף ה-TCP Socket<br>TLS 1.3: AES-256-GCM + ECDHE key exchange<br>~1ms overhead (חומרה עם AES-NI)<br>self-signed cert לפיתוח, CA cert ל-production'},
+  transmit:{color:'var(--indigo)',title:'TCP Socket Transmission',
+    body:'<b>writer.write(hdr+data); await writer.drain()</b><br>hdr = len(data).to_bytes(4, "big")<br>asyncio StreamWriter — non-blocking, buffered<br>LAN: ~20ms RTT. Port 9000=video, 9001=input<br>readexactly(4) → size → readexactly(size) client-side'},
+  decode:{color:'var(--gold)',title:'Frame Decode',
+    body:'<b>reader.readexactly(4)</b> → size → <b>reader.readexactly(size)</b><br>PIL.Image.open(BytesIO(data)) → JPEG decode ~5ms<br>→ ImageTk.PhotoImage. חשוב: שמור reference!<br>asyncio StreamReader מבטיח קריאה מדויקת של N bytes'},
+  render:{color:'var(--purple)',title:'Canvas Render',
+    body:'<b>canvas.create_image()</b> עם PhotoImage<br>Double-buffering: תכין frame חדש בזמן שמציגים הנוכחי<br>canvas.configure(image=new_photo)<br>~3ms. Tkinter runs in main thread only!'},
+};
+function showPipe(el,key){
+  document.querySelectorAll('.pip-stage').forEach(s=>s.style.filter='');
+  el.style.filter='brightness(1.4)';
+  const d=pipeData[key];
+  if(!d)return;
+  document.getElementById('pipePanel').innerHTML=
+    `<div style="font-family:'Fira Code',monospace;font-size:1.2rem;color:${d.color};margin-bottom:7px">// ${d.title}</div>
+     <p style="font-size:1.2rem;color:var(--text);line-height:1.8">${d.body}</p>`;
+  addXP(2);
+}
+
+// ── LATENCY BARS ──
+let barsAnimated=false;
+const barWidths=[3.3,1.3,5.3,13.3,5.3,29];
+function animateBars(){
+  if(barsAnimated)return;
+  barsAnimated=true;
+  document.getElementById('latBtn').disabled=true;
+  const fills=document.querySelectorAll('.lat-fill');
+  fills.forEach((f,i)=>{
+    setTimeout(()=>{f.style.width=barWidths[i]+'%';},i*150);
+  });
+  addXP(5);
+}
+
+// ── SPRINT BOARD ──
+function toggleSprint(id){
+  document.getElementById(id).classList.toggle('open');
+}
+function toggleTask(el){
+  el.classList.toggle('done');
+  el.querySelector('.task-chk').textContent=el.classList.contains('done')?'✓':'';
+  updateTaskCount();
+}
+function updateTaskCount(){
+  const done=document.querySelectorAll('.task.done').length;
+  const total=document.querySelectorAll('.task').length;
+  document.getElementById('tasksDone').textContent=done;
+  document.getElementById('tasksTotal').textContent=total;
+}
+// init task count
+document.addEventListener('DOMContentLoaded',updateTaskCount);
+updateTaskCount();
+
+// ── TIMER ──
+const timers={};
+function st(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  let s=min*60;const el=document.getElementById(id);
+  function tick(){
+    if(s<=0){clearInterval(timers[id]);el.textContent='00:00';el.classList.add('urg');return;}
+    s--;
+    el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    if(s<=60)el.classList.add('urg');else el.classList.remove('urg');
+  }
+  tick();timers[id]=setInterval(tick,1000);
+}
+function rt(id,min){
+  if(timers[id])clearInterval(timers[id]);
+  document.getElementById(id).textContent=`${String(min).padStart(2,'0')}:00`;
+  document.getElementById(id).classList.remove('urg');
+}
+
+goTo(0);
+</script>
+</body>
+</html>

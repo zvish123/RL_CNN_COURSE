@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amit's Web Services — פרויקט גמר</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Heebo:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #0f0f1a;
+    --panel: #12121f;
+    --border: #1e1e35;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --green: #10b981;
+    --red: #ef4444;
+    --slide-count: 8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ─── NOISE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ─── SLIDES CONTAINER ─── */
+  .slides {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    padding: 48px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* ─── GRID BACKGROUND ─── */
+  .slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ─── NAVIGATION ─── */
+  .nav {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 100;
+    background: rgba(18,18,31,0.9);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 20px;
+    backdrop-filter: blur(20px);
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    transition: all 0.2s;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .nav-btn:hover { color: var(--accent); background: rgba(0,229,255,0.08); }
+
+  .nav-dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .dot.active {
+    background: var(--accent);
+    width: 20px;
+    border-radius: 3px;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .slide-counter {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  /* ─── SLIDE HEADER ─── */
+  .slide-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.7;
+  }
+
+  .slide-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  .slide-subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 300;
+    margin-bottom: 48px;
+    line-height: 1.6;
+  }
+
+  /* ─── ACCENT LINE ─── */
+  .accent-line {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    margin-bottom: 40px;
+    box-shadow: 0 0 12px rgba(0,229,255,0.4);
+  }
+
+  /* ─── CARDS GRID ─── */
+  .cards-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .cards-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .cards-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cards-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,229,255,0.1);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .card-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .card-text {
+    font-size: 18px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ─── CODE BLOCK ─── */
+  .code-block {
+    background: #060610;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #a8b2d8;
+    position: relative;
+    overflow: hidden;
+    direction: ltr;
+  }
+
+  .code-block::before {
+    content: '●  ●  ●';
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 18px;
+    color: var(--border);
+    letter-spacing: 4px;
+  }
+
+  .code-kw { color: #c792ea; }
+  .code-str { color: #c3e88d; }
+  .code-num { color: var(--accent3); }
+  .code-comment { color: #546e7a; }
+  .code-fn { color: var(--accent); }
+  .code-var { color: #f78c6c; }
+
+  /* ─── FLOW DIAGRAM ─── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+
+  .flow-node {
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0,229,255,0.1);
+  }
+
+  .flow-node.server {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 15px rgba(124,58,237,0.15);
+  }
+
+  .flow-node.donor {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 15px rgba(16,185,129,0.15);
+  }
+
+  .flow-arrow {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    position: relative;
+    min-width: 30px;
+    opacity: 0.5;
+  }
+
+  .flow-arrow::after {
+    content: '▶';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--accent2);
+  }
+
+  .flow-label {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ─── COMPARISON TABLE ─── */
+  .comparison {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .comparison table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 18px;
+  }
+
+  .comparison th {
+    background: var(--bg2);
+    padding: 14px 20px;
+    text-align: right;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .comparison td {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(30,30,53,0.5);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.5;
+  }
+
+  .comparison tr:last-child td { border-bottom: none; }
+
+  .comparison tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .tag-good {
+    background: rgba(16,185,129,0.15);
+    color: var(--green);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+  }
+
+  .tag-bad {
+    background: rgba(239,68,68,0.12);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .tag-chosen {
+    background: rgba(0,229,255,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+  }
+
+  /* ─── STAT BOXES ─── */
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-box {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+    text-shadow: 0 0 20px rgba(0,229,255,0.4);
+  }
+
+  .stat-label {
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* ─── HIGHLIGHT BOX ─── */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(0,229,255,0.06), rgba(124,58,237,0.06));
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .highlight-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .highlight-box p {
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .highlight-box strong { color: var(--accent); }
+
+  /* ─── BADGE ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 18px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    margin-left: 8px;
+  }
+
+  /* ─── CORNER DECORATION ─── */
+  .corner-deco {
+    position: absolute;
+    top: 24px;
+    left: 60px;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    color: rgba(0,229,255,0.15);
+    letter-spacing: 3px;
+  }
+
+  /* ─── TITLE SLIDE ─── */
+  .title-slide-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  .big-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(40px, 6vw, 80px);
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glowing-accent {
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,229,255,0.5);
+  }
+
+  .title-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+  }
+
+  .meta-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ─── GLOW ORBS ─── */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .orb-1 {
+    width: 400px; height: 400px;
+    background: rgba(0,229,255,0.06);
+    top: -100px; right: -100px;
+  }
+
+  .orb-2 {
+    width: 300px; height: 300px;
+    background: rgba(124,58,237,0.08);
+    bottom: -80px; left: -80px;
+  }
+
+  /* ─── LIST ITEMS ─── */
+  .fancy-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .fancy-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .fancy-list li::before {
+    content: '▸';
+    color: var(--accent);
+    font-size: 18px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ─── ARCH DIAGRAM ─── */
+  .arch-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .arch-node {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+  }
+
+  .arch-node.client {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,229,255,0.08);
+  }
+
+  .arch-node.server-node {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 20px rgba(124,58,237,0.1);
+    position: relative;
+  }
+
+  .arch-center {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* ─── PROTOCOL TABLE ─── */
+  .proto-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(30,30,53,0.5);
+    font-size: 18px;
+  }
+
+  .proto-cmd {
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    font-size: 18px;
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .proto-dir {
+    width: 90px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 18px;
+  }
+
+  .proto-desc {
+    color: var(--text);
+    flex: 1;
+  }
+
+  /* ─── KEYBOARD HINT ─── */
+  .kb-hint {
+    position: fixed;
+    top: 24px;
+    left: 60px;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    color: rgba(100,116,139,0.5);
+    z-index: 100;
+    display: flex;
+    gap: 12px;
+  }
+
+  .kb-key {
+    background: rgba(30,30,53,0.8);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s ease;
+    z-index: 200;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ─── SLIDE 1 SPECIFIC ─── */
+  #slide-1 .orb-1 { animation: pulse-orb 4s ease-in-out infinite; }
+  #slide-1 .orb-2 { animation: pulse-orb 4s ease-in-out infinite 2s; }
+
+  @keyframes pulse-orb {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  /* ─── GLOW PULSE ─── */
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(0,229,255,0.2); }
+    50% { box-shadow: 0 0 25px rgba(0,229,255,0.5); }
+  }
+
+  .pulse { animation: glow-pulse 2s ease-in-out infinite; }
+
+  /* ─── TWO COLUMN ─── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .two-col.asym {
+    grid-template-columns: 3fr 2fr;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<div class="kb-hint">
+  <span><span class="kb-key">←</span><span class="kb-key">→</span> ניווט</span>
+  <span><span class="kb-key">Space</span> הבא</span>
+</div>
+
+<div class="slides" id="slides">
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 1 -->
+  <div class="slide active" id="slide-1">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="title-slide-content">
+      <div class="slide-tag">פרויקט גמר · הגנת סייבר · בית ספר בליך</div>
+      <div class="big-title">Amit's<br>Web<br>Services</div>
+      <div class="accent-line"></div>
+      <p style="font-size:17px; color:var(--muted); max-width:560px; line-height:1.7;">
+        מערכת אחסון קבצים מבוזרת — רשת P2P היברידית עם הצפנה מקצה לקצה,<br>
+        בנויה בPython עם ממשק דפדפן.
+      </p>
+      <div class="title-meta">
+        <div class="meta-item">
+          <span class="meta-label">שם</span>
+          <span class="meta-value">עמית בר</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">מנחה</span>
+          <span class="meta-value">צביקה שירן</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">נושא</span>
+          <span class="meta-value">אחסון קבצים מבוזר</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">הגשה</span>
+          <span class="meta-value">20.5.2023</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 2 -->
+  <div class="slide" id="slide-2">
+    <div class="orb orb-1"></div>
+    <div class="corner-deco">02 / הבעיה</div>
+    <div class="slide-tag">מוטיבציה</div>
+    <div class="slide-title">למה <span style="color:var(--accent)">P2P?</span></div>
+    <div class="accent-line"></div>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <span class="stat-num">∞</span>
+        <span class="stat-label">שטח לא מנוצל ברשת</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num">💾</span>
+        <span class="stat-label">משתמשים שצריכים אחסון</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num">🔗</span>
+        <span class="stat-label">חיבור ביניהם = ערך</span>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3 style="font-family:'Orbitron',monospace; font-size:18px; color:var(--accent); margin-bottom:16px; letter-spacing:2px;">הבעיה שרציתי לפתור</h3>
+        <ul class="fancy-list">
+          <li>אצל חלק מהאנשים — דיסק מלא, אין מקום לקבצים חשובים</li>
+          <li>אצל אחרים — עשרות ג'יגה-בייט לא מנוצלים "מתבזבזים"</li>
+          <li>פתרונות קיימים (Google Drive, Dropbox) דורשים שרת מרכזי שאפשר להאקר אותו</li>
+          <li>השוק: Filecoin, Arweave, BitTorrent File System — אך אף אחד לא "בניתי אני"</li>
+        </ul>
+      </div>
+      <div>
+        <div class="highlight-box">
+          <p>
+            <strong>הרעיון המרכזי:</strong><br><br>
+            כל משתמש שמוריד את התוכנה הופך בו-זמנית ל<strong>לקוח</strong> (מאחסן קבצים)
+            ול<strong>תורם</strong> (נותן מקום לאחרים).
+            כמו BitTorrent — אבל עם אחסון ארוך-טווח, הצפנה, וחשבון משתמש אמיתי.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 3 -->
+  <div class="slide" id="slide-3">
+    <div class="orb orb-2"></div>
+    <div class="corner-deco">03 / ארכיטקטורה</div>
+    <div class="slide-tag">עיצוב המערכת</div>
+    <div class="slide-title">ארכיטקטורה <span style="color:var(--accent)">היברידית</span></div>
+    <div class="accent-line"></div>
+
+    <div class="highlight-box" style="margin-bottom:20px;">
+      <p>
+        <strong>לא P2P טהור ולא Client-Server קלאסי</strong> — שילוב חכם:
+        שרת מרכזי ל<strong>ניהול</strong> ורישום, ותקשורת לקוח-לקוח ישירה ל<strong>העברת קבצים</strong>.
+      </p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+      <div class="card">
+        <span class="card-icon">🖥️</span>
+        <div class="card-title">שרת מרכזי</div>
+        <div class="card-text">
+          אחראי על: רישום, אימות זהות, מציאת תורמים פנויים, שמירת מטא-דאטה על קבצים, מסד נתונים
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">💻</span>
+        <div class="card-title">לקוחות P2P</div>
+        <div class="card-text">
+          כל לקוח מריץ Receiver thread — מקשיב לחיבורים נכנסים מלקוחות אחרים. העברת קבצים ישירה, ללא שרת!
+        </div>
+      </div>
+    </div>
+
+    <div dir="ltr" class="flow">
+      <div class="flow-node">Client A<br><small style="color:var(--muted)">רוצה להעלות</small></div>
+      <div class="flow-arrow" style="position:relative">
+        <span class="flow-label">בקשת תורם</span>
+      </div>
+      <div class="flow-node server">Server + DB<br><small style="color:var(--muted)">מוצא תורם</small></div>
+      <div class="flow-arrow" style="position:relative">
+        <span class="flow-label">כתובת IP</span>
+      </div>
+      <div class="flow-node">Client A<br><small style="color:var(--muted)">מתחבר ישירות</small></div>
+      <div class="flow-arrow" style="border-color:var(--green)">
+        <span class="flow-label" style="color:var(--green)">קובץ מוצפן</span>
+      </div>
+      <div class="flow-node donor">Donor<br><small style="color:var(--muted)">שומר קובץ</small></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 4 -->
+  <div class="slide" id="slide-4">
+    <div class="orb orb-1"></div>
+    <div class="corner-deco">04 / שיקולי עיצוב</div>
+    <div class="slide-tag">החלטות טכנולוגיות</div>
+    <div class="slide-title">למה בחרתי <span style="color:var(--accent)">פתרון 1</span></div>
+    <div class="accent-line"></div>
+
+    <div class="comparison">
+      <table>
+        <thead>
+          <tr>
+            <th>פתרון</th>
+            <th>תיאור</th>
+            <th>יתרונות</th>
+            <th>חסרונות</th>
+            <th>סטטוס</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--accent); font-family:'Space Mono',monospace; font-size:12px;">פתרון 1</strong></td>
+            <td>שרת מרכזי מקשר לקוחות<br><small style="color:var(--muted)">Client → Server → Donor</small></td>
+            <td>אימות זהות, עקיבות, עובד בין רשתות</td>
+            <td>SPOF — שרת נופל, הכל נופל</td>
+            <td><span class="tag-chosen">נבחר</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--muted); font-family:'Space Mono',monospace; font-size:12px;">פתרון 2</strong></td>
+            <td>UDP Broadcast<br><small style="color:var(--muted)">"לצעוק" ברשת המקומית</small></td>
+            <td>ללא שרת, עצמאי לחלוטין</td>
+            <td>לא עובד בין רשתות, אין אימות, קשה לדעת אם לקוח מנותק</td>
+            <td><span class="tag-bad">נדחה</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--muted); font-family:'Space Mono',monospace; font-size:12px;">פתרון 3</strong></td>
+            <td>UDP Broadcast + שרת לעקיבה<br><small style="color:var(--muted)">היברידי</small></td>
+            <td>שילוב של 1 ו-2</td>
+            <td>"אם יש שרת — למה UDP?" — כפילות מיותרת</td>
+            <td><span class="tag-bad">נדחה</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="highlight-box" style="margin-top:16px;">
+      <p>
+        <strong>הנימוק שלי:</strong><br> ללא שרת מרכזי — משתמש יכול להתחזות למשתמש אחר ולגנוב קבצים.
+        <br>בנוסף, UDP Broadcast לא עובד בין רשתות שונות — מה שמגביל מאוד את הסקיילינג.
+        עם שרת — אני מקבל אימות זהות, היסטוריה, ובסיס נתונים חינם.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 5 -->
+  <div class="slide" id="slide-5">
+    <div class="orb orb-2"></div>
+    <div class="corner-deco">05 / הצפנה</div>
+    <div class="slide-tag">שכבת האבטחה</div>
+    <div class="slide-title">הצפנה <span style="color:var(--accent)">מקצה לקצה</span></div>
+    <div class="accent-line"></div>
+
+    <div class="cards-grid cols-3" style="margin-bottom:20px;">
+      <div class="card">
+        <span class="card-icon">🔑</span>
+        <div class="card-title">Diffie-Hellman</div>
+        <div class="card-text">
+          חלופת מפתחות בכל חיבור חדש — שרת↔לקוח וגם לקוח↔לקוח.
+          גורם שלישי לא יכול לפצח בלי חישובים כבדים.
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">🔒</span>
+        <div class="card-title">AES / Fernet</div>
+        <div class="card-text">
+          כל הודעה ברשת מוצפנת. כל קובץ שמועלה מוצפן עם מפתח פרטי של המשתמש — התורם לא יכול לקרוא!
+        </div>
+      </div>
+      <div class="card">
+        <span class="card-icon">🛡️</span>
+        <div class="card-title">Argon2</div>
+        <div class="card-text">
+          סיסמאות נשמרות כ-hash בלבד. גם אם מישהו פורץ לDB — הסיסמאות מוגנות.
+        </div>
+      </div>
+    </div>
+
+    <pre class="code-block">
+<span class="code-comment"># חלופת מפתחות Diffie-Hellman — הלב הקריפטוגרפי של המערכת</span>
+<span class="code-kw">def</span> <span class="code-fn">generate_key_pair</span>(<span class="code-var">self</span>):
+    <span class="code-var">self</span>.private_key = <span class="code-fn">bytes_to_long</span>(<span class="code-fn">get_random_bytes</span>(<span class="code-num">32</span>))
+    <span class="code-var">self</span>.public_key  = <span class="code-fn">pow</span>(<span class="code-var">self</span>.G, <span class="code-var">self</span>.private_key, <span class="code-var">self</span>.P)
+
+<span class="code-kw">def</span> <span class="code-fn">derive_shared_secret</span>(<span class="code-var">self</span>, <span class="code-var">public_key</span>):
+    shared = <span class="code-fn">pow</span>(<span class="code-var">public_key</span>, <span class="code-var">self</span>.private_key, <span class="code-var">self</span>.P)
+    <span class="code-var">self</span>.key = <span class="code-fn">long_to_bytes</span>(shared, <span class="code-num">16</span>)[:<span class="code-num">32</span>]  <span class="code-comment"># 256-bit AES key</span>
+    </pre>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 6 -->
+  <div class="slide" id="slide-6">
+    <div class="orb orb-1"></div>
+    <div class="corner-deco">06 / פרוטוקול</div>
+    <div class="slide-tag">תיכון תקשורת</div>
+    <div class="slide-title">פרוטוקול <span style="color:var(--accent)">מותאם אישית</span></div>
+    <div class="accent-line"></div>
+
+    <div class="two-col asym">
+      <div>
+        <pre class="code-block" style="margin-bottom:16px;">
+<span class="code-comment"># מבנה כל הודעה במערכת</span>
+
+<span class="code-str">LOGIN           </span><span class="code-kw">|</span><span class="code-num">000045</span><span class="code-kw">|</span>user<span class="code-kw">#</span>pass<span class="code-kw">#</span>ip<span class="code-kw">#</span>port
+<span class="code-str">FIND_DONOR      </span><span class="code-kw">|</span><span class="code-num">000020</span><span class="code-kw">|</span>filename<span class="code-kw">#</span>size
+<span class="code-str">DONOR_INFO      </span><span class="code-kw">|</span><span class="code-num">000018</span><span class="code-kw">|</span>count<span class="code-kw">#</span>ip<span class="code-kw">#</span>port
+<span class="code-str">TRANSFER        </span><span class="code-kw">|</span><span class="code-num">000030</span><span class="code-kw">|</span>filename<span class="code-kw">#</span>size<span class="code-kw">#</span>user
+<span class="code-str">TRANSFER_OK     </span><span class="code-kw">|</span><span class="code-num">000010</span><span class="code-kw">|</span>file_size
+<span class="code-str">OK_UPLOAD       </span><span class="code-kw">|</span><span class="code-num">000000</span><span class="code-kw">|</span>
+<span class="code-str">ERROR           </span><span class="code-kw">|</span><span class="code-num">000015</span><span class="code-kw">|</span>error_message
+
+<span class="code-comment">↑ 16 תווים פקודה | 6 תווים אורך | תוכן</span>
+        </pre>
+
+        <div class="highlight-box">
+          <p>
+            <strong>למה עיצוב כזה?</strong><br>
+            אורך קבוע לכותרת (22 תווים) מאפשר ל-recv() לדעת
+            בדיוק כמה לקרוא — parsing פשוט וחסין לתנאי מרוץ.
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-family:'Orbitron',monospace; font-size:12px; color:var(--accent); margin-bottom:16px; letter-spacing:2px;">כל ההודעות במערכת</h3>
+        <div class="proto-row" style="border-top:1px solid rgba(30,30,53,0.5)">
+          <span class="proto-cmd">LOGIN/REGISTER</span>
+          <span class="proto-dir">L → S</span>
+          <span class="proto-desc">הרשמה / כניסה</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">FIND_DONOR</span>
+          <span class="proto-dir">L → S</span>
+          <span class="proto-desc">בקשת תורם לפי גודל</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">DONOR_INFO</span>
+          <span class="proto-dir">S → L</span>
+          <span class="proto-desc">כתובת תורם פנוי</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">TRANSFER</span>
+          <span class="proto-dir">L ↔ L</span>
+          <span class="proto-desc">התחלת העברת קובץ</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">FILE_FIND</span>
+          <span class="proto-dir">L → S</span>
+          <span class="proto-desc">מציאת קובץ להורדה</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">SETTINGS</span>
+          <span class="proto-dir">L → S</span>
+          <span class="proto-desc">עדכון הגדרות תרומה</span>
+        </div>
+        <div class="proto-row">
+          <span class="proto-cmd">GET_FILES</span>
+          <span class="proto-dir">L → S</span>
+          <span class="proto-desc">חיפוש קבצים</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 7 -->
+  <div class="slide" id="slide-7">
+    <div class="orb orb-2"></div>
+    <div class="corner-deco">07 / אלגוריתם מרכזי</div>
+    <div class="slide-tag">חדשנות</div>
+    <div class="slide-title">מציאת תורם — <span style="color:var(--accent)">האלגוריתם</span></div>
+    <div class="accent-line"></div>
+
+    <div class="two-col asym">
+      <div>
+        <pre class="code-block" style="font-size:18px;">
+<span class="code-kw">def</span> <span class="code-fn">get_available_donors</span>(<span class="code-var">size</span>, <span class="code-var">username</span>):
+    user_free_space = db.<span class="code-fn">get_all_users_free_space</span>()
+    user_count      = <span class="code-fn">len</span>(user_free_space)
+
+    <span class="code-comment"># מטריצה: user_space_division[i] = משתמשים
+    # שיחד יש להם size/i מקום</span>
+    user_space_division = [[] <span class="code-kw">for</span> _ <span class="code-kw">in</span> <span class="code-fn">range</span>(user_count+<span class="code-num">1</span>)]
+
+    <span class="code-kw">for</span> user <span class="code-kw">in</span> user_free_space:
+        <span class="code-kw">if</span> user <span class="code-kw">in</span> logged_users <span class="code-kw">and</span> user != username:
+            <span class="code-kw">if</span> user_free_space[user] > <span class="code-num">0</span>:
+                frac = math.<span class="code-fn">ceil</span>(size / user_free_space[user])
+                <span class="code-kw">if</span> frac <= user_count:
+                    user_space_division[frac].<span class="code-fn">append</span>(user)
+
+    donors = []
+    <span class="code-kw">for</span> i, division <span class="code-kw">in</span> <span class="code-fn">enumerate</span>(user_space_division):
+        donors += division
+        <span class="code-kw">if</span> <span class="code-fn">len</span>(donors) >= i <span class="code-kw">and</span> i != <span class="code-num">0</span>:
+            <span class="code-kw">return</span> donors[:i]  <span class="code-comment"># מספיק תורמים!</span>
+    <span class="code-kw">return</span> []
+        </pre>
+      </div>
+
+      <div>
+        <h3 style="font-family:'Orbitron',monospace; font-size:18px; color:var(--accent); margin-bottom:16px; letter-spacing:2px;">איך זה עובד?</h3>
+        <ul class="fancy-list" style="margin-bottom:20px;">
+          <li><strong>שלב 1:</strong> בודק אם תורם אחד יכול לאחסן את כל הקובץ</li>
+          <li><strong>שלב 2:</strong> אם לא — מחפש זוג תורמים שביחד יש להם מספיק</li>
+          <li><strong>שלב 3:</strong> מוסיף תורמים עד שמצאנו קבוצה שעובדת</li>
+          <li><strong>העתיד: Sharding</strong> — הקובץ מתחלק ומאוחסן במקביל אצל כמה תורמים</li>
+        </ul>
+
+        <div class="highlight-box">
+          <p>
+            <strong>הייחודיות:</strong><br> זה לא סתם "מצא תורם עם מקום" —
+            האלגוריתם חושב על <strong>חלוקת קובץ בין מספר תורמים</strong>,
+            בדיוק כמו שBitTorrent מחלק קטעים (chunks).
+            בסיס מצוין להרחבה עם Sharding אמיתי.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ SLIDE 8 -->
+  <div class="slide" id="slide-8">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="corner-deco">08 / סיכום</div>
+    <div class="slide-tag">מה למדתי</div>
+    <div class="slide-title">רפלקציה <span style="color:var(--accent)">אישית</span></div>
+    <div class="accent-line"></div>
+
+    <div class="cards-grid cols-4" style="margin-bottom:20px;">
+      <div class="card" style="border-color:rgba(16,185,129,0.3)">
+        <span class="card-icon">✅</span>
+        <div class="card-title" style="color:var(--green)">הצליח</div>
+        <div class="card-text">ממשק Eel + HTML — מהיר ונוח לבנות. DH + AES עבד מצוין.</div>
+      </div>
+      <div class="card" style="border-color:rgba(239,68,68,0.3)">
+        <span class="card-icon">⚠️</span>
+        <div class="card-title" style="color:var(--red)">אתגר</div>
+        <div class="card-text">ההצפנה הפסיקה לעבוד פתאום — נאלצתי להחליף אלגוריתם תחת לחץ זמן.</div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,0.3)">
+        <span class="card-icon">💡</span>
+        <div class="card-title" style="color:var(--accent3)">תובנה</div>
+        <div class="card-text">לדבר עם אנשים על בעיה = חשיבה אחרת = פתרון. גם מנחה שלא יודע הכל יכול לעזור.</div>
+      </div>
+      <div class="card">
+        <span class="card-icon">🚀</span>
+        <div class="card-title">הבא</div>
+        <div class="card-text">Sharding אמיתי, חישוב מבוזר, עבודה בין רשתות שונות.</div>
+      </div>
+    </div>
+
+    <div class="comparison">
+      <table>
+        <thead>
+          <tr>
+            <th>מה למדתי בעצמי</th>
+            <th>כלים שגיליתי</th>
+            <th>מה הייתי משנה</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>רשת P2P היברידית מאפס</td>
+            <td>Eel — Python + דפדפן</td>
+            <td>תכנון ארכיטקטורה <em>לפני</em> כתיבת קוד</td>
+          </tr>
+          <tr>
+            <td>HTML / CSS / JS בסיסי</td>
+            <td>asyncio לשרת אסינכרוני</td>
+            <td>ניהול זמנים יותר קפדני</td>
+          </tr>
+          <tr>
+            <td>קריפטוגרפיה יישומית (DH, AES, Argon2)</td>
+            <td>select() לריבוי לקוחות</td>
+            <td>בדיקות Unit Tests מההתחלה</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /slides -->
+
+<!-- ─── NAV ─── -->
+<nav class="nav">
+  <button class="nav-btn" id="prev-btn" onclick="prevSlide()">‹</button>
+  <div class="nav-dots" id="dots"></div>
+  <button class="nav-btn" id="next-btn" onclick="nextSlide()">›</button>
+  <span class="slide-counter" id="counter">01 / 08</span>
+</nav>
+
+<script>
+  const TOTAL = 8;
+  let current = 1;
+
+  const dotsContainer = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+
+  // Build dots
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsContainer.appendChild(d);
+  }
+
+  function goTo(n) {
+    if (n < 1 || n > TOTAL) return;
+    const prev = document.getElementById('slide-' + current);
+    prev.classList.remove('active');
+    prev.classList.add('exit');
+    setTimeout(() => prev.classList.remove('exit'), 600);
+
+    current = n;
+    const next = document.getElementById('slide-' + current);
+    next.classList.add('active');
+
+    // Update dots
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i + 1 === current);
+    });
+
+    // Update counter
+    counter.textContent = String(current).padStart(2, '0') + ' / ' + String(TOTAL).padStart(2, '0');
+
+    // Update progress
+    progress.style.width = ((current / TOTAL) * 100) + '%';
+  }
+
+  function nextSlide() { goTo(current + 1); }
+  function prevSlide() { goTo(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') prevSlide();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === ' ') nextSlide();
+  });
+
+  // Touch support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx > 0 ? prevSlide() : nextSlide(); }
+  });
+
+  // Init progress
+  progress.style.width = ((1 / TOTAL) * 100) + '%';
+</script>
+</body>
+</html>

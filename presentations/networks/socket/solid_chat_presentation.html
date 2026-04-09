@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שרת הצ׳אט הופך SOLID</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+Hebrew:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:       #080b10;
+  --bg2:      #0d1117;
+  --bg3:      #111820;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.13);
+  --text:     #c9d6e3;
+  --dim:      #4e6070;
+  --accent:   #00e5ff;
+  --green:    #39ff8a;
+  --orange:   #ff7b3a;
+  --purple:   #b47dff;
+  --yellow:   #ffd166;
+  --red:      #ff4f6a;
+  --mono:     'Space Mono', monospace;
+  --sans:     'Noto Sans Hebrew', sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);direction:rtl;overflow-x:hidden}
+
+/* ── GRID BACKGROUND ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+  background-size:48px 48px;
+}
+
+/* ── GLOW ORBS ── */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 600px 400px at 15% 20%, rgba(0,229,255,.04) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 85% 80%, rgba(180,125,255,.04) 0%, transparent 70%);
+}
+
+/* ── SCANLINE ── */
+.scan{position:fixed;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(0,229,255,.15),transparent);
+  animation:scan 8s linear infinite;z-index:10;pointer-events:none}
+@keyframes scan{0%{top:0}100%{top:100vh}}
+
+/* ── LAYOUT ── */
+.shell{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 24px 80px}
+
+/* ── HEADER ── */
+.header{padding:40px 0 48px;text-align:center;position:relative}
+.header-tag{font-family:var(--mono);font-size:18px;letter-spacing:4px;color:var(--accent);opacity:.7;text-transform:uppercase;margin-bottom:16px}
+.header h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800;line-height:1.15;
+  background:linear-gradient(135deg, var(--green) 0%, var(--accent) 50%, var(--purple) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:-1px}
+.header-sub{font-size:1rem;color:var(--dim);margin-top:12px;font-weight:300}
+.header-badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.hbadge{font-family:var(--mono);font-size:18px;letter-spacing:2px;padding:4px 12px;
+  border-radius:20px;border:1px solid;text-transform:uppercase}
+.hb1{color:var(--accent);border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.05)}
+.hb2{color:var(--green);border-color:rgba(57,255,138,.3);background:rgba(57,255,138,.05)}
+.hb3{color:var(--purple);border-color:rgba(180,125,255,.3);background:rgba(180,125,255,.05)}
+.hb4{color:var(--orange);border-color:rgba(255,123,58,.3);background:rgba(255,123,58,.05)}
+.hb5{color:var(--yellow);border-color:rgba(255,209,102,.3);background:rgba(255,209,102,.05)}
+
+/* ── SECTION TITLE ── */
+.sec-title{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sec-num{font-family:var(--mono);font-size:18px;color:var(--accent);opacity:.5;letter-spacing:2px}
+.sec-label{font-size:18px;font-weight:600;color:var(--text)}
+.sec-line{flex:1;height:1px;background:var(--border)}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent-line,rgba(0,229,255,.4)),transparent);opacity:.4}
+.card:hover{border-color:var(--border2)}
+.card.c-green::before{--accent-line:rgba(57,255,138,.4)}
+.card.c-orange::before{--accent-line:rgba(255,123,58,.4)}
+.card.c-purple::before{--accent-line:rgba(180,125,255,.4)}
+.card.c-yellow::before{--accent-line:rgba(255,209,102,.4)}
+.card.c-red::before{--accent-line:rgba(255,79,106,.4)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* ── CODE ── */
+.code{background:#060a0e;border:1px solid rgba(255,255,255,.06);border-radius:8px;
+  padding:14px 16px;font-family:var(--mono);font-size:18px;line-height:1.8;
+  direction:ltr;text-align:left;overflow-x:auto;white-space:pre;margin-top:10px}
+.kw{color:#ff7b3a}.fn{color:#00e5ff}.st{color:#39ff8a}.cm{color:#2d4a5a}
+.hl-bad{background:rgba(255,79,106,.15);border-radius:3px}
+.hl-good{background:rgba(57,255,138,.12);border-radius:3px}
+.num{color:#ffd166}
+
+/* ── PROBLEM PILLS ── */
+.prob-list,.good-list{list-style:none;display:flex;flex-direction:column;gap:9px;margin-top:8px}
+.prob-list li,.good-list li{display:flex;gap:10px;align-items:flex-start;font-size:18px;line-height:1.55}
+.prob-list li::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--red);
+  flex-shrink:0;margin-top:5px}
+.good-list li::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);
+  flex-shrink:0;margin-top:5px}
+.prob-list strong,.good-list strong{color:var(--text)}
+
+/* ── SOLID TABLE ── */
+.solid-rows{display:flex;flex-direction:column;gap:10px}
+.srow{display:flex;gap:10px;align-items:stretch}
+.sletter{width:48px;min-width:48px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:22px;font-weight:700;border:1px solid}
+.sbody{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.sbody strong{font-size:18px;font-weight:600;display:block;margin-bottom:4px}
+.sbody em{font-size:18px;color:var(--dim);font-style:normal;line-height:1.6;display:block}
+.sbody .impl{font-family:var(--mono);font-size:18px;color:var(--dim);margin-top:7px;line-height:1.8}
+.sbody .impl span{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;border:1px solid}
+
+/* ── MAPPING ── */
+.mrow{display:grid;grid-template-columns:1fr 32px 1fr;gap:10px;align-items:center;margin-bottom:12px}
+.mcell{border-radius:10px;padding:12px 14px;font-size:18px;font-family:var(--mono);line-height:1.7; direction:ltr;}
+.mcell-bad{background:rgba(255,79,106,.06);border:1px solid rgba(255,79,106,.2);color:#ff9aaa}
+.mcell-good{background:rgba(57,255,138,.05);border:1px solid rgba(57,255,138,.2);color:#7affb3}
+.mcell strong{display:block;font-size:18px;letter-spacing:1px;text-transform:uppercase;opacity:.6;margin-bottom:6px}
+.marrow{text-align:center;color:var(--dim);font-size:20px}
+
+/* ── ARCH DIAGRAM ── */
+.arch-flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;padding:10px 0}
+.abox{border-radius:8px;padding:8px 14px;font-family:var(--mono);font-size:18px;
+  text-align:center;border:1px solid;min-width:90px;cursor:default;transition:transform .15s}
+.abox:hover{transform:translateY(-2px)}
+.abox .at{font-size:18px;font-weight:700;letter-spacing:1px}
+.abox .as{font-size:18px;opacity:.6;margin-top:2px}
+.aarr{color:var(--dim);font-size:18px;}
+.a-cyan{background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.3);color:var(--accent)}
+.a-green{background:rgba(57,255,138,.05);border-color:rgba(57,255,138,.25);color:var(--green)}
+.a-purple{background:rgba(180,125,255,.06);border-color:rgba(180,125,255,.3);color:var(--purple)}
+.a-orange{background:rgba(255,123,58,.06);border-color:rgba(255,123,58,.25);color:var(--orange)}
+.a-yellow{background:rgba(255,209,102,.05);border-color:rgba(255,209,102,.25);color:var(--yellow)}
+.a-red{background:rgba(255,79,106,.06);border-color:rgba(255,79,106,.2);color:var(--red)}
+
+/* ── FILE TREE ── */
+.ftree{font-family:var(--mono);font-size:18px;line-height:2.1;direction:ltr;text-align:left}
+
+/* ── TABS (section nav) ── */
+.nav-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:32px;
+  border-bottom:1px solid var(--border);padding-bottom:0}
+.ntab{font-family:var(--mono);font-size:18px;letter-spacing:1.5px;text-transform:uppercase;
+  padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;
+  color:var(--dim);background:none;border-top:none;border-left:none;border-right:none;
+  transition:all .2s;margin-bottom:-1px}
+.ntab:hover{color:var(--text)}
+.ntab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none}.panel.active{display:block}
+
+/* ── INLINE CODE ── */
+ic{font-family:var(--mono);font-size:18px;background:rgba(255,255,255,.06);
+  padding:1px 6px;border-radius:4px;color:var(--accent)}
+
+/* ── SPACERS ── */
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt20{margin-top:20px}.mt32{margin-top:32px}
+
+/* ── HIGHLIGHT BOX ── */
+.hbox{border-radius:10px;padding:14px 16px;font-size:18px;line-height:1.65;margin-top:12px}
+.hbox-cyan{background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);color:var(--text)}
+.hbox-green{background:rgba(57,255,138,.04);border:1px solid rgba(57,255,138,.18);color:var(--text)}
+.hbox-orange{background:rgba(255,123,58,.05);border:1px solid rgba(255,123,58,.2);color:var(--text)}
+.hbox-red{background:rgba(255,79,106,.05);border:1px solid rgba(255,79,106,.2);color:var(--text)}
+.hbox strong{color:var(--accent)}.hbox-green strong{color:var(--green)}.hbox-orange strong{color:var(--orange)}
+
+/* ── ENTER ANIMATIONS ── */
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.panel.active .card{animation:fadeup .35s ease both}
+.panel.active .card:nth-child(2){animation-delay:.06s}
+.panel.active .card:nth-child(3){animation-delay:.12s}
+.panel.active .grid2 .card:nth-child(2){animation-delay:.07s}
+.panel.active .srow{animation:fadeup .3s ease both}
+.panel.active .srow:nth-child(2){animation-delay:.05s}
+.panel.active .srow:nth-child(3){animation-delay:.1s}
+.panel.active .srow:nth-child(4){animation-delay:.15s}
+.panel.active .srow:nth-child(5){animation-delay:.2s}
+.panel.active .mrow{animation:fadeup .3s ease both}
+.panel.active .mrow:nth-child(2){animation-delay:.07s}
+.panel.active .mrow:nth-child(3){animation-delay:.14s}
+.panel.active .mrow:nth-child(4){animation-delay:.21s}
+
+/* ── CARD TITLES ── */
+.ctitle{font-size:18px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.ctitle-dot{width:7px;height:7px;border-radius:50%}
+
+/* ── COMPARE HEADERS ── */
+.comp-head{display:grid;grid-template-columns:1fr 32px 1fr;gap:10px;margin-bottom:8px}
+.ch-bad{font-family:var(--mono);font-size:18px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--red);opacity:.7;text-align:center}
+.ch-good{font-family:var(--mono);font-size:18px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--green);opacity:.7;text-align:center}
+</style>
+</head>
+<body>
+<div class="scan"></div>
+<div class="shell">
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <div class="header-tag">// שלב 6 — refactoring</div>
+  <h1>שרת הצ׳אט הופך SOLID</h1>
+  <div class="header-sub">מ-if/elif ענק — למערכת מודולרית שקל לתחזק, לבדוק ולהרחיב</div>
+  <div class="header-badges">
+    <span class="hbadge hb1">Single Responsibility</span>
+    <span class="hbadge hb2">Open / Closed</span>
+    <span class="hbadge hb3">Liskov</span>
+    <span class="hbadge hb4">Interface Segregation</span>
+    <span class="hbadge hb5">Dependency Inversion</span>
+  </div>
+</div>
+
+<!-- ═══ TABS NAV ═══ -->
+<div class="nav-tabs">
+  <button class="ntab active" onclick="showTab('before',this)">① לפני — הבעיה</button>
+  <button class="ntab" onclick="showTab('solid',this)">② עקרונות SOLID</button>
+  <button class="ntab" onclick="showTab('after',this)">③ אחרי — הפתרון</button>
+  <button class="ntab" onclick="showTab('mapping',this)">④ חסרון → פתרון</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PANEL 1 — BEFORE
+══════════════════════════════════════════════════════ -->
+<div class="panel active" id="p-before">
+
+  <div class="sec-title">
+    <span class="sec-num">01</span>
+    <span class="sec-label">הארכיטקטורה לפני — server_chat_v5.py</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <!-- Main code card -->
+  <div class="card c-red">
+    <div class="ctitle"><div class="ctitle-dot" style="background:var(--red)"></div><span style="color:var(--red)">handle_client() — כל הלוגיקה בפונקציה אחת</span></div>
+    <div class="code"><span class="kw">def</span> <span class="fn">handle_client</span>(client_socket, client_address):
+    protocol = <span class="fn">ChatProtocol</span>()   <span class="cm"># buffer פרטי לכל לקוח</span>
+
+    <span class="kw">while True</span>:
+        raw_data = client_socket.<span class="fn">recv</span>(<span class="num">1024</span>)
+        messages = protocol.<span class="fn">feed_data</span>(raw_data)
+
+        <span class="kw">for</span> request <span class="kw">in</span> messages:
+            action = request.action.<span class="fn">lower</span>()
+
+            <span class="hl-bad">if</span> action == <span class="st">"register"</span>:          <span class="cm"># ─── 20 שורות ───</span>
+                session = <span class="fn">SessionLocal</span>()
+                existing = session.<span class="fn">query</span>(User).<span class="fn">filter_by</span>(username=request.username).<span class="fn">first</span>()
+                <span class="kw">if</span> existing: client_socket.<span class="fn">sendall</span>(<span class="fn">make_error</span>(...))
+                <span class="kw">else</span>:
+                    session.<span class="fn">add</span>(<span class="fn">User</span>(username=..., password=...))
+                    session.<span class="fn">commit</span>()
+                    client_socket.<span class="fn">sendall</span>(<span class="fn">make_ok</span>(...))
+
+            <span class="hl-bad">elif</span> action == <span class="st">"login"</span>:           <span class="cm"># ─── 20 שורות ───</span>
+                user = session.<span class="fn">query</span>(User).<span class="fn">filter_by</span>(username=..., password=...).<span class="fn">first</span>()
+                <span class="kw">with</span> clients_lock:
+                    clients.<span class="fn">append</span>({"socket": client_socket, "username": ...})
+
+            <span class="hl-bad">elif</span> action == <span class="st">"message"</span>:         <span class="cm"># ─── 10 שורות ───</span>
+                sender = <span class="fn">get_username_by_socket</span>(client_socket)
+                <span class="fn">broadcast</span>(ChatProtocol.<span class="fn">make_broadcast</span>(sender, ...), exclude_sock=client_socket)
+
+            <span class="hl-bad">elif</span> action == <span class="st">"logout"</span>:  ...
+            <span class="hl-bad">elif</span> action == <span class="st">"invalid"</span>: ...
+            <span class="hl-bad">else</span>:                      <span class="cm"># unknown action — תמיד נשכח משהו</span>
+                client_socket.<span class="fn">sendall</span>(<span class="fn">make_error</span>(action, <span class="st">"Unknown action"</span>))</div>
+  </div>
+
+  <div class="grid2 mt12">
+    <!-- Problems -->
+    <div class="card c-red">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--red)"></div><span style="color:var(--red)">חסרונות — למה זה בעיה?</span></div>
+      <ul class="prob-list">
+        <li><strong>פונקציה ענקית</strong> — 120+ שורות, קשה לקרוא ולהבין</li>
+        <li><strong>Coupling גבוה</strong> — DB + רשת + לוגיקה עסקית שלובים</li>
+        <li><strong>לא ניתן לבדיקה</strong> — לבדוק register צריך socket פעיל + SQLite</li>
+        <li><strong>קשה להרחיב</strong> — פקודה חדשה = לפתוח handle_client ולהוסיף elif</li>
+        <li><strong>סכנת שבירה</strong> — שינוי ב-login עלול לשבור את message</li>
+        <li><strong>DB נעול</strong> — SQLAlchemy בפנים, לא ניתן להחליף בלי שכתוב</li>
+      </ul>
+    </div>
+
+    <!-- Right column -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <!-- Files -->
+      <div class="card">
+        <div class="ctitle"><div class="ctitle-dot" style="background:var(--accent)"></div><span>מבנה קבצים — שלב 5</span></div>
+        <pre class="ftree">
+<span style="color:var(--yellow)">chat_v5/</span>
+├── <span style="color:var(--purple)">protocol.py</span>        <span style="color:var(--dim)">← ChatProtocol ✓</span>
+├── <span style="color:var(--red)">server_chat_v5.py</span>  <span style="color:var(--dim)">← הכל פה 😬</span>
+└── <span style="color:var(--accent)">client_chat_v5.py</span></pre>
+      </div>
+
+      <!-- Mixed concerns -->
+      <div class="card">
+        <div class="ctitle"><div class="ctitle-dot" style="background:var(--orange)"></div><span style="color:var(--orange)">מה מעורבב ב-handle_client?</span></div>
+        <div class="arch-flow" style="justify-content:flex-start;flex-wrap:wrap">
+          <div class="abox a-red"><div class="at">רשת</div><div class="as">recv / sendall</div></div>
+          <div class="abox a-red mt8"><div class="at">DB</div><div class="as">session.query</div></div>
+          <div class="abox a-red mt8"><div class="at">לוגיקה</div><div class="as">register/login</div></div>
+          <div class="abox a-red mt8"><div class="at">Clients</div><div class="as">list + lock</div></div>
+          <div class="abox a-red mt8"><div class="at">Broadcast</div><div class="as">לכולם</div></div>
+        </div>
+      </div>
+
+      <!-- One advantage -->
+      <div class="card c-green">
+        <div class="ctitle"><div class="ctitle-dot" style="background:var(--green)"></div><span style="color:var(--green)">יתרון — לשקול בהגינות</span></div>
+        <ul class="good-list">
+          <li><strong>קל להבין בהתחלה</strong> — קוד שטוח, ליניארי</li>
+          <li><strong>ללא abstractions</strong> — מתאים לפרויקט קטן מאוד</li>
+          <li><strong>מהיר לכתיבה</strong> — פרוטוטייפ ראשוני</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="hbox hbox-orange mt20">
+    <strong>מסקנה:</strong> ככל שהמערכת גדלה — כל elif נוסף מכפיל את הסיכון לבאגים. הפתרון הוא לא לכתוב קוד טוב יותר — אלא לשנות את הארכיטקטורה.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PANEL 2 — SOLID
+══════════════════════════════════════════════════════ -->
+<div class="panel" id="p-solid">
+
+  <div class="sec-title">
+    <span class="sec-num">02</span>
+    <span class="sec-label">עקרונות SOLID — הגדרה ויישום בפרויקט</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="solid-rows">
+
+    <div class="srow">
+      <div class="sletter" style="background:rgba(0,229,255,.06);color:var(--accent);border-color:rgba(0,229,255,.25)">S</div>
+      <div class="sbody">
+        <strong style="color:var(--accent)">Single Responsibility — אחריות יחידה</strong>
+        <em>כל מחלקה אחראית על דבר אחד בלבד. שינוי בלוגיקת register לא אמור לגעת בקוד של broadcast.</em>
+        <div class="impl">
+          <span style="color:var(--accent);border-color:rgba(0,229,255,.25)">ChatServer = מתאם בלבד</span>
+          <span style="color:var(--green);border-color:rgba(57,255,138,.25)">ClientManager = חיבורים</span>
+          <span style="color:var(--yellow);border-color:rgba(255,209,102,.25)">UserRepository = משתמשים</span>
+          <span style="color:var(--purple);border-color:rgba(180,125,255,.25)">RegisterHandler = לוגיקת register</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="srow">
+      <div class="sletter" style="background:rgba(57,255,138,.06);color:var(--green);border-color:rgba(57,255,138,.25)">O</div>
+      <div class="sbody">
+        <strong style="color:var(--green)">Open/Closed — פתוח להרחבה, סגור לשינוי</strong>
+        <em>רוצים להוסיף פקודה list_users? כותבים מחלקה חדשה. handle_client לא נגע. server.py לא נגע. אפס elif חדש.</em>
+        <div class="impl">
+          <span style="color:var(--green);border-color:rgba(57,255,138,.25)">הוספת PrivateMsgHandler → קובץ חדש בלבד</span>
+          <span style="color:var(--dim);border-color:rgba(255,255,255,.08)">ChatServer ← ללא שינוי ✓</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="srow">
+      <div class="sletter" style="background:rgba(180,125,255,.06);color:var(--purple);border-color:rgba(180,125,255,.25)">L</div>
+      <div class="sbody">
+        <strong style="color:var(--purple)">Liskov Substitution — החלפת תת-מחלקה</strong>
+        <em>כל handler שיורש מ-BaseCommandHandler חייב לעבוד זהה. InMemoryUserRepo ו-SQLUserRepo — שניהם עובדים כ-IUserRepository. השרת לא יודע ולא אכפת לו.</em>
+        <div class="impl">
+          <span style="color:var(--purple);border-color:rgba(180,125,255,.25)">RegisterHandler extends BaseCommandHandler ✓</span>
+          <span style="color:var(--purple);border-color:rgba(180,125,255,.25)">SQLUserRepo extends IUserRepository ✓</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="srow">
+      <div class="sletter" style="background:rgba(255,123,58,.06);color:var(--orange);border-color:rgba(255,123,58,.25)">I</div>
+      <div class="sbody">
+        <strong style="color:var(--orange)">Interface Segregation — ממשקים ממוקדים</strong>
+        <em>IUserRepository חושפת רק 3 מתודות — register_user, validate_user, user_exists. לא 30 מתודות שרוב ה-handlers לא צריכים. BaseCommandHandler חושפת רק 2.</em>
+        <div class="impl">
+          <span style="color:var(--orange);border-color:rgba(255,123,58,.25)">IUserRepository: 3 מתודות</span>
+          <span style="color:var(--orange);border-color:rgba(255,123,58,.25)">BaseCommandHandler: can_handle + handle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="srow">
+      <div class="sletter" style="background:rgba(255,209,102,.06);color:var(--yellow);border-color:rgba(255,209,102,.25)">D</div>
+      <div class="sbody">
+        <strong style="color:var(--yellow)">Dependency Inversion — תלות בהפשטות</strong>
+        <em>ChatServer מקבל IUserRepository — לא InMemoryUserRepository. רוצה SQLite? משנים שורה אחת. ChatServer, handlers, ClientManager — לא נגעים.</em>
+        <div class="impl">
+          <span style="color:var(--yellow);border-color:rgba(255,209,102,.25)">CommandContext(user_repo: IUserRepository, client_manager)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="hbox hbox-cyan mt20">
+    <strong>SOLID בפייתון:</strong> Python לא מאכף interfaces כמו Java. ABCs נותנות הגנה חלקית — אם שכחת לממש <ic>@abstractmethod</ic>, Python זורק שגיאה בעת יצירת instance. SOLID הוא מדריך תכנון, לא חוק נוקשה.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PANEL 3 — AFTER
+══════════════════════════════════════════════════════ -->
+<div class="panel" id="p-after">
+
+  <div class="sec-title">
+    <span class="sec-num">03</span>
+    <span class="sec-label">הארכיטקטורה אחרי — שלב 6</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <!-- File structure + diagram -->
+  <div class="grid2">
+    <div class="card">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--accent)"></div><span>מבנה קבצים — שלב 6</span></div>
+      <pre class="ftree">
+<span style="color:var(--yellow)">stage6/</span>
+├── <span style="color:var(--purple)">protocol.py</span>        <span style="color:var(--dim)">← V5, ללא שינוי ✓</span>
+├── <span style="color:var(--accent)">models.py</span>          <span style="color:var(--dim)">← ConnectedClient</span>
+├── <span style="color:var(--yellow)">repositories.py</span>    <span style="color:var(--dim)">← IUserRepository (ABC)</span>
+├── <span style="color:var(--orange)">client_manager.py</span>  <span style="color:var(--dim)">← ניהול חיבורים</span>
+├── <span style="color:var(--green)">command_handlers.py</span> <span style="color:var(--dim)">← כל handlers + Base</span>
+├── <span style="color:var(--text)">server.py</span>          <span style="color:var(--dim)">← ChatServer (מתאם)</span>
+└── <span style="color:var(--accent)">client.py</span></pre>
+      <div class="hbox hbox-green mt12" style="font-size:18px;">
+        <strong>7 קבצים</strong> — כל קובץ אחריות אחת, תלויות ברורות
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--purple)"></div><span>דיאגרמת תלויות</span></div>
+      <div style="font-family:var(--mono);font-size:18px;line-height:2.2;direction:ltr;text-align:left;color:var(--dim)">
+        <span style="color:var(--accent)">server.py</span>           → <span style="color:var(--orange)">client_manager</span>, <span style="color:var(--yellow)">repositories</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  <span style="color:var(--green)">command_handlers</span>, <span style="color:var(--purple)">protocol</span><br>
+        <span style="color:var(--green)">command_handlers.py</span> → <span style="color:var(--purple)">protocol</span>, <span style="color:var(--accent)">models</span><br>
+        <span style="color:var(--orange)">client_manager.py</span>   → <span style="color:var(--purple)">protocol</span>, <span style="color:var(--accent)">models</span><br>
+        <span style="color:var(--yellow)">repositories.py</span>     → <span style="color:var(--dim)">ללא תלות חיצונית ✓</span><br>
+        <span style="color:var(--accent)">models.py</span>           → <span style="color:var(--dim)">ללא תלות חיצונית ✓</span><br>
+        <span style="color:var(--purple)">protocol.py</span>         → <span style="color:var(--dim)">ללא תלות חיצונית ✓</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code examples -->
+  <div class="grid2 mt12">
+    <div class="card c-purple">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--purple)"></div><span style="color:var(--purple)">BaseCommandHandler — ABC</span></div>
+      <div class="code"><span class="kw">from</span> abc <span class="kw">import</span> ABC, abstractmethod
+
+<span class="kw">class</span> <span class="fn">BaseCommandHandler</span>(ABC):
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action: str) -> bool:
+        <span class="kw">pass</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>, msg, socket,
+             protocol, context
+    ) -> ProtocolMessage:
+        <span class="kw">pass</span>
+
+<span class="cm"># handle() מחזיר — לא שולח!
+# השרת שולח. הפרדת אחריות.</span></div>
+    </div>
+
+    <div class="card c-green">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--green)"></div><span style="color:var(--green)">RegisterCommandHandler</span></div>
+      <div class="code"><span class="kw">class</span> <span class="fn">RegisterCommandHandler</span>(<span class="fn">BaseCommandHandler</span>):
+
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="kw">self</span>, action) -> bool:
+        <span class="kw">return</span> action == <span class="st">"register"</span>
+
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="kw">self</span>, msg, sock, proto, ctx):
+        success = ctx.user_repo.<span class="fn">register_user</span>(
+            msg.username, msg.password)
+
+        <span class="kw">if not</span> success:
+            <span class="kw">return</span> <span class="fn">ProtocolMessage</span>(
+                action=<span class="st">"register"</span>, status=<span class="st">"error"</span>,
+                error=<span class="st">"User already exists"</span>)
+
+        <span class="kw">return</span> <span class="fn">ProtocolMessage</span>(
+            action=<span class="st">"register"</span>, status=<span class="st">"ok"</span>,
+            message=<span class="st">"Registered successfully"</span>)</div>
+    </div>
+  </div>
+
+  <div class="grid2 mt12">
+    <div class="card c-yellow">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--yellow)"></div><span style="color:var(--yellow)">IUserRepository — הפשטה</span></div>
+      <div class="code"><span class="kw">class</span> <span class="fn">IUserRepository</span>(ABC):
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">register_user</span>(<span class="kw">self</span>,
+        username, password) -> bool: <span class="kw">pass</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">validate_user</span>(<span class="kw">self</span>,
+        username, password) -> bool: <span class="kw">pass</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">user_exists</span>(<span class="kw">self</span>,
+        username) -> bool: <span class="kw">pass</span>
+
+<span class="cm"># עכשיו:  InMemoryUserRepository
+# עתיד:   SQLUserRepository (שורה אחת!)</span></div>
+    </div>
+
+    <div class="card c-orange">
+      <div class="ctitle"><div class="ctitle-dot" style="background:var(--orange)"></div><span style="color:var(--orange)">ChatServer — מתאם טהור</span></div>
+      <div class="code"><span class="kw">class</span> <span class="fn">ChatServer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="cm"># Dependency Injection</span>
+        <span class="kw">self</span>.user_repo = <span class="fn">InMemoryUserRepository</span>()
+        <span class="kw">self</span>.context = <span class="fn">CommandContext</span>(
+            <span class="kw">self</span>.user_repo, <span class="fn">ClientManager</span>())
+        <span class="kw">self</span>.handlers = [
+            <span class="fn">RegisterCommandHandler</span>(),
+            <span class="fn">LoginCommandHandler</span>(),
+            <span class="fn">MessageCommandHandler</span>(),
+        ]
+
+    <span class="kw">def</span> <span class="fn">handle_client</span>(<span class="kw">self</span>, sock, addr):
+        <span class="kw">for</span> req <span class="kw">in</span> messages:
+            <span class="hl-good">h</span> = <span class="kw">self</span>.<span class="fn">get_handler</span>(req.action)
+            <span class="hl-good">response</span> = h.<span class="fn">handle</span>(req, sock, ...)
+            sock.<span class="fn">sendall</span>(<span class="fn">encode</span>(response))</div>
+    </div>
+  </div>
+
+  <!-- What each change fixes -->
+  <div class="card mt12">
+    <div class="ctitle"><div class="ctitle-dot" style="background:var(--green)"></div><span style="color:var(--green)">כל שינוי — מה הוא פותר</span></div>
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px 16px;font-size:18px;font-family:var(--mono);margin-top:4px;align-items:start">
+      <div style="color:var(--dim);font-size:18px;letter-spacing:1px;text-transform:uppercase">שינוי</div>
+      <div style="color:var(--dim);font-size:18px;letter-spacing:1px;text-transform:uppercase">חסרון שנפתר</div>
+      <div style="color:var(--dim);font-size:18px;letter-spacing:1px;text-transform:uppercase">SOLID</div>
+
+      <div style="color:var(--accent)">BaseCommandHandler</div>
+      <div style="color:var(--text);font-family:var(--sans)">if/elif ענק, שבירה צולבת בין פקודות</div>
+      <div><span style="color:var(--accent)">S</span> <span style="color:var(--green)">O</span> <span style="color:var(--purple)">L</span></div>
+
+      <div style="color:var(--yellow)">IUserRepository</div>
+      <div style="color:var(--text);font-family:var(--sans)">תלות ישירה ב-SQLAlchemy, חסימת בדיקות</div>
+      <div><span style="color:var(--yellow)">D</span> <span style="color:var(--orange)">I</span></div>
+
+      <div style="color:var(--orange)">ClientManager</div>
+      <div style="color:var(--text);font-family:var(--sans)">clients[] ו-lock מפוזרים בכל הקוד</div>
+      <div><span style="color:var(--accent)">S</span></div>
+
+      <div style="color:var(--purple)">CommandContext</div>
+      <div style="color:var(--text);font-family:var(--sans)">handlers תלויים ישירות בשרת</div>
+      <div><span style="color:var(--yellow)">D</span></div>
+
+      <div style="color:var(--green)">handle() מחזיר</div>
+      <div style="color:var(--text);font-family:var(--sans)">handler שלט גם ברשת וגם בלוגיקה</div>
+      <div><span style="color:var(--accent)">S</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PANEL 4 — MAPPING
+══════════════════════════════════════════════════════ -->
+<div class="panel" id="p-mapping">
+
+  <div class="sec-title">
+    <span class="sec-num">04</span>
+    <span class="sec-label">קוד אמיתי — חסרון ↔ פתרון</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="comp-head">
+    <div class="ch-bad">שלב 5 — הבעיה</div>
+    <div></div>
+    <div class="ch-good">שלב 6 — הפתרון</div>
+  </div>
+
+  <!-- MAP 1 -->
+  <div class="mrow">
+    <pre class="mcell mcell-bad">
+      <strong>// if/elif ענק — handle_client</strong><span class="hl-bad">if</span> action == <span class="st">"register"</span>:
+    session = <span class="fn">SessionLocal</span>()
+    existing = session.<span class="fn">query</span>(User)\
+        .<span class="fn">filter_by</span>(username=...).<span class="fn">first</span>()
+    session.<span class="fn">add</span>(<span class="fn">User</span>(...))
+    session.<span class="fn">commit</span>()
+    client_socket.<span class="fn">sendall</span>(...)
+<span class="hl-bad">elif</span> action == <span class="st">"login"</span>: ...
+<span class="hl-bad">elif</span> action == <span class="st">"message"</span>: ...</pre>
+    <div class="marrow">←</div>
+    <pre class="mcell mcell-good">
+      <strong>// Command Pattern — get_handler</strong><span class="hl-good">handler</span> = self.<span class="fn">get_handler</span>(req.action)
+<span class="hl-good">response</span> = handler.<span class="fn">handle</span>(
+    req, sock, protocol, ctx)
+sock.<span class="fn">sendall</span>(<span class="fn">encode</span>(response))
+
+<span class="cm"># פקודה חדשה = מחלקה חדשה
+# handle_client לא משתנה לעולם</span></pre>
+  </div>
+
+  <!-- MAP 2 -->
+  <div class="mrow">
+    <pre class="mcell mcell-bad">
+      <strong>// DB שלוב בלוגיקה עסקית</strong>session = <span class="fn">SessionLocal</span>()
+existing = session.<span class="fn">query</span>(User)\
+    .<span class="fn">filter_by</span>(username=request.username)\
+    .<span class="fn">first</span>()
+<span class="kw">if</span> existing:
+    client_socket.<span class="fn">sendall</span>(...)
+<span class="kw">else</span>:
+    session.<span class="fn">add</span>(<span class="fn">User</span>(...))
+    session.<span class="fn">commit</span>()
+session.<span class="fn">close</span>()</pre>
+    <div class="marrow">←</div>
+    <pre class="mcell mcell-good">
+      <strong>// Repository Pattern</strong>success = ctx.user_repo\
+    .<span class="fn">register_user</span>(
+        msg.username,
+        msg.password)
+
+<span class="cm"># handler לא יודע אם זה
+# InMemory, SQLite, או Postgres</span></pre>
+  </div>
+
+  <!-- MAP 3 -->
+  <div class="mrow">
+    <pre class="mcell mcell-bad">
+      <strong>// clients ידני — מפוזר בקוד</strong>clients = []
+clients_lock = threading.<span class="fn">Lock</span>()
+
+<span class="kw">with</span> clients_lock:
+    clients.<span class="fn">append</span>({
+        <span class="st">"socket"</span>: client_socket,
+        <span class="st">"username"</span>: request.username
+    })
+
+<span class="cm"># lock מופיע ב-3 מקומות</span></pre>
+    <div class="marrow">←</div>
+    <pre class="mcell mcell-good">
+      <strong>// ClientManager</strong>ctx.client_manager\
+    .<span class="fn">add_client</span>(sock, username)
+
+ctx.client_manager\
+    .<span class="fn">broadcast</span>(msg)
+
+<span class="cm"># lock, רשימה, broadcast —
+# הכל בפנים. מחוץ: שורה אחת</span></pre>
+  </div>
+
+  <!-- MAP 4 -->
+  <div class="mrow">
+    <pre class="mcell mcell-bad">
+      <strong>// handler שולח בעצמו</strong>client_socket.<span class="fn">sendall</span>(
+    protocol.<span class="fn">encode</span>(
+        ChatProtocol.<span class="fn">make_ok</span>(
+            <span class="st">"register"</span>,
+            <span class="st">"Registered successfully"</span>)))
+
+<span class="cm"># לוגיקה שזורה ב-socket</span></pre>
+    <div class="marrow">←</div>
+    <pre class="mcell mcell-good">
+      <strong>// handle() מחזיר ProtocolMessage</strong><span class="kw">return</span> <span class="fn">ProtocolMessage</span>(
+    action=<span class="st">"register"</span>,
+    status=<span class="st">"ok"</span>,
+    message=<span class="st">"Registered"</span>)
+
+<span class="cm"># handler לא יודע שיש socket
+# ניתן לבדיקה ללא רשת בכלל</span></pre>
+  </div>
+
+  <div class="hbox hbox-cyan mt12">
+    <strong>protocol.py — מה השתנה?</strong> כלום. <ic>ChatProtocol</ic> ו-<ic>ProtocolMessage</ic> מ-v5 עוברים ללא שינוי לשלב 6. זה בדיוק OCP בפעולה — מחלקה שנכתבה נכון פעם אחת, לא נגעים בה שוב.
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.ntab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('p-' + id).classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+</script>
+</body>
+</html>

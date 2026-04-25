@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hash & Cryptography — מצגת אינטראקטיבית</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Heebo:wght@400;500;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--surface3:#1f2d42;
+  --cyan:#00e5ff;--purple:#a855f7;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;--border:#1e293b;
+  --font-main:'Heebo',sans-serif;--font-mono:'IBM Plex Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-main);min-height:100vh;direction:rtl}
+h1,h2,h3,h4{font-weight:900}
+
+/* ── LAYOUT ── */
+.wrap{max-width:920px;margin:0 auto;padding:0}
+.slide{display:none;min-height:520px;padding:28px 28px 36px;animation:fadeIn .35s ease}
+.slide.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── NAV ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+.nav-title{font-family:var(--font-mono);font-size:18px;color:var(--cyan);letter-spacing:.08em}
+.nav-controls{display:flex;align-items:center;gap:10px}
+.nav-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:18px;transition:all .2s}
+.nav-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.nav-btn:disabled{opacity:.3;cursor:default}
+.progress{display:flex;gap:5px;align-items:center;flex-wrap:wrap;max-width:180px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s;flex-shrink:0}
+.dot.active{background:var(--cyan);transform:scale(1.3)}
+.dot:hover{background:var(--muted)}
+.slide-counter{font-family:var(--font-mono);font-size:18px;color:var(--muted);min-width:42px;text-align:center}
+
+/* ── SECTION HEADER ── */
+.sec-head{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.sec-badge{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:var(--cyan);font-family:var(--font-mono);font-size:18px;padding:3px 10px;border-radius:4px;white-space:nowrap}
+.sec-head h2{font-size:24px;color:var(--text)}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:36px 20px 24px}
+.hero-tag{display:inline-block;background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.3);border-radius:20px;padding:4px 14px;font-size:18px;font-family:var(--font-mono);letter-spacing:.1em;margin-bottom:18px}
+.hero h1{font-size:48px;line-height:1.05;margin-bottom:14px;background:linear-gradient(135deg,var(--cyan) 0%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:18px;color:var(--muted);max-width:520px;margin:0 auto 24px;line-height:1.6}
+.hero-hash{font-family:var(--font-mono);font-size:18px;color:var(--muted);letter-spacing:.04em;word-break:break-all;background:var(--surface2);padding:10px 16px;border-radius:8px;border:1px solid var(--border);max-width:580px;margin:0 auto}
+.hero-hash span{color:var(--cyan)}
+
+/* ── CONCEPT GRID ── */
+.concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.concept-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;transition:border-color .2s}
+.concept-card:hover{border-color:var(--cyan)}
+.concept-card .icon{font-size:24px;margin-bottom:8px}
+.concept-card h3{font-size:18px;font-weight:700;margin-bottom:5px}
+.concept-card p{font-size:18px;color:var(--muted);line-height:1.6}
+.concept-card.highlight{border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.06)}
+
+/* ── COMPARE TABLE ── */
+.compare-table{width:100%;border-collapse:collapse;margin-bottom:18px}
+.compare-table th{background:var(--surface2);padding:10px 14px;text-align:right;font-size:18px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+.compare-table td{padding:10px 14px;font-size:18px;border-bottom:1px solid var(--border)}
+.compare-table tr:last-child td{border-bottom:none}
+.hash-col{color:var(--cyan)}
+.enc-col{color:var(--purple)}
+.pill{display:inline-block;border-radius:4px;padding:2px 8px;font-size:18px;font-family:var(--font-mono)}
+.pill-yes{background:rgba(34,197,94,.15);color:var(--green)}
+.pill-no{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── HASH DEMO ── */
+.hash-demo{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.hash-demo label{display:block;font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)}
+.hash-input{width:100%;background:var(--surface3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:var(--font-mono);font-size:18px;margin-bottom:14px;direction:ltr;transition:border-color .2s}
+.hash-input:focus{outline:none;border-color:var(--cyan)}
+.hash-output{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:var(--font-mono);font-size:18px;word-break:break-all;line-height:1.8;direction:ltr}
+.hash-output .lbl{color:var(--muted);font-size:18px;display:block;margin-bottom:3px}
+.hash-output .val{color:var(--cyan)}
+.algo-select{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.algo-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 11px;border-radius:6px;cursor:pointer;font-family:var(--font-mono);font-size:18px;transition:all .2s}
+.algo-btn.selected{background:rgba(0,229,255,.1);border-color:var(--cyan);color:var(--cyan)}
+.avalanche-demo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.ava-box{background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:12px}
+.ava-box .inp{font-family:var(--font-mono);font-size:18px;color:var(--amber);margin-bottom:5px;font-weight:700}
+.ava-box .out{font-family:var(--font-mono);font-size:18px;color:var(--muted);word-break:break-all;direction:ltr;line-height:1.5}
+.diff-count{margin-top:8px;font-size:18px;color:var(--muted);text-align:center}
+.diff-count span{color:var(--red);font-weight:700}
+
+/* ── bcrypt DEMO IN SLIDE 2 ── */
+.bcrypt-live{background:var(--surface2);border:1px solid rgba(0,229,255,.25);border-radius:12px;padding:20px;margin-top:16px}
+.bcrypt-live h4{font-size:18px;font-weight:700;color:var(--cyan);margin-bottom:14px}
+.bcrypt-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.bcrypt-cell{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px}
+.bcrypt-cell .cell-label{font-size:18px;color:var(--muted);font-family:var(--font-mono);margin-bottom:5px;display:block}
+.bcrypt-cell .cell-val{font-family:var(--font-mono);font-size:18px;word-break:break-all;direction:ltr;line-height:1.6}
+.bcrypt-cell .cell-val.green{color:var(--green)}
+.bcrypt-cell .cell-val.amber{color:var(--amber)}
+.bcrypt-explain{font-size:18px;color:var(--muted);line-height:1.6;padding:10px 14px;background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:8px}
+.bcrypt-explain strong{color:var(--purple)}
+
+/* ── PROPERTIES ── */
+.prop-list{display:flex;flex-direction:column;gap:9px}
+.prop-item{display:flex;align-items:flex-start;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.prop-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.prop-item h3{font-size:18px;font-weight:700;margin-bottom:2px}
+.prop-item p{font-size:18px;color:var(--muted);line-height:1.5}
+
+/* ── BCRYPT ANATOMY ── */
+.hash-anatomy{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;font-family:var(--font-mono);font-size:18px;direction:ltr;margin-bottom:14px;overflow-x:auto}
+.hash-anatomy .full{color:var(--muted);margin-bottom:10px;word-break:break-all;font-size:18px;}
+.anatomy-parts{display:flex;gap:0;flex-wrap:wrap}
+.anat-part{padding:5px 9px;font-size:18px;text-align:center;white-space:nowrap}
+.anat-ver{background:rgba(168,85,247,.2);color:var(--purple)}
+.anat-cost{background:rgba(245,158,11,.2);color:var(--amber)}
+.anat-salt{background:rgba(0,229,255,.2);color:var(--cyan)}
+.anat-hash{background:rgba(34,197,94,.2);color:var(--green)}
+.anat-label{font-size:18px;color:var(--muted);text-align:center;margin-top:2px}
+.anat-block{display:flex;flex-direction:column;align-items:center}
+
+/* ── WORK FACTOR ── */
+.wf-slider{margin:16px 0}
+.wf-slider label{font-size:18px;color:var(--muted);margin-bottom:6px;display:block;font-family:var(--font-mono)}
+.wf-track{display:flex;align-items:center;gap:12px}
+.wf-track input[type=range]{flex:1}
+.wf-val{font-family:var(--font-mono);font-size:18px;color:var(--cyan);min-width:22px}
+.wf-result{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:10px;text-align:center}
+.wf-result .time{font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--amber)}
+.wf-result .sub{font-size:18px;color:var(--muted);margin-top:3px}
+.attempts{margin-top:8px;font-size:18px;color:var(--muted);line-height:1.6}
+.attempts span{color:var(--red)}
+
+/* ── LOGIN DEMO ── */
+.login-demo{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.login-demo h3{font-size:18px;font-weight:700;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:18px;color:var(--muted);margin-bottom:4px}
+.form-group input{width:100%;background:var(--surface3);border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:7px;font-family:var(--font-mono);font-size:18px;transition:border-color .2s}
+.form-group input:focus{outline:none;border-color:var(--cyan)}
+.login-btn{width:100%;background:var(--cyan);color:#000;border:none;padding:10px;border-radius:7px;font-size:18px;font-weight:700;cursor:pointer;margin-top:5px;transition:opacity .2s}
+.login-btn:hover{opacity:.85}
+.login-result{margin-top:10px;padding:9px 12px;border-radius:7px;font-family:var(--font-mono);font-size:18px;text-align:center;display:none}
+.login-result.success{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.login-result.fail{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+.db-title{font-size:18px;color:var(--muted);margin-bottom:5px;font-family:var(--font-mono)}
+.db-peek{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px;font-family:var(--font-mono);font-size:18px;direction:ltr}
+.db-peek .row{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid var(--border)}
+.db-peek .row:last-child{border-bottom:none}
+.db-peek .col{color:var(--muted);width:60px;flex-shrink:0}
+.db-peek .val{color:var(--text);word-break:break-all}
+.db-peek .val.hsh{color:var(--green)}
+
+/* ── ATTACK GRID ── */
+.attack-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.attack-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.attack-card h3{font-size:18px;font-weight:700;margin-bottom:5px}
+.attack-card .tag{display:inline-block;font-size:18px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;margin-bottom:7px}
+.tag-danger{background:rgba(239,68,68,.15);color:var(--red)}
+.tag-safe{background:rgba(34,197,94,.15);color:var(--green)}
+.attack-card p{font-size:18px;color:var(--muted);line-height:1.5}
+.rt-table{width:100%;margin-top:8px;font-family:var(--font-mono);font-size:18px;border-collapse:collapse}
+.rt-table th{color:var(--muted);text-align:left;padding:2px 5px;border-bottom:1px solid var(--border)}
+.rt-table td{padding:2px 5px;color:var(--text)}
+.rt-table .match{color:var(--red);font-weight:700}
+
+/* ── QUIZ ── */
+.quiz-q{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px}
+.quiz-q h3{font-size:18px;font-weight:700;margin-bottom:14px;line-height:1.5}
+.quiz-opts{display:flex;flex-direction:column;gap:7px}
+.quiz-opt{background:var(--surface3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:7px;cursor:pointer;text-align:right;font-size:18px;transition:all .2s;width:100%}
+.quiz-opt:hover:not(:disabled){border-color:var(--muted)}
+.quiz-opt.correct{background:rgba(34,197,94,.12);border-color:var(--green);color:var(--green)}
+.quiz-opt.wrong{background:rgba(239,68,68,.12);border-color:var(--red);color:var(--red)}
+.quiz-opt:disabled{cursor:default}
+.quiz-feedback{margin-top:8px;padding:9px 12px;border-radius:7px;font-size:18px;display:none}
+.quiz-feedback.show{display:block}
+.quiz-feedback.correct{background:rgba(34,197,94,.1);color:var(--green)}
+.quiz-feedback.wrong{background:rgba(239,68,68,.1);color:var(--red)}
+.quiz-score{text-align:center;font-size:20px;font-weight:700;padding:24px;color:var(--cyan)}
+
+/* ── TIPS / WARN ── */
+.tip{background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:10px 14px;font-size:18px;color:var(--muted);margin-top:12px}
+.tip strong{color:var(--cyan)}
+.warn{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;font-size:18px;color:var(--muted);margin-top:10px}
+.warn strong{color:var(--amber)}
+.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── GRADIO TABS ── */
+.gr-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0}
+.gr-tab{padding:9px 16px;font-size:18px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-main)}
+.gr-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.gr-tab:hover:not(.active){color:var(--text)}
+.gr-panel{display:none;padding:18px 0 4px}
+.gr-panel.active{display:block;animation:fadeIn .3s ease}
+
+/* ── CODE BLOCKS ── */
+.code-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface3)}
+.code-header span{font-family:var(--font-mono);font-size:18px;color:var(--muted)}
+.code-dots{display:flex;gap:5px}
+.code-dots div{width:9px;height:9px;border-radius:50%}
+.cblock{padding:16px 18px;font-family:var(--font-mono);font-size:18px;line-height:1.8;direction:ltr;overflow-x:auto;white-space:pre}
+.kw{color:#c792ea}.fn{color:var(--cyan)}.str{color:var(--green)}.cmt{color:var(--muted)}.num{color:var(--amber)}.cls{color:#f97316}.imp{color:#ff869a}
+
+/* ── GRADIO MOCKUP ── */
+.mockup-wrap{background:var(--surface3);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.mockup-bar{background:var(--surface2);padding:7px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.mockup-dots{display:flex;gap:5px}
+.mockup-dots span{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mockup-url{background:var(--surface3);border:1px solid var(--border);border-radius:5px;padding:2px 10px;font-family:var(--font-mono);font-size:18px;color:var(--muted);margin:0 auto;min-width:180px;text-align:center}
+.gr-wrap{padding:16px}
+.gr-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:3px;color:#111}
+.gr-sub{font-size:18px;color:#6b7280;text-align:center;margin-bottom:16px}
+.gr-row{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.gr-label{font-size:18px;color:#6b7280;margin-bottom:3px;display:block;text-align:right}
+.gr-input{width:100%;background:#fff;border:1px solid #d1d5db;color:#111;padding:7px 10px;border-radius:6px;font-size:18px;direction:rtl}
+.gr-btn{width:100%;background:#ff7c00;border:none;color:#fff;padding:8px;border-radius:6px;font-size:18px;font-weight:700;cursor:pointer;margin-top:3px;transition:opacity .2s}
+.gr-btn:hover{opacity:.85}
+.gr-err{padding:7px 10px;border-radius:6px;font-size:18px;margin-top:7px;text-align:center;display:none;background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.gr-screen{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;text-align:center}
+.gr-screen .icon{font-size:28px;margin-bottom:6px}
+.gr-screen h3{font-size:18px;color:#111;margin-bottom:3px}
+.gr-screen p{font-size:18px;color:#6b7280}
+.gr-logout{background:transparent;border:1px solid #fca5a5;color:#dc2626;padding:5px 12px;border-radius:5px;font-size:18px;cursor:pointer;margin-top:10px}
+.gr-logout:hover{background:#fef2f2}
+.gr-badge{display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:2px 9px;font-size:18px;color:#166534;margin-bottom:10px}
+.gr-locked{text-align:center;padding:18px 0}
+.gr-locked .lock{font-size:32px;margin-bottom:7px}
+.gr-locked p{font-size:18px;color:#6b7280}
+
+/* ── FLOW DIAGRAMS ── */
+/* Generic flow used in Gradio slide */
+.flow-container{display:flex;flex-direction:column;align-items:stretch;gap:0;width:100%}
+.flow-node{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center;width:100%;overflow:hidden}
+.flow-node h4{font-size:18px;font-weight:700;margin-bottom:2px;white-space:normal;word-break:break-word;line-height:1.4}
+.flow-node p{font-size:18px;color:var(--muted);white-space:normal;word-break:break-word;line-height:1.4}
+.flow-node.node-cyan{border-color:var(--cyan);background:rgba(0,229,255,.06)}
+.flow-node.node-red{border-color:var(--red);background:rgba(239,68,68,.06)}
+.flow-node.node-green{border-color:var(--green);background:rgba(34,197,94,.06)}
+.flow-node.node-amber{border-color:var(--amber);background:rgba(245,158,11,.06)}
+.flow-arrow{color:var(--muted);text-align:center;font-size:18px;line-height:1;padding:3px 0;flex-shrink:0}
+.flow-branch{display:flex;gap:8px;width:100%}
+.flow-branch .flow-node{flex:1;min-width:0}
+.flow-branch .flow-arrow{writing-mode:horizontal-tb;align-self:center}
+
+/* bcrypt save/compare flow */
+.bcrypt-flow{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.bcrypt-flow-col h4{font-size:18px;font-weight:700;color:var(--text);margin-bottom:10px;text-align:center;padding:6px;border-radius:6px}
+.bcrypt-flow-col.save-col h4{background:rgba(0,229,255,.1);color:var(--cyan)}
+.bcrypt-flow-col.check-col h4{background:rgba(34,197,94,.1);color:var(--green)}
+.bflow{display:flex;flex-direction:column;align-items:stretch;gap:0}
+.bnode{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;text-align:center;overflow:hidden}
+.bnode strong{display:block;font-size:18px;font-weight:700;white-space:normal;word-break:break-word;line-height:1.4;margin-bottom:2px}
+.bnode span{font-size:18px;color:var(--muted);font-family:var(--font-mono);white-space:normal;word-break:break-word;line-height:1.4}
+.bnode.cyan{border-color:var(--cyan);background:rgba(0,229,255,.06)}
+.bnode.amber{border-color:var(--amber);background:rgba(245,158,11,.06)}
+.bnode.green{border-color:var(--green);background:rgba(34,197,94,.06)}
+.bnode.purple{border-color:var(--purple);background:rgba(168,85,247,.06)}
+.barrow{text-align:center;color:var(--muted);font-size:18px;padding:4px 0;line-height:1}
+
+/* ── DEMO TABS (inside mockup) ── */
+.demo-tab{background:none;border:none;border-bottom:2px solid transparent;padding:7px 12px;font-size:18px;color:#6b7280;cursor:pointer;font-family:var(--font-main);transition:all .2s;white-space:nowrap}
+.demo-tab.active{color:#ff7c00;border-bottom-color:#ff7c00;font-weight:700}
+.demo-tab:hover:not(.active){color:#374151}
+
+/* ── HASH COMPARISON TABLE ── */
+.cmp-filter{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:4px 11px;border-radius:20px;cursor:pointer;font-size:18px;font-family:var(--font-main);transition:all .2s;white-space:nowrap}
+.cmp-filter.active,.cmp-filter:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08)}
+.cmp-table{width:100%;border-collapse:collapse;font-size:18px;min-width:680px}
+.cmp-table thead tr{background:var(--surface2)}
+.cmp-table th{padding:9px 10px;text-align:right;font-size:18px;color:var(--muted);font-weight:600;border-bottom:2px solid var(--border);white-space:nowrap}
+.cmp-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.cmp-table tbody tr{transition:background .15s}
+.cmp-table tbody tr:hover{background:var(--surface2)}
+.cmp-table tbody tr.hidden-row{display:none}
+.mono{font-family:var(--font-mono);font-size:18px;color:var(--muted);white-space:nowrap}
+.algo-name{display:inline-block;font-family:var(--font-mono);font-weight:700;font-size:18px;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.algo-danger{background:rgba(239,68,68,.15);color:var(--red)}
+.algo-warn{background:rgba(245,158,11,.15);color:var(--amber)}
+.algo-ok{background:rgba(0,229,255,.12);color:var(--cyan)}
+.algo-best{background:rgba(34,197,94,.12);color:var(--green)}
+.speed-bar{display:inline-block;width:52px;height:7px;background:var(--border);border-radius:4px;vertical-align:middle;margin-left:5px;overflow:hidden}
+.speed-bar span{display:block;height:100%;border-radius:4px}
+.speed-lbl{font-size:18px;font-family:var(--font-mono);vertical-align:middle}
+.status-pill{display:inline-block;font-size:18px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.status-pill.danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.status-pill.warn{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.status-pill.ok{background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
+.status-pill.best{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+
+/* ── STATE INSPECTOR ── */
+#state-block{padding:14px 16px;font-family:var(--font-mono);font-size:18px;line-height:1.7;direction:ltr;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══ NAV ══ -->
+<div class="nav">
+  <span class="nav-title">// hash.crypto — קריפטוגרפיה</span>
+  <div class="nav-controls">
+    <div class="progress" id="progress-dots"></div>
+    <span class="slide-counter" id="slide-counter">1 / 9</span>
+    <button class="nav-btn" id="prev-btn" onclick="goSlide(-1)" disabled>→</button>
+    <button class="nav-btn" id="next-btn" onclick="goSlide(1)">←</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 1 — HERO
+══════════════════════════════════════════ -->
+<div class="slide active" id="slide-0">
+  <div class="hero">
+    <div class="hero-tag">קריפטוגרפיה // CRYPTOGRAPHY</div>
+    <h1>מה זה Hash?</h1>
+    <p class="hero-sub">פונקציית גיבוב היא כלי קריפטוגרפי שממיר כל קלט לפלט קבוע — ואי אפשר לחזור ממנו.</p>
+    <div class="hero-hash">
+      <span>SHA-256("</span>hello<span>") →</span><br>
+      2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+    </div>
+  </div>
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="icon">🔁</div>
+      <h3>דטרמיניסטי</h3>
+      <p>אותו קלט תמיד מייצר אותו פלט. "hello" → תמיד אותו hash.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">⚡</div>
+      <h3>חישוב מהיר</h3>
+      <p>ניתן לחשב hash של כל גודל קלט בזמן קצר מאד.</p>
+    </div>
+    <div class="concept-card highlight">
+      <div class="icon">🚫</div>
+      <h3>חד-כיווני</h3>
+      <p>לא ניתן לחשב את הקלט מה-hash. זה מה שהופך אותו לכלי אבטחה.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📏</div>
+      <h3>פלט קבוע</h3>
+      <p>בין "a" לרומן שלם — ה-hash תמיד אותו אורך (256 ביט ב-SHA-256).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 2 — INTERACTIVE HASH + bcrypt DEMO
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-1">
+  <div class="sec-head">
+    <span class="sec-badge">DEMO</span>
+    <h2>נסה בעצמך — אפקט המפולת + bcrypt</h2>
+  </div>
+
+  <div class="hash-demo">
+    <label>הכנס טקסט לגיבוב — ראה מה קורה כשמשנה אות אחת:</label>
+    <div class="algo-select">
+      <button class="algo-btn selected" onclick="setAlgo('sha256',this)">SHA-256</button>
+      <button class="algo-btn" onclick="setAlgo('sha1',this)">SHA-1</button>
+      <button class="algo-btn" onclick="setAlgo('simple',this)">פשוט (sum)</button>
+    </div>
+    <input class="hash-input" id="main-input" type="text" value="hello" oninput="updateHash()" placeholder="הכנס טקסט...">
+    <div class="hash-output">
+      <span class="lbl">HASH OUTPUT:</span>
+      <span class="val" id="hash-out">---</span>
+    </div>
+  </div>
+
+  <div class="avalanche-demo">
+    <div class="ava-box">
+      <div class="inp">"hello"</div>
+      <div class="out" id="ava-a">---</div>
+    </div>
+    <div class="ava-box">
+      <div class="inp">"hellO" — אות שונה אחת בלבד!</div>
+      <div class="out" id="ava-b">---</div>
+    </div>
+  </div>
+  <div class="diff-count">ביטים שונים בין שני ה-hash: <span id="diff-bits">~128</span> — זהו <strong>אפקט המפולת (Avalanche Effect)</strong></div>
+
+  <!-- bcrypt LIVE SECTION -->
+  <div class="bcrypt-live">
+    <h4>🧂 bcrypt בפעולה — שתי סיסמאות זהות, שני hash שונים!</h4>
+    <div class="bcrypt-row">
+      <div class="bcrypt-cell">
+        <span class="cell-label">סיסמה א׳: "1234"</span>
+        <div class="cell-val green" id="bcrypt-a">לוחץ "יצור"...</div>
+      </div>
+      <div class="bcrypt-cell">
+        <span class="cell-label">סיסמה ב׳: "1234" (גיבוב חדש)</span>
+        <div class="cell-val amber" id="bcrypt-b">לוחץ "יצור"...</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-bottom:10px">
+      <button onclick="genBcryptDemo()" style="background:rgba(0,229,255,.15);border:1px solid var(--cyan);color:var(--cyan);padding:7px 18px;border-radius:7px;cursor:pointer;font-size:18px;font-family:var(--font-main)">🔄 יצור שני hash חדשים לסיסמה "1234"</button>
+    </div>
+    <div class="bcrypt-explain">
+      <strong>מדוע הם שונים?</strong> bcrypt מוסיף <strong>salt אקראי</strong> לכל סיסמה לפני הגיבוב. כך גם אם שתי משתמשות בחרו "1234" — בבסיס הנתונים יופיעו ערכים שונים לחלוטין. Rainbow Tables חסרות ערך.
+    </div>
+  </div>
+  <div class="tip"><strong>מסקנה:</strong> SHA-256 של "1234" תמיד זהה — bcrypt של "1234" תמיד שונה. זו ההבדל הקריטי לאבטחת סיסמאות.</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 3 — HASH vs ENCRYPTION + PROPERTIES
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-2">
+  <div class="sec-head">
+    <span class="sec-badge">CONCEPT</span>
+    <h2>Hash לעומת הצפנה</h2>
+  </div>
+  <table class="compare-table">
+    <tr>
+      <th>מאפיין</th>
+      <th class="hash-col">Hash (גיבוב)</th>
+      <th class="enc-col">Encryption (הצפנה)</th>
+    </tr>
+    <tr>
+      <td>כיוון</td>
+      <td class="hash-col">חד-כיווני בלבד</td>
+      <td class="enc-col">דו-כיווני (אפשר לפענח)</td>
+    </tr>
+    <tr>
+      <td>מפתח</td>
+      <td class="hash-col"><span class="pill pill-no">ללא מפתח</span></td>
+      <td class="enc-col"><span class="pill pill-yes">דרוש מפתח</span></td>
+    </tr>
+    <tr>
+      <td>שימוש עיקרי</td>
+      <td class="hash-col">שמירת סיסמאות, בדיקת שלמות</td>
+      <td class="enc-col">העברת מידע סודי</td>
+    </tr>
+    <tr>
+      <td>דוגמאות</td>
+      <td class="hash-col">SHA-256, bcrypt, MD5</td>
+      <td class="enc-col">AES, RSA, ChaCha20</td>
+    </tr>
+    <tr>
+      <td>ניתן לשחזר?</td>
+      <td class="hash-col"><span class="pill pill-no">לא</span></td>
+      <td class="enc-col"><span class="pill pill-yes">כן (עם המפתח)</span></td>
+    </tr>
+  </table>
+  <div class="tip"><strong>המסקנה:</strong> לשמירת סיסמאות — תמיד גיבוב, לא הצפנה. אם יש מפתח הצפנה שנגנב — הכל נחשף. Hash בלתי-הפיך מעיקרו.</div>
+  <hr class="divider">
+  <div class="sec-head"><span class="sec-badge">PROPERTIES</span><h2>מאפייני פונקציית Hash</h2></div>
+  <div class="prop-list">
+    <div class="prop-item">
+      <div class="prop-icon" style="background:rgba(0,229,255,.1)">🔄</div>
+      <div><h3>דטרמיניסטי</h3><p>אותו קלט = אותו פלט תמיד, בכל מחשב, בכל זמן.</p></div>
+    </div>
+    <div class="prop-item">
+      <div class="prop-icon" style="background:rgba(168,85,247,.1)">🌊</div>
+      <div><h3>אפקט המפולת (Avalanche Effect)</h3><p>שינוי ביט אחד בקלט משנה ~50% מהביטים בפלט — לכן לא ניתן "להתקרב" לתשובה.</p></div>
+    </div>
+    <div class="prop-item">
+      <div class="prop-icon" style="background:rgba(239,68,68,.1)">💥</div>
+      <div><h3>עמיד בפני התנגשויות (Collision Resistance)</h3><p>קשה מאד מבחינה חישובית למצוא שני קלטים שונים עם אותו hash.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 4 — BCRYPT ANATOMY + WORK FACTOR
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-3">
+  <div class="sec-head">
+    <span class="sec-badge">bcrypt</span>
+    <h2>bcrypt — הגיבוב לסיסמאות</h2>
+  </div>
+  <div class="hash-anatomy">
+    <div class="full">$2b$12$y6z8rQurx/95eBkgHeMclO7YczfK0lGLkD53Q1EIXlmAgEXNLZ72e</div>
+    <div class="anatomy-parts">
+      <div class="anat-block"><div class="anat-part anat-ver">$2b$</div><div class="anat-label">גרסה</div></div>
+      <div class="anat-block"><div class="anat-part anat-cost">12$</div><div class="anat-label">cost factor</div></div>
+      <div class="anat-block"><div class="anat-part anat-salt">y6z8rQurx/95eBkgHeMcl</div><div class="anat-label">salt (22 תווים)</div></div>
+      <div class="anat-block"><div class="anat-part anat-hash">O7YczfK0lGLkD53Q1EIXlmAgEXNLZ72e</div><div class="anat-label">hash עצמו</div></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="prop-list">
+        <div class="prop-item">
+          <div class="prop-icon" style="background:rgba(0,229,255,.1)">🧂</div>
+          <div><h3>Salt אוטומטי</h3><p>bcrypt מוסיף ערך אקראי לכל סיסמה לפני הגיבוב — שתי סיסמאות זהות → שני hash שונים לחלוטין.</p></div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-icon" style="background:rgba(245,158,11,.1)">🐢</div>
+          <div><h3>איטיות מכוונת</h3><p>bcrypt מחשב את הפונקציה אלפי פעמים — כך brute-force לוקח שנים במקום שניות.</p></div>
+        </div>
+        <div class="prop-item">
+          <div class="prop-icon" style="background:rgba(34,197,94,.1)">📈</div>
+          <div><h3>Cost Factor גמיש</h3><p>כשהחומרה משתפרת — מעלים את cost factor ומגבירים את הקושי בלי לשנות קוד.</p></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="wf-slider">
+        <label>cost factor (דרגת קושי) — ניסוי:</label>
+        <div class="wf-track">
+          <input type="range" min="4" max="16" value="12" id="wf-range" oninput="updateWF(this.value)">
+          <span class="wf-val" id="wf-val">12</span>
+        </div>
+      </div>
+      <div class="wf-result">
+        <div class="time" id="wf-time">~250ms</div>
+        <div class="sub">זמן גיבוב בודד (מחשב ביתי)</div>
+      </div>
+      <div class="attempts">
+        תוקף עם GPU מהיר יכול לנסות:<br>
+        <span id="attempts-count">~1,000</span> סיסמאות לשנייה<br>
+        <span style="color:var(--green);font-size:18px;">(השווה: MD5 → מיליארד לשנייה!)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 5 — LOGIN DEMO + SAVE/COMPARE FLOW
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-4">
+  <div class="sec-head">
+    <span class="sec-badge">DEMO</span>
+    <h2>מערכת Login עם bcrypt</h2>
+  </div>
+
+  <div class="two-col" style="align-items:start">
+    <div>
+      <div class="login-demo">
+        <h3>🔐 כניסה למערכת</h3>
+        <div class="form-group">
+          <label>שם משתמש</label>
+          <input type="text" id="login-user" placeholder="alice / bob">
+        </div>
+        <div class="form-group">
+          <label>סיסמה</label>
+          <input type="password" id="login-pass" placeholder="הכנס סיסמה">
+        </div>
+        <button class="login-btn" onclick="doLogin()">כניסה</button>
+        <div class="login-result" id="login-result"></div>
+      </div>
+      <div class="tip" style="font-size:18px;"><strong>רמז:</strong> alice/<code style="color:var(--cyan)">1234</code> &nbsp;|&nbsp; bob/<code style="color:var(--cyan)">qwerty</code></div>
+
+      <div style="margin-top:14px">
+        <div class="db-title">📂 בסיס הנתונים — מה מאוחסן:</div>
+        <div class="db-peek">
+          <div class="row"><span class="col">user:</span><span class="val">alice</span></div>
+          <div class="row"><span class="col">hash:</span><span class="val hsh">$2b$12$abc...XlmAgE</span></div>
+          <div class="row"><span class="col">user:</span><span class="val">bob</span></div>
+          <div class="row"><span class="col">hash:</span><span class="val hsh">$2b$12$xyz...R3Plm9</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- BCRYPT SAVE / COMPARE FLOW -->
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">תרשים: שמירה והשוואה</div>
+      <div class="bcrypt-flow">
+        <!-- SAVE COLUMN -->
+        <div class="bcrypt-flow-col save-col">
+          <h4>🔒 הרשמה — שמירה</h4>
+          <div class="bflow">
+            <div class="bnode cyan">
+              <strong>סיסמה מהמשתמש</strong>
+              <span>"1234"</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode amber">
+              <strong>bcrypt.gensalt()</strong>
+              <span>יוצר salt אקראי חדש</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode amber">
+              <strong>bcrypt.hashpw()</strong>
+              <span>סיסמה + salt → hash</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode green">
+              <strong>שמירה ב-DB</strong>
+              <span>$2b$12$salt+hash (לא הסיסמה!)</span>
+            </div>
+          </div>
+        </div>
+        <!-- CHECK COLUMN -->
+        <div class="bcrypt-flow-col check-col">
+          <h4>✅ כניסה — השוואה</h4>
+          <div class="bflow">
+            <div class="bnode cyan">
+              <strong>סיסמה מוזנת</strong>
+              <span>"1234" (ניחוש?)</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode purple">
+              <strong>שליפת hash מ-DB</strong>
+              <span>$2b$12$y6z8r...</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode amber">
+              <strong>bcrypt.checkpw()</strong>
+              <span>מחלץ salt מה-hash, מגבב שוב, משווה</span>
+            </div>
+            <div class="barrow">↓</div>
+            <div class="bnode green">
+              <strong>True / False</strong>
+              <span>בלי לפענח — רק להשוות!</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-wrap" style="margin-top:12px">
+        <div class="code-header">
+          <div class="code-dots"><div style="background:#ff5f56"></div><div style="background:#ffbd2e"></div><div style="background:#27c93f"></div></div>
+          <span>bcrypt_demo.py</span>
+        </div>
+        <div class="cblock"><span class="imp">import</span> <span class="cls">bcrypt</span>
+
+<span class="cmt"># הרשמה</span>
+<span class="kw">def</span> <span class="fn">register</span>(password):
+    hashed = bcrypt.<span class="fn">hashpw</span>(
+        password.<span class="fn">encode</span>(),
+        bcrypt.<span class="fn">gensalt</span>()
+    )
+    <span class="kw">return</span> hashed  <span class="cmt"># שמור ב-DB</span>
+
+<span class="cmt"># כניסה</span>
+<span class="kw">def</span> <span class="fn">login</span>(password, stored_hash):
+    <span class="kw">return</span> bcrypt.<span class="fn">checkpw</span>(
+        password.<span class="fn">encode</span>(),
+        stored_hash
+    )</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 6 — ATTACKS
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-5">
+  <div class="sec-head">
+    <span class="sec-badge">ATTACKS</span>
+    <h2>התקפות על Hash</h2>
+  </div>
+  <div class="attack-grid">
+    <div class="attack-card">
+      <h3>Rainbow Tables</h3>
+      <span class="tag tag-danger">⚠ סכנה עם MD5/SHA-1</span>
+      <p>מילון מחושב מראש של hash→סיסמה. מפצח MD5 של "password123" ב-0.01 שניות.</p>
+      <table class="rt-table">
+        <tr><th>סיסמה</th><th>MD5 Hash</th></tr>
+        <tr><td>password</td><td class="match">5f4d...cc4</td></tr>
+        <tr><td>123456</td><td>e10a...b25</td></tr>
+        <tr><td>hello</td><td>5d41...22a</td></tr>
+      </table>
+    </div>
+    <div class="attack-card">
+      <h3>Brute Force</h3>
+      <span class="tag tag-danger">⚠ קשה אך אפשרי</span>
+      <p>ניסוי של כל הסיסמאות האפשריות. MD5: מיליארד לשנייה. bcrypt cost=12: ~250 לשנייה.</p>
+      <div style="margin-top:10px">
+        <div style="font-size:18px;color:var(--muted);margin-bottom:5px">מהירות פיצוח (GPU A100):</div>
+        <div style="font-size:18px;margin-bottom:3px"><span style="color:var(--red)">MD5:</span> 60,000,000,000/שנייה</div>
+        <div style="font-size:18px;margin-bottom:3px"><span style="color:var(--amber)">SHA-256:</span> 3,000,000,000/שנייה</div>
+        <div style="font-size:18px;"><span style="color:var(--green)">bcrypt:</span> ~4,000/שנייה</div>
+      </div>
+    </div>
+    <div class="attack-card" style="border-color:rgba(34,197,94,.3)">
+      <h3>כיצד Salt מגן?</h3>
+      <span class="tag tag-safe">✓ הגנה יעילה</span>
+      <p>כל סיסמה מקבלת salt אקראי. Rainbow tables חסרות ערך — הן לא מכילות את ה-salt.</p>
+      <div style="margin-top:8px;font-family:var(--font-mono);font-size:18px;direction:ltr">
+        <div style="color:var(--muted)">hash("1234") → <span style="color:var(--red)">זהה תמיד!</span></div>
+        <div style="color:var(--muted);margin-top:3px">hash("1234"+salt1) → <span style="color:var(--green)">a9f3...</span></div>
+        <div style="color:var(--muted);margin-top:2px">hash("1234"+salt2) → <span style="color:var(--green)">x7b1...</span></div>
+      </div>
+    </div>
+    <div class="attack-card" style="border-color:rgba(34,197,94,.3)">
+      <h3>סיכום הגנות</h3>
+      <span class="tag tag-safe">✓ bcrypt = הפתרון</span>
+      <p>bcrypt פותר את כל הבעיות: Salt אוטומטי, איטיות מכוונת, cost factor ניתן לשינוי.</p>
+      <div style="margin-top:8px">
+        <div style="font-size:18px;margin-bottom:3px">✅ Salt מובנה — מנטרל Rainbow Tables</div>
+        <div style="font-size:18px;margin-bottom:3px">✅ איטי — מקשה על Brute Force</div>
+        <div style="font-size:18px;">✅ Cost Factor — מסתגל לחומרה חדשה</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 7 — GRADIO: CODE
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-6">
+  <div class="sec-head">
+    <span class="sec-badge">GRADIO</span>
+    <h2>Login מאובטח עם Gradio + bcrypt</h2>
+  </div>
+  <div class="gr-tabs">
+    <button class="gr-tab active" onclick="showGrTab('gcode',this)">קוד Python</button>
+    <button class="gr-tab" onclick="showGrTab('gtabs',this)">Login + 2 Tabs</button>
+    <button class="gr-tab" onclick="showGrTab('gdemo',this)">דמו חי</button>
+    <button class="gr-tab" onclick="showGrTab('gflow',this)">תרשים זרימה</button>
+  </div>
+
+  <!-- CODE TAB -->
+  <div class="gr-panel active" id="gcode">
+    <div class="two-col" style="align-items:start">
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">// login_app.py — לוגיקה</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><div style="background:#ff5f56"></div><div style="background:#ffbd2e"></div><div style="background:#27c93f"></div></div>
+            <span>login_app.py</span>
+          </div>
+          <div class="cblock"><span class="imp">import</span> <span class="cls">gradio</span> <span class="kw">as</span> gr
+<span class="imp">import</span> <span class="cls">bcrypt</span>
+
+<span class="cmt"># מסד נתונים בזיכרון</span>
+USERS = {
+    <span class="str">"alice"</span>: bcrypt.<span class="fn">hashpw</span>(
+        <span class="str">b"1234"</span>, bcrypt.<span class="fn">gensalt</span>()),
+    <span class="str">"bob"</span>: bcrypt.<span class="fn">hashpw</span>(
+        <span class="str">b"qwerty"</span>, bcrypt.<span class="fn">gensalt</span>()),
+}
+
+<span class="kw">def</span> <span class="fn">login</span>(username, password):
+    <span class="kw">if</span> username <span class="kw">not in</span> USERS:
+        <span class="kw">return</span> (<span class="str">""</span>,
+            gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),
+            gr.<span class="fn">update</span>(visible=<span class="kw">False</span>),
+            <span class="str">"❌ משתמש לא נמצא"</span>)
+    ok = bcrypt.<span class="fn">checkpw</span>(
+        password.<span class="fn">encode</span>(), USERS[username])
+    <span class="kw">if</span> ok:
+        <span class="kw">return</span> (username,
+            gr.<span class="fn">update</span>(visible=<span class="kw">False</span>),
+            gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),
+            <span class="str">""</span>)
+    <span class="kw">return</span> (<span class="str">""</span>,
+        gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),
+        gr.<span class="fn">update</span>(visible=<span class="kw">False</span>),
+        <span class="str">"❌ סיסמה שגויה"</span>)
+
+<span class="kw">def</span> <span class="fn">logout</span>():
+    <span class="kw">return</span> (<span class="str">""</span>,
+        gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),
+        gr.<span class="fn">update</span>(visible=<span class="kw">False</span>),
+        <span class="str">""</span>)</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">// ממשק Gradio Blocks</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><div style="background:#ff5f56"></div><div style="background:#ffbd2e"></div><div style="background:#27c93f"></div></div>
+            <span>ui_blocks.py</span>
+          </div>
+          <div class="cblock"><span class="kw">with</span> gr.<span class="fn">Blocks</span>() <span class="kw">as</span> app:
+
+  user_state = gr.<span class="fn">State</span>(<span class="str">""</span>)
+
+  <span class="cmt"># לוח Login — גלוי בהתחלה</span>
+  <span class="kw">with</span> gr.<span class="fn">Column</span>(
+      visible=<span class="kw">True</span>
+  ) <span class="kw">as</span> login_panel:
+    username = gr.<span class="fn">Textbox</span>(
+        label=<span class="str">"שם משתמש"</span>)
+    password = gr.<span class="fn">Textbox</span>(
+        label=<span class="str">"סיסמה"</span>,
+        type=<span class="str">"password"</span>)
+    login_btn = gr.<span class="fn">Button</span>(<span class="str">"כניסה"</span>)
+    err = gr.<span class="fn">Textbox</span>(visible=<span class="kw">False</span>)
+
+  <span class="cmt"># לוח ראשי — נסתר בהתחלה!</span>
+  <span class="kw">with</span> gr.<span class="fn">Column</span>(
+      visible=<span class="kw">False</span>  <span class="cmt">← הסוד</span>
+  ) <span class="kw">as</span> main_panel:
+    welcome = gr.<span class="fn">Textbox</span>(
+        interactive=<span class="kw">False</span>)
+    logout_btn = gr.<span class="fn">Button</span>(
+        <span class="str">"🚪 Logout"</span>,
+        variant=<span class="str">"secondary"</span>)
+
+  login_btn.<span class="fn">click</span>(
+    fn=login,
+    inputs=[username, password],
+    outputs=[user_state,
+             login_panel,
+             main_panel, err])
+
+  logout_btn.<span class="fn">click</span>(
+    fn=logout,
+    outputs=[user_state,
+             login_panel,
+             main_panel, err])
+
+app.<span class="fn">launch</span>()</div>
+        </div>
+        <div class="tip"><strong>gr.State</strong> שומר את שם המשתמש בין לחיצות, מבודד לכל משתמש. <strong>gr.update(visible=)</strong> מחליף בין הלוחות.</div>
+        <div class="warn"><strong>בפרודקשן:</strong> SQLite/Postgres + Session tokens + HTTPS חובה.</div>
+      </div>
+    </div>
+  </div>
+
+ 
+
+  <!-- ══ LOGIN + 2 TABS PANEL ══ -->
+  <div class="gr-panel" id="gtabs">
+    <div class="two-col" style="align-items:start;gap:18px">
+
+      <!-- LEFT: CODE -->
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">// tabs_app.py — קוד מלא</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><div style="background:#ff5f56"></div><div style="background:#ffbd2e"></div><div style="background:#27c93f"></div></div>
+            <span>tabs_app.py</span>
+          </div>
+          <div class="cblock"><span class="imp">import</span> <span class="cls">gradio</span> <span class="kw">as</span> gr
+<span class="imp">import</span> <span class="cls">bcrypt</span>
+
+USERS = {
+  <span class="str">"alice"</span>: bcrypt.<span class="fn">hashpw</span>(<span class="str">b"1234"</span>, bcrypt.<span class="fn">gensalt</span>()),
+  <span class="str">"bob"</span>:   bcrypt.<span class="fn">hashpw</span>(<span class="str">b"qwerty"</span>, bcrypt.<span class="fn">gensalt</span>()),
+}
+
+<span class="kw">def</span> <span class="fn">login</span>(username, password):
+    <span class="kw">if</span> username <span class="kw">not in</span> USERS:
+        <span class="kw">return</span> <span class="str">""</span>, gr.<span class="fn">update</span>(visible=<span class="kw">True</span>), gr.<span class="fn">update</span>(visible=<span class="kw">False</span>), <span class="str">"❌ משתמש לא נמצא"</span>
+    ok = bcrypt.<span class="fn">checkpw</span>(password.<span class="fn">encode</span>(), USERS[username])
+    <span class="kw">if</span> ok:
+        <span class="kw">return</span> username, gr.<span class="fn">update</span>(visible=<span class="kw">False</span>), gr.<span class="fn">update</span>(visible=<span class="kw">True</span>), <span class="str">""</span>
+    <span class="kw">return</span> <span class="str">""</span>, gr.<span class="fn">update</span>(visible=<span class="kw">True</span>), gr.<span class="fn">update</span>(visible=<span class="kw">False</span>), <span class="str">"❌ סיסמה שגויה"</span>
+
+<span class="kw">def</span> <span class="fn">logout</span>():
+    <span class="kw">return</span> <span class="str">""</span>, gr.<span class="fn">update</span>(visible=<span class="kw">True</span>), gr.<span class="fn">update</span>(visible=<span class="kw">False</span>), <span class="str">""</span>
+
+<span class="kw">def</span> <span class="fn">tab1_action</span>(user, text):
+    <span class="cmt"># בדיקת הרשאה גם בצד השרת!</span>
+    <span class="kw">if not</span> user:
+        <span class="kw">return</span> <span class="str">"⛔ אין הרשאה — יש להתחבר תחילה"</span>
+    <span class="kw">return</span> <span class="str">f"📋 [</span>{user}<span class="str">] עיבד: "</span> + text.<span class="fn">upper</span>()
+
+<span class="kw">def</span> <span class="fn">tab2_action</span>(user, number):
+    <span class="kw">if not</span> user:
+        <span class="kw">return</span> <span class="str">"⛔ אין הרשאה — יש להתחבר תחילה"</span>
+    <span class="kw">return</span> <span class="str">f"🔢 [</span>{user}<span class="str">] תוצאה: "</span> + <span class="fn">str</span>(number ** <span class="num">2</span>)
+
+<span class="kw">with</span> gr.<span class="fn">Blocks</span>(title=<span class="str">"Login + Tabs"</span>) <span class="kw">as</span> app:
+    user_state = gr.<span class="fn">State</span>(<span class="str">""</span>)
+
+    <span class="cmt"># ─── לוח Login ───</span>
+    <span class="kw">with</span> gr.<span class="fn">Column</span>(visible=<span class="kw">True</span>) <span class="kw">as</span> login_panel:
+        gr.<span class="fn">Markdown</span>(<span class="str">"## 🔐 כניסה למערכת"</span>)
+        username = gr.<span class="fn">Textbox</span>(label=<span class="str">"שם משתמש"</span>)
+        password = gr.<span class="fn">Textbox</span>(label=<span class="str">"סיסמה"</span>, type=<span class="str">"password"</span>)
+        login_btn = gr.<span class="fn">Button</span>(<span class="str">"כניסה"</span>, variant=<span class="str">"primary"</span>)
+        err_msg   = gr.<span class="fn">Textbox</span>(visible=<span class="kw">False</span>, label=<span class="str">"שגיאה"</span>)
+
+    <span class="cmt"># ─── אזור מוגן עם Tabs ───</span>
+    <span class="kw">with</span> gr.<span class="fn">Column</span>(visible=<span class="kw">False</span>) <span class="kw">as</span> main_panel:
+        <span class="kw">with</span> gr.<span class="fn">Row</span>():
+            welcome_md = gr.<span class="fn">Markdown</span>(<span class="str">"## ✅ ברוך הבא!"</span>)
+            logout_btn = gr.<span class="fn">Button</span>(<span class="str">"🚪 Logout"</span>, scale=<span class="num">0</span>)
+
+        <span class="kw">with</span> gr.<span class="fn">Tabs</span>():
+
+            <span class="kw">with</span> gr.<span class="fn">Tab</span>(<span class="str">"📋 Tab 1 — עיבוד טקסט"</span>):
+                t1_input  = gr.<span class="fn">Textbox</span>(label=<span class="str">"הכנס טקסט"</span>)
+                t1_btn    = gr.<span class="fn">Button</span>(<span class="str">"עבד"</span>)
+                t1_output = gr.<span class="fn">Textbox</span>(label=<span class="str">"תוצאה"</span>, interactive=<span class="kw">False</span>)
+
+            <span class="kw">with</span> gr.<span class="fn">Tab</span>(<span class="str">"🔢 Tab 2 — חישוב מספרים"</span>):
+                t2_input  = gr.<span class="fn">Number</span>(label=<span class="str">"הכנס מספר"</span>)
+                t2_btn    = gr.<span class="fn">Button</span>(<span class="str">"חשב בריבוע"</span>)
+                t2_output = gr.<span class="fn">Textbox</span>(label=<span class="str">"תוצאה"</span>, interactive=<span class="kw">False</span>)
+
+    <span class="cmt"># ─── חיבור אירועים ───</span>
+    login_btn.<span class="fn">click</span>(
+        fn=login,
+        inputs=[username, password],
+        outputs=[user_state, login_panel, main_panel, err_msg])
+
+    logout_btn.<span class="fn">click</span>(
+        fn=logout,
+        outputs=[user_state, login_panel, main_panel, err_msg])
+
+    t1_btn.<span class="fn">click</span>(
+        fn=tab1_action,
+        inputs=[user_state, t1_input],
+        outputs=t1_output)
+
+    t2_btn.<span class="fn">click</span>(
+        fn=tab2_action,
+        inputs=[user_state, t2_input],
+        outputs=t2_output)
+
+app.<span class="fn">launch</span>()</div>
+        </div>
+        <div class="tip" style="margin-top:8px"><strong>הטריק הכפול:</strong> הטאבים נסתרים עם <code style="color:var(--cyan)">visible=False</code> בממשק, <em>וגם</em> כל פונקציה בודקת <code style="color:var(--cyan)">if not user</code> — הגנה כפולה.</div>
+        <div class="warn"><strong>למה הגנה כפולה?</strong> <code style="color:var(--amber)">visible=False</code> רק מסתיר בממשק. משתמש מתקדם יכול לקרוא לAPI ישירות. בדיקת <code style="color:var(--amber)">user_state</code> בפונקציה עצמה היא ההגנה האמיתית.</div>
+      </div>
+
+      <!-- RIGHT: LIVE DEMO -->
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono);text-align:center">דמו חי — Login + 2 Tabs</div>
+        <div class="mockup-wrap">
+          <div class="mockup-bar">
+            <div class="mockup-dots">
+              <span style="background:#ff5f56"></span>
+              <span style="background:#ffbd2e"></span>
+              <span style="background:#27c93f"></span>
+            </div>
+            <div class="mockup-url">localhost:7860</div>
+          </div>
+          <div class="gr-wrap" style="min-height:320px">
+
+            <!-- LOGIN PANEL -->
+            <div id="tabs-login">
+              <div class="gr-title">🔐 כניסה למערכת</div>
+              <div class="gr-sub">Gradio · Login + Tabs</div>
+              <div class="gr-row">
+                <label class="gr-label">שם משתמש</label>
+                <input class="gr-input" id="tabs-user" type="text" placeholder="alice / bob">
+              </div>
+              <div class="gr-row">
+                <label class="gr-label">סיסמה</label>
+                <input class="gr-input" id="tabs-pass" type="password" placeholder="הכנס סיסמה">
+              </div>
+              <button class="gr-btn" onclick="tabsLogin()">כניסה</button>
+              <div class="gr-err" id="tabs-err"></div>
+            </div>
+
+            <!-- MAIN PANEL WITH TABS -->
+            <div id="tabs-main" style="display:none">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e5e7eb">
+                <div class="gr-badge" style="margin-bottom:0">🟢 <span id="tabs-uname">alice</span> מחובר/ת</div>
+                <button class="gr-logout" onclick="tabsLogout()" style="margin-top:0">🚪 Logout</button>
+              </div>
+
+              <!-- TABS BAR -->
+              <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:14px">
+                <button class="demo-tab active" id="dtab1" onclick="switchDemoTab(1)">📋 Tab 1 — עיבוד טקסט</button>
+                <button class="demo-tab" id="dtab2" onclick="switchDemoTab(2)">🔢 Tab 2 — חישוב מספרים</button>
+              </div>
+
+              <!-- TAB 1 CONTENT -->
+              <div id="dtab1-content">
+                <div class="gr-row">
+                  <label class="gr-label">הכנס טקסט</label>
+                  <input class="gr-input" id="t1-in" type="text" placeholder="כתוב משהו...">
+                </div>
+                <button class="gr-btn" onclick="doTab1()">עבד</button>
+                <div style="margin-top:8px">
+                  <label class="gr-label">תוצאה</label>
+                  <div id="t1-out" style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:18px;color:#374151;min-height:32px;font-family:monospace;direction:ltr"></div>
+                </div>
+              </div>
+
+              <!-- TAB 2 CONTENT -->
+              <div id="dtab2-content" style="display:none">
+                <div class="gr-row">
+                  <label class="gr-label">הכנס מספר</label>
+                  <input class="gr-input" id="t2-in" type="number" placeholder="0" style="direction:ltr">
+                </div>
+                <button class="gr-btn" onclick="doTab2()">חשב בריבוע</button>
+                <div style="margin-top:8px">
+                  <label class="gr-label">תוצאה</label>
+                  <div id="t2-out" style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:18px;color:#374151;min-height:32px;font-family:monospace;direction:ltr"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOCKED STATE -->
+            <div id="tabs-locked" style="display:none;text-align:center;padding:20px 0">
+              <div style="font-size:32px;margin-bottom:8px">🔒</div>
+              <p style="font-size:18px;color:#6b7280">הטאבים נסתרים ללא כניסה<br><code style="color:#6b7280">visible=False</code></p>
+              <button class="gr-btn" style="max-width:130px;margin:10px auto 0" onclick="tabsShowLogin()">חזרה</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <button onclick="tabsSimDirect()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px;border-radius:6px;cursor:pointer;font-size:18px;">🔒 נסה לפתוח טאבים ללא Login</button>
+        </div>
+        <div class="tip" style="font-size:18px;margin-top:8px"><strong>רמזים:</strong> alice/1234 | bob/qwerty</div>
+
+        <!-- State inspector mini -->
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-header" style="justify-content:space-between">
+            <span>gr.State</span>
+            <span id="tabs-state-status" style="color:var(--red)">● לא מחובר</span>
+          </div>
+          <div id="tabs-state-block" style="padding:10px 14px;font-family:var(--font-mono);font-size:18px;line-height:1.7;direction:ltr">user_state       = <span style="color:var(--red)">""</span>
+login_panel.visible = <span style="color:var(--green)">True</span>
+main_panel.visible  = <span style="color:var(--red)">False</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMO TAB -->
+  <div class="gr-panel" id="gdemo">
+    <div class="two-col" style="align-items:start">
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono);text-align:center">דמו חי — מדמה ממשק Gradio</div>
+        <div class="mockup-wrap">
+          <div class="mockup-bar">
+            <div class="mockup-dots">
+              <span style="background:#ff5f56"></span>
+              <span style="background:#ffbd2e"></span>
+              <span style="background:#27c93f"></span>
+            </div>
+            <div class="mockup-url">localhost:7860</div>
+          </div>
+          <div class="gr-wrap">
+            <div id="gr-login">
+              <div class="gr-title">🔐 כניסה למערכת</div>
+              <div class="gr-sub">Gradio + bcrypt</div>
+              <div class="gr-row">
+                <label class="gr-label">שם משתמש</label>
+                <input class="gr-input" id="gr-user" type="text" placeholder="alice / bob">
+              </div>
+              <div class="gr-row">
+                <label class="gr-label">סיסמה</label>
+                <input class="gr-input" id="gr-pass" type="password" placeholder="הכנס סיסמה">
+              </div>
+              <button class="gr-btn" onclick="grLogin()">כניסה</button>
+              <div class="gr-err" id="gr-err"></div>
+            </div>
+            <div id="gr-main" style="display:none">
+              <div style="text-align:center;margin-bottom:10px">
+                <div class="gr-badge">🟢 <span id="gr-uname">alice</span> מחובר/ת</div>
+              </div>
+              <div class="gr-screen">
+                <div class="icon">🛡️</div>
+                <h3>אזור מוגן — ✅ גישה מאושרת</h3>
+                <p id="gr-welcome-txt">ברוך הבא!</p>
+                <p style="margin-top:5px;font-size:18px;color:#9ca3af">דף זה נסתר מאנשים שאינם מחוברים</p>
+              </div>
+              <div style="text-align:center"><button class="gr-logout" onclick="grLogout()">🚪 Logout</button></div>
+            </div>
+            <div id="gr-locked" style="display:none">
+              <div class="gr-locked">
+                <div class="lock">🔒</div>
+                <p>ניסית גישה ישירה ל-<code>/protected</code><br>אין גישה ללא כניסה!</p>
+                <button class="gr-btn" style="max-width:140px;margin:8px auto 0" onclick="grShowLogin()">חזרה לכניסה</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <button onclick="grSimDirect()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px;border-radius:6px;cursor:pointer;font-size:18px;">🔒 נסה גישה ישירה ללא Login</button>
+        </div>
+        <div class="tip" style="font-size:18px;"><strong>רמזים:</strong> alice/1234 | bob/qwerty</div>
+      </div>
+      <div>
+        <div style="font-size:18px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono);text-align:center">State Inspector</div>
+        <div class="code-wrap">
+          <div class="code-header" style="justify-content:space-between">
+            <span>gr.State</span>
+            <span id="state-status" style="color:var(--red)">● לא מחובר</span>
+          </div>
+          <div id="state-block">user_state  = <span style="color:var(--red)">""</span>
+login_panel.visible = <span style="color:var(--green)">True</span>
+main_panel.visible  = <span style="color:var(--red)">False</span>
+
+<span class="cmt"># hash ב-DB (bcrypt):</span>
+USERS["alice"] = <span style="color:var(--green)">"$2b$12$..."</span>
+
+<span class="cmt"># checkpw — לא מפענח</span>
+<span class="cmt"># רק משווה hash מול hash</span></div>
+        </div>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-header"><span>לוג פעולות</span></div>
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:18px;max-height:140px;overflow-y:auto;direction:ltr" id="log-panel">
+            <div style="color:var(--muted)">[00:00] App started</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW TAB -->
+  <div class="gr-panel" id="gflow">
+    <div class="two-col" style="align-items:start">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:10px;text-align:center">תרשים זרימה — תהליך Login מלא</div>
+        <div class="flow-container">
+          <div class="flow-node node-cyan">
+            <h4>🌐 משתמש פותח את האפליקציה</h4>
+            <p>login_panel visible=True | main_panel visible=False</p>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">
+            <h4>📝 הזנת שם משתמש וסיסמה</h4>
+            <p>gr.Textbox | type="password"</p>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">
+            <h4>🖱 לחיצה על "כניסה"</h4>
+            <p>login_btn.click() → fn=login()</p>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">
+            <h4>🔍 בדיקה: האם המשתמש קיים?</h4>
+            <p>username in USERS</p>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-branch">
+            <div class="flow-node node-red">
+              <h4>❌ לא קיים</h4>
+              <p>מוצגת שגיאה | login נשאר</p>
+            </div>
+            <div class="flow-node node-amber">
+              <h4>🔑 bcrypt.checkpw()</h4>
+              <p>password ↔ stored_hash</p>
+            </div>
+          </div>
+          <div class="flow-arrow" style="padding-right:50%">↓</div>
+          <div class="flow-branch" style="width:50%;margin-right:50%">
+            <div class="flow-node node-red">
+              <h4>❌ שגיאה</h4>
+              <p>סיסמה שגויה</p>
+            </div>
+            <div class="flow-node node-green">
+              <h4>✅ התאמה!</h4>
+              <p>user_state = username</p>
+            </div>
+          </div>
+          <div class="flow-arrow" style="padding-right:75%">↓</div>
+          <div style="width:50%;margin-right:50%">
+            <div class="flow-node node-green">
+              <h4>🛡️ האזור המוגן נפתח</h4>
+              <p>login visible=False | main visible=True</p>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node">
+              <h4>🚪 לחיצה על Logout</h4>
+              <p>logout_btn.click() → fn=logout()</p>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node node-cyan">
+              <h4>🔄 חזרה למצב ראשוני</h4>
+              <p>user_state="" | login visible=True</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:10px;text-align:center">הסבר מנגנון visible=False</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>visible=False — הסוד</span></div>
+          <div class="cblock"><span class="cmt"># נסתר בהתחלה</span>
+<span class="kw">with</span> gr.<span class="fn">Column</span>(
+    visible=<span class="kw">False</span>
+) <span class="kw">as</span> main_panel:
+    ...
+
+<span class="cmt"># Gradio לא מרנדר</span>
+<span class="cmt"># את הרכיב ב-DOM כלל</span></div>
+        </div>
+        <div class="code-wrap">
+          <div class="code-header"><span>gr.update() — החלפת לוחות</span></div>
+          <div class="cblock"><span class="cmt"># login מצליח:</span>
+<span class="kw">return</span> (
+  username,
+  gr.<span class="fn">update</span>(visible=<span class="kw">False</span>),
+  gr.<span class="fn">update</span>(visible=<span class="kw">True</span>),
+  <span class="str">""</span>
+)</div>
+        </div>
+        <div class="tip"><strong>gr.State</strong> — זיכרון שמתנהג כמשתנה גלובלי לכל session, מבודד בין משתמשים שונים.</div>
+        <div class="warn"><strong>חשוב:</strong> visible=False מונע הצגה בלבד. לאבטחה אמיתית צריך לבדוק הרשאות גם בצד השרת בכל פונקציה רגישה.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 8 — HASH COMPARISON TABLE
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-7">
+  <div class="sec-head">
+    <span class="sec-badge">COMPARE</span>
+    <h2>השוואה בין שיטות Hash</h2>
+  </div>
+
+  <!-- FILTER BUTTONS -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+    <span style="font-size:18px;color:var(--muted);font-family:var(--font-mono)">סנן לפי שימוש:</span>
+    <button class="cmp-filter active" onclick="filterTable('all',this)">הכל</button>
+    <button class="cmp-filter" onclick="filterTable('password',this)">🔐 סיסמאות</button>
+    <button class="cmp-filter" onclick="filterTable('integrity',this)">✅ שלמות קבצים</button>
+    <button class="cmp-filter" onclick="filterTable('crypto',this)">🔗 קריפטוגרפיה</button>
+    <button class="cmp-filter" onclick="filterTable('legacy',this)">⚠️ מיושן</button>
+  </div>
+
+  <!-- MAIN COMPARISON TABLE -->
+  <div style="overflow-x:auto;margin-bottom:16px">
+  <table class="cmp-table" id="cmp-table">
+    <thead>
+      <tr>
+        <th>אלגוריתם</th>
+        <th>שנת יצירה</th>
+        <th>גודל פלט</th>
+        <th>מהירות</th>
+        <th>Salt מובנה</th>
+        <th>בטיחות כיום</th>
+        <th>שימוש מומלץ</th>
+        <th>Python</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- MD5 -->
+      <tr class="cmp-row" data-tags="legacy integrity">
+        <td><span class="algo-name algo-danger">MD5</span></td>
+        <td class="mono">1991</td>
+        <td class="mono">128 bit</td>
+        <td><span class="speed-bar"><span style="width:100%;background:var(--red)"></span></span><span class="speed-lbl" style="color:var(--red)">מהיר מאד</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill danger">💀 שבור</span></td>
+        <td style="font-size:18px;color:var(--muted)">Checksum בלבד, לא לסיסמאות</td>
+        <td class="mono" style="font-size:18px;">hashlib.md5()</td>
+      </tr>
+      <!-- SHA-1 -->
+      <tr class="cmp-row" data-tags="legacy integrity">
+        <td><span class="algo-name algo-warn">SHA-1</span></td>
+        <td class="mono">1995</td>
+        <td class="mono">160 bit</td>
+        <td><span class="speed-bar"><span style="width:90%;background:var(--amber)"></span></span><span class="speed-lbl" style="color:var(--amber)">מהיר</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill warn">⚠️ מיושן</span></td>
+        <td style="font-size:18px;color:var(--muted)">הימנע — נשבר ב-2017</td>
+        <td class="mono" style="font-size:18px;">hashlib.sha1()</td>
+      </tr>
+      <!-- SHA-256 -->
+      <tr class="cmp-row" data-tags="integrity crypto">
+        <td><span class="algo-name algo-ok">SHA-256</span></td>
+        <td class="mono">2001</td>
+        <td class="mono">256 bit</td>
+        <td><span class="speed-bar"><span style="width:85%;background:var(--amber)"></span></span><span class="speed-lbl" style="color:var(--amber)">מהיר</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill ok">✅ בטוח</span></td>
+        <td style="font-size:18px;color:var(--muted)">קבצים, TLS, בלוקצ'יין — לא לסיסמאות!</td>
+        <td class="mono" style="font-size:18px;">hashlib.sha256()</td>
+      </tr>
+      <!-- SHA-512 -->
+      <tr class="cmp-row" data-tags="integrity crypto">
+        <td><span class="algo-name algo-ok">SHA-512</span></td>
+        <td class="mono">2001</td>
+        <td class="mono">512 bit</td>
+        <td><span class="speed-bar"><span style="width:80%;background:var(--amber)"></span></span><span class="speed-lbl" style="color:var(--amber)">מהיר</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill ok">✅ בטוח</span></td>
+        <td style="font-size:18px;color:var(--muted)">חתימות דיגיטליות, מסמכים</td>
+        <td class="mono" style="font-size:18px;">hashlib.sha512()</td>
+      </tr>
+      <!-- SHA-3 -->
+      <tr class="cmp-row" data-tags="integrity crypto">
+        <td><span class="algo-name algo-best">SHA-3</span></td>
+        <td class="mono">2015</td>
+        <td class="mono">224–512 bit</td>
+        <td><span class="speed-bar"><span style="width:65%;background:var(--green)"></span></span><span class="speed-lbl" style="color:var(--green)">בינוני</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill best">🏆 מצוין</span></td>
+        <td style="font-size:18px;color:var(--muted)">ארכיטקטורה שונה מ-SHA-2, עמיד יותר</td>
+        <td class="mono" style="font-size:18px;">hashlib.sha3_256()</td>
+      </tr>
+      <!-- bcrypt -->
+      <tr class="cmp-row" data-tags="password">
+        <td><span class="algo-name algo-best">bcrypt</span></td>
+        <td class="mono">1999</td>
+        <td class="mono">184 bit</td>
+        <td><span class="speed-bar"><span style="width:15%;background:var(--green)"></span></span><span class="speed-lbl" style="color:var(--green)">איטי בכוונה</span></td>
+        <td><span class="pill pill-yes">✓ כן</span></td>
+        <td><span class="status-pill best">🏆 מצוין</span></td>
+        <td style="font-size:18px;color:var(--muted)">סיסמאות — הבחירה הסטנדרטית</td>
+        <td class="mono" style="font-size:18px;">bcrypt.hashpw()</td>
+      </tr>
+      <!-- scrypt -->
+      <tr class="cmp-row" data-tags="password">
+        <td><span class="algo-name algo-best">scrypt</span></td>
+        <td class="mono">2009</td>
+        <td class="mono">גמיש</td>
+        <td><span class="speed-bar"><span style="width:12%;background:var(--green)"></span></span><span class="speed-lbl" style="color:var(--green)">איטי מאד</span></td>
+        <td><span class="pill pill-yes">✓ כן</span></td>
+        <td><span class="status-pill best">🏆 מצוין</span></td>
+        <td style="font-size:18px;color:var(--muted)">סיסמאות — עמיד גם מול GPU/ASIC</td>
+        <td class="mono" style="font-size:18px;">hashlib.scrypt()</td>
+      </tr>
+      <!-- Argon2 -->
+      <tr class="cmp-row" data-tags="password">
+        <td><span class="algo-name algo-best">Argon2</span></td>
+        <td class="mono">2015</td>
+        <td class="mono">גמיש</td>
+        <td><span class="speed-bar"><span style="width:10%;background:var(--green)"></span></span><span class="speed-lbl" style="color:var(--green)">איטי מאד</span></td>
+        <td><span class="pill pill-yes">✓ כן</span></td>
+        <td><span class="status-pill best">🏆 מצוין</span></td>
+        <td style="font-size:18px;color:var(--muted)">סיסמאות — זוכה תחרות Password Hashing 2015</td>
+        <td class="mono" style="font-size:18px;">argon2-cffi</td>
+      </tr>
+      <!-- PBKDF2 -->
+      <tr class="cmp-row" data-tags="password crypto">
+        <td><span class="algo-name algo-ok">PBKDF2</span></td>
+        <td class="mono">2000</td>
+        <td class="mono">גמיש</td>
+        <td><span class="speed-bar"><span style="width:20%;background:var(--cyan)"></span></span><span class="speed-lbl" style="color:var(--cyan)">איטי</span></td>
+        <td><span class="pill pill-yes">✓ כן</span></td>
+        <td><span class="status-pill ok">✅ בטוח</span></td>
+        <td style="font-size:18px;color:var(--muted)">סיסמאות, גזירת מפתחות (TLS)</td>
+        <td class="mono" style="font-size:18px;">hashlib.pbkdf2_hmac()</td>
+      </tr>
+      <!-- BLAKE2 -->
+      <tr class="cmp-row" data-tags="integrity crypto">
+        <td><span class="algo-name algo-best">BLAKE2</span></td>
+        <td class="mono">2012</td>
+        <td class="mono">256/512 bit</td>
+        <td><span class="speed-bar"><span style="width:95%;background:var(--cyan)"></span></span><span class="speed-lbl" style="color:var(--cyan)">מהיר מאד</span></td>
+        <td><span class="pill pill-no">לא</span></td>
+        <td><span class="status-pill best">🏆 מצוין</span></td>
+        <td style="font-size:18px;color:var(--muted)">checksum מהיר, חלופה ל-SHA-2</td>
+        <td class="mono" style="font-size:18px;">hashlib.blake2b()</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- LEGEND + KEY TAKEAWAY -->
+  <div class="two-col">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">מקרא</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span class="status-pill danger">💀 שבור</span>
+        <span class="status-pill warn">⚠️ מיושן</span>
+        <span class="status-pill ok">✅ בטוח</span>
+        <span class="status-pill best">🏆 מצוין</span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <span class="algo-name algo-danger">MD5/SHA-1</span>
+        <span class="algo-name algo-warn">בהדרגה מוחלף</span>
+        <span class="algo-name algo-ok">מומלץ</span>
+        <span class="algo-name algo-best">מומלץ מאוד</span>
+      </div>
+    </div>
+    <div class="tip" style="margin-top:0">
+      <strong>כלל הזהב:</strong><br>
+      לסיסמאות → <strong style="color:var(--green)">bcrypt / Argon2 / scrypt</strong><br>
+      לשלמות קבצים → <strong style="color:var(--cyan)">SHA-256 / SHA-3 / BLAKE2</strong><br>
+      לעולם לא → <strong style="color:var(--red)">MD5 / SHA-1</strong> לאבטחה
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 9 — QUIZ
+══════════════════════════════════════════ -->
+<div class="slide" id="slide-8">
+  <div class="sec-head">
+    <span class="sec-badge">QUIZ</span>
+    <h2>בדוק את עצמך</h2>
+  </div>
+  <div class="quiz-q">
+    <h3>1. מה קורה כשמנסים "לפענח" hash של bcrypt?</h3>
+    <div class="quiz-opts">
+      <button class="quiz-opt" onclick="answer(0,false,this)">bcrypt.decode() מחזיר את הסיסמה המקורית</button>
+      <button class="quiz-opt" onclick="answer(0,true,this)">לא ניתן — bcrypt חד-כיווני, מבצעים השוואה בלבד</button>
+      <button class="quiz-opt" onclick="answer(0,false,this)">ניתן לפענח עם המפתח הסודי</button>
+    </div>
+    <div class="quiz-feedback" id="fb-0"></div>
+  </div>
+  <div class="quiz-q">
+    <h3>2. מדוע bcrypt עדיף על SHA-256 לשמירת סיסמאות?</h3>
+    <div class="quiz-opts">
+      <button class="quiz-opt" onclick="answer(1,false,this)">bcrypt מייצר hash ארוך יותר</button>
+      <button class="quiz-opt" onclick="answer(1,false,this)">SHA-256 לא מאובטח בכלל</button>
+      <button class="quiz-opt" onclick="answer(1,true,this)">bcrypt איטי בכוונה ומוסיף salt אוטומטי — SHA-256 מהיר מדי ואין בו salt</button>
+    </div>
+    <div class="quiz-feedback" id="fb-1"></div>
+  </div>
+  <div class="quiz-q">
+    <h3>3. שתי משתמשות בחרו בסיסמה "1234". כיצד יראו ה-hash שלהן ב-bcrypt?</h3>
+    <div class="quiz-opts">
+      <button class="quiz-opt" onclick="answer(2,false,this)">זהים — אותה סיסמה = אותו hash</button>
+      <button class="quiz-opt" onclick="answer(2,true,this)">שונים — bcrypt מוסיף salt אקראי שונה לכל אחת</button>
+      <button class="quiz-opt" onclick="answer(2,false,this)">זה תלוי בגרסת bcrypt</button>
+    </div>
+    <div class="quiz-feedback" id="fb-2"></div>
+  </div>
+  <div class="quiz-q">
+    <h3>4. ב-Gradio, מה מונע כניסה לאזור המוגן ללא Login?</h3>
+    <div class="quiz-opts">
+      <button class="quiz-opt" onclick="answer(3,false,this)">הצפנת הדף בסיסמה</button>
+      <button class="quiz-opt" onclick="answer(3,true,this)">gr.Column(visible=False) מסתיר את הלוח + gr.State מחזיק מצב מחובר</button>
+      <button class="quiz-opt" onclick="answer(3,false,this)">Gradio חוסם אוטומטית גישה לכתובות פנימיות</button>
+    </div>
+    <div class="quiz-feedback" id="fb-3"></div>
+  </div>
+  <div class="quiz-score" id="quiz-score" style="display:none"></div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════
+var currentSlide = 0;
+var totalSlides = 9;
+var curAlgo = 'sha256';
+var scores = [null,null,null,null];
+var answeredQ = [false,false,false,false];
+
+function buildDots(){
+  var d = document.getElementById('progress-dots');
+  d.innerHTML = '';
+  for(var i=0;i<totalSlides;i++){
+    var dot = document.createElement('div');
+    dot.className = 'dot'+(i===currentSlide?' active':'');
+    dot.onclick = (function(idx){return function(){showSlide(idx)}})(i);
+    d.appendChild(dot);
+  }
+}
+function showSlide(n){
+  document.getElementById('slide-'+currentSlide).classList.remove('active');
+  currentSlide = n;
+  document.getElementById('slide-'+currentSlide).classList.add('active');
+  document.getElementById('slide-counter').textContent=(currentSlide+1)+' / '+totalSlides;
+  document.getElementById('prev-btn').disabled=currentSlide===0;
+  document.getElementById('next-btn').disabled=currentSlide===totalSlides-1;
+  buildDots();
+  if(currentSlide===1){updateHash();genBcryptDemo();}
+}
+function goSlide(dir){showSlide(Math.max(0,Math.min(totalSlides-1,currentSlide+dir)));}
+buildDots();
+
+// ════════════════════════════════════
+// HASH FUNCTIONS (deterministic sim)
+// ════════════════════════════════════
+function fnv1a(s){
+  var h=2166136261;
+  for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;}
+  return h;
+}
+function sha256sim(s){
+  var seed=0x6a09e667;
+  for(var i=0;i<s.length;i++) seed=((seed<<5)-seed+s.charCodeAt(i))|0;
+  var parts=[];var sv=seed>>>0;
+  var pr=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5];
+  for(var j=0;j<8;j++){sv=((sv*pr[j])^(sv>>>13)^fnv1a(s+j))>>>0;parts.push(sv.toString(16).padStart(8,'0'));}
+  return parts.join('');
+}
+function sha1sim(s){
+  var h=fnv1a(s+'sha1');var parts=[];
+  for(var i=0;i<5;i++){h=((h*0x5bd1e995)^(h>>>15)^fnv1a(s+i+'sha'))>>>0;parts.push(h.toString(16).padStart(8,'0'));}
+  return parts.join('');
+}
+function simpleHash(s){
+  var h1=fnv1a(s),h2=fnv1a(s.split('').reverse().join('')+s),h3=fnv1a(s+s.length),h4=fnv1a(s.repeat(2));
+  return [h1,h2,h3,h4].map(function(n){return n.toString(16).padStart(8,'0')}).join('');
+}
+function getHash(s,algo){
+  if(algo==='simple') return simpleHash(s);
+  if(algo==='sha1') return sha1sim(s);
+  return sha256sim(s);
+}
+function countDiffBits(a,b){
+  var c=0,len=Math.min(a.length,b.length);
+  for(var i=0;i<len;i++){var d=parseInt(a[i],16)^parseInt(b[i],16);while(d){c+=d&1;d>>=1;}}
+  return c;
+}
+function setAlgo(algo,btn){
+  curAlgo=algo;
+  document.querySelectorAll('.algo-btn').forEach(function(b){b.classList.remove('selected')});
+  btn.classList.add('selected');
+  updateHash();
+}
+function updateHash(){
+  var val=document.getElementById('main-input').value||'';
+  document.getElementById('hash-out').textContent=getHash(val,curAlgo)||'(ריק)';
+  var ha=getHash('hello',curAlgo),hb=getHash('hellO',curAlgo);
+  document.getElementById('ava-a').textContent=ha;
+  document.getElementById('ava-b').textContent=hb;
+  document.getElementById('diff-bits').textContent='~'+countDiffBits(ha,hb);
+}
+updateHash();
+
+// ════════════════════════════════════
+// BCRYPT LIVE DEMO (slide 2)
+// ════════════════════════════════════
+var saltCounter=0;
+function makeFakeSalt(){
+  saltCounter++;
+  var chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./';
+  var s='';for(var i=0;i<22;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function makeFakeBcrypt(password,salt){
+  var hashPart=sha256sim(password+salt).substring(0,31);
+  return '$2b$12$'+salt+hashPart;
+}
+function genBcryptDemo(){
+  var s1=makeFakeSalt(),s2=makeFakeSalt();
+  var h1=makeFakeBcrypt('1234',s1),h2=makeFakeBcrypt('1234',s2);
+  document.getElementById('bcrypt-a').textContent=h1;
+  document.getElementById('bcrypt-b').textContent=h2;
+}
+genBcryptDemo();
+
+// ════════════════════════════════════
+// WORK FACTOR
+// ════════════════════════════════════
+var wfT={4:1,5:2,6:4,7:8,8:16,9:31,10:63,11:125,12:250,13:500,14:1000,15:2000,16:4000};
+var wfA={4:250000,5:125000,6:62500,7:31250,8:15625,9:8000,10:4000,11:2000,12:1000,13:500,14:250,15:125,16:62};
+function updateWF(v){
+  document.getElementById('wf-val').textContent=v;
+  var t=wfT[v]||250;
+  document.getElementById('wf-time').textContent=t>=1000?(t/1000).toFixed(1)+'s':t+'ms';
+  document.getElementById('attempts-count').textContent='~'+(wfA[v]||1000).toLocaleString();
+}
+
+// ════════════════════════════════════
+// LOGIN DEMO (slide 5)
+// ════════════════════════════════════
+var usersDB={alice:sha256sim('1234'),bob:sha256sim('qwerty')};
+function doLogin(){
+  var u=document.getElementById('login-user').value.trim();
+  var p=document.getElementById('login-pass').value;
+  var res=document.getElementById('login-result');
+  res.style.display='block';
+  if(!usersDB[u]){res.className='login-result fail';res.textContent='❌ משתמש לא נמצא: '+u;return;}
+  if(sha256sim(p)===usersDB[u]){res.className='login-result success';res.textContent='✅ ברוך הבא, '+u+'!';}
+  else{res.className='login-result fail';res.textContent='❌ סיסמה שגויה';}
+}
+
+// ════════════════════════════════════
+// LOGIN + TABS DEMO
+// ════════════════════════════════════
+var tabsFakeUsers = {alice:'1234', bob:'qwerty'};
+var tabsLoggedUser = '';
+
+function tabsSetState(user) {
+  tabsLoggedUser = user;
+  var sb = document.getElementById('tabs-state-block');
+  var ss = document.getElementById('tabs-state-status');
+  if (!sb) return;
+  var lu = user ? '<span style="color:var(--red)">False</span>' : '<span style="color:var(--green)">True</span>';
+  var mu = user ? '<span style="color:var(--green)">True</span>' : '<span style="color:var(--red)">False</span>';
+  var uv = user ? '<span style="color:var(--green)">"'+user+'"</span>' : '<span style="color:var(--red)">""</span>';
+  sb.innerHTML = 'user_state       = '+uv+'\nlogin_panel.visible = '+lu+'\nmain_panel.visible  = '+mu;
+  if (ss) { ss.style.color = user ? 'var(--green)' : 'var(--red)'; ss.textContent = user ? '● '+user+' מחובר/ת' : '● לא מחובר'; }
+}
+
+function tabsLogin() {
+  var u = document.getElementById('tabs-user').value.trim();
+  var p = document.getElementById('tabs-pass').value;
+  var errEl = document.getElementById('tabs-err');
+  if (!tabsFakeUsers[u]) { errEl.textContent='❌ משתמש לא נמצא: '+u; errEl.style.display='block'; tabsSetState(''); return; }
+  setTimeout(function() {
+    if (tabsFakeUsers[u] === p) {
+      errEl.style.display='none';
+      document.getElementById('tabs-login').style.display='none';
+      document.getElementById('tabs-locked').style.display='none';
+      document.getElementById('tabs-main').style.display='block';
+      document.getElementById('tabs-uname').textContent=u;
+      document.getElementById('t1-out').textContent='';
+      document.getElementById('t2-out').textContent='';
+      tabsSetState(u);
+    } else {
+      errEl.textContent='❌ סיסמה שגויה'; errEl.style.display='block'; tabsSetState('');
+    }
+  }, 350);
+}
+
+function tabsLogout() {
+  document.getElementById('tabs-main').style.display='none';
+  document.getElementById('tabs-login').style.display='block';
+  document.getElementById('tabs-user').value='';
+  document.getElementById('tabs-pass').value='';
+  tabsSetState('');
+}
+
+function tabsSimDirect() {
+  document.getElementById('tabs-login').style.display='none';
+  document.getElementById('tabs-main').style.display='none';
+  document.getElementById('tabs-locked').style.display='block';
+  tabsSetState('');
+}
+
+function tabsShowLogin() {
+  document.getElementById('tabs-locked').style.display='none';
+  document.getElementById('tabs-login').style.display='block';
+}
+
+function switchDemoTab(n) {
+  document.getElementById('dtab1').classList.toggle('active', n===1);
+  document.getElementById('dtab2').classList.toggle('active', n===2);
+  document.getElementById('dtab1-content').style.display = n===1 ? 'block' : 'none';
+  document.getElementById('dtab2-content').style.display = n===2 ? 'block' : 'none';
+}
+
+function doTab1() {
+  var text = document.getElementById('t1-in').value;
+  var out = document.getElementById('t1-out');
+  if (!tabsLoggedUser) { out.textContent='⛔ אין הרשאה — יש להתחבר תחילה'; out.style.color='#dc2626'; return; }
+  out.style.color='#166534';
+  out.textContent='📋 ['+tabsLoggedUser+'] עיבד: ' + text.toUpperCase();
+}
+
+function doTab2() {
+  var num = parseFloat(document.getElementById('t2-in').value) || 0;
+  var out = document.getElementById('t2-out');
+  if (!tabsLoggedUser) { out.textContent='⛔ אין הרשאה — יש להתחבר תחילה'; out.style.color='#dc2626'; return; }
+  out.style.color='#166534';
+  out.textContent='🔢 ['+tabsLoggedUser+'] ' + num + '² = ' + (num*num);
+}
+
+// ════════════════════════════════════
+// GRADIO TABS
+// ════════════════════════════════════
+function showGrTab(id,btn){
+  document.querySelectorAll('.gr-tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelectorAll('.gr-panel').forEach(function(p){p.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════
+// GRADIO MOCKUP DEMO
+// ════════════════════════════════════
+var logLines=[];
+function addLog(msg){
+  var now=new Date();
+  var ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+  logLines.push('['+ts+'] '+msg);
+  if(logLines.length>14) logLines.shift();
+  var p=document.getElementById('log-panel');
+  if(!p) return;
+  p.innerHTML=logLines.map(function(l,i){
+    var c=i===logLines.length-1?'var(--text)':'var(--muted)';
+    return '<div style="color:'+c+'">'+l+'</div>';
+  }).join('');
+  p.scrollTop=p.scrollHeight;
+}
+var fakeUsers={alice:'1234',bob:'qwerty'};
+function setStateBlock(user,loginVis,mainVis,extra){
+  var sb=document.getElementById('state-block');
+  if(!sb) return;
+  var lu=loginVis?'<span style="color:var(--green)">True</span>':'<span style="color:var(--red)">False</span>';
+  var mu=mainVis?'<span style="color:var(--green)">True</span>':'<span style="color:var(--red)">False</span>';
+  var uv=user?'<span style="color:var(--green)">"'+user+'"</span>':'<span style="color:var(--red)">""</span>';
+  sb.innerHTML='user_state  = '+uv+'\nlogin_panel.visible = '+lu+'\nmain_panel.visible  = '+mu+
+    '\n\n<span class="cmt"># hash ב-DB (bcrypt):</span>\nUSERS["alice"] = <span style="color:var(--green)">"$2b$12$..."</span>\n\n<span class="cmt"># checkpw — לא מפענח</span>\n<span class="cmt"># רק משווה hash</span>'+(extra?'\n\n'+extra:'');
+  var ss=document.getElementById('state-status');
+  if(ss){ss.style.color=user?'var(--green)':'var(--red)';ss.textContent=user?'● '+user+' מחובר/ת':'● לא מחובר';}
+}
+function grLogin(){
+  var u=document.getElementById('gr-user').value.trim();
+  var p=document.getElementById('gr-pass').value;
+  addLog('login_btn.click(username="'+u+'")');
+  if(!fakeUsers[u]){
+    document.getElementById('gr-err').textContent='❌ משתמש לא נמצא: '+u;
+    document.getElementById('gr-err').style.display='block';
+    addLog('→ user not found');
+    setStateBlock('',true,false,'<span style="color:var(--red)">שגיאה: משתמש לא נמצא</span>');
+    return;
+  }
+  addLog('→ bcrypt.checkpw("***", USERS["'+u+'"])');
+  setTimeout(function(){
+    if(fakeUsers[u]===p){
+      addLog('→ ✅ סיסמה תואמת! user_state="'+u+'"');
+      addLog('→ login_panel visible=False, main_panel visible=True');
+      document.getElementById('gr-err').style.display='none';
+      document.getElementById('gr-login').style.display='none';
+      document.getElementById('gr-main').style.display='block';
+      document.getElementById('gr-locked').style.display='none';
+      document.getElementById('gr-uname').textContent=u;
+      document.getElementById('gr-welcome-txt').textContent='שלום '+u+'! ברוך הבא לאזור המוגן.';
+      setStateBlock(u,false,true);
+    } else {
+      addLog('→ ❌ סיסמה שגויה');
+      document.getElementById('gr-err').textContent='❌ סיסמה שגויה';
+      document.getElementById('gr-err').style.display='block';
+      setStateBlock('',true,false,'<span style="color:var(--red)">שגיאה: סיסמה שגויה</span>');
+    }
+  },400);
+}
+function grLogout(){
+  addLog('logout_btn.click() → user_state=""');
+  addLog('→ login_panel visible=True, main_panel visible=False');
+  document.getElementById('gr-main').style.display='none';
+  document.getElementById('gr-login').style.display='block';
+  document.getElementById('gr-user').value='';
+  document.getElementById('gr-pass').value='';
+  setStateBlock('',true,false);
+}
+function grSimDirect(){
+  addLog('GET /protected — ניסיון גישה ישירה');
+  addLog('→ user_state="" → גישה נדחתה!');
+  document.getElementById('gr-login').style.display='none';
+  document.getElementById('gr-main').style.display='none';
+  document.getElementById('gr-locked').style.display='block';
+  setStateBlock('',true,false,'<span style="color:var(--red)">גישה ישירה נחסמה!</span>');
+}
+function grShowLogin(){
+  addLog('→ חזרה לטופס login');
+  document.getElementById('gr-locked').style.display='none';
+  document.getElementById('gr-login').style.display='block';
+  setStateBlock('',true,false);
+}
+addLog('App started — login_panel visible=True');
+
+// ════════════════════════════════════
+// COMPARISON TABLE FILTER
+// ════════════════════════════════════
+function filterTable(tag, btn) {
+  document.querySelectorAll('.cmp-filter').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.querySelectorAll('.cmp-row').forEach(function(row){
+    if(tag === 'all') {
+      row.classList.remove('hidden-row');
+    } else {
+      var tags = row.getAttribute('data-tags') || '';
+      if(tags.indexOf(tag) !== -1) row.classList.remove('hidden-row');
+      else row.classList.add('hidden-row');
+    }
+  });
+}
+
+// ════════════════════════════════════
+// QUIZ
+// ════════════════════════════════════
+var qFeedbacks=[
+  {t:'bcrypt.checkpw() בודק אם סיסמה חדשה מייצרת את אותו hash — לא מפענח כלל.',
+   f:'bcrypt הוא חד-כיווני לחלוטין. לא קיימת פונקציית decode.'},
+  {t:'SHA-256 נועד להיות מהיר — וזו הבעיה לסיסמאות. bcrypt נועד להיות איטי.',
+   f:'SHA-256 בטוח קריפטוגרפית, אבל מהיר מדי לסיסמאות. bcrypt פותר זאת.'},
+  {t:'ה-salt האקראי מבטיח שאותה סיסמה תייצר hash שונה לכל משתמש.',
+   f:'bcrypt מוסיף salt אקראי — גם סיסמה זהה תייצר hash שונה לחלוטין.'},
+  {t:'gr.Column(visible=False) מסתיר את הלוח, gr.State שומר מצב. ביחד יוצרים שער אמיתי.',
+   f:'visible=False מסתיר, אבל בלי gr.State לא ניתן לדעת מי מחובר.'}
+];
+function answer(q,correct,btn){
+  if(answeredQ[q]) return;
+  answeredQ[q]=true;
+  scores[q]=correct;
+  btn.parentElement.querySelectorAll('.quiz-opt').forEach(function(b){b.disabled=true});
+  btn.classList.add(correct?'correct':'wrong');
+  var fb=document.getElementById('fb-'+q);
+  fb.className='quiz-feedback show '+(correct?'correct':'wrong');
+  fb.textContent=(correct?'✅ ':'❌ ')+qFeedbacks[q][correct?'t':'f'];
+  if(answeredQ.every(function(a){return a})){
+    var sc=scores.filter(Boolean).length;
+    var el=document.getElementById('quiz-score');
+    el.style.display='block';
+    el.textContent='ציון: '+sc+'/4 — '+(sc===4?'מושלם! 🏆':sc>=3?'טוב מאוד 👍':sc>=2?'לא רע 👌':'כדאי לחזור על החומר 📚');
+  }
+}
+</script>
+</body>
+</html>

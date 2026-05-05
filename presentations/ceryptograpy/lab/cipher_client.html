@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת הצפנה 🔒</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050810;--panel:#0c1220;--accent:#00f5d4;--accent2:#f72585;
+    --accent4:#ffd60a;--text:#e2e8f0;--dim:#64748b;--border:#1e2d4a;
+    --green:#39ff14;--mono:'Share Tech Mono',monospace;--body:'Heebo',sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(0,245,212,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,245,212,.03) 1px,transparent 1px);
+    background-size:40px 40px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:32px;width:100%;max-width:640px;position:relative;z-index:1;}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,#7209b7,var(--accent));border-radius:12px 12px 0 0;}
+  h1{font-family:var(--mono);font-size:20px;color:var(--accent);letter-spacing:2px;margin-bottom:4px;}
+  .sub{font-size:12px;color:var(--dim);font-family:var(--mono);margin-bottom:28px;}
+  label{font-size:11px;color:var(--dim);font-family:var(--mono);letter-spacing:1px;
+    display:block;margin-bottom:6px;text-transform:uppercase;}
+  input,textarea{width:100%;background:#020409;border:1px solid var(--border);
+    border-radius:6px;padding:11px 14px;font-family:var(--mono);font-size:14px;
+    color:var(--accent);outline:none;transition:border-color .2s;direction:ltr;}
+  input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,245,212,.1);}
+  textarea{min-height:56px;resize:vertical;}
+  .gap{margin-top:14px;}
+  button{width:100%;padding:12px;border:none;border-radius:6px;margin-top:14px;
+    background:linear-gradient(135deg,#7209b7,var(--accent));color:#000;
+    font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:2px;
+    cursor:pointer;transition:all .2s;text-transform:uppercase;}
+  button:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,245,212,.3);}
+  .result{background:#020409;border:1px solid var(--border);border-radius:6px;
+    padding:14px;font-family:var(--mono);font-size:13px;color:var(--green);
+    min-height:52px;margin-top:14px;word-break:break-all;line-height:1.9;
+    direction:ltr;display:none;}
+  .result.show{display:block;}
+  .copy-btn{width:auto;padding:5px 14px;font-size:11px;margin-top:8px;
+    background:transparent;color:var(--accent);border:1px solid var(--accent);
+    border-radius:4px;letter-spacing:1px;}
+  .copy-btn:hover{background:rgba(0,245,212,.1);transform:none;box-shadow:none;}
+  .meta{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:6px;}
+  .history{margin-top:22px;border-top:1px solid var(--border);padding-top:14px;}
+  .ht{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;}
+  .hi{padding:8px 10px;background:#020409;border-radius:4px;margin-bottom:5px;
+    border-left:2px solid var(--border);}
+  .hi .inp{font-family:var(--mono);font-size:11px;color:var(--accent4);}
+  .hi .out{font-family:var(--mono);font-size:10px;color:var(--green);
+    word-break:break-all;margin-top:3px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>⚡ CIPHER MACHINE</h1>
+  <div class="sub">// שלח טקסט — קבל פלט מוצפן</div>
+
+  <label>שם קבוצה:</label>
+  <input id="team" placeholder="לדוגמה: קבוצה א׳" maxlength="20">
+
+  <div class="gap">
+    <label>טקסט להצפנה (אנגלית בלבד):</label>
+    <textarea id="pt" placeholder="e.g.  aaaa   or   hello world" maxlength="200"
+      oninput="this.value=this.value.toLowerCase()"></textarea>
+  </div>
+
+  <button onclick="go()">🔒 ENCRYPT — Ctrl+Enter</button>
+
+  <div class="result" id="res"></div>
+  <button class="copy-btn" id="cpbtn" style="display:none" onclick="cp()">📋 העתק תוצאה</button>
+  <div class="meta" id="meta"></div>
+
+  <div class="history" id="hist-sec" style="display:none">
+    <div class="ht">// היסטוריית שאילתות</div>
+    <div id="hist"></div>
+  </div>
+</div>
+<script>
+let count = 0;
+const items = [];
+
+async function go() {
+  const team = document.getElementById('team').value.trim() || 'אנונימי';
+  const text = document.getElementById('pt').value.trim();
+  if (!text) return;
+  try {
+    const r = await fetch(`/encrypt?text=${encodeURIComponent(text)}&team=${encodeURIComponent(team)}`);
+    const d = await r.json();
+    count++;
+    const box = document.getElementById('res');
+    box.textContent = d.encrypted;
+    box.classList.add('show');
+    document.getElementById('cpbtn').style.display = 'inline-block';
+    document.getElementById('meta').textContent = `שאילתה מס׳ ${count} | ${text.length} תווים`;
+    items.unshift({text, enc: d.encrypted});
+    renderHist();
+  } catch { alert('לא ניתן לתקשר עם השרת'); }
+}
+
+function renderHist() {
+  document.getElementById('hist-sec').style.display = 'block';
+  document.getElementById('hist').innerHTML = items.slice(0,6).map(h =>
+    `<div class="hi"><div class="inp">"${h.text}"</div><div class="out">${h.enc}</div></div>`
+  ).join('');
+}
+
+function cp() {
+  navigator.clipboard.writeText(document.getElementById('res').textContent);
+  const b = document.getElementById('cpbtn');
+  b.textContent = '✓ הועתק!';
+  setTimeout(() => b.textContent = '📋 העתק תוצאה', 1400);
+}
+
+document.addEventListener('keydown', e => { if (e.key==='Enter' && e.ctrlKey) go(); });
+</script>
+</body>
+</html>

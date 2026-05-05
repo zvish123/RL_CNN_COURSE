@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>צופן המילון | שיעור סייבר</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Heebo:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050810;
+    --bg2: #080d1a;
+    --panel: #0c1220;
+    --panel2: #111827;
+    --accent: #00f5d4;
+    --accent2: #f72585;
+    --accent3: #7209b7;
+    --accent4: #ffd60a;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --border: #1e2d4a;
+    --green: #39ff14;
+    --red: #ff2d55;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Orbitron', sans-serif;
+    --body: 'Heebo', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,212,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,212,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.1) 2px,
+      rgba(0,0,0,0.1) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ===== SLIDES CONTAINER ===== */
+  #slides-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== TOP BAR ===== */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    background: rgba(8,13,26,0.95);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-family: var(--head);
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .slide-counter {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text-dim);
+  }
+
+  .slide-counter span {
+    color: var(--accent);
+    font-size: 18px;
+  }
+
+  /* ===== PROGRESS BAR ===== */
+  #progress-bar {
+    height: 3px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  #progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    transition: width 0.4s ease;
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* ===== MAIN AREA ===== */
+  #main-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== SLIDE ===== */
+  .slide {
+    position: absolute;
+    inset: 0;
+    padding: 30px 48px;
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    animation: slideIn 0.35s ease;
+  }
+
+  .slide.active { display: flex; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ===== SLIDE HEADER ===== */
+  .slide-tag {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .slide-tag::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .slide-title {
+    font-family: var(--head);
+    font-size: clamp(22px, 3vw, 36px);
+    font-weight: 900;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+
+  .slide-subtitle {
+    font-size: 18px;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  /* ===== PANELS ===== */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    position: relative;
+    overflow-y: auto;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent), transparent);
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ===== CODE BLOCK ===== */
+  .code-block {
+    background: #020409;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 18px;
+    line-height: 1.8;
+    color: var(--accent);
+    white-space: pre;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .highlight { color: var(--accent4); }
+  .code-block .red { color: var(--accent2); }
+  .code-block .green { color: var(--green); }
+
+  /* ===== BADGE / TAG ===== */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 18px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .badge-accent { background: rgba(0,245,212,0.15); color: var(--accent); border: 1px solid rgba(0,245,212,0.3); }
+  .badge-red { background: rgba(247,37,133,0.15); color: var(--accent2); border: 1px solid rgba(247,37,133,0.3); }
+  .badge-yellow { background: rgba(255,214,10,0.15); color: var(--accent4); border: 1px solid rgba(255,214,10,0.3); }
+  .badge-purple { background: rgba(114,9,183,0.25); color: #c77dff; border: 1px solid rgba(114,9,183,0.4); }
+
+  /* ===== STEP ITEMS ===== */
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(30,45,74,0.5);
+  }
+
+  .step:last-child { border-bottom: none; }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--head);
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: #000;
+  }
+
+  .step-content { flex: 1; }
+  .step-title { font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+  .step-desc { font-size: 18px; color: var(--text-dim); line-height: 1.6; }
+
+  /* ===== TABLE ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 18px;
+  }
+
+  th {
+    background: rgba(0,245,212,0.08);
+    color: var(--accent);
+    padding: 8px 12px;
+    text-align: right;
+    font-size: 18px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+  }
+
+  td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tr:hover td { background: rgba(0,245,212,0.03); }
+
+  /* ===== INTERACTIVE SECTIONS ===== */
+
+  /* Encrypt Demo */
+  .demo-input {
+    background: #020409;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+    direction: ltr;
+  }
+
+  .demo-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,245,212,0.1); }
+
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    color: #000;
+    font-weight: 700;
+  }
+
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,245,212,0.3); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+  }
+
+  .btn-secondary:hover { background: rgba(247,37,133,0.1); }
+
+  .btn-yellow {
+    background: linear-gradient(135deg, #ff9500, var(--accent4));
+    color: #000;
+    font-weight: 700;
+  }
+
+  .output-box {
+    background: #020409;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 18px;
+    min-height: 50px;
+    direction: ltr;
+    line-height: 1.8;
+    word-break: break-all;
+  }
+
+  .output-box .enc-pair {
+    display: inline-block;
+    background: rgba(0,245,212,0.1);
+    border: 1px solid rgba(0,245,212,0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 2px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .output-box .enc-pair:hover {
+    background: rgba(0,245,212,0.2);
+    transform: translateY(-1px);
+  }
+
+  /* ===== ATTACK BUILDER ===== */
+  .letter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+  }
+
+  .letter-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .letter-card:hover { border-color: var(--accent); }
+  .letter-card.probed { border-color: var(--green); background: rgba(57,255,20,0.05); }
+  .letter-card.selected { border-color: var(--accent2); background: rgba(247,37,133,0.1); }
+
+  .letter-card .letter-big {
+    font-family: var(--head);
+    font-size: 22px;
+    color: var(--accent4);
+    font-weight: 700;
+  }
+
+  .letter-card .letter-status {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .letter-card.probed .letter-status { color: var(--green); }
+
+  /* ===== QUIZ ===== */
+  .quiz-question {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+
+  .quiz-option {
+    padding: 12px 18px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .quiz-option:hover { border-color: var(--accent); background: rgba(0,245,212,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(57,255,20,0.08); color: var(--green); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(255,45,85,0.08); color: var(--red); }
+  .quiz-option.disabled { pointer-events: none; }
+
+  .quiz-opt-letter {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .quiz-feedback {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 18px;
+    display: none;
+  }
+
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: rgba(57,255,20,0.08); border: 1px solid var(--green); color: var(--green); }
+  .quiz-feedback.wrong { background: rgba(255,45,85,0.08); border: 1px solid var(--red); color: var(--red); }
+
+  /* ===== TIMER ===== */
+  #timer-display {
+    font-family: var(--head);
+    font-size: 48px;
+    color: var(--accent4);
+    text-align: center;
+    text-shadow: 0 0 30px rgba(255,214,10,0.5);
+    letter-spacing: 4px;
+  }
+
+  #timer-display.urgent { color: var(--accent2); animation: pulse 0.5s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .timer-btns { display: flex; gap: 10px; justify-content: center; }
+
+  /* ===== SCORE BOARD ===== */
+  .team-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .team-card.leader {
+    border-color: var(--accent4);
+    background: rgba(255,214,10,0.05);
+    box-shadow: 0 0 20px rgba(255,214,10,0.1);
+  }
+
+  .team-name { font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+  .team-score {
+    font-family: var(--head);
+    font-size: 36px;
+    color: var(--accent);
+    font-weight: 900;
+  }
+
+  .team-card.leader .team-score { color: var(--accent4); }
+
+  .score-btn-group { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+
+  .score-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .score-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ===== NAV ===== */
+  #nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    background: rgba(8,13,26,0.95);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .nav-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .slide-dots {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 60%;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot.visited { background: var(--text-dim); }
+
+  /* ===== HIGHLIGHT BOX ===== */
+  .highlight-box {
+    background: rgba(0,245,212,0.05);
+    border: 1px solid rgba(0,245,212,0.2);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-size: 18px;
+    line-height: 1.7;
+  }
+
+  .highlight-box.warning {
+    background: rgba(255,214,10,0.05);
+    border-color: rgba(255,214,10,0.25);
+    color: var(--accent4);
+  }
+
+  .highlight-box.danger {
+    background: rgba(247,37,133,0.05);
+    border-color: rgba(247,37,133,0.25);
+    color: #ff6b9d;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ===== SECTION DIVIDER ===== */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 4px 0;
+  }
+
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ===== CRACK GAME ===== */
+  .crack-letter {
+    display: inline-block;
+    min-width: 28px;
+    height: 36px;
+    border-bottom: 2px solid var(--accent);
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent4);
+    margin: 2px 3px;
+    transition: all 0.3s;
+    vertical-align: bottom;
+    line-height: 36px;
+  }
+
+  .crack-letter.solved { color: var(--green); border-color: var(--green); }
+  .crack-letter.space { border-bottom: none; min-width: 20px; }
+
+  .pair-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 3px;
+  }
+
+  .pair-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .pair-chip.known { border-color: var(--green); color: var(--green); background: rgba(57,255,20,0.05); }
+
+  /* Responsive tweaks */
+  @media (max-width: 900px) {
+    .slide { padding: 20px 24px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .slide-title { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="slides-container">
+  <div id="topbar">
+    <div class="topbar-title">⚡ CIPHER LAB // CYBER TRACK</div>
+    <div class="slide-counter">שקופית <span id="cur-slide">1</span> / <span id="total-slides">10</span></div>
+  </div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+
+  <div id="main-area">
+
+    <!-- =================== SLIDE 1: HOOK =================== -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-tag">פתיחה // 10 דקות</div>
+      <div class="slide-title">מה מסתתר בקוד הזה?</div>
+      <div class="slide-subtitle">האם תוכלו לפצח את ההודעה הסודית?</div>
+
+      <div class="panel">
+        <div class="panel-title">// הודעה מוצפנת — התקבלה כרגע</div>
+        <div class="code-block" dir="ltr" id="mystery-code" style="font-size: 18px; letter-spacing:2px; text-align:center; padding:20px;">
+[88,4] [33,1] [5,2] [0,2] [73,1] <span class="red">[?,?]</span> [81,0] [44,4] [14,1] [52,3] [100,0] [68,1] [13,0] [73,2] [113,3] <span class="red">[?,?]</span> [16,0] [34,2] [70,0] [48,3] [49,4]
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title">// שאלות לדיון</div>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">מה לדעתכם מייצגים המספרים?</div>
+              <div class="step-desc">האינדקסים [X, Y] — מה כל אחד אומר?</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">מה חסר לכם כדי לפצח?</div>
+              <div class="step-desc">מה הייתם צריכים כדי להתחיל לעבוד?</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">מה מדליקים ה-[?,?] ?</div>
+              <div class="step-desc">שימו לב לפאטרן — כמה מילים בהודעה?</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">// רמז: ספרו את הזוגות</div>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+            <div class="highlight-box">
+              📊 יש <strong style="color:var(--accent4)">21</strong> זוגות + 2 [?,?]<br>
+              → כמה מילים בהודעה?
+            </div>
+            <div class="highlight-box warning">
+              ⚠️ [?,?] מופיע פעמיים — מה זה אומר על מבנה הטקסט?
+            </div>
+            <div id="reveal-btn-container">
+              <button class="btn btn-secondary" onclick="revealAnswer()">גלה את ההודעה המקורית ▼</button>
+            </div>
+            <div id="revealed-answer" style="display:none;" class="highlight-box">
+              🔓 <strong style="color:var(--green)">hello beautiful world!</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 2: HOW IT WORKS =================== -->
+    <div class="slide" id="slide-2">
+      <div class="slide-tag">הקנייה // חלק א׳</div>
+      <div class="slide-title">איך הצופן עובד?</div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title">// המבנה הבסיסי</div>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">מילון קבוע</div>
+              <div class="step-desc">רשימה ממוספרת של מילים — משותפת לשולח ולמקבל בלבד</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">לכל אות — הגרלת מילה</div>
+              <div class="step-desc">בוחרים מילה <strong>רנדומלית</strong> מהמילון שמכילה את האות</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">פלט: [אינדקס_מילה, אינדקס_אות]</div>
+              <div class="step-desc">מיקום המילה במילון + מיקום האות בתוך המילה</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-title">רווח = [?,?]</div>
+              <div class="step-desc">רווחים ותווים מיוחדים מסומנים בנפרד</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">// המילון לדוגמה</div>
+          <table>
+            <tr><th>#</th><th>מילה</th></tr>
+            <tr><td class="green">0</td><td>apple</td></tr>
+            <tr><td class="green">1</td><td>bridge</td></tr>
+            <tr><td class="green">2</td><td>cloud</td></tr>
+            <tr><td class="green">3</td><td>dragon</td></tr>
+            <tr><td class="green">4</td><td>eagle</td></tr>
+            <tr><td class="green">5</td><td>falcon</td></tr>
+            <tr><td class="green">6</td><td>garden</td></tr>
+            <tr><td style="color:var(--text-dim)">...</td><td style="color:var(--text-dim)">...</td></tr>
+          </table>
+          <div style="margin-top:12px;" class="highlight-box warning">
+            🔑 המילון = המפתח הסודי<br>בלי המילון, הצופן כמעט בלתי פריץ
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// עקרון מפתח — פולימורפיזם</div>
+        <div class="code-block" dir="ltr">
+<span class="comment">// הצפנת האות 'a' — כל פעם תוצאה שונה!</span>
+הצפנה 1: a → מילה 0 (apple, מיקום 0)  → <span class="highlight">[0, 0]</span>
+הצפנה 2: a → מילה 3 (dragon, מיקום 1) → <span class="highlight">[3, 1]</span>  <span class="red">← אותה אות, תוצאה שונה!</span>
+הצפנה 3: a → מילה 6 (garden, מיקום 1) → <span class="highlight">[6, 1]</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 3: ENCRYPT DEMO =================== -->
+    <div class="slide" id="slide-3">
+      <div class="slide-tag">הקנייה // חלק ב׳ — הצפנה חיה</div>
+      <div class="slide-title">תנסו בעצמכם — הצפן מילה</div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title">// מילון השיעור (ממוספר)</div>
+          <div style="max-height: 200px; overflow-y:auto;">
+          <table>
+            <tr><th>#</th><th>מילה</th><th>אותיות</th></tr>
+            <tr><td class="green">0</td><td>apple</td><td style="color:var(--text-dim);font-size: 18px;">a,p,p,l,e</td></tr>
+            <tr><td class="green">1</td><td>bridge</td><td style="color:var(--text-dim);font-size: 18px;">b,r,i,d,g,e</td></tr>
+            <tr><td class="green">2</td><td>cloud</td><td style="color:var(--text-dim);font-size: 18px;">c,l,o,u,d</td></tr>
+            <tr><td class="green">3</td><td>dragon</td><td style="color:var(--text-dim);font-size: 18px;">d,r,a,g,o,n</td></tr>
+            <tr><td class="green">4</td><td>eagle</td><td style="color:var(--text-dim);font-size: 18px;">e,a,g,l,e</td></tr>
+            <tr><td class="green">5</td><td>falcon</td><td style="color:var(--text-dim);font-size: 18px;">f,a,l,c,o,n</td></tr>
+            <tr><td class="green">6</td><td>garden</td><td style="color:var(--text-dim);font-size: 18px;">g,a,r,d,e,n</td></tr>
+            <tr><td class="green">7</td><td>hammer</td><td style="color:var(--text-dim);font-size: 18px;">h,a,m,m,e,r</td></tr>
+            <tr><td class="green">8</td><td>island</td><td style="color:var(--text-dim);font-size: 18px;">i,s,l,a,n,d</td></tr>
+            <tr><td class="green">9</td><td>jungle</td><td style="color:var(--text-dim);font-size: 18px;">j,u,n,g,l,e</td></tr>
+          </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">// הצפנה ידנית</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label style="font-size: 18px; color:var(--text-dim); font-family:var(--mono); display:block; margin-bottom:6px;">הכנס מילה באנגלית:</label>
+              <input type="text" class="demo-input" id="encrypt-input" placeholder="e.g. bad" maxlength="8" oninput="this.value=this.value.toLowerCase()">
+            </div>
+            <button class="btn btn-primary" onclick="doEncrypt()">🔒 הצפן</button>
+            <div>
+              <label style="font-size: 18px; color:var(--text-dim); font-family:var(--mono); display:block; margin-bottom:6px;">תוצאה מוצפנת:</label>
+              <div class="output-box" id="encrypt-output" dir="ltr">// לחץ הצפן...</div>
+            </div>
+            <div class="highlight-box" id="encrypt-explain" style="display:none; font-size: 18px; line-height:1.8; direction:ltr;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// פענוח — הצד ההפוך</div>
+        <div class="code-block" dir="ltr">
+<span class="comment">// קיבלנו: [2,4] [0,4] [1,5] [0,1]</span>
+[2,4] → מילה 2 = "<span class="highlight">cloud</span>"  → אות במיקום 4 = '<span class="green">d</span>'
+[0,4] → מילה 0 = "<span class="highlight">apple</span>"  → אות במיקום 4 = '<span class="green">e</span>'
+[1,5] → מילה 1 = "<span class="highlight">bridge</span>" → אות במיקום 5 = '<span class="green">e</span>'
+[0,1] → מילה 0 = "<span class="highlight">apple</span>"  → אות במיקום 1 = '<span class="green">p</span>'
+<span class="red">תוצאה: "deep"</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 4: WEAKNESSES =================== -->
+    <div class="slide" id="slide-4">
+      <div class="slide-tag">ניתוח // נקודות תורפה</div>
+      <div class="slide-title">היכן נכשל הצופן?</div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <div style="text-align:center; font-size:32px; margin-bottom:10px;">🔍</div>
+          <div class="panel-title">// תורפה 1: [?,?] מדליף</div>
+          <p style="font-size: 18px; color:var(--text-dim); line-height:1.7;">רווחים מסומנים ב-[?,?] — חושף את <strong style="color:var(--accent4)">מבנה הטקסט המלא</strong>: כמה מילים, כמה אותיות בכל מילה</p>
+          <div class="highlight-box danger" style="margin-top:10px; font-size: 18px;">
+            "hello world" → 2 מילים ● 5+5 אותיות ● ידוע!
+          </div>
+        </div>
+
+        <div class="panel">
+          <div style="text-align:center; font-size:32px; margin-bottom:10px;">📊</div>
+          <div class="panel-title">// תורפה 2: אינדקס גבוה</div>
+          <p style="font-size: 18px; color:var(--text-dim); line-height:1.7;">האינדקס השני חושף <strong style="color:var(--accent4)">אורך מינימלי</strong> של מילה במילון</p>
+          <div class="code-block" style="font-size: 18px; margin-top:10px;" dir="ltr">
+[121, 13] → המילה ≥ 14 אותיות!<span class="red">
+→ מסנן 99% מהמילון</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div style="text-align:center; font-size:32px; margin-bottom:10px;">🔗</div>
+          <div class="panel-title">// תורפה 3: חזרות</div>
+          <p style="font-size: 18px; color:var(--text-dim); line-height:1.7;">אותו אינדקס ראשון = <strong style="color:var(--accent4)">אותה מילה במילון</strong> — קושר בין אותיות שונות</p>
+          <div class="code-block" style="font-size: 18px; margin-top:10px;" dir="ltr">
+[73, 1] ← אות אחת
+[73, 2] ← אות שונה<span class="highlight">
+→ שתיהן ממילה 73!</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// השוואת עוצמה</div>
+        <table>
+          <tr>
+            <th>שיטת פריצה</th>
+            <th>ניתוח תדירויות</th>
+            <th>Brute Force</th>
+            <th>Known Plaintext</th>
+            <th>Chosen Plaintext</th>
+          </tr>
+          <tr>
+            <td>ללא מילון</td>
+            <td style="color:var(--green)">✗ לא עובד</td>
+            <td style="color:var(--green)">✗ בלתי אפשרי</td>
+            <td style="color:var(--accent4)">~ חלקי</td>
+            <td style="color:var(--accent2)">✓ יעיל!</td>
+          </tr>
+          <tr>
+            <td>עם מילון קטן (100)</td>
+            <td style="color:var(--accent4)">~ חלקי</td>
+            <td style="color:var(--accent4)">~ אפשרי</td>
+            <td style="color:var(--accent2)">✓ עובד</td>
+            <td style="color:var(--accent2)">✓✓ מלא</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 5: KPA THEORY =================== -->
+    <div class="slide" id="slide-5">
+      <div class="slide-tag">מושג מרכזי // Known Plaintext Attack</div>
+      <div class="slide-title">המתקפה שפצחה את אניגמה</div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title">// מה זה Known Plaintext Attack?</div>
+          <div class="step">
+            <div class="step-num">📄</div>
+            <div class="step-content">
+              <div class="step-title">יש לתוקף: טקסט מוצפן + טקסט מקורי מקביל</div>
+              <div class="step-desc">לא חייב את כל הטקסט — מספיק חלק קטן</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">🔍</div>
+            <div class="step-content">
+              <div class="step-title">הוא מנצל את ה"ידע" לחשיפת המפתח</div>
+              <div class="step-desc">בצופן שלנו: זוגות [X,Y] ← אות ידועה = ידע על המילון</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">🌍</div>
+            <div class="step-content">
+              <div class="step-title">היסטוריה: בלצ'לי פארק, WWII</div>
+              <div class="step-desc">הגרמנים שלחו "WEATHER REPORT" בפורמט קבוע כל יום — הפך ל-known plaintext</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">// KPA על הצופן שלנו</div>
+          <div class="code-block" dir="ltr" style="font-size: 18px; line-height:2;">
+<span class="comment">// אנחנו יודעים: "bad" → [1,0] [0,0] [3,0]</span>
+
+b → [1,0]: מילה 1 = "<span class="highlight">bridge</span>", מיקום 0 = 'b' <span class="green">✓</span>
+a → [0,0]: מילה 0 = "<span class="highlight">apple</span>",  מיקום 0 = 'a' <span class="green">✓</span>
+d → [3,0]: מילה 3 = "<span class="highlight">dragon</span>", מיקום 0 = 'd' <span class="green">✓</span>
+
+<span class="red">→ למדנו 3 ערכים במילון!</span>
+<span class="comment">// בכל הצפנה עתידית שמכילה [1,0] → זה b</span>
+          </div>
+          <div class="highlight-box" style="margin-top:12px;">
+            💡 כל known plaintext = ידע שמצטבר ומשתמש בכל ההצפנות הבאות
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// הגרסה החזקה: Chosen Plaintext Attack</div>
+        <div class="code-block" dir="ltr" style="font-size: 18px;">
+<span class="comment">// אנחנו בוחרים מה לשלוח → מקבלים מידע ממוקד</span>
+שלח: "aaaa" → [17,2] [3,0] [17,2] [9,1]  <span class="highlight">→ כל הזוגות = 'a'</span>
+שלח: "bbbb" → [5,1] [12,0] [5,1] [7,3]   <span class="highlight">→ כל הזוגות = 'b'</span>
+שלח: "cccc" → [2,0] [8,2] [4,2] [2,0]    <span class="highlight">→ כל הזוגות = 'c'</span>
+<span class="red">
+→ אחרי 26 שליחות — מילון פענוח מלא!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 6: ATTACK BUILDER =================== -->
+    <div class="slide" id="slide-6">
+      <div class="slide-tag">תרגול מונחה // בנה את המתקפה</div>
+      <div class="slide-title">בנה מילון פענוח — שלב אחר שלב</div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-title">// תוצאות Chosen Plaintext</div>
+          <div class="code-block" dir="ltr" style="font-size: 18px; line-height:2.2;">
+<span class="comment">// שלחנו "aaaa":</span>
+[17,2] [3,0] [17,2] [9,1]
+
+<span class="comment">// שלחנו "bbbb":</span>
+[5,1] [12,0] [5,1] [7,3]
+
+<span class="comment">// שלחנו "aabb":</span>
+[3,0] [17,2] [12,0] [7,3]
+          </div>
+          <div class="highlight-box warning" style="margin-top:12px; font-size: 18px;">
+            💡 שימו לב: משפט 3 מאמת את מה שלמדנו ממשפטים 1 ו-2
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">// מלאו את הטבלה — לחצו על זוג כדי לסמן</div>
+          <table id="decode-table">
+            <tr><th>זוג</th><th>אות</th><th>סטטוס</th></tr>
+          </table>
+          <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;" id="pair-chips"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// פענח עם המילון שבנית</div>
+        <div class="code-block" dir="ltr" id="decode-challenge" style="font-size: 18px; letter-spacing:1px; margin-bottom:14px; text-align:center;">
+[3,0] [9,1] [7,3] [5,1] <span class="red">[?,?]</span> [17,2] [12,0] [7,3]
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div id="crack-display" style="direction:ltr; display:flex; align-items:flex-end; flex-wrap:wrap; gap:2px; flex:1; min-height:50px;"></div>
+          <button class="btn btn-primary" onclick="revealDecode()">גלה פתרון ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 7: COMPETITION =================== -->
+    <div class="slide" id="slide-7">
+      <div class="slide-tag">תחרות // פצח את ההודעה</div>
+      <div class="slide-title">⚡ CRACK THE CIPHER — תחרות קבוצות</div>
+
+      <div class="grid-2" style="align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div class="panel">
+            <div class="panel-title">// כללי המשחק</div>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size: 18px;">
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:var(--green)">✓</span> מותר לשלוח כל טקסט למכונת ההצפנה (המורה)</div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:var(--green)">✓</span> מותר לשתף מידע בתוך הקבוצה</div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:var(--red)">✗</span> אסור לשאול קבוצות אחרות</div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:var(--red)">✗</span> המילון לא נחשף בשום שלב</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">// טבלת ניקוד</div>
+            <table>
+              <tr><th>הישג</th><th>נקודות</th></tr>
+              <tr><td>פענוח 50% מהאותיות</td><td style="color:var(--accent4)">10 נק׳</td></tr>
+              <tr><td>פענוח 80% מהאותיות</td><td style="color:var(--accent4)">20 נק׳</td></tr>
+              <tr><td>פענוח מלא</td><td style="color:var(--accent4)">35 נק׳</td></tr>
+              <tr><td>אסטרטגיה מתועדת</td><td style="color:var(--green)">+15 בונוס</td></tr>
+            </table>
+          </div>
+          <div class="panel">
+            <div class="panel-title">// ⏱ טיימר</div>
+            <div id="timer-display">20:00</div>
+            <div class="timer-btns" style="margin-top:12px;">
+              <button class="btn btn-primary" onclick="startTimer()">▶ התחל</button>
+              <button class="btn btn-secondary" onclick="resetTimer()">↺ אפס</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div class="panel">
+            <div class="panel-title">// לוח תוצאות — עדכן בזמן אמת</div>
+            <div class="grid-2" id="scoreboard" style="gap:10px;">
+              <div class="team-card leader" id="team-1-card">
+                <div class="team-name">קבוצה א׳ 🥇</div>
+                <div class="team-score" id="score-1">0</div>
+                <div class="score-btn-group">
+                  <button class="score-btn" onclick="addScore(1,-5)">−5</button>
+                  <button class="score-btn" onclick="addScore(1,10)">+10</button>
+                  <button class="score-btn" onclick="addScore(1,20)">+20</button>
+                  <button class="score-btn" onclick="addScore(1,35)">+35</button>
+                </div>
+              </div>
+              <div class="team-card" id="team-2-card">
+                <div class="team-name">קבוצה ב׳</div>
+                <div class="team-score" id="score-2">0</div>
+                <div class="score-btn-group">
+                  <button class="score-btn" onclick="addScore(2,-5)">−5</button>
+                  <button class="score-btn" onclick="addScore(2,10)">+10</button>
+                  <button class="score-btn" onclick="addScore(2,20)">+20</button>
+                  <button class="score-btn" onclick="addScore(2,35)">+35</button>
+                </div>
+              </div>
+              <div class="team-card" id="team-3-card">
+                <div class="team-name">קבוצה ג׳</div>
+                <div class="team-score" id="score-3">0</div>
+                <div class="score-btn-group">
+                  <button class="score-btn" onclick="addScore(3,-5)">−5</button>
+                  <button class="score-btn" onclick="addScore(3,10)">+10</button>
+                  <button class="score-btn" onclick="addScore(3,20)">+20</button>
+                  <button class="score-btn" onclick="addScore(3,35)">+35</button>
+                </div>
+              </div>
+              <div class="team-card" id="team-4-card">
+                <div class="team-name">קבוצה ד׳</div>
+                <div class="team-score" id="score-4">0</div>
+                <div class="score-btn-group">
+                  <button class="score-btn" onclick="addScore(4,-5)">−5</button>
+                  <button class="score-btn" onclick="addScore(4,10)">+10</button>
+                  <button class="score-btn" onclick="addScore(4,20)">+20</button>
+                  <button class="score-btn" onclick="addScore(4,35)">+35</button>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-yellow" style="margin-top:12px; width:100%;" onclick="addBonus()">🏆 +15 בונוס אסטרטגיה</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 8: DISCUSSION =================== -->
+    <div class="slide" id="slide-8">
+      <div class="slide-tag">דיון // אחרי התחרות — 5 דקות</div>
+      <div class="slide-title">מה למדנו מהתחרות?</div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <div style="font-size:28px; text-align:center; margin-bottom:10px;">⚡</div>
+          <div class="panel-title">// איזה אסטרטגיה עבדה?</div>
+          <div style="font-size: 18px; color:var(--text-dim); line-height:1.8;">
+            <p>• התחלתם מאותיות נפוצות (e, t, a) או נדירות?</p>
+            <br>
+            <p>• כמה שאילתות שלחתם למכונה?</p>
+            <br>
+            <p>• מי שיתף בתוך הקבוצה — התקדם יותר?</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div style="font-size:28px; text-align:center; margin-bottom:10px;">🧮</div>
+          <div class="panel-title">// המתמטיקה של המתקפה</div>
+          <div class="code-block" style="font-size: 18px; line-height:1.9;" dir="ltr">
+26 אותיות × 3 מיקומים
+= ~78 שאילתות מינימום
+
+100 מילים × 5 אותיות
+= ~500 זוגות אפשריים
+
+→ כיסוי: ~15% בשאילתה אחת
+→ כיסוי מלא: ~20-30 שאילתות
+          </div>
+        </div>
+
+        <div class="panel">
+          <div style="font-size:28px; text-align:center; margin-bottom:10px;">🔒</div>
+          <div class="panel-title">// מה היה הכי קשה?</div>
+          <div style="font-size: 18px; color:var(--text-dim); line-height:1.8;">
+            <p>• אותיות נדירות: <strong style="color:var(--accent4)">q, x, z, j</strong></p>
+            <br>
+            <p>• זוגות שלא הופיעו בשאילתות שלנו</p>
+            <br>
+            <p>• מילות השלמה ל-Brute Force</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">// קישור להיסטוריה — אניגמה ובלצ'לי פארק</div>
+        <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+          <div style="flex:1; font-size: 18px; line-height:1.8; color:var(--text-dim);">
+            <p>במלחמת העולם השנייה, הגרמנים שלחו דוח מזג אוויר <strong style="color:var(--text)">"WETTER BERICHT"</strong> בפורמט קבוע בכל יום בשעה 6:00 בבוקר.</p>
+            <br>
+            <p>האנגלים ידעו שכל הצפנה של הבוקר מתחילה באותן מילים — <strong style="color:var(--accent)">Known Plaintext מושלם.</strong></p>
+            <br>
+            <p>זה עזר לאלן טיורינג לפצח את המכונה — וקיצר את המלחמה בשנתיים לפחות.</p>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="badge badge-accent">KNOWN PLAINTEXT</div>
+            <div class="badge badge-yellow">ALAN TURING</div>
+            <div class="badge badge-purple">BLETCHLEY PARK</div>
+            <div class="badge badge-red">ENIGMA MACHINE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 9: QUIZ =================== -->
+    <div class="slide" id="slide-9">
+      <div class="slide-tag">חיזוק // קוויז סיכום</div>
+      <div class="slide-title">בדקו את עצמכם</div>
+
+      <div class="grid-2" style="align-items:start;">
+
+        <div class="panel" id="quiz-panel-1">
+          <div class="panel-title">// שאלה 1</div>
+          <div class="quiz-question">מה הבעיה העיקרית ב-[?,?] בטקסט מוצפן?</div>
+          <div class="quiz-options">
+            <div class="quiz-option" onclick="answerQuiz(1, false, this)">
+              <div class="quiz-opt-letter">א</div>
+              גורם לשגיאות בפענוח כאשר יש רווחים רצופים בטקסט
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(1, false, this)">
+              <div class="quiz-opt-letter">ב</div>
+              מאט את תהליך ההצפנה בגלל תו נוסף שמעובד במחרוזת
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(1, false, this)">
+              <div class="quiz-opt-letter">ג</div>
+              מקצר את הטקסט המוצפן ומקשה על ניתוח הפלט כולו
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(1, true, this)">
+              <div class="quiz-opt-letter">ד</div>
+              חושף את מבנה המילים ואת אורכן — מידע יקר לתוקף
+            </div>
+          </div>
+          <div class="quiz-feedback" id="qf-1"></div>
+        </div>
+
+        <div class="panel" id="quiz-panel-2">
+          <div class="panel-title">// שאלה 2</div>
+          <div class="quiz-question">מה ההבדל המרכזי בין Known Plaintext ל-Chosen Plaintext?</div>
+          <div class="quiz-options">
+            <div class="quiz-option" onclick="answerQuiz(2, false, this)">
+              <div class="quiz-opt-letter">א</div>
+              ב-Known Plaintext התוקף שולח טקסטים נבחרים למכונת ההצפנה
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(2, false, this)">
+              <div class="quiz-opt-letter">ב</div>
+              Chosen Plaintext פועלת רק כאשר יש גישה פיזית למחשב המוצפן
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(2, true, this)">
+              <div class="quiz-opt-letter">ג</div>
+              ב-Chosen Plaintext התוקף בוחר אילו טקסטים להצפין ומקבל תוצאה
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(2, false, this)">
+              <div class="quiz-opt-letter">ד</div>
+              Known Plaintext חזקה יותר כי דורשת פחות שאילתות מהמכונה
+            </div>
+          </div>
+          <div class="quiz-feedback" id="qf-2"></div>
+        </div>
+
+        <div class="panel" id="quiz-panel-3">
+          <div class="panel-title">// שאלה 3</div>
+          <div class="quiz-question">מה גורם לצופן הזה להיות "פולימורפי"?</div>
+          <div class="quiz-options">
+            <div class="quiz-option" onclick="answerQuiz(3, true, this)">
+              <div class="quiz-opt-letter">א</div>
+              אותה אות מוצפנת לזוגות שונים בכל פעם בגלל הבחירה הרנדומלית
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(3, false, this)">
+              <div class="quiz-opt-letter">ב</div>
+              גודל הפלט משתנה בהתאם לאורך הטקסט ולמספר האותיות השונות בו
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(3, false, this)">
+              <div class="quiz-opt-letter">ג</div>
+              הצופן משתמש במספר מילונים שונים במקביל לאותו טקסט המוצפן
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(3, false, this)">
+              <div class="quiz-opt-letter">ד</div>
+              הצופן משנה את המפתח שלו אוטומטית לאחר כל שימוש בהצפנה
+            </div>
+          </div>
+          <div class="quiz-feedback" id="qf-3"></div>
+        </div>
+
+        <div class="panel" id="quiz-panel-4">
+          <div class="panel-title">// שאלה 4</div>
+          <div class="quiz-question">מה יחליש הכי הרבה את הגנת הצופן לאורך זמן?</div>
+          <div class="quiz-options">
+            <div class="quiz-option" onclick="answerQuiz(4, false, this)">
+              <div class="quiz-opt-letter">א</div>
+              הגדלת המילון ל-10,000 מילים — קשה יותר לשמור אותו בסוד
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(4, false, this)">
+              <div class="quiz-opt-letter">ב</div>
+              שליחת הודעות ארוכות — מגדיל את כמות הנתונים לניתוח
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(4, true, this)">
+              <div class="quiz-opt-letter">ג</div>
+              שימוש חוזר באותו מילון — כל מתקפה חושפת עוד חלק ממנו
+            </div>
+            <div class="quiz-option" onclick="answerQuiz(4, false, this)">
+              <div class="quiz-opt-letter">ד</div>
+              שימוש באותיות נדירות — מקטין את מרחב האפשרויות לניתוח
+            </div>
+          </div>
+          <div class="quiz-feedback" id="qf-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== SLIDE 10: HOMEWORK =================== -->
+    <div class="slide" id="slide-10">
+      <div class="slide-tag">סיום // משימות</div>
+      <div class="slide-title">מה עכשיו? — שאלות ומשימות</div>
+
+      <div class="grid-2" style="align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="panel">
+            <div class="panel-title" style="color:var(--accent4)">// 🟡 רמה בסיסית — כולם</div>
+            <p style="font-size: 18px; line-height:1.8; color:var(--text-dim);">כתב בעברית (10-15 שורות):</p>
+            <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px; font-size: 18px;">
+              <div style="display:flex; gap:10px;">
+                <span style="color:var(--accent)">→</span>
+                <span>מה זו Known Plaintext Attack?</span>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <span style="color:var(--accent)">→</span>
+                <span>למה הצופן הזה פגיע אליה?</span>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <span style="color:var(--accent)">→</span>
+                <span>תן דוגמה מהשיעור</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title" style="color:var(--accent2)">// 🔴 רמה מתקדמת</div>
+            <p style="font-size: 18px; line-height:1.8; color:var(--text-dim);">כתוב קוד Python שמממש:</p>
+            <div class="code-block" style="font-size: 18px; line-height:1.9; margin-top:10px;" dir="ltr">
+def encrypt(text, dictionary) -> list[tuple]
+def build_decode_map(chosen_plain, encrypted) -> dict
+def decrypt(encrypted, decode_map) -> str
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title" style="color: #c77dff">// 🟣 רמת אתגר</div>
+            <p style="font-size: 18px; line-height:1.8; color:var(--text-dim);">הצע שינוי אחד בצופן שימנע את המתקפה — <strong style="color:var(--text)">והסבר מתמטית</strong> למה הוא עובד.</p>
+            <div class="highlight-box" style="margin-top:10px; font-size: 18px;">
+              רמז: חשב על <strong style="color:var(--accent)">מה קבוע</strong> בצופן הנוכחי שמאפשר את המתקפה
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="panel">
+            <div class="panel-title">// שאלות לחשיבה</div>
+            <div class="step">
+              <div class="step-num">?</div>
+              <div class="step-content">
+                <div class="step-title">אם המילון מוחלף בכל שיחה — מה משתנה?</div>
+                <div class="step-desc">האם Chosen Plaintext עדיין עובד? מה דרוש?</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">?</div>
+              <div class="step-content">
+                <div class="step-title">מה קורה עם מילון של 10,000 מילים?</div>
+                <div class="step-desc">כמה שאילתות נדרשות? האם זה פרקטי?</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">?</div>
+              <div class="step-content">
+                <div class="step-title">צופן זה מזכיר מה מעולם האמיתי?</div>
+                <div class="step-desc">חפשו "book cipher" — מה הקשר?</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// סיכום השיעור</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; gap:10px; align-items:center; font-size: 18px;">
+                <span class="badge badge-accent">הצפנה</span>
+                <span>צופן מילון = מיפוי [word, pos]</span>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; font-size: 18px;">
+                <span class="badge badge-purple">פריצה</span>
+                <span>Chosen Plaintext = בניית מילון פענוח</span>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; font-size: 18px;">
+                <span class="badge badge-red">חולשה</span>
+                <span>מילון קבוע = נקודת כשל אחת לכולם</span>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; font-size: 18px;">
+                <span class="badge badge-yellow">היסטוריה</span>
+                <span>KPA פצח את אניגמה — WWII</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- =================== SLIDE 11: SPACE CHALLENGE =================== -->
+    <div class="slide" id="slide-11">
+      <div class="slide-tag">משימת שדרוג // הגנה על רווחים</div>
+      <div class="slide-title">בעיית הרווח — ופתרון חכם</div>
+
+      <div class="grid-2" style="align-items:start;">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <div class="panel">
+            <div class="panel-title">// הבעיה: [?,?] מדליף מידע</div>
+            <div class="code-block" dir="ltr" style="font-size: 18px;line-height:2;">
+<span class="comment">// צופן מקורי — רווח = [?,?]</span>
+"hello world" →
+[7,0] [4,1] [2,3] [2,3] [6,1] <span class="red">[?,?]</span> [8,0] [6,2] [2,3] [2,3] [3,2]
+
+<span class="red">← תוקף רואה מיד: 2 מילים, 5+5 אותיות</span>
+            </div>
+            <div class="highlight-box danger" style="margin-top:10px;font-size: 18px;">
+              ⚠ [?,?] ייחודי ומיידי — שובר את ההסוואה לחלוטין
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// הפתרון: מיקום חורג = len(word)</div>
+            <p style="font-size: 18px;color:var(--text-dim);line-height:1.8;margin-bottom:12px;">
+              בוחרים מילה רנדומלית מהמילון. הרווח מוצפן כ<strong style="color:var(--accent)">מיקום שאינו קיים</strong> — אינדקס <strong style="color:var(--accent4)">len(word)</strong>, שהוא תמיד מחוץ לגבולות המילה.
+            </p>
+            <div class="code-block" dir="ltr" style="font-size: 18px;line-height:2.1;">
+<span class="comment">// דוגמה: word = "apple" (אורך 5)</span>
+רווח → מילה רנדומלית: "apple"
+       מיקום: <span class="highlight">len("apple") = 5</span>  ← חורג!
+       פלט: <span class="green">[0, 5]</span>
+
+<span class="comment">// הצפנה נוספת של אותו רווח:</span>
+רווח → מילה רנדומלית: "bridge"
+       מיקום: <span class="highlight">len("bridge") = 6</span>
+       פלט: <span class="green">[1, 6]</span>
+
+<span class="highlight">← אותו רווח, זוג שונה בכל פעם!</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// השוואה לפני ואחרי</div>
+            <table>
+              <tr><th>תו</th><th>לפני (ישן)</th><th>אחרי (חדש)</th></tr>
+              <tr><td style="color:var(--accent4)">h</td><td dir="ltr">[7,0]</td><td dir="ltr" class="green">[7,0]</td></tr>
+              <tr><td style="color:var(--accent4)">e</td><td dir="ltr">[4,1]</td><td dir="ltr" class="green">[4,1]</td></tr>
+              <tr><td style="color:var(--accent2)">⎵ רווח</td><td dir="ltr" style="color:var(--accent2)">[?,?]</td><td dir="ltr" class="green">[3,6]</td></tr>
+              <tr><td style="color:var(--accent4)">w</td><td dir="ltr">[8,0]</td><td dir="ltr" class="green">[8,0]</td></tr>
+            </table>
+            <div class="highlight-box" style="margin-top:10px;font-size: 18px;">
+              💡 מנקודת מבט התוקף — [3,6] נראה כמו כל זוג אחר
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <div class="panel">
+            <div class="panel-title">// 🔧 משימה א׳ — שנה את encrypt()</div>
+            <p style="font-size: 18px;color:var(--text-dim);line-height:1.7;margin-bottom:10px;">
+              במקום <code style="color:var(--accent2)">(None, None)</code> — הצפן את הרווח כזוג אמיתי:
+            </p>
+            <div class="code-block" dir="ltr" style="font-size: 18px;line-height:2;">
+<span class="comment"># קוד מקורי — לשינוי:</span>
+if not char.isalpha():
+    result.append(<span class="red">(None, None)</span>)
+    continue
+
+<span class="comment"># קוד חדש — מה שצריך לכתוב:</span>
+if char == ' ':
+    word_idx = <span class="highlight">random.randint(0, len(dictionary)-1)</span>
+    word     = <span class="highlight">dictionary[word_idx]</span>
+    pos      = <span class="highlight">len(word)</span>      <span class="comment"># חורג ב-1!</span>
+    result.append(<span class="green">(word_idx, pos)</span>)
+    continue
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// 🔧 משימה ב׳ — שנה את decrypt()</div>
+            <p style="font-size: 18px;color:var(--text-dim);line-height:1.7;margin-bottom:10px;">
+              זיהוי רווח שונה — לפי מיקום חורג ולא לפי None:
+            </p>
+            <div class="code-block" dir="ltr" style="font-size: 18px;line-height:2;">
+<span class="comment"># קוד מקורי:</span>
+if word_idx is None:
+    result.append(' ')
+    continue
+
+<span class="comment"># קוד חדש:</span>
+word = dictionary[word_idx]
+if letter_idx <span class="highlight">>=</span> len(word):   <span class="comment"># חורג = רווח</span>
+    result.append(<span class="green">' '</span>)
+    continue
+result.append(word[letter_idx])
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// 🔴 שאלות אתגר — דיון בכיתה</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+              <div class="highlight-box warning" style="font-size: 18px;">
+                <strong>שאלה א׳:</strong> האם תוקף שיש לו decode_map מלא יכול לזהות רווחים בשיטה החדשה?
+              </div>
+              <div class="highlight-box warning" style="font-size: 18px;">
+                <strong>שאלה ב׳:</strong> כמה זוגות שונים אפשריים לרווח עם מילון של 100 מילים?
+              </div>
+              <div id="space-answer" style="display:none;">
+                <div class="highlight-box" style="font-size: 18px;margin-top:6px;">
+                  <strong style="color:var(--green)">א׳:</strong> כן — כל זוג עם letter_idx >= len(word) הוא רווח. תוקף שיש לו את המילון יכול לחשב זאת.<br><br>
+                  <strong style="color:var(--green)">ב׳:</strong> 100 מילים → בדיוק 100 זוגות שונים אפשריים לרווח. כל מילה תורמת זוג אחד (מיקום = אורכה).
+                </div>
+              </div>
+              <button class="btn btn-secondary" onclick="document.getElementById('space-answer').style.display='block';this.style.display='none';">גלה תשובה ▼</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">// ✅ בדיקת נכונות — הרץ בPython</div>
+            <div class="code-block" dir="ltr" style="font-size: 18px;line-height:1.9;">
+enc = encrypt("hi mom", DICTIONARY)
+<span class="comment"># אין (None, None) בפלט</span>
+assert (None, None) not in enc, "שגיאה: עדיין יש None!"
+
+dec = decrypt(enc, DICTIONARY)
+<span class="comment"># הפענוח שומר על הרווח</span>
+assert dec == "hi mom", f"שגיאה: קיבלנו '{dec}'"
+
+<span class="comment"># הרווח מוצפן שונה בכל פעם</span>
+enc2 = encrypt("hi mom", DICTIONARY)
+print("רווחים שונים?", enc[2] != enc2[2])
+print("✓ הכל תקין!")
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-area -->
+
+  <div id="nav-bar">
+    <button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)" disabled>→ הקודם</button>
+    <div class="slide-dots" id="dots-container"></div>
+    <button class="nav-btn" id="next-btn" onclick="changeSlide(1)">הבא ←</button>
+  </div>
+</div>
+
+<script>
+// ======================================================
+//  STATE
+// ======================================================
+let currentSlide = 1;
+const totalSlides = 11;
+let timerInterval = null;
+let timerSeconds = 20 * 60;
+const scores = [0, 0, 0, 0];
+
+// Mini dictionary for encrypt demo (10 words)
+const DICT = [
+  'apple','bridge','cloud','dragon','eagle','falcon','garden','hammer','island','jungle'
+];
+
+// Decode map for exercise (slide 6)
+const KNOWN_PAIRS = {
+  '17,2': 'a', '3,0': 'a', '9,1': 'a',
+  '5,1': 'b', '12,0': 'b', '7,3': 'b'
+};
+
+// ======================================================
+//  SLIDE NAVIGATION
+// ======================================================
+function changeSlide(dir) {
+  const next = currentSlide + dir;
+  if (next < 1 || next > totalSlides) return;
+  document.getElementById('slide-' + currentSlide).classList.remove('active');
+  currentSlide = next;
+  document.getElementById('slide-' + currentSlide).classList.add('active');
+  updateNav();
+  if (currentSlide === 6) initSlide6();
+}
+
+function goToSlide(n) {
+  document.getElementById('slide-' + currentSlide).classList.remove('active');
+  currentSlide = n;
+  document.getElementById('slide-' + currentSlide).classList.add('active');
+  updateNav();
+  if (currentSlide === 6) initSlide6();
+}
+
+function updateNav() {
+  document.getElementById('cur-slide').textContent = currentSlide;
+  document.getElementById('prev-btn').disabled = currentSlide === 1;
+  document.getElementById('next-btn').disabled = currentSlide === totalSlides;
+  const fill = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+  document.getElementById('progress-fill').style.width = fill + '%';
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i + 1 === currentSlide);
+    d.classList.toggle('visited', i + 1 < currentSlide);
+  });
+}
+
+function buildDots() {
+  const c = document.getElementById('dots-container');
+  for (let i = 1; i <= totalSlides; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.title = 'שקופית ' + i;
+    d.onclick = () => goToSlide(i);
+    c.appendChild(d);
+  }
+  document.getElementById('total-slides').textContent = totalSlides;
+}
+
+// ======================================================
+//  SLIDE 1 — REVEAL
+// ======================================================
+function revealAnswer() {
+  document.getElementById('revealed-answer').style.display = 'block';
+  document.getElementById('reveal-btn-container').style.display = 'none';
+}
+
+// ======================================================
+//  SLIDE 3 — ENCRYPT DEMO
+// ======================================================
+function doEncrypt() {
+  const word = document.getElementById('encrypt-input').value.trim().toLowerCase();
+  if (!word) return;
+
+  const output = document.getElementById('encrypt-output');
+  const explain = document.getElementById('encrypt-explain');
+  const pairs = [];
+  let explanationHTML = '';
+
+  for (let i = 0; i < word.length; i++) {
+    const ch = word[i];
+    const matching = [];
+    DICT.forEach((w, wi) => {
+      for (let j = 0; j < w.length; j++) {
+        if (w[j] === ch) matching.push({wi, j, word: w});
+      }
+    });
+
+    if (matching.length === 0) {
+      pairs.push({ label: '[?,?]', title: `"${ch}" לא נמצאת במילון` });
+      explanationHTML += `<span style="color:var(--accent2)">'${ch}'</span> → לא נמצאת במילון → <span style="color:var(--red)">[?,?]</span>\n`;
+    } else {
+      const pick = matching[Math.floor(Math.random() * matching.length)];
+      pairs.push({ label: `[${pick.wi},${pick.j}]`, title: `'${ch}' ← ${DICT[pick.wi]}[${pick.j}]` });
+      explanationHTML += `<span style="color:var(--accent4)">'${ch}'</span> → מילה ${pick.wi} = "<span style="color:var(--accent)">${DICT[pick.wi]}</span>", מיקום ${pick.j} → <span style="color:var(--green)">[${pick.wi},${pick.j}]</span>\n`;
+    }
+  }
+
+  output.innerHTML = '';
+  pairs.forEach(p => {
+    const chip = document.createElement('span');
+    chip.className = 'enc-pair';
+    chip.textContent = p.label;
+    chip.title = p.title;
+    output.appendChild(chip);
+    output.appendChild(document.createTextNode(' '));
+  });
+
+  explain.innerHTML = explanationHTML;
+  explain.style.display = 'block';
+}
+
+// ======================================================
+//  SLIDE 6 — DECODE EXERCISE
+// ======================================================
+let slide6Init = false;
+
+function initSlide6() {
+  if (slide6Init) return;
+  slide6Init = true;
+
+  // Build table
+  const tbl = document.getElementById('decode-table');
+  const pairs = Object.keys(KNOWN_PAIRS);
+  pairs.forEach(k => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td dir="ltr">[${k}]</td><td id="ans-${k.replace(',','-')}" style="color:var(--accent4); font-weight:700; font-family:var(--mono);">?</td><td><button class="btn btn-primary" style="padding:4px 12px; font-size: 18px;" onclick="revealPair('${k}')">גלה</button></td>`;
+    tbl.appendChild(tr);
+  });
+
+  // Build pair chips for challenge
+  const chips = document.getElementById('pair-chips');
+  const challengePairs = ['3,0','9,1','7,3','5,1','17,2','12,0'];
+  challengePairs.forEach(p => {
+    const chip = document.createElement('span');
+    chip.className = 'pair-chip' + (KNOWN_PAIRS[p] ? ' known' : '');
+    chip.id = 'chip-' + p.replace(',','-');
+    chip.textContent = `[${p}] = ${KNOWN_PAIRS[p] || '?'}`;
+    chips.appendChild(chip);
+  });
+
+  // Build crack display
+  buildCrackDisplay();
+}
+
+function revealPair(k) {
+  const letter = KNOWN_PAIRS[k];
+  const el = document.getElementById('ans-' + k.replace(',','-'));
+  if (el) el.textContent = letter || '?';
+  buildCrackDisplay();
+}
+
+function buildCrackDisplay() {
+  // Challenge: [3,0] [9,1] [7,3] [5,1] [?,?] [17,2] [12,0] [7,3]
+  const challenge = ['3,0','9,1','7,3','5,1',null,'17,2','12,0','7,3'];
+  const display = document.getElementById('crack-display');
+  display.innerHTML = '';
+  challenge.forEach(p => {
+    const div = document.createElement('div');
+    if (p === null) {
+      div.className = 'crack-letter space';
+      div.textContent = ' ';
+    } else {
+      const letter = KNOWN_PAIRS[p] || '_';
+      div.className = 'crack-letter' + (KNOWN_PAIRS[p] ? ' solved' : '');
+      div.textContent = letter;
+      div.title = `[${p}]`;
+    }
+    display.appendChild(div);
+  });
+}
+
+function revealDecode() {
+  // Force reveal all
+  Object.keys(KNOWN_PAIRS).forEach(k => revealPair(k));
+  const display = document.getElementById('crack-display');
+  display.innerHTML = '';
+  ['a','b','b','b',' ','a','b','b'].forEach((ch, i) => {
+    const div = document.createElement('div');
+    if (ch === ' ') { div.className = 'crack-letter space'; div.textContent = ' '; }
+    else { div.className = 'crack-letter solved'; div.textContent = ch; }
+    display.appendChild(div);
+  });
+}
+
+// ======================================================
+//  TIMER
+// ======================================================
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      document.getElementById('timer-display').textContent = '00:00';
+      document.getElementById('timer-display').classList.add('urgent');
+    }
+  }, 1000);
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerSeconds = 20 * 60;
+  document.getElementById('timer-display').classList.remove('urgent');
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+  const s = (timerSeconds % 60).toString().padStart(2, '0');
+  const el = document.getElementById('timer-display');
+  el.textContent = `${m}:${s}`;
+  if (timerSeconds <= 120) el.classList.add('urgent');
+  else el.classList.remove('urgent');
+}
+
+// ======================================================
+//  SCOREBOARD
+// ======================================================
+let selectedTeam = 1;
+
+function addScore(team, pts) {
+  scores[team - 1] = Math.max(0, scores[team - 1] + pts);
+  document.getElementById('score-' + team).textContent = scores[team - 1];
+  updateLeader();
+}
+
+function addBonus() {
+  // Add bonus to currently leading team or ask
+  const maxScore = Math.max(...scores);
+  const leaderIdx = scores.indexOf(maxScore);
+  scores[leaderIdx] += 15;
+  document.getElementById('score-' + (leaderIdx + 1)).textContent = scores[leaderIdx];
+  updateLeader();
+}
+
+function updateLeader() {
+  const maxScore = Math.max(...scores);
+  for (let i = 1; i <= 4; i++) {
+    const card = document.getElementById('team-' + i + '-card');
+    card.classList.toggle('leader', scores[i-1] === maxScore && maxScore > 0);
+    const nameEl = card.querySelector('.team-name');
+    const baseNames = ['קבוצה א׳', 'קבוצה ב׳', 'קבוצה ג׳', 'קבוצה ד׳'];
+    nameEl.textContent = (scores[i-1] === maxScore && maxScore > 0)
+      ? baseNames[i-1] + ' 🥇'
+      : baseNames[i-1];
+  }
+}
+
+// ======================================================
+//  QUIZ
+// ======================================================
+const quizAnswered = {};
+
+function answerQuiz(qNum, correct, el) {
+  if (quizAnswered[qNum]) return;
+  quizAnswered[qNum] = true;
+
+  const panel = document.getElementById('quiz-panel-' + qNum);
+  const options = panel.querySelectorAll('.quiz-option');
+  options.forEach(o => o.classList.add('disabled'));
+  el.classList.add(correct ? 'correct' : 'wrong');
+
+  const fb = document.getElementById('qf-' + qNum);
+  fb.classList.add('show', correct ? 'correct' : 'wrong');
+
+  const feedbacks = {
+    1: { t: '✓ נכון! [?,?] ייחודי ומיידי — תוקף רואה בדיוק כמה מילים ואת אורכן.', f: '✗ לא מדויק. ה-[?,?] חושף מבנה הטקסט: כמה מילים יש ומה אורכן.' },
+    2: { t: '✓ בדיוק! שליטה בקלט = שליטה במידע שנאסף. זה ההבדל הקריטי.', f: '✗ לא. ב-Chosen Plaintext בוחרים מה לשלוח — זה מה שנותן יתרון ממוקד.' },
+    3: { t: '✓ מעולה! הרנדומליות יוצרת פולימורפיזם — אותו קלט, פלט שונה בכל פעם.', f: '✗ הפולימורפיזם הוא שאותה אות מקבלת זוגות שונים בכל הצפנה, בגלל הרנדומליות.' },
+    4: { t: '✓ נכון! מילון קבוע = כל מידע שנאסף ממתקפה אחת תקף לכל ההצפנות.', f: '✗ הבעיה היא קביעות המילון — לא גודלו. מילון שמתחלף היה מונע את המתקפה.' }
+  };
+
+  fb.textContent = correct ? feedbacks[qNum].t : feedbacks[qNum].f;
+}
+
+// ======================================================
+//  KEYBOARD NAVIGATION
+// ======================================================
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+});
+
+// ======================================================
+//  INIT
+// ======================================================
+buildDots();
+updateNav();
+</script>
+</body>
+</html>

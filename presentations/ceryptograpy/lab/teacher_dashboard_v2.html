@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לוח מורה — Cipher Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Heebo:wght@300;400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050810; --panel:#0c1220; --panel2:#111827;
+  --accent:#00f5d4; --accent2:#f72585; --accent3:#7209b7; --accent4:#ffd60a;
+  --text:#e2e8f0; --dim:#64748b; --border:#1e2d4a;
+  --green:#39ff14; --red:#ff2d55;
+  --mono:'Share Tech Mono',monospace;
+  --head:'Orbitron',sans-serif;
+  --body:'Heebo',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);
+  min-height:100vh;padding:16px 20px;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,245,212,.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,245,212,.025) 1px,transparent 1px);
+  background-size:40px 40px;}
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+#topbar{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;position:relative;z-index:1;}
+.logo{font-family:var(--head);font-size:16px;color:var(--accent);letter-spacing:3px;}
+.logo em{color:var(--accent2);font-style:normal;}
+.conn-pill{display:flex;align-items:center;gap:8px;background:var(--panel);
+  border:1px solid var(--border);border-radius:20px;padding:5px 14px;}
+.conn-dot{width:9px;height:9px;border-radius:50%;background:var(--dim);transition:all .4s;}
+.conn-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.8s infinite;}
+.conn-dot.off{background:var(--red);box-shadow:0 0 8px var(--red);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.conn-label{font-family:var(--mono);font-size:11px;color:var(--dim);}
+.conn-label.on{color:var(--green);}
+.conn-label.off{color:var(--red);}
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:260px 1fr 240px;gap:14px;
+  position:relative;z-index:1;align-items:start;}
+
+/* ── PANEL ──────────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:16px 18px;position:relative;overflow:hidden;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent3),var(--accent),transparent);}
+.ptitle{font-family:var(--mono);font-size:10px;color:var(--accent);
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+
+/* ── SERVER INFO ─────────────────────────────────────── */
+.url-box{background:#020409;border:1px solid var(--border);border-radius:5px;
+  padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--accent4);
+  word-break:break-all;text-align:center;margin-bottom:8px;letter-spacing:.5px;}
+.btn{padding:8px 16px;border-radius:5px;font-family:var(--mono);font-size:11px;
+  letter-spacing:1px;cursor:pointer;transition:all .2s;border:none;text-transform:uppercase;}
+.btn-p{background:linear-gradient(135deg,var(--accent3),var(--accent));color:#000;font-weight:700;}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 3px 14px rgba(0,245,212,.3);}
+.btn-g{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.btn-g:hover{background:rgba(0,245,212,.08);}
+.btn-r{background:transparent;color:var(--red);border:1px solid var(--red);}
+.btn-r:hover{background:rgba(255,45,85,.08);}
+.btn-y{background:linear-gradient(135deg,#ff9500,var(--accent4));color:#000;font-weight:700;}
+.row{display:flex;gap:6px;margin-top:6px;}
+
+/* ── LOG ─────────────────────────────────────────────── */
+#log-wrap{max-height:calc(100vh - 260px);min-height:200px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:5px;}
+.log-empty{font-family:var(--mono);font-size:12px;color:var(--dim);
+  text-align:center;padding:40px 0;}
+.log-item{background:#020409;border:1px solid var(--border);border-radius:5px;
+  padding:8px 11px;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:none;}}
+.log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.log-team{font-family:var(--mono);font-size:11px;font-weight:700;}
+.log-meta{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.log-plain{font-family:var(--mono);font-size:12px;color:var(--accent4);margin-bottom:3px;}
+.log-enc{font-family:var(--mono);font-size:10px;color:var(--green);
+  word-break:break-all;line-height:1.7;}
+.badge{display:inline-block;background:rgba(0,245,212,.1);color:var(--accent);
+  border-radius:8px;padding:1px 6px;font-size:9px;font-family:var(--mono);margin-right:4px;}
+
+/* ── SCORES ──────────────────────────────────────────── */
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tc{background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  padding:10px;text-align:center;transition:all .3s;}
+.tc.leader{border-color:var(--accent4);background:rgba(255,214,10,.05);
+  box-shadow:0 0 16px rgba(255,214,10,.1);}
+.tc-name{font-size:12px;font-weight:700;margin-bottom:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-score{font-family:var(--head);font-size:28px;color:var(--accent);
+  font-weight:900;line-height:1;margin-bottom:7px;}
+.tc.leader .tc-score{color:var(--accent4);}
+.sc-btns{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;}
+.sc-btn{padding:2px 7px;border-radius:4px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);cursor:pointer;
+  font-family:var(--mono);font-size:10px;transition:all .15s;}
+.sc-btn:hover{border-color:var(--accent);color:var(--accent);}
+.sc-btn.m:hover{border-color:var(--red);color:var(--red);}
+
+/* ── TIMER ───────────────────────────────────────────── */
+.timer-big{font-family:var(--head);font-size:46px;color:var(--accent4);
+  text-align:center;letter-spacing:3px;text-shadow:0 0 24px rgba(255,214,10,.5);
+  margin:6px 0 10px;}
+.timer-big.urgent{color:var(--accent2);animation:pulse .55s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.tbrow{display:flex;gap:6px;justify-content:center;}
+
+/* ── MISSION ─────────────────────────────────────────── */
+textarea.inp{width:100%;background:#020409;border:1px solid var(--border);
+  border-radius:5px;padding:9px 11px;font-family:var(--mono);font-size:12px;
+  color:var(--accent4);outline:none;resize:none;min-height:46px;direction:ltr;
+  transition:border-color .2s;}
+textarea.inp:focus{border-color:var(--accent);}
+.enc-result{background:#020409;border:1px solid rgba(57,255,20,.25);border-radius:5px;
+  padding:10px;font-family:var(--mono);font-size:11px;color:var(--green);
+  word-break:break-all;line-height:1.8;margin-top:8px;display:none;}
+
+/* ── SCROLLBAR ───────────────────────────────────────── */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div id="topbar">
+  <div class="logo">⚡ CIPHER<em> LAB</em> // לוח מורה</div>
+  <div class="conn-pill">
+    <div class="conn-dot" id="cdot"></div>
+    <span class="conn-label" id="clabel">מתחבר...</span>
+  </div>
+</div>
+
+<!-- ── MAIN GRID ── -->
+<div class="grid">
+
+  <!-- ══ COL 1: שרת + שליחת משימה ══ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <div class="panel">
+      <div class="ptitle">// כתובת לקבוצות</div>
+      <div class="url-box" id="share-url">http://&lt;IP שלך&gt;:8000</div>
+      <div class="row">
+        <button class="btn btn-p" style="flex:1" onclick="copyUrl()">📋 העתק</button>
+        <button class="btn btn-g" onclick="window.open('http://localhost:8000','_blank')">🔗 פתח</button>
+      </div>
+      <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--dim);line-height:1.8;">
+        הרץ: <span style="color:var(--accent)">python cipher_machine_v2.py</span><br>
+        IP: <span style="color:var(--accent4)" id="ip-hint">ipconfig / ifconfig</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">// הצפן הודעת משימה</div>
+      <textarea class="inp" id="mission-text" placeholder="הקלד הודעה...&#10;e.g. find the key" rows="2"></textarea>
+      <button class="btn btn-p" style="width:100%;margin-top:7px;font-size:11px;" onclick="encryptMission()">
+        🔒 הצפן ושלח לקבוצות
+      </button>
+      <div class="enc-result" id="enc-result"></div>
+      <button class="btn btn-g" id="copy-enc" style="display:none;width:100%;margin-top:6px;font-size:10px;"
+        onclick="copyEnc()">📋 העתק הודעה מוצפנת</button>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">// סטטיסטיקה</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--dim)">סה"כ שאילתות</span>
+          <span style="color:var(--accent4)" id="stat-total">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--dim)">קבוצות פעילות</span>
+          <span style="color:var(--accent4)" id="stat-teams">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--dim)">עדכון אחרון</span>
+          <span style="color:var(--dim)" id="stat-time">—</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ COL 2: לוג שאילתות ══ -->
+  <div class="panel" style="grid-row:span 2;">
+    <div class="ptitle" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>// שאילתות בזמן אמת <span id="qcount" style="color:var(--accent4);font-size:10px;"></span></span>
+      <div style="display:flex;gap:6px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--dim);cursor:pointer;">
+          <input type="checkbox" id="autoscroll" checked style="accent-color:var(--accent);"> גלול אוטו
+        </label>
+        <button class="btn btn-r" onclick="clearLog()" style="padding:3px 9px;font-size:10px;">נקה</button>
+      </div>
+    </div>
+    <div id="log-wrap">
+      <div class="log-empty" id="log-empty">ממתין לשאילתות מהקבוצות...<br>
+        <span style="font-size:10px;opacity:.5;display:block;margin-top:4px;">
+          ודא שהשרת רץ ואת ה-IP הנכון
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COL 3: טיימר + ניקוד ══ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <div class="panel">
+      <div class="ptitle">// ⏱ טיימר</div>
+      <div class="timer-big" id="timer">20:00</div>
+      <div class="tbrow">
+        <button class="btn btn-p" onclick="startTimer()">▶</button>
+        <button class="btn btn-g" onclick="pauseTimer()">⏸</button>
+        <button class="btn btn-r" onclick="resetTimer()">↺</button>
+      </div>
+      <div style="margin-top:10px;">
+        <input type="range" id="timer-set" min="5" max="60" value="20" step="5"
+          style="width:100%;accent-color:var(--accent);"
+          oninput="setTimerMins(this.value)">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;margin-top:3px;">
+          <span id="timer-min-label">20 דקות</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">// לוח ניקוד</div>
+      <div class="score-grid" id="score-grid"></div>
+      <button class="btn btn-y" style="width:100%;margin-top:10px;font-size:10px;" onclick="addBonus()">
+        🏆 +15 בונוס אסטרטגיה (למוביל)
+      </button>
+    </div>
+
+  </div>
+
+</div><!-- /grid -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════
+const SERVER   = 'http://localhost:8000';
+const POLL_MS  = 2000;   // polling כל 2 שניות
+const TEAM_COLORS = ['#00f5d4','#f72585','#ffd60a','#39ff14'];
+const TEAM_NAMES  = ['קבוצה א׳','קבוצה ב׳','קבוצה ג׳','קבוצה ד׳'];
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+const scores   = [0, 0, 0, 0];
+let timerSec   = 20 * 60;
+let timerInt   = null;
+let lastId     = 0;          // ID אחרון שקיבלנו מהשרת
+let connected  = false;
+let knownTeams = new Set();
+
+// ══════════════════════════════════════════════════════════════
+//  CONNECTION CHECK + POLLING
+// ══════════════════════════════════════════════════════════════
+async function pollLog() {
+  try {
+    const r = await fetch(`${SERVER}/log?since=${lastId}`);
+    if (!r.ok) throw new Error('not ok');
+    const data = await r.json();
+
+    setConnected(true);
+
+    // עדכן סטטיסטיקה
+    document.getElementById('stat-total').textContent = data.total;
+    document.getElementById('stat-time').textContent  =
+      new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+    // הוסף רשומות חדשות ללוג
+    if (data.entries && data.entries.length > 0) {
+      data.entries.forEach(addLogItem);
+      lastId = data.entries[data.entries.length - 1].id;
+
+      // עדכן קבוצות פעילות
+      data.entries.forEach(e => knownTeams.add(e.team));
+      document.getElementById('stat-teams').textContent = knownTeams.size;
+    }
+
+  } catch {
+    setConnected(false);
+  }
+}
+
+function setConnected(on) {
+  connected = on;
+  const dot   = document.getElementById('cdot');
+  const label = document.getElementById('clabel');
+  dot.className   = 'conn-dot ' + (on ? 'on' : 'off');
+  label.className = 'conn-label ' + (on ? 'on' : 'off');
+  label.textContent = on ? 'שרת פעיל ✓' : 'שרת לא פעיל — הרץ cipher_machine_v2.py';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOG DISPLAY
+// ══════════════════════════════════════════════════════════════
+const TEAM_COLOR_MAP = {};
+
+function teamColor(team) {
+  if (!TEAM_COLOR_MAP[team]) {
+    const idx = Object.keys(TEAM_COLOR_MAP).length % TEAM_COLORS.length;
+    TEAM_COLOR_MAP[team] = TEAM_COLORS[idx];
+  }
+  return TEAM_COLOR_MAP[team];
+}
+
+function addLogItem(entry) {
+  document.getElementById('log-empty')?.remove();
+
+  const wrap = document.getElementById('log-wrap');
+  const color = teamColor(entry.team);
+  const charCount = entry.plaintext.replace(/ /g,'').length;
+
+  const div = document.createElement('div');
+  div.className = 'log-item';
+  div.id = 'log-' + entry.id;
+  div.innerHTML = `
+    <div class="log-head">
+      <span class="log-team" style="color:${color}">
+        <span class="badge">#${entry.id}</span>${entry.team}
+      </span>
+      <span class="log-meta">${entry.time} · ${charCount} תווים</span>
+    </div>
+    <div class="log-plain">"${entry.plaintext}"</div>
+    <div class="log-enc">${entry.encrypted}</div>`;
+
+  // הוסף בראש הרשימה
+  wrap.insertBefore(div, wrap.firstChild);
+
+  // עדכן מונה
+  const total = wrap.querySelectorAll('.log-item').length;
+  document.getElementById('qcount').textContent = `(${total})`;
+
+  // גלול לראש אם autoscroll פעיל
+  if (document.getElementById('autoscroll').checked) {
+    wrap.scrollTop = 0;
+  }
+}
+
+function clearLog() {
+  document.getElementById('log-wrap').innerHTML =
+    '<div class="log-empty" id="log-empty">הלוג נוקה — ממתין לשאילתות חדשות...</div>';
+  document.getElementById('qcount').textContent = '';
+  lastId = 0; knownTeams.clear();
+  document.getElementById('stat-total').textContent = '0';
+  document.getElementById('stat-teams').textContent = '0';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MISSION ENCRYPT
+// ══════════════════════════════════════════════════════════════
+async function encryptMission() {
+  const text = document.getElementById('mission-text').value.trim();
+  if (!text) return;
+  try {
+    const r = await fetch(`${SERVER}/encrypt?text=${encodeURIComponent(text)}&team=🎓+מורה`);
+    const d = await r.json();
+    const box = document.getElementById('enc-result');
+    box.textContent = d.encrypted;
+    box.style.display = 'block';
+    document.getElementById('copy-enc').style.display = 'block';
+  } catch { alert('לא ניתן להתחבר לשרת'); }
+}
+
+function copyEnc() {
+  navigator.clipboard.writeText(document.getElementById('enc-result').textContent);
+  const b = document.getElementById('copy-enc');
+  b.textContent = '✓ הועתק!';
+  setTimeout(() => b.textContent = '📋 העתק הודעה מוצפנת', 1400);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SHARE URL
+// ══════════════════════════════════════════════════════════════
+function copyUrl() {
+  const url = document.getElementById('share-url').textContent;
+  navigator.clipboard.writeText(url);
+  event.target.textContent = '✓ הועתק!';
+  setTimeout(() => event.target.textContent = '📋 העתק', 1400);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════════════════════════════
+function updateTimerDisplay() {
+  const m = String(Math.floor(timerSec/60)).padStart(2,'0');
+  const s = String(timerSec%60).padStart(2,'0');
+  const el = document.getElementById('timer');
+  el.textContent = `${m}:${s}`;
+  el.classList.toggle('urgent', timerSec <= 120);
+}
+function startTimer() {
+  if (timerInt) return;
+  timerInt = setInterval(() => {
+    if (timerSec <= 0) { clearInterval(timerInt); timerInt = null; return; }
+    timerSec--; updateTimerDisplay();
+  }, 1000);
+}
+function pauseTimer() { clearInterval(timerInt); timerInt = null; }
+function resetTimer() {
+  pauseTimer();
+  document.getElementById('timer').classList.remove('urgent');
+  updateTimerDisplay();
+}
+function setTimerMins(val) {
+  pauseTimer();
+  timerSec = parseInt(val) * 60;
+  document.getElementById('timer-min-label').textContent = `${val} דקות`;
+  updateTimerDisplay();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SCOREBOARD
+// ══════════════════════════════════════════════════════════════
+function buildScoreGrid() {
+  const max = Math.max(...scores);
+  const grid = document.getElementById('score-grid');
+  grid.innerHTML = '';
+  scores.forEach((score, i) => {
+    const leader = score === max && max > 0;
+    const div = document.createElement('div');
+    div.className = 'tc' + (leader ? ' leader' : '');
+    div.innerHTML = `
+      <div class="tc-name" style="color:${TEAM_COLORS[i]}">${TEAM_NAMES[i]}</div>
+      <div class="tc-score">${score}</div>
+      <div class="sc-btns">
+        <button class="sc-btn m" onclick="chScore(${i},-5)">−5</button>
+        <button class="sc-btn"   onclick="chScore(${i},10)">+10</button>
+        <button class="sc-btn"   onclick="chScore(${i},20)">+20</button>
+        <button class="sc-btn"   onclick="chScore(${i},35)">+35</button>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+function chScore(i, pts) {
+  scores[i] = Math.max(0, scores[i] + pts);
+  buildScoreGrid();
+}
+function addBonus() {
+  const max = Math.max(...scores);
+  if (max === 0) return;
+  scores[scores.indexOf(max)] += 15;
+  buildScoreGrid();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+buildScoreGrid();
+updateTimerDisplay();
+
+// התחל polling
+pollLog();
+setInterval(pollLog, POLL_MS);
+
+// נסה לגלות את ה-IP (לא תמיד עובד בדפדפן — רק רמז)
+document.getElementById('share-url').textContent = `http://<IP שלך>:8000`;
+</script>
+</body>
+</html>

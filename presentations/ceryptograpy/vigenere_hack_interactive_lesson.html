@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>פריצת צופן ויז'נר - מצגת אינטראקטיבית</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --card2: #1f2937;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --warn: #f59e0b;
+      --line: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans Hebrew", sans-serif;
+      background: radial-gradient(circle at top, #1e3a8a 0, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .deck {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .slide {
+      display: none;
+      width: min(1100px, 96vw);
+      min-height: 650px;
+      background: rgba(17, 24, 39, 0.94);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      padding: 44px 52px;
+      position: relative;
+      overflow: hidden;
+    }
+    .slide.active { display: block; }
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset-inline-start: -120px;
+      top: -120px;
+      width: 280px;
+      height: 280px;
+      background: rgba(56,189,248,0.12);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    h1 { font-size: 54px; margin: 0 0 18px; color: #e0f2fe; }
+    h2 { font-size: 38px; margin: 0 0 24px; color: #bae6fd; }
+    h3 { font-size: 28px; color: #e2e8f0; margin-top: 26px; }
+    p, li { font-size: 24px; line-height: 1.55; color: var(--muted); }
+    ul, ol { padding-inline-start: 36px; }
+    code, pre {
+      direction: ltr;
+      text-align: left;
+      font-family: Consolas, Monaco, monospace;
+    }
+    pre {
+      background: #020617;
+      border: 1px solid var(--line);
+      padding: 20px;
+      border-radius: 16px;
+      font-size: 25px;
+      color: #7dd3fc;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .box {
+      background: rgba(31, 41, 55, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 18px;
+      padding: 22px;
+      margin: 18px 0;
+    }
+    .big { font-size: 32px; color: #fff; }
+    .center { text-align: center; }
+    .badge {
+      display: inline-block;
+      padding: 8px 14px;
+      background: rgba(56, 189, 248, .16);
+      color: #bae6fd;
+      border: 1px solid rgba(56,189,248,.35);
+      border-radius: 999px;
+      font-size: 18px;
+      margin: 5px;
+    }
+    .quiz button, .nav button, .action-btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 20px;
+      margin: 8px;
+      font-size: 20px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      transition: transform .12s, filter .12s;
+    }
+    .quiz button:hover, .nav button:hover, .action-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .quiz button.option {
+      display: block;
+      width: 100%;
+      text-align: right;
+      background: #1f2937;
+      border: 1px solid #475569;
+    }
+    .feedback { font-size: 24px; margin-top: 14px; min-height: 34px; font-weight: bold; }
+    .correct { color: var(--good); }
+    .wrong { color: var(--bad); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 22px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+    th, td { border: 1px solid #475569; padding: 12px; text-align: center; }
+    th { background: #0f172a; color: #bae6fd; }
+    td { background: rgba(15,23,42,.6); color: #e5e7eb; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #475569;
+      border-radius: 12px;
+      background: #020617;
+      color: white;
+      padding: 12px;
+      font-size: 20px;
+      margin: 8px 0;
+      direction: ltr;
+      text-align: left;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    .nav {
+      width: min(1100px, 96vw);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      color: #e2e8f0;
+      font-size: 18px;
+    }
+    .progress {
+      flex: 1;
+      height: 10px;
+      margin: 0 18px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar { height: 100%; width: 0%; background: var(--accent); transition: width .2s; }
+    .footer-note {
+      position: absolute;
+      bottom: 18px;
+      left: 34px;
+      color: #94a3b8;
+      font-size: 15px;
+    }
+    .flow { font-size: 26px; line-height: 1.8; text-align: center; }
+    .highlight { color: #fbbf24; font-weight: bold; }
+    @media print {
+      body { background: white; color: black; }
+      .deck { display: block; padding: 0; }
+      .slide { display: block !important; page-break-after: always; min-height: 0; box-shadow: none; border: 1px solid #ccc; background: white; color: black; border-radius: 0; }
+      .nav { display: none; }
+      p, li, h1, h2, h3, .big { color: black; }
+      pre, input, textarea { border: 1px solid #999; color: black; background: #f7f7f7; }
+      .box { background: #f5f5f5; color: black; }
+      th, td { color: black; background: white; }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide active">
+      <div class="center">
+        <h1>פריצת צופן ויז'נר</h1>
+        <h2>איך שוברים את “הצופן הבלתי ניתן לפענוח”?</h2>
+        <p class="big">קריפטואנליזה · קסיסקי · ניתוח תדירויות · Brute Force מצומצם</p>
+        <div>
+          <span class="badge">שיעור אינטראקטיבי</span>
+          <span class="badge">מגמת סייבר</span>
+          <span class="badge">תלמידי תיכון</span>
+        </div>
+      </div>
+      <div class="footer-note">השתמשו במקשי חצים או בכפתורים למטה</div>
+    </section>
+
+    <section class="slide">
+      <h2>משימת פתיחה</h2>
+      <p>קיבלתם הודעה מוצפנת:</p>
+      <pre>LXFOPVEFRNHR</pre>
+      <div class="box">
+        <p>ידוע שהיא הוצפנה בצופן ויז'נר. האם אפשר לפרוץ אותה בלי לדעת את המפתח?</p>
+      </div>
+      <div class="quiz" data-answer="2">
+        <button class="option">לא, זה בלתי אפשרי</button>
+        <button class="option">רק אם יודעים את המפתח מראש</button>
+        <button class="option">כן, אם הטקסט מספיק ארוך ויש חולשות במפתח</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>תזכורת: איך עובד צופן ויז'נר?</h2>
+      <div class="two-col">
+        <div class="box">
+          <p>טקסט:</p>
+          <pre>MONDAY</pre>
+          <p>מפתח:</p>
+          <pre>LEVLEV</pre>
+        </div>
+        <div class="box">
+          <p>כל אות במפתח היא היסט קיסר אחר.</p>
+          <p><span class="highlight">L</span> = היסט 11</p>
+          <p><span class="highlight">E</span> = היסט 4</p>
+          <p><span class="highlight">V</span> = היסט 21</p>
+        </div>
+      </div>
+      <p>המפתח חוזר שוב ושוב לאורך כל ההודעה.</p>
+    </section>
+
+    <section class="slide">
+      <h2>בדיקת הבנה</h2>
+      <p>מדוע ויז'נר חזק יותר מצופן קיסר?</p>
+      <div class="quiz" data-answer="1">
+        <button class="option">כי הוא משתמש רק באותיות גדולות</button>
+        <button class="option">כי הוא משתמש בכמה מפתחות משנה ולא בהיסט אחד קבוע</button>
+        <button class="option">כי אי אפשר לפענח אותו בכלל</button>
+        <button class="option">כי הוא מוחק רווחים</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>למה ניתוח תדירויות עובד בצופן החלפה?</h2>
+      <p>באנגלית האותיות הנפוצות ביותר הן בדרך כלל:</p>
+      <pre>ETAOINSHRDLU</pre>
+      <div class="box">
+        <p>אם בצופן החלפה פשוטה האות <span class="highlight">E</span> מוחלפת תמיד ל־<span class="highlight">X</span>, אז X תופיע הרבה בטקסט המוצפן.</p>
+      </div>
+      <p>כלומר: התדירות נשמרת, רק שמות האותיות משתנים.</p>
+    </section>
+
+    <section class="slide">
+      <h2>למה זה נכשל ישירות על ויז'נר?</h2>
+      <div class="box">
+        <pre>HELLOHELLOHELLO
+KEYKEYKEYKEYKEY</pre>
+      </div>
+      <p>אות מקור אחת יכולה להיות מוצפנת בכל פעם לאות אחרת, לפי אות המפתח שמעליה.</p>
+      <div class="quiz" data-answer="1">
+        <p>האם כל האותיות L יהפכו לאותה אות?</p>
+        <button class="option">כן</button>
+        <button class="option">לא</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>הרעיון הגדול של הפריצה</h2>
+      <ol>
+        <li>מגלים את אורך המפתח.</li>
+        <li>מחלקים את הטקסט לקבוצות לפי מיקום במפתח.</li>
+        <li>כל קבוצה הוצפנה עם אותה אות מפתח.</li>
+        <li>לכן כל קבוצה היא בעצם צופן קיסר.</li>
+        <li>פורצים כל קיסר בניתוח תדירויות.</li>
+      </ol>
+      <div class="box center big">ויז'נר = כמה צפני קיסר שרצים במקביל</div>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 1: אלגוריתם קסיסקי</h2>
+      <p>מחפשים רצפים חוזרים באורך 3–5 אותיות.</p>
+      <pre>PPQCAXQVEKGYBNKMAZUYBNGBALJONITSZMJYIMVRAGVOHTVRA...</pre>
+      <div class="box">
+        <p>רצפים חוזרים לדוגמה:</p>
+        <span class="badge">YBN</span>
+        <span class="badge">VRA</span>
+        <span class="badge">AZU</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 2: מודדים מרחקים</h2>
+      <table>
+        <tr><th>רצף חוזר</th><th>מרחקים בין הופעות</th></tr>
+        <tr><td>YBN</td><td>8</td></tr>
+        <tr><td>AZU</td><td>48</td></tr>
+        <tr><td>VRA</td><td>8, 24, 32</td></tr>
+      </table>
+      <p>אם אותו רצף הופיע במרחק 24, ייתכן שאורך המפתח מחלק את 24.</p>
+    </section>
+
+    <section class="slide">
+      <h2>בדיקת הבנה: גורמים</h2>
+      <p>נמצא רצף שחוזר במרחק 24. אילו אורכי מפתח אפשריים?</p>
+      <div class="quiz multi" data-answers="0,1,2">
+        <button class="option">3</button>
+        <button class="option">4</button>
+        <button class="option">6</button>
+        <button class="option">5</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 3: דירוג אורכי מפתח</h2>
+      <p>סופרים אילו גורמים חוזרים הכי הרבה.</p>
+      <table>
+        <tr><th>אורך מפתח אפשרי</th><th>כמה פעמים הופיע</th></tr>
+        <tr><td>8</td><td>5</td></tr>
+        <tr><td>4</td><td>5</td></tr>
+        <tr><td>2</td><td>5</td></tr>
+        <tr><td>3</td><td>2</td></tr>
+        <tr><td>6</td><td>2</td></tr>
+      </table>
+      <p>המועמדים החזקים ביותר: 8, 4, 2.</p>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 4: חלוקה לעמודות</h2>
+      <p>נניח שאורך המפתח הוא 4:</p>
+      <pre>ABCDEFGHIJKLMNOPQRSTUVWXYZ</pre>
+      <table>
+        <tr><th>1</th><th>2</th><th>3</th><th>4</th></tr>
+        <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
+        <tr><td>E</td><td>F</td><td>G</td><td>H</td></tr>
+        <tr><td>I</td><td>J</td><td>K</td><td>L</td></tr>
+        <tr><td>M</td><td>N</td><td>O</td><td>P</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h2>משימה לתלמיד</h2>
+      <p>מהן האותיות בעמודה הראשונה?</p>
+      <input id="colAnswer" placeholder="הקלד באנגלית, למשל AEIM" />
+      <button class="action-btn" onclick="checkColumn()">בדיקה</button>
+      <div id="colFeedback" class="feedback"></div>
+      <div class="box">
+        <p>מה משותף לכל אות בעמודה?</p>
+        <p>כולן הוצפנו עם אותה אות מהמפתח.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 5: ניתוח תדירויות לכל עמודה</h2>
+      <p>דוגמה לעמודה אחת:</p>
+      <pre>PAEBABANZIAHAKDXAAAKIU</pre>
+      <p>עכשיו מנסים לפענח אותה עם כל אות A-Z כאילו זו הצפנת קיסר.</p>
+      <table>
+        <tr><th>אות מפתח משוערת</th><th>ציון התאמה לאנגלית</th></tr>
+        <tr><td>A</td><td>7</td></tr>
+        <tr><td>I</td><td>6</td></tr>
+        <tr><td>N</td><td>6</td></tr>
+        <tr><td>W</td><td>5</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h2>בדיקת הבנה</h2>
+      <p>איזו אות היא המועמדת הטובה ביותר לפי הטבלה?</p>
+      <div class="quiz" data-answer="0">
+        <button class="option">A</button>
+        <button class="option">I</button>
+        <button class="option">N</button>
+        <button class="option">W</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>שלב 6: בניית מפתחות אפשריים</h2>
+      <p>נניח שמצאנו מועמדים לכל מיקום:</p>
+      <table>
+        <tr><th>מיקום במפתח</th><th>מועמדים</th></tr>
+        <tr><td>1</td><td>H, A</td></tr>
+        <tr><td>2</td><td>E, T</td></tr>
+        <tr><td>3</td><td>A, N</td></tr>
+        <tr><td>4</td><td>T, R</td></tr>
+      </table>
+      <p>המחשב מנסה את כל הצירופים: HEAT, HEAR, HENT, HENR...</p>
+    </section>
+
+    <section class="slide">
+      <h2>למה זה חוסך זמן?</h2>
+      <div class="two-col">
+        <div class="box center">
+          <h3>בלי ניתוח תדירויות</h3>
+          <pre>26⁴ = 456,976</pre>
+        </div>
+        <div class="box center">
+          <h3>עם 4 מועמדים לכל אות</h3>
+          <pre>4⁴ = 256</pre>
+        </div>
+      </div>
+      <p class="center big">הקטנו את מרחב החיפוש בצורה דרמטית.</p>
+    </section>
+
+    <section class="slide">
+      <h2>תרשים האלגוריתם</h2>
+      <div class="flow">
+        טקסט מוצפן<br>↓<br>
+        מציאת רצפים חוזרים<br>↓<br>
+        חישוב מרחקים וגורמים<br>↓<br>
+        ניחוש אורך מפתח<br>↓<br>
+        חלוקה לעמודות<br>↓<br>
+        ניתוח תדירויות לכל עמודה<br>↓<br>
+        יצירת מפתחות אפשריים<br>↓<br>
+        בדיקת טקסט אנגלי<br>↓<br>
+        פענוח
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>אתגר מסכם</h2>
+      <p>נתון:</p>
+      <pre>LXFOPVEFRNHR</pre>
+      <p>ידוע:</p>
+      <pre>אורך המפתח = 3</pre>
+      <ol>
+        <li>חלקו את הטקסט ל־3 עמודות.</li>
+        <li>נסו לנחש אות מפתח לכל עמודה.</li>
+        <li>הרכיבו מפתח.</li>
+        <li>פענחו את ההודעה.</li>
+      </ol>
+      <textarea placeholder="כתבו כאן את דרך הפתרון שלכם"></textarea>
+    </section>
+
+    <section class="slide">
+      <h2>חידון סיכום</h2>
+      <div class="quiz" data-answer="1">
+        <p>מה המטרה של אלגוריתם קסיסקי?</p>
+        <button class="option">למצוא את הטקסט המקורי ישירות</button>
+        <button class="option">למצוא אורכי מפתח אפשריים</button>
+        <button class="option">להצפין את ההודעה</button>
+        <button class="option">למחוק רווחים</button>
+        <div class="feedback"></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>סיכום</h2>
+      <div class="box">
+        <p class="big">הפריצה לצופן ויז'נר מבוססת על רעיון פשוט:</p>
+        <p class="big highlight">מוצאים את אורך המפתח, ואז הופכים את הבעיה לכמה צפני קיסר.</p>
+      </div>
+      <ul>
+        <li>קסיסקי עוזר לנחש את אורך המפתח.</li>
+        <li>חלוקה לעמודות מבודדת כל אות מפתח.</li>
+        <li>ניתוח תדירויות עוזר לבחור מועמדים טובים.</li>
+        <li>Brute Force מצומצם בודק רק מפתחות סבירים.</li>
+      </ul>
+    </section>
+
+    <div class="nav">
+      <button onclick="prevSlide()">אחורה</button>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <span id="counter"></span>
+      <button onclick="nextSlide()">קדימה</button>
+    </div>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let current = 0;
+
+    function showSlide(index) {
+      if (index < 0 || index >= slides.length) return;
+      slides[current].classList.remove('active');
+      current = index;
+      slides[current].classList.add('active');
+      document.getElementById('counter').textContent = `${current + 1} / ${slides.length}`;
+      document.getElementById('bar').style.width = `${((current + 1) / slides.length) * 100}%`;
+    }
+    function nextSlide() { showSlide(current + 1); }
+    function prevSlide() { showSlide(current - 1); }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') prevSlide();
+      if (e.key === 'ArrowLeft') nextSlide();
+    });
+
+    document.querySelectorAll('.quiz').forEach(quiz => {
+      const buttons = Array.from(quiz.querySelectorAll('.option'));
+      const feedback = quiz.querySelector('.feedback');
+      const isMulti = quiz.classList.contains('multi');
+      const answers = (quiz.dataset.answers || quiz.dataset.answer || '').split(',').map(x => Number(x));
+      let selected = new Set();
+
+      buttons.forEach((btn, idx) => {
+        btn.addEventListener('click', () => {
+          if (isMulti) {
+            if (selected.has(idx)) {
+              selected.delete(idx);
+              btn.style.background = '#1f2937';
+            } else {
+              selected.add(idx);
+              btn.style.background = '#0f766e';
+            }
+            const chosen = Array.from(selected).sort().join(',');
+            const correct = answers.slice().sort().join(',');
+            if (selected.size === answers.length) {
+              if (chosen === correct) {
+                feedback.textContent = 'נכון מאוד! כל האפשרויות האלו מחלקות את 24.';
+                feedback.className = 'feedback correct';
+              } else {
+                feedback.textContent = 'כמעט. בדקו אילו מספרים באמת מחלקים את 24 ללא שארית.';
+                feedback.className = 'feedback wrong';
+              }
+            }
+          } else {
+            if (answers.includes(idx)) {
+              feedback.textContent = 'נכון מאוד!';
+              feedback.className = 'feedback correct';
+              btn.style.background = '#16a34a';
+            } else {
+              feedback.textContent = 'לא מדויק. נסו לחשוב שוב על העיקרון.';
+              feedback.className = 'feedback wrong';
+              btn.style.background = '#dc2626';
+            }
+          }
+        });
+      });
+    });
+
+    function checkColumn() {
+      const ans = document.getElementById('colAnswer').value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+      const fb = document.getElementById('colFeedback');
+      if (ans === 'AEIM') {
+        fb.textContent = 'נכון! אלו האותיות בעמודה הראשונה.';
+        fb.className = 'feedback correct';
+      } else {
+        fb.textContent = 'בדקו שוב: קחו את האות הראשונה בכל שורה בטבלה.';
+        fb.className = 'feedback wrong';
+      }
+    }
+
+    showSlide(0);
+  </script>
+</body>
+</html>

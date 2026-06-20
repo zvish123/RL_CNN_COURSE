@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מבצע המפתח האבוד — יסודות פייתון לחוקרי צפנים</title>
+<style>
+  :root{
+    --bg-deep:#070b14;
+    --bg-panel:#0d1525;
+    --bg-card:#101b30;
+    --line:#1c2b46;
+    --neon:#39ff9f;
+    --neon-dim:#1e8a5c;
+    --cyan:#5ad8ff;
+    --amber:#ffb454;
+    --danger:#ff5d6c;
+    --text:#dce8f5;
+    --text-dim:#7d92ad;
+    --mono:'Consolas','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    height:100%;
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:'Segoe UI',Arial,sans-serif;
+    overflow:hidden;
+  }
+  body{
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(57,255,159,0.05), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(90,216,255,0.06), transparent 45%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  }
+
+  /* ===== Deck shell ===== */
+  .deck{
+    position:relative;
+    width:100%;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 30px 10px 30px;
+    border-bottom:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .case-id{
+    font-family:var(--mono);
+    color:var(--neon);
+    font-size:18px;
+    letter-spacing:1px;
+  }
+  .case-id span{color:var(--text-dim);}
+  .progress-track{
+    flex:1;
+    height:4px;
+    margin:0 24px;
+    background:var(--line);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    width:5%;
+    background:linear-gradient(90deg,var(--neon-dim),var(--neon));
+    transition:width .4s ease;
+    box-shadow:0 0 8px var(--neon);
+  }
+  .slide-counter{
+    font-family:var(--mono);
+    font-size:18px;
+    color:var(--text-dim);
+    min-width:60px;
+    text-align:left;
+  }
+
+  .stage{
+    flex:1;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .slide{
+    position:absolute;
+    inset:0;
+    display:none;
+    padding:36px 64px 30px 64px;
+    overflow-y:auto;
+  }
+  .slide.active{
+    display:block;
+    animation:fadeIn .35s ease;
+  }
+  @keyframes fadeIn{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .eyebrow{
+    font-family:var(--mono);
+    color:var(--cyan);
+    font-size:18px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:8px;height:8px;
+    background:var(--cyan);
+    border-radius:50%;
+    box-shadow:0 0 8px var(--cyan);
+  }
+  h1{
+    font-size:2.4em;
+    margin:0 0 4px 0;
+    color:#fff;
+    letter-spacing:.5px;
+  }
+  h1 .accent{color:var(--neon);}
+  h2{
+    font-size:1.5em;
+    color:var(--text-dim);
+    margin:0 0 24px 0;
+    font-weight:400;
+  }
+  h3{
+    color:var(--cyan);
+    font-size:1.15em;
+    margin:0 0 12px 0;
+  }
+
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:22px;
+    margin-top:18px;
+  }
+  .grid3{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:18px;
+    margin-top:18px;
+  }
+
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px 22px;
+    margin:14px 0;
+    position:relative;
+  }
+  .card.brief{
+    border-right:4px solid var(--amber);
+  }
+  .card.brief::before{
+    content:"📋 תדרוך";
+    position:absolute;
+    top:-11px;
+    right:16px;
+    background:var(--bg-deep);
+    color:var(--amber);
+    font-size:18px;
+    padding:0 8px;
+    font-family:var(--mono);
+    letter-spacing:1px;
+  }
+  .card.note{
+    border-right:4px solid var(--cyan);
+  }
+  .card.note::before{
+    content:"🛠 כלי החוקר";
+    position:absolute;
+    top:-11px;
+    right:16px;
+    background:var(--bg-deep);
+    color:var(--cyan);
+    font-size:18px;
+    padding:0 8px;
+    font-family:var(--mono);
+    letter-spacing:1px;
+  }
+  .card.task{
+    border-right:4px solid var(--neon);
+    background:linear-gradient(135deg, rgba(57,255,159,0.04), var(--bg-card));
+  }
+  .card.task::before{
+    content:"🎯 משימת השדה";
+    position:absolute;
+    top:-11px;
+    right:16px;
+    background:var(--bg-deep);
+    color:var(--neon);
+    font-size:18px;
+    padding:0 8px;
+    font-family:var(--mono);
+    letter-spacing:1px;
+  }
+  .card.warn{
+    border-right:4px solid var(--danger);
+  }
+  .card.warn::before{
+    content:"⚠ אזהרת שדה";
+    position:absolute;
+    top:-11px;
+    right:16px;
+    background:var(--bg-deep);
+    color:var(--danger);
+    font-size:18px;
+    padding:0 8px;
+    font-family:var(--mono);
+    letter-spacing:1px;
+  }
+
+  p{line-height:1.7; margin:0 0 10px 0;}
+
+  code,pre{
+    font-family:var(--mono);
+    background:#070d18;
+    color:var(--neon);
+    border:1px solid var(--line);
+    border-radius:8px;
+  }
+  pre{
+    padding:16px 18px;
+    margin:12px 0;
+    overflow-x:auto;
+    font-size:1.2em;
+    line-height:1.55;
+    direction:ltr;
+    text-align:left;
+  }
+  pre .kw{color:var(--cyan);}
+  pre .str{color:var(--amber);}
+  pre .num{color:#ff9ad1;}
+  pre .com{color:var(--text-dim); font-style:italic;}
+  pre .fn{color:#c9a9ff;}
+  code.inline{
+    padding:2px 7px;
+    font-size:1.2em;
+    direction:ltr;
+    display:inline-block;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0;
+    font-size:1.2em;
+  }
+  th,td{
+    border:1px solid var(--line);
+    padding:9px 12px;
+    text-align:right;
+  }
+  th{
+    background:#13213a;
+    color:var(--cyan);
+    font-family:var(--mono);
+    font-size:1.2em;
+    letter-spacing:0.5px;
+  }
+  td code{padding:1px 6px; font-size:1.2em;}
+  tr:hover td{background:#0f1a2e;}
+
+  ul.clean{
+    margin:8px 0;
+    padding-right:22px;
+  }
+  ul.clean li{
+    margin-bottom:8px;
+    line-height:1.6;
+  }
+
+  .reveal-btn{
+    margin-top:10px;
+    background:transparent;
+    border:1px solid var(--neon-dim);
+    color:var(--neon);
+    padding:9px 18px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:1.2em;
+    font-family:inherit;
+    transition:.2s;
+  }
+  .reveal-btn:hover{
+    background:rgba(57,255,159,0.1);
+    box-shadow:0 0 10px rgba(57,255,159,0.25);
+  }
+  .theory{
+    display:none;
+    margin-top:12px;
+    padding:16px 18px;
+    background:#0c1626;
+    border-right:4px solid var(--neon-dim);
+    border-radius:0 8px 8px 0;
+    line-height:1.65;
+  }
+  .theory.show{display:block; animation:fadeIn .3s ease;}
+
+  /* quiz */
+  .quiz-card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px;
+    margin-top:14px;
+  }
+  .quiz-q{
+    font-size:1.05em;
+    margin-bottom:14px;
+    color:#fff;
+  }
+  .quiz-opts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .opt{
+    background:#0c1626;
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:12px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    text-align:right;
+    font-size:1.2em;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--cyan);}
+  .opt.correct{
+    background:rgba(57,255,159,0.12);
+    border-color:var(--neon);
+    color:var(--neon);
+  }
+  .opt.wrong{
+    background:rgba(255,93,108,0.1);
+    border-color:var(--danger);
+    color:var(--danger);
+  }
+
+  .badge{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:18px;
+    padding:3px 9px;
+    border-radius:20px;
+    border:1px solid currentColor;
+    margin-left:8px;
+  }
+  .badge.str{color:var(--amber);}
+  .badge.num{color:var(--cyan);}
+  .badge.bool{color:#ff9ad1;}
+  .badge.coll{color:#c9a9ff;}
+
+  /* title slide */
+  .title-slide{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .title-slide .glyphs{
+    font-family:var(--mono);
+    font-size:18px;
+    color:var(--neon-dim);
+    letter-spacing:6px;
+    margin-bottom:18px;
+    opacity:.8;
+  }
+  .title-slide h1{
+    font-size:3em;
+    margin-bottom:10px;
+  }
+  .title-slide .sub{
+    color:var(--text-dim);
+    font-size:1.2em;
+    margin-bottom:30px;
+  }
+  .title-slide .keyfile{
+    font-family:var(--mono);
+    background:var(--bg-card);
+    border:1px solid var(--neon-dim);
+    border-radius:10px;
+    padding:18px 34px;
+    color:var(--neon);
+    font-size:1.1em;
+    direction:ltr;
+  }
+
+  /* summary slide */
+  .summary-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-top:20px;
+  }
+  .summary-item{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .summary-item .num{
+    font-family:var(--mono);
+    color:var(--neon);
+    font-size:1.4em;
+    font-weight:bold;
+  }
+
+  /* nav */
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    padding:14px;
+    border-top:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .nav button{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 22px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:1.2em;
+    font-family:inherit;
+    transition:.2s;
+  }
+  .nav button:hover:not(:disabled){
+    border-color:var(--neon);
+    color:var(--neon);
+  }
+  .nav button:disabled{
+    opacity:0.3;
+    cursor:default;
+  }
+  .nav .dots{
+    display:flex;
+    gap:5px;
+    margin:0 10px;
+  }
+  .dot{
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--line);
+    cursor:pointer;
+  }
+  .dot.active{
+    background:var(--neon);
+    box-shadow:0 0 6px var(--neon);
+  }
+
+  .small-note{
+    font-size:1.2em;
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-track{background:var(--bg-deep);}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <div class="topbar">
+    <div class="case-id">תיק <span>#KEYS-1204</span> &nbsp;|&nbsp; מבצע המפתח האבוד</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="slide-counter" id="slideCounter">1 / 17</div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- 0: TITLE -->
+    <div class="slide active">
+      <div class="title-slide">
+        <div class="glyphs">K H O O R &nbsp; D J H Q W V &nbsp; → &nbsp; ? ? ? ? ?</div>
+        <h1>מבצע <span style="color:var(--neon)">המפתח האבוד</span></h1>
+        <div class="sub">יסודות תכנות בפייתון — דרך חקירת הודעה מוצפנת</div>
+        <div class="keyfile">case_file.py &nbsp;|&nbsp; status: <span style="color:var(--amber)">OPEN</span></div>
+      </div>
+    </div>
+
+    <!-- 1: האירוע -->
+    <div class="slide">
+      <div class="eyebrow">פתיחת תיק</div>
+      <h1>אירוע <span class="accent">הסייבר</span></h1>
+      <h2>הודעה מוזרה נתפסה ברשת</h2>
+      <pre>KHOOR DJHQWV</pre>
+      <div class="card brief">
+        <p>צוות החוקרים נדרש לבנות, צעד אחר צעד, כלי תכנותי שיעזור לפענח הודעות כאלה. השלב הראשון: להבין איך מחשב בכלל "קורא" טקסט, ולבנות את הכלים הבסיסיים שבלעדיהם אין מה לחקור.</p>
+      </div>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p>מחשב לא "מבין" אותיות — הוא מייצג כל אות באמצעות מספר (קוד). הצפנה היא בעצם פעולה מתמטית על המספרים האלה. כדי לבנות כלי פענוח, נצטרך שפת תכנות שמסוגלת לאחסן ערכים, לבצע עליהם פעולות, ולקבל קלט מהחוקר.</p>
+      </div>
+    </div>
+
+    <!-- 2: תחנת העבודה - PyCharm -->
+    <div class="slide">
+      <div class="eyebrow">ציוד שדה</div>
+      <h1>תחנת החקירה: <span class="accent">PyCharm</span></h1>
+      <h2>כל חוקר זקוק לחדר עבודה</h2>
+      <div class="grid2">
+        <div>
+          <div class="card note">
+            <h3>בניית פרויקט חדש</h3>
+            <ul class="clean">
+              <li>פותחים <strong>New Project</strong> ובוחרים תיקיית עבודה.</li>
+              <li>PyCharm יוצר עבורנו קובץ <code class="inline">main.py</code> ראשוני.</li>
+              <li>שורת הערה (הסבר לעצמנו, לא קוד) מתחילה ב־<code class="inline">#</code>.</li>
+            </ul>
+          </div>
+<!--          <div class="card note">-->
+<!--            <h3>בניית פונקציה</h3>-->
+<!--            <p>פונקציה היא "כלי" שאפשר להפעיל שוב ושוב. היא מתחילה במילה <code class="inline">def</code>, לאחריה שם הפעולה, ולאחר מכן בסוגריים — הפרמטרים שהפעולה מקבלת.</p>-->
+<!--          </div>-->
+        </div>
+        <div>
+          <pre><span class="com"># This is a sample Python script.</span>
+<span class="com"># Press Shift+F10 to execute it.</span>
+print(<span class="str">'PyCharm'</span>)
+<span class="com"># פלט בריצה:</span>
+<span class="com"># PyCharm</span></pre>
+        </div>
+      </div>
+<!--      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>-->
+<!--      <div class="theory">-->
+<!--        <p>שימו לב לבניית המחרוזת <code class="inline">f'Hi, {name}'</code> — היא משלבת טקסט קבוע ("Hi, ") עם מרכיב משתנה (<code class="inline">{name}</code>). זו טכניקה שנשתמש בה רבות בעת ניתוח הודעות מוצפנות, כשנרצה להציג גם טקסט הסבר וגם תוצאה משתנה.</p>-->
+<!--      </div>-->
+    </div>
+
+    <!-- 3: משתנים -->
+    <div class="slide">
+      <div class="eyebrow">יסוד ראשון</div>
+      <h1>משתנים</h1>
+      <h2>המקום שבו שומרים את ראיות התיק</h2>
+      <pre>message = <span class="str">"KHOOR"</span>
+key = <span class="num">3</span></pre>
+      <div class="card brief">
+        <p><code class="inline">message</code> שומר את ההודעה החשודה; <code class="inline">key</code> שומר את המפתח שבעזרתו ננסה לפענח אותה.</p>
+      </div>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p>משתנה הוא מקום בזיכרון בעל שם, המאפשר לשמור, לעדכן ולקרוא מידע במהלך התוכנית — בדיוק כמו תיקיית ראיות עם תווית.</p>
+      </div>
+    </div>
+
+    <!-- 4: חוקי שמות משתנים -->
+    <div class="slide">
+      <div class="eyebrow">פרוטוקול תיוג</div>
+      <h1>חוקי שמות <span class="accent">משתנים</span></h1>
+      <h2>תיוג ראיות לא תקין = ראיה פסולה</h2>
+      <div class="grid2">
+        <div class="card" style="border-right:4px solid var(--neon);">
+          <h3 style="color:var(--neon);">✓ מותר</h3>
+          <ul class="clean">
+            <li>מתחיל באות או בקו תחתי <code class="inline">_</code></li>
+            <li>מכיל אותיות, ספרות וקו תחתי</li>
+            <li><code class="inline">cipher_key</code>, <code class="inline">message1</code>, <code class="inline">_temp</code></li>
+          </ul>
+        </div>
+        <div class="card" style="border-right:4px solid var(--danger);">
+          <h3 style="color:var(--danger);">✗ אסור</h3>
+          <ul class="clean">
+            <li>לא מתחילים בספרה: <code class="inline">1key</code> ✗</li>
+            <li>אין תווים מיוחדים (חוץ מ־<code class="inline">_</code>): <code class="inline">key-1</code> ✗</li>
+            <li>לא משתמשים במילות מפתח שמורות: <code class="inline">print</code>, <code class="inline">if</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="small-note">פייתון רגיש לאותיות גדולות/קטנות: <code class="inline">Key</code> ו־<code class="inline">key</code> הם שני משתנים שונים — טעות נפוצה שמטשטשת חקירות.</div>
+    </div>
+
+    <!-- 5: סוגי נתונים -->
+    <div class="slide">
+      <div class="eyebrow">סיווג ראיות</div>
+      <h1>סוגי <span class="accent">נתונים</span></h1>
+      <h2>כל ראיה צריכה תיק מתאים</h2>
+      <table>
+        <tr><th>סוג</th><th>תיאור בחקירה</th><th>דוגמה</th></tr>
+        <tr><td><code>str</code> <span class="badge str">טקסט</span></td><td>ההודעה המוצפנת עצמה</td><td><code>message = "KHOOR"</code></td></tr>
+        <tr><td><code>int</code> <span class="badge num">מספר שלם</span></td><td>המפתח (כמה תווים להזיז)</td><td><code>key = 3</code></td></tr>
+        <tr><td><code>float</code> <span class="badge num">מספר עשרוני</span></td><td>אחוז הצלחת פענוח</td><td><code>score = 87.5</code></td></tr>
+        <tr><td><code>bool</code> <span class="badge bool">אמת/שקר</span></td><td>הצלחת הפענוח</td><td><code>solved = True</code></td></tr>
+        <tr><td><code>list</code> <span class="badge coll">רשימה</span></td><td>אוסף תווים/ניחושי מפתח</td><td><code>guesses = [1, 3, 5]</code></td></tr>
+        <tr><td><code>dict</code> <span class="badge coll">מילון</span></td><td>טבלת התאמה אות→ערך</td><td><code>map = {"a": 1, "b": 2}</code></td></tr>
+      </table>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p>טיפוס הנתונים קובע אילו פעולות אפשר לבצע על המידע: אפשר "לחבר" שני מספרים, אבל חיבור של מספר ומחרוזת ייצור שגיאה — אלא אם נמיר טיפוסים במכוון (נרחיב בהמשך).</p>
+      </div>
+    </div>
+
+    <!-- 6: ביטויים ואופרטורים -->
+    <div class="slide">
+      <div class="eyebrow">כלי ניתוח</div>
+      <h1>ביטויים <span class="accent">ואופרטורים</span></h1>
+      <h2>הדרך לחשב הסטת אותיות</h2>
+      <pre>new_position = old_position + key</pre>
+      <div class="card brief">
+        <p>ביטוי הוא שילוב של ערכים (<em>operands</em>) ואופרטורים שמייצר תוצאה חדשה — כאן: מיקום האות המקורית בתוספת המפתח, נותן את מיקום האות המוצפנת.</p>
+      </div>
+      <h3 style="margin-top:20px;">אופרטורים לוגיים שכל חוקר צריך</h3>
+      <table>
+        <tr><th>אופרטור</th><th>משמעות</th><th>דוגמה</th><th>תוצאה</th></tr>
+        <tr><td><code>and</code></td><td>וגם</td><td><code>(5&lt;2) and (5&gt;3)</code></td><td>False</td></tr>
+        <tr><td><code>or</code></td><td>או</td><td><code>(5&lt;2) or (5&gt;3)</code></td><td>True</td></tr>
+        <tr><td><code>not</code></td><td>שלילה</td><td><code>not (5&lt;2)</code></td><td>True</td></tr>
+        <tr><td><code>==</code></td><td>שווה ל</td><td><code>3 == 3</code></td><td>True</td></tr>
+        <tr><td><code>!=</code></td><td>לא שווה ל</td><td><code>3 != 3</code></td><td>False</td></tr>
+        <tr><td><code>//</code></td><td>חילוק שלם</td><td><code>5 // 2</code></td><td>2</td></tr>
+      </table>
+    </div>
+
+    <!-- 7: קלט -->
+    <div class="slide">
+      <div class="eyebrow">איסוף מודיעין</div>
+      <h1>קלט <span class="accent">(input)</span></h1>
+      <h2>החוקר מזין מידע למערכת</h2>
+      <pre>x = input([prompt])
+
+message = input(<span class="str">"Enter message: "</span>)
+key = input(<span class="str">"Enter key: "</span>)</pre>
+      <div class="grid2">
+        <div class="card note">
+          <h3>תהליך הקלט</h3>
+          <p>המשתמש מקליד במקלדת → <code class="inline">input()</code> קולט את התווים → התוכנית מעבדת → <code class="inline">print()</code> מציג תוצאה למסך.</p>
+        </div>
+        <div class="card brief">
+          <p>שימו לב: <code class="inline">input()</code> מחזיר <strong>תמיד</strong> טקסט (<code class="inline">str</code>) — גם אם החוקר הקליד מספר!</p>
+        </div>
+      </div>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p><code class="inline">input</code> עוצר את התוכנית ומחכה למידע מהמשתמש. עד שהוא לא מקבל קלט (ולוחץ Enter), שום שורת קוד אחרי לא תתבצע — ממש כמו לעמוד בנקודת בידוק ולהמתין לתשובת החוקר.</p>
+      </div>
+    </div>
+
+    <!-- 8: המרת טיפוסים -->
+    <div class="slide">
+      <div class="eyebrow">עיבוד ראיה</div>
+      <h1>המרת <span class="accent">טיפוסים</span></h1>
+      <h2>מטקסט למספר שאפשר לחשב איתו</h2>
+      <pre>key = <span class="kw">int</span>(input(<span class="str">"Enter key: "</span>))
+balance = <span class="kw">float</span>(input(<span class="str">"Enter score: "</span>))</pre>
+      <div class="card warn">
+        <p>אם ננסה לחשב <code class="inline">key + 1</code> בלי להמיר את הקלט ל־<code class="inline">int</code>, פייתון תזרוק שגיאה — כי <code class="inline">"3"</code> (טקסט) ו־<code class="inline">1</code> (מספר) הם טיפוסים שלא ניתן לחבר ישירות.</p>
+      </div>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p>מכיוון ש־<code class="inline">input</code> מחזיר מחרוזת, ולעבודה עם מפתח הצפנה אנחנו צריכים מספר שלם, נדרשת המרה מפורשת באמצעות <code class="inline">int()</code>. דפוס דומה קיים גם להמרה למספר עשרוני (<code class="inline">float()</code>) או חזרה לטקסט (<code class="inline">str()</code>).</p>
+      </div>
+    </div>
+
+    <!-- 9: פלט -->
+    <div class="slide">
+      <div class="eyebrow">דיווח ממצאים</div>
+      <h1>פלט <span class="accent">(print)</span></h1>
+      <h2>מציגים את תוצאות החקירה</h2>
+      <pre>print(*objects, sep=<span class="str">' '</span>, end=<span class="str">'\n'</span>)
+
+print(<span class="str">"Hello"</span>, <span class="str">"world"</span>, <span class="str">"!"</span>)
+<span class="com"># Hello world !</span>
+
+print(<span class="str">"Hello"</span>, <span class="str">"world"</span>, sep=<span class="str">"-"</span>, end=<span class="str">""</span>)
+print(<span class="str">"!"</span>)
+<span class="com"># Hello-world!</span>
+
+name = <span class="str">"avi"</span>; age = <span class="num">18</span>
+print(f<span class="str">"{name} age is {age}"</span>)
+<span class="com"># avi age is 18</span></pre>
+      <div class="card brief">
+        <p><code class="inline">print</code> מציג מידע למסך, ומשמש גם כ"דוח שטח" לדיבוג — לבדוק בזמן אמת מה הערך של משתנה.</p>
+      </div>
+    </div>
+
+    <!-- 10: משימת החוקר -->
+    <div class="slide">
+      <div class="eyebrow">תרגיל בית הספר</div>
+      <h1>משימת <span class="accent">החוקר</span></h1>
+      <h2>חיברו את כל הכלים לתוכנית אחת</h2>
+      <pre>message = input(<span class="str">"Message: "</span>)
+key = <span class="kw">int</span>(input(<span class="str">"Key: "</span>))
+
+print(message)
+print(key)</pre>
+      <div class="card task">
+        <p>כתבו תוכנית שמקבלת הודעה ומפתח מהחוקר, ומדפיסה אותם בחזרה כדי לוודא שהקלט נקלט נכון לפני שמתחילים בפענוח בפועל.</p>
+      </div>
+    </div>
+
+    <!-- 11: תא חקירה 1 — מרחק בין תאים -->
+    <div class="slide">
+      <div class="eyebrow">תא חקירה #1</div>
+      <h1>מרחק בין <span class="accent">שתי נקודות ציתות</span></h1>
+      <h2>מיקום על מפת הרשת</h2>
+      <div class="card task">
+        <p>שני אנטנות ציתות ממוקמות ברשת קואורדינטות: <code class="inline">(x1, y1)</code> ו־<code class="inline">(x2, y2)</code>. כדי לדעת אם הן בטווח תקשורת, יש לחשב את המרחק בין הנקודות.</p>
+      </div>
+      <pre>x1, y1, x2, y2 = <span class="num">1</span>, <span class="num">2</span>, <span class="num">4</span>, <span class="num">6</span>
+distance = ((x2 - x1)**<span class="num">2</span> + (y2 - y1)**<span class="num">2</span>) ** <span class="num">0.5</span>
+print(distance)
+<span class="com"># 5.0</span></pre>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 פתרון מלא</button>
+      <div class="theory">
+        <p>זהו ביישום ישיר של נוסחת המרחק האוקלידי. שימו לב לסדר פעולות החשבון: קודם הסוגריים, אחר כך החזקה (<code class="inline">**</code>), ולבסוף החיבור והשורש — בדיוק כמו תרגיל ה־PRACTICE המקורי, רק שכאן "המרחק" קובע אם שתי אנטנות ציתות יכולות "לדבר" זו עם זו.</p>
+      </div>
+    </div>
+
+    <!-- 12: תא חקירה 2 — ממוצע קודי תווים -->
+    <div class="slide">
+      <div class="eyebrow">תא חקירה #2</div>
+      <h1>ממוצע <span class="accent">קודי התווים</span></h1>
+      <h2>מדד לזיהוי דפוס הצפנה</h2>
+      <div class="card task">
+        <p>חוקרים מסוימים בודקים את הממוצע של קודי ה־ASCII באות הראשונה והאחרונה של ההודעה, כדי לזהות חשד ראשוני לסוג הצפנה.</p>
+      </div>
+      <pre>code1 = <span class="kw">int</span>(input(<span class="str">"Enter ASCII code 1: "</span>))
+code2 = <span class="kw">int</span>(input(<span class="str">"Enter ASCII code 2: "</span>))
+avg = (code1 + code2) / <span class="num">2</span>
+print(avg)</pre>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 פתרון מלא</button>
+      <div class="theory">
+        <p>המבנה זהה לתרגיל ה־PRACTICE המקורי (<code class="inline">avg = (num1+num2)/2</code>) — רק ההקשר השתנה. זו נקודה מרכזית בתכנות: אותו דפוס לוגי (קליטת שני ערכים, חישוב ממוצע, הדפסה) משמש בעולמות תוכן שונים לחלוטין.</p>
+      </div>
+    </div>
+
+    <!-- 13: תא חקירה 3 — תקציב מפתחות -->
+    <div class="slide">
+      <div class="eyebrow">תא חקירה #3</div>
+      <h1>תקציב <span class="accent">מפתחות הסטה</span></h1>
+      <h2>ניצול תקציב ניחושים</h2>
+      <div class="card task">
+        <p>לחוקר יש תקציב חישובי של <strong>101</strong> "נקודות ניסיון". כל ניסיון הסטה בודדת (Caesar shift) עולה <strong>7.5</strong> נקודות, וכל ניסיון התאמת תדירויות עולה <strong>8.2</strong> נקודות. אם ביצע 5 ניסיונות הסטה ו־6 ניסיונות התאמת תדירויות — כמה נקודות נשארו לו?</p>
+      </div>
+      <pre>shift_tries = <span class="num">5</span>; shift_cost = <span class="num">7.5</span>
+freq_tries = <span class="num">6</span>; freq_cost = <span class="num">8.2</span>
+
+remaining = <span class="num">101</span> - (shift_tries * shift_cost + freq_tries * freq_cost)
+print(remaining)</pre>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 פתרון מלא</button>
+      <div class="theory">
+        <p>חישוב ישיר: 5×7.5 + 6×8.2 = 37.5 + 49.2 = 86.7, ולכן 101 - 86.7 = <strong>14.3</strong> נקודות נשארות. בתרגיל ה־PRACTICE המקורי נוצל כל התקציב בדיוק (5 אגסים + 8 תפוחים = 0 עודף) — נסו למצוא שילוב ניסיונות שמנצל את כל 101 הנקודות בדיוק!</p>
+      </div>
+    </div>
+
+    <!-- 14: תרגול ידע - quiz -->
+    <div class="slide">
+      <div class="eyebrow">בוחן שדה</div>
+      <h1>בדיקת <span class="accent">מוכנות</span></h1>
+      <h2>לפני שממשיכים — האם הכלים ברורים?</h2>
+      <div class="quiz-card">
+        <div class="quiz-q">מה תדפיס התוכנית הבאה?</div>
+        <pre>key = <span class="str">"3"</span>
+print(key + <span class="num">1</span>)</pre>
+        <div class="quiz-opts" id="quizOpts">
+          <div class="opt" data-correct="false">31</div>
+          <div class="opt" data-correct="true">שגיאה — TypeError</div>
+          <div class="opt" data-correct="false">4</div>
+          <div class="opt" data-correct="false">"3" 1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 15: טעויות נפוצות -->
+    <div class="slide">
+      <div class="eyebrow">תיק כשלים</div>
+      <h1>טעויות <span class="accent">נפוצות בשדה</span></h1>
+      <h2>כל חוקר מנוסה נכשל בהן בעבר</h2>
+      <div class="grid2">
+        <div class="card warn">
+          <h3 style="color:var(--danger);">שכחת int()</h3>
+          <p>ניסיון לחשב על קלט גולמי מ־<code class="inline">input</code> בלי המרה — גורם לשגיאת טיפוס.</p>
+        </div>
+        <div class="card warn">
+          <h3 style="color:var(--danger);">שם משתנה לא תקין</h3>
+          <p>שמות שמתחילים בספרה, או שימוש במילים שמורות כמו <code class="inline">print</code> כשם משתנה.</p>
+        </div>
+        <div class="card warn">
+          <h3 style="color:var(--danger);">ערבוב טיפוסים</h3>
+          <p>חיבור מחרוזת ומספר ישירות, או חילוק שמחזיר תוצאה לא צפויה (<code class="inline">/</code> מול <code class="inline">//</code>).</p>
+        </div>
+        <div class="card warn">
+          <h3 style="color:var(--danger);">שגיאת print</h3>
+          <p>שכחת מירכאות, סוגריים לא סגורים, או בלבול בין <code class="inline">sep</code> ל־<code class="inline">end</code>.</p>
+        </div>
+      </div>
+      <button class="reveal-btn" onclick="toggleTheory(this)">🔍 הרחבת חקירה</button>
+      <div class="theory">
+        <p>טעויות הן חלק בלתי נפרד מתהליך הלמידה והדיבוג — חוקר טוב לא נכנע לשגיאה הראשונה, אלא קורא את הודעת השגיאה ומתחיל לחקור אותה.</p>
+      </div>
+    </div>
+
+    <!-- 16: SUMMARY -->
+    <div class="slide">
+      <div class="eyebrow">סגירת תיק</div>
+      <h1>סיכום <span class="accent">החקירה</span></h1>
+      <h2>הכלים שעומדים כעת ברשות הצוות</h2>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="num">01</div><div><strong>תחנת עבודה</strong><br>פרויקט ב־PyCharm, מבנה פונקציה עם <code class="inline">def</code></div></div>
+        <div class="summary-item"><div class="num">02</div><div><strong>משתנים</strong><br>אחסון ראיות לפי שם תקין</div></div>
+        <div class="summary-item"><div class="num">03</div><div><strong>סוגי נתונים</strong><br>str, int, float, bool, list, dict</div></div>
+        <div class="summary-item"><div class="num">04</div><div><strong>ביטויים ואופרטורים</strong><br>חישוב, השוואה ולוגיקה</div></div>
+        <div class="summary-item"><div class="num">05</div><div><strong>קלט ופלט</strong><br><code class="inline">input</code>, <code class="inline">print</code>, המרת טיפוסים</div></div>
+        <div class="summary-item"><div class="num">06</div><div><strong>דיבוג</strong><br>זיהוי וטיפול בטעויות נפוצות</div></div>
+      </div>
+      <div class="card brief" style="margin-top:24px;">
+        <p>בשיעור הבא: בונים את צופן קיסר הראשון שלנו — ומשתמשים בכל הכלים האלה כדי לפענח את ההודעה <code class="inline">KHOOR DJHQWV</code> בעצמנו.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="nav">
+    <button id="prevBtn" onclick="prevSlide()">▶ הקודם</button>
+    <div class="dots" id="dots"></div>
+    <button id="nextBtn" onclick="nextSlide()">הבא ◀</button>
+  </div>
+</div>
+
+<script>
+let current = 0;
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+const dotsContainer = document.getElementById('dots');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const progressFill = document.getElementById('progressFill');
+const slideCounter = document.getElementById('slideCounter');
+
+for(let i=0;i<total;i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotsContainer.appendChild(d);
+}
+const dots = document.querySelectorAll('.dot');
+
+function updateUI(){
+  slides.forEach((s,i)=>s.classList.toggle('active', i===current));
+  dots.forEach((d,i)=>d.classList.toggle('active', i===current));
+  prevBtn.disabled = current===0;
+  nextBtn.disabled = current===total-1;
+  progressFill.style.width = ((current+1)/total*100) + '%';
+  slideCounter.textContent = (current+1) + ' / ' + total;
+}
+
+function goTo(i){
+  current = i;
+  updateUI();
+}
+function nextSlide(){
+  if(current < total-1){ current++; updateUI(); }
+}
+function prevSlide(){
+  if(current > 0){ current--; updateUI(); }
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowLeft') nextSlide();
+  if(e.key === 'ArrowRight') prevSlide();
+});
+
+function toggleTheory(btn){
+  const theory = btn.nextElementSibling;
+  theory.classList.toggle('show');
+}
+
+// quiz logic (randomized correct-answer position already baked into markup order;
+// shuffle on load for true randomization)
+function shuffleQuiz(){
+  const container = document.getElementById('quizOpts');
+  if(!container) return;
+  const opts = Array.from(container.children);
+  for(let i=opts.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    container.insertBefore(opts[j], opts[i].nextSibling);
+  }
+  container.querySelectorAll('.opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      const isCorrect = opt.dataset.correct === 'true';
+      container.querySelectorAll('.opt').forEach(o=>{
+        o.style.pointerEvents='none';
+        if(o.dataset.correct==='true') o.classList.add('correct');
+        else if(o===opt) o.classList.add('wrong');
+      });
+    });
+  });
+}
+shuffleQuiz();
+updateUI();
+</script>
+
+</body>
+</html>

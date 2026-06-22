@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>הביטחון של RSA - מצגת אינטראקטיבית לתלמידי סייבר</title>
+<style>
+  :root{
+    --bg:#07111f;
+    --panel:#0d1c33;
+    --panel2:#102947;
+    --text:#edf7ff;
+    --muted:#a8c3d9;
+    --accent:#00e5ff;
+    --accent2:#8b5cf6;
+    --good:#22c55e;
+    --bad:#ef4444;
+    --warn:#f59e0b;
+    --line:rgba(255,255,255,.13);
+    --shadow:0 24px 70px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(0,229,255,.17), transparent 30%),
+      radial-gradient(circle at 80% 5%, rgba(139,92,246,.22), transparent 28%),
+      linear-gradient(135deg,#050a14 0%,#07111f 45%,#0b1022 100%);
+    color:var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    overflow:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size:44px 44px;
+    mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), rgba(0,0,0,.2));
+    pointer-events:none;
+  }
+  .deck{height:100vh; position:relative;}
+  .slide{
+    position:absolute; inset:0;
+    padding:54px 72px 86px;
+    display:none;
+    animation:fade .35s ease;
+  }
+  .slide.active{display:flex; flex-direction:column;}
+  @keyframes fade{from{opacity:.1; transform:translateY(12px)} to{opacity:1; transform:translateY(0)}}
+  h1,h2,h3{margin:0}
+  h1{font-size:62px; line-height:1.05; letter-spacing:-1px;}
+  h2{font-size:42px; margin-bottom:20px;}
+  h3{font-size:27px; color:#dff8ff; margin-bottom:10px;}
+  p,li{font-size:22px; line-height:1.55; color:var(--muted);}
+  .lead{font-size:28px; color:#dcefff; max-width:980px;}
+  .grid{display:grid; gap:20px;}
+  .two{grid-template-columns:1.1fr .9fr; align-items:center;}
+  .three{grid-template-columns:repeat(3,1fr);}
+  .card{
+    background:linear-gradient(180deg, rgba(16,41,71,.88), rgba(13,28,51,.9));
+    border:1px solid var(--line);
+    border-radius:26px;
+    padding:24px;
+    box-shadow:var(--shadow);
+  }
+  .glass{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.15);
+    backdrop-filter:blur(12px);
+  }
+  .bigFormula{
+    direction:ltr;
+    font-size:54px;
+    text-align:center;
+    padding:28px;
+    border-radius:24px;
+    background:rgba(0,229,255,.08);
+    border:1px solid rgba(0,229,255,.24);
+    box-shadow:0 0 40px rgba(0,229,255,.13) inset;
+  }
+  .btn{
+    border:0;
+    background:linear-gradient(135deg,var(--accent),#3b82f6);
+    color:#00111c;
+    font-weight:800;
+    font-size:19px;
+    padding:13px 20px;
+    border-radius:16px;
+    cursor:pointer;
+    box-shadow:0 12px 30px rgba(0,229,255,.2);
+    transition:.15s;
+    margin:6px;
+  }
+  .btn:hover{transform:translateY(-2px); filter:brightness(1.08)}
+  .btn.secondary{background:rgba(255,255,255,.1); color:var(--text); border:1px solid var(--line); box-shadow:none}
+  .btn.danger{background:linear-gradient(135deg,#fb7185,#ef4444); color:white}
+  .btn.good{background:linear-gradient(135deg,#86efac,#22c55e); color:#052e16}
+  input, textarea, select{
+    background:#061225;
+    border:1px solid rgba(255,255,255,.22);
+    color:var(--text);
+    border-radius:14px;
+    padding:13px 14px;
+    font-size:20px;
+    outline:none;
+    width:100%;
+  }
+  .nav{
+    position:fixed; bottom:20px; right:0; left:0;
+    display:flex; align-items:center; justify-content:center; gap:16px; z-index:5;
+  }
+  .nav button{min-width:124px}
+  .counter{
+    font-size:18px; color:var(--muted);
+    padding:10px 16px; border:1px solid var(--line); border-radius:99px; background:rgba(0,0,0,.22)
+  }
+  .progress{
+    position:fixed; top:0; right:0; height:6px; background:linear-gradient(90deg,var(--accent),var(--accent2)); z-index:7; transition:.2s;
+  }
+  .tag{display:inline-block; padding:8px 13px; border-radius:99px; border:1px solid rgba(0,229,255,.25); color:#c9f8ff; background:rgba(0,229,255,.08); margin:4px; font-size:17px;}
+  .mono{font-family:Consolas, "Courier New", monospace; direction:ltr; text-align:left;}
+  .terminal{
+    direction:ltr; text-align:left; font-family:Consolas,monospace; font-size:20px;
+    background:#020611; color:#d9fbff; border-radius:20px; padding:20px;
+    min-height:220px; border:1px solid rgba(0,229,255,.2); overflow:auto;
+  }
+  .numStream{direction:ltr; font-family:Consolas,monospace; font-size:26px; color:#bdf8ff; line-height:1.7}
+  .lock{
+    width:280px; height:300px; position:relative; margin:auto;
+  }
+  .lock .shackle{
+    position:absolute; width:150px; height:130px; border:22px solid var(--accent);
+    border-bottom:0; border-radius:85px 85px 0 0; right:65px; top:0;
+    box-shadow:0 0 35px rgba(0,229,255,.4);
+  }
+  .lock .body{
+    position:absolute; bottom:0; right:22px; width:236px; height:190px; border-radius:36px;
+    background:linear-gradient(135deg,#0ea5e9,#8b5cf6);
+    box-shadow:0 30px 70px rgba(0,0,0,.38), 0 0 60px rgba(0,229,255,.28);
+  }
+  .lock .keyhole{position:absolute; right:118px; bottom:70px; width:42px; height:76px; border-radius:28px; background:#05111f}
+  .split{
+    display:flex; gap:18px; flex-wrap:wrap; align-items:center; justify-content:center;
+  }
+  .chip{padding:13px 18px; border-radius:16px; background:rgba(255,255,255,.08); border:1px solid var(--line); font-size:23px;}
+  .answer{margin-top:12px; font-size:22px; min-height:34px;}
+  .goodText{color:var(--good)} .badText{color:var(--bad)} .warnText{color:var(--warn)}
+  table{width:100%; border-collapse:collapse; font-size:21px; overflow:hidden; border-radius:18px;}
+  th,td{padding:14px; border-bottom:1px solid var(--line); text-align:right}
+  th{color:#dff9ff; background:rgba(0,229,255,.08)}
+  .bar{height:20px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden;}
+  .bar span{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:1s;}
+  .hidden{display:none!important}
+  .pillLine{display:flex; gap:10px; flex-wrap:wrap}
+  .quizOption{
+    display:block; width:100%; text-align:right; margin:8px 0;
+    background:rgba(255,255,255,.08); color:var(--text); border:1px solid var(--line);
+  }
+  .quizOption.selected{outline:3px solid rgba(0,229,255,.45)}
+  .quizOption.correct{background:rgba(34,197,94,.22); border-color:rgba(34,197,94,.55)}
+  .quizOption.wrong{background:rgba(239,68,68,.2); border-color:rgba(239,68,68,.55)}
+  .mini{font-size:17px; color:#9fb8cb}
+  .timeline{display:flex; align-items:center; gap:12px; direction:ltr;}
+  .dot{width:18px;height:18px;border-radius:50%;background:var(--accent); box-shadow:0 0 18px var(--accent)}
+  .line{height:3px; flex:1; background:linear-gradient(90deg,var(--accent),rgba(139,92,246,.4))}
+  .kbd{font-family:Consolas,monospace; background:rgba(255,255,255,.12); padding:3px 8px; border-radius:8px}
+  .hintBox{border-right:5px solid var(--accent); padding:14px 18px; background:rgba(0,229,255,.06); border-radius:16px; color:#dff9ff; font-size:22px;}
+  .slideScroll{overflow-y:auto; padding-bottom:110px;}
+  .slideScroll::-webkit-scrollbar{width:10px}.slideScroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:10px}
+  .smallText p,.smallText li{font-size:19px}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck">
+
+<section class="slide active">
+  <div class="grid two" style="height:100%">
+    <div>
+      <div class="tag">סייבר • קריפטוגרפיה • RSA</div>
+      <h1>הביטחון של RSA</h1>
+      <p class="lead">למה קל להכפיל שני ראשוניים, אבל קשה מאוד למצוא אותם בחזרה?</p>
+      <div class="hintBox">מטרת השיעור: להבין את הרעיון של ביטחון חישובי, פירוק לגורמים, Padding והצפנה היברידית.</div>
+      <button class="btn" onclick="go(1)">התחל חקירה</button>
+    </div>
+    <div>
+      <div class="lock"><div class="shackle"></div><div class="body"></div><div class="keyhole"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>1. מה בעצם צריך לפרוץ?</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>ב-RSA המפתח הציבורי מכיל מספר גדול:</p>
+      <div class="bigFormula">n = p × q</div>
+      <p>כולם יודעים את <b>n</b>, אבל רק בעל המפתח הפרטי יודע את שני הראשוניים <b>p</b> ו-<b>q</b>.</p>
+      <div class="pillLine"><span class="tag">p סודי</span><span class="tag">q סודי</span><span class="tag">n ציבורי</span></div>
+    </div>
+    <div class="card glass">
+      <h3>המשימה של תוקף</h3>
+      <p>לקחת את <span class="kbd">n</span> ולגלות:</p>
+      <div class="bigFormula">n → p, q</div>
+      <p class="warnText">זה נקרא פירוק לגורמים ראשוניים.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>2. משחק פירוק לגורמים</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>מצא שני גורמים שמכפלתם היא המספר</h3>
+      <p id="factorN" class="bigFormula">77</p>
+      <div class="split">
+        <input id="f1" type="number" placeholder="גורם ראשון" style="max-width:210px">
+        <input id="f2" type="number" placeholder="גורם שני" style="max-width:210px">
+      </div>
+      <button class="btn" onclick="checkFactor()">בדוק</button>
+      <button class="btn secondary" onclick="nextFactor()">מספר הבא</button>
+      <div id="factorAns" class="answer"></div>
+    </div>
+    <div class="card">
+      <h3>מה קורה ככל שהמספר גדל?</h3>
+      <p>במספרים קטנים אפשר לנחש. במספרים גדולים צריך אלגוריתם, זמן ומשאבי חישוב.</p>
+      <div class="terminal" id="factorLog">נסה לפרק את 77...</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>3. חיפוש ממצה: לנסות מחלקים</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>דרך פשוטה: לבדוק האם המספר מתחלק ב-2, 3, 5, 7...</p>
+      <div class="split">
+        <input id="trialN" type="number" value="667" min="2">
+        <button class="btn" onclick="startTrial()">התחל חיפוש</button>
+        <button class="btn secondary" onclick="stopTrial()">עצור</button>
+      </div>
+      <div class="answer" id="trialResult"></div>
+    </div>
+    <div class="terminal" id="trialLog">כאן יוצגו ניסיונות הבדיקה...</div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>4. כמה גדול RSA אמיתי?</h2>
+  <div class="grid two">
+    <div class="card">
+      <table>
+        <tr><th>גודל מפתח</th><th>מספר ספרות בערך</th><th>מצב כיום</th></tr>
+        <tr><td>RSA-512</td><td>154</td><td class="badText">חלש</td></tr>
+        <tr><td>RSA-1024</td><td>309</td><td class="warnText">לא מומלץ</td></tr>
+        <tr><td>RSA-2048</td><td>617</td><td class="goodText">נפוץ ובטוח מעשית</td></tr>
+        <tr><td>RSA-3072</td><td>925</td><td class="goodText">ביטחון גבוה</td></tr>
+      </table>
+      <button class="btn" onclick="showBigNumber()">הצג תחושה של RSA-2048</button>
+    </div>
+    <div class="card">
+      <h3>מספר בן 617 ספרות</h3>
+      <div id="bigNum" class="terminal" style="word-break:break-all; font-size:17px;">לחץ להצגה...</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>5. ביטחון חישובי: לא בלתי אפשרי, אלא לא מעשי</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>בקריפטוגרפיה לא מספיק לשאול “האם אפשר?”. השאלה החשובה היא:</p>
+      <div class="bigFormula" style="direction:rtl">כמה זמן זה ייקח?</div>
+      <p>אם הפירוק דורש זמן עצום, המערכת בטוחה מבחינה חישובית.</p>
+    </div>
+    <div class="card">
+      <h3>מד זמן משוער</h3>
+      <p>בחר גודל מפתח:</p>
+      <select id="keySize" onchange="updateDifficulty()">
+        <option value="512">RSA-512</option>
+        <option value="1024">RSA-1024</option>
+        <option value="2048" selected>RSA-2048</option>
+        <option value="3072">RSA-3072</option>
+        <option value="4096">RSA-4096</option>
+      </select>
+      <div class="bar" style="margin-top:20px"><span id="diffBar"></span></div>
+      <p id="diffText" class="answer"></p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>6. איך בוחרים p ו-q?</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>המחשב מגריל מספר גדול, בודק אם הוא ראשוני, ואם לא — ממשיך הלאה.</p>
+      <div class="numStream" id="primeWheel">1000001 → 1000003 → 1000005 → 1000007</div>
+      <button class="btn" onclick="spinPrimes()">סובב גלגל ראשוניים</button>
+    </div>
+    <div class="card">
+      <h3>בדיקת ראשוניות</h3>
+      <input id="primeInput" type="number" value="1000003">
+      <button class="btn" onclick="checkPrime()">בדוק האם ראשוני</button>
+      <div id="primeAns" class="answer"></div>
+      <p class="mini">במערכות אמיתיות משתמשים בבדיקות מהירות כמו Miller-Rabin.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>7. למה צריך Padding?</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>ללא Padding</h3>
+      <p>אותה הודעה עלולה להפיק תמיד אותו צופן.</p>
+      <button class="btn secondary" onclick="noPaddingDemo()">הצפן HELLO בלי Padding</button>
+      <div id="noPadOut" class="terminal">פלט...</div>
+    </div>
+    <div class="card">
+      <h3>עם OAEP</h3>
+      <p>מוסיפים אקראיות וערבול, ולכן אותה הודעה מקבלת תוצאה שונה בכל פעם.</p>
+      <button class="btn" onclick="oaepDemo()">הצפן HELLO עם OAEP</button>
+      <div id="oaepOut" class="terminal">פלט...</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>8. PKCS#1 מול OAEP</h2>
+  <div class="grid three">
+    <div class="card">
+      <h3>RSA “נאיבי”</h3>
+      <p>מצפין את המסר כמו שהוא.</p>
+      <p class="badText">לא מתאים לשימוש אמיתי.</p>
+    </div>
+    <div class="card">
+      <h3>PKCS#1 v1.5</h3>
+      <p>שיטת Padding ותיקה.</p>
+      <p class="warnText">נמצאת במערכות ישנות, אך דורשת זהירות.</p>
+    </div>
+    <div class="card">
+      <h3>OAEP</h3>
+      <p>שיטה מודרנית יותר להצפנת RSA.</p>
+      <p class="goodText">הבחירה המומלצת ללמידה ולמערכות חדשות.</p>
+    </div>
+  </div>
+  <div class="hintBox" style="margin-top:24px">כלל זהב: לא מממשים RSA לבד במערכת אמיתית. משתמשים בספריות קריפטוגרפיות מוכרות.</div>
+</section>
+
+<section class="slide">
+  <h2>9. למה משלבים RSA + AES?</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>RSA איטי ומתאים להצפנת מידע קטן — למשל מפתח.</p>
+      <p>AES מהיר ומתאים להצפנת קבצים והודעות גדולות.</p>
+      <button class="btn" onclick="hybridStep()">הפעל הצפנה היברידית</button>
+      <button class="btn secondary" onclick="resetHybrid()">איפוס</button>
+    </div>
+    <div class="card">
+      <div class="terminal" id="hybridLog">שלבים יוצגו כאן...</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>10. הדגמת “מעטפה דיגיטלית”</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>מה נשלח ברשת?</h3>
+      <div class="split">
+        <button class="btn secondary" onclick="revealPart('msg')">קובץ מוצפן ב-AES</button>
+        <button class="btn secondary" onclick="revealPart('key')">מפתח AES מוצפן ב-RSA</button>
+        <button class="btn secondary" onclick="revealPart('priv')">המפתח הפרטי?</button>
+      </div>
+      <div id="envelopeAns" class="answer"></div>
+    </div>
+    <div class="card">
+      <h3>כללי המשחק</h3>
+      <ul>
+        <li>המסר עצמו מוצפן ב-AES.</li>
+        <li>מפתח ה-AES מוצפן ב-RSA.</li>
+        <li>המפתח הפרטי לא נשלח לעולם.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>11. האיום העתידי: מחשבים קוונטיים</h2>
+  <div class="grid two">
+    <div class="card">
+      <p>אלגוריתם שור מסוגל, תאורטית, לפרק מספרים גדולים ביעילות על מחשב קוונטי גדול ויציב.</p>
+      <div class="timeline">
+        <span class="dot"></span><span class="line"></span><span class="dot"></span><span class="line"></span><span class="dot"></span>
+      </div>
+      <p class="mini" style="direction:rtl">עבר: RSA נחשב מעשי • הווה: RSA-2048 עדיין שימושי • עתיד: מעבר לקריפטוגרפיה עמידה לקוונטים</p>
+    </div>
+    <div class="card">
+      <h3>שאלת חשיבה</h3>
+      <p>מדוע ארגון עשוי להחליף היום אלגוריתמים, גם אם המחשב הקוונטי החזק עדיין לא קיים?</p>
+      <textarea id="quantumThought" rows="4" placeholder="כתבו תשובה קצרה..."></textarea>
+      <button class="btn" onclick="showQuantumFeedback()">בדוק כיוון</button>
+      <div id="quantumFeedback" class="answer"></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>12. מיני-מעבדה: פריצה למספר קטן</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>נסו בעצמכם</h3>
+      <p>הזינו מספר n קטן, והקוד ינסה למצוא גורמים.</p>
+      <input id="labN" type="number" value="3233">
+      <button class="btn" onclick="labFactor()">פרק לגורמים</button>
+      <div id="labAns" class="answer"></div>
+    </div>
+    <div class="card">
+      <h3>הקוד הרעיוני</h3>
+      <div class="terminal">for i in range(2, sqrt(n)):
+    if n % i == 0:
+        return i, n // i</div>
+      <p class="mini">זה מדגים את הרעיון בלבד. RSA אמיתי גדול בהרבה.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slideScroll">
+  <h2>13. בדיקת הבנה</h2>
+  <div class="card" id="quizBox"></div>
+</section>
+
+<section class="slide slideScroll">
+  <h2>14. משימות הרחבה לתלמידי סייבר</h2>
+  <div class="grid two smallText">
+    <div class="card">
+      <h3>משימה 1: מדידת זמן</h3>
+      <p>כתבו בפייתון פונקציה שמפרקת מספרים קטנים לגורמים. מדדו כמה זמן נדרש כאשר n גדל.</p>
+      <p><b>תוצר:</b> טבלה וגרף זמן ריצה.</p>
+    </div>
+    <div class="card">
+      <h3>משימה 2: זיהוי חולשות</h3>
+      <p>מה יקרה אם p ו-q קרובים מדי? מה יקרה אם משתמשים באותו p פעמיים?</p>
+      <p><b>תוצר:</b> הסבר + הדגמה במספרים קטנים.</p>
+    </div>
+    <div class="card">
+      <h3>משימה 3: Padding</h3>
+      <p>צרו סימולציה שבה אותה הודעה מוצפנת כמה פעמים: פעם בלי אקראיות ופעם עם אקראיות.</p>
+      <p><b>תוצר:</b> מסקנה כתובה: למה Padding משנה את המשחק?</p>
+    </div>
+    <div class="card">
+      <h3>משימה 4: הצפנה היברידית</h3>
+      <p>בנו תרשים זרימה ל-RSA + AES: שליחה, קבלה, פענוח ושגיאות אפשריות.</p>
+      <p><b>תוצר:</b> תרשים + פסאודו-קוד.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>15. סיכום מקצועי</h2>
+  <div class="grid two">
+    <div class="card">
+      <ul>
+        <li>פיצוח RSA שקול בעיקר לפירוק n לגורמים.</li>
+        <li>RSA בטוח בזכות קושי חישובי, לא בזכות קסם.</li>
+        <li>Padding הוא חלק חיוני מהשימוש הבטוח.</li>
+        <li>במערכות אמיתיות משתמשים לרוב ב-RSA כדי להצפין מפתח AES.</li>
+      </ul>
+    </div>
+    <div class="card glass">
+      <div class="bigFormula" style="direction:rtl">RSA לא בלתי ניתן לפריצה.<br>הוא לא מעשי לפריצה כיום.</div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="nav">
+  <button class="btn secondary" onclick="nextSlide()">הבא ◀</button>
+  <span class="counter" id="counter"></span>
+  <button class="btn secondary" onclick="prevSlide()">▶ הקודם</button>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let idx=0;
+function render(){
+  slides.forEach((s,i)=>s.classList.toggle('active',i===idx));
+  document.getElementById('counter').textContent=(idx+1)+' / '+slides.length;
+  document.getElementById('progress').style.width=((idx+1)/slides.length*100)+'%';
+  if(idx===4) updateDifficulty();
+  if(idx===12) renderQuiz();
+}
+function go(i){idx=Math.max(0,Math.min(slides.length-1,i)); render();}
+function nextSlide(){go(idx+1)}
+function prevSlide(){go(idx-1)}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft') nextSlide();
+  if(e.key==='ArrowRight') prevSlide();
+});
+render();
+
+const factorTasks=[
+  {n:77,p:7,q:11},
+  {n:667,p:23,q:29},
+  {n:3233,p:53,q:61},
+  {n:11413,p:101,q:113},
+  {n:10403,p:101,q:103}
+];
+let factorIndex=0;
+function checkFactor(){
+  const t=factorTasks[factorIndex], a=+f1.value, b=+f2.value;
+  const ok=a*b===t.n && a>1 && b>1;
+  factorAns.innerHTML=ok?'<span class="goodText">✅ נכון! '+t.n+' = '+a+' × '+b+'</span>':'<span class="badText">❌ לא נכון. נסו שוב.</span>';
+  factorLog.innerHTML += '<br>בדיקה: '+a+' × '+b+' = '+(a*b);
+}
+function nextFactor(){
+  factorIndex=(factorIndex+1)%factorTasks.length;
+  factorN.textContent=factorTasks[factorIndex].n;
+  f1.value=''; f2.value='';
+  factorAns.textContent='';
+  factorLog.innerHTML='נסה לפרק את '+factorTasks[factorIndex].n+'...';
+}
+
+let trialTimer=null, trialI=2;
+function startTrial(){
+  stopTrial();
+  const n=+trialN.value;
+  trialI=2; trialLog.innerHTML='מתחילים לבדוק את '+n+'...'; trialResult.textContent='';
+  trialTimer=setInterval(()=>{
+    if(trialI*trialI>n){
+      trialLog.innerHTML+='<br>'+trialI+': אין צורך להמשיך.';
+      trialResult.innerHTML='<span class="goodText">לא נמצא מחלק עד √n. המספר כנראה ראשוני.</span>';
+      stopTrial(); return;
+    }
+    trialLog.innerHTML+='<br>בודק '+trialI+'...';
+    if(n%trialI===0){
+      trialResult.innerHTML='<span class="goodText">נמצא: '+n+' = '+trialI+' × '+(n/trialI)+'</span>';
+      stopTrial(); return;
+    }
+    trialI++;
+    trialLog.scrollTop=trialLog.scrollHeight;
+  },120);
+}
+function stopTrial(){ if(trialTimer){clearInterval(trialTimer); trialTimer=null;} }
+
+function showBigNumber(){
+  let s='1';
+  for(let i=0;i<616;i++) s+=Math.floor(Math.random()*10);
+  bigNum.textContent=s+'\n\nזה רק להמחשה: מספר RSA-2048 אמיתי הוא בערך באורך כזה.';
+}
+function updateDifficulty(){
+  const k=keySize.value;
+  const map={
+    512:[18,'חלש כיום: היסטורית מפתחות כאלה נשברו.'],
+    1024:[38,'לא מומלץ: מרווח הביטחון נמוך מדי למערכות חדשות.'],
+    2048:[70,'נפוץ: פירוק בזמן מעשי אינו ריאלי כיום במחשבים רגילים.'],
+    3072:[86,'חזק יותר: מתאים לרמת ביטחון גבוהה יותר.'],
+    4096:[96,'חזק מאוד אך כבד יותר בביצועים.']
+  };
+  diffBar.style.width=map[k][0]+'%';
+  diffText.textContent=map[k][1];
+}
+
+function isPrime(n){
+  if(n<2) return false;
+  if(n%2===0) return n===2;
+  for(let i=3;i*i<=n;i+=2) if(n%i===0) return false;
+  return true;
+}
+function spinPrimes(){
+  let start=1000000+Math.floor(Math.random()*120);
+  if(start%2===0) start++;
+  let arr=[];
+  for(let i=0;i<8;i++) arr.push(start+i*2+(isPrime(start+i*2)?' ✅':''));
+  primeWheel.textContent=arr.join(' → ');
+}
+function checkPrime(){
+  const n=+primeInput.value;
+  primeAns.innerHTML=isPrime(n)?'<span class="goodText">✅ '+n+' ראשוני.</span>':'<span class="badText">❌ '+n+' אינו ראשוני.</span>';
+}
+
+function pseudoHex(len){
+  const chars='0123456789ABCDEF'; let s='';
+  for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function noPaddingDemo(){
+  noPadOut.textContent='HELLO → 7A3F19\nHELLO → 7A3F19\nHELLO → 7A3F19\n\nבעיה: תבנית חוזרת.';
+}
+function oaepDemo(){
+  oaepOut.textContent='HELLO + random → '+pseudoHex(18)+'\nHELLO + random → '+pseudoHex(18)+'\nHELLO + random → '+pseudoHex(18)+'\n\nהמסר זהה, הצופן שונה.';
+}
+
+let hStep=0;
+const hSteps=[
+  '1) מגרילים מפתח AES חד-פעמי.',
+  '2) מצפינים את ההודעה הגדולה בעזרת AES.',
+  '3) מצפינים את מפתח ה-AES בעזרת RSA ציבורי של המקבל.',
+  '4) שולחים: ciphertext + encrypted_AES_key.',
+  '5) המקבל מפענח את מפתח AES בעזרת RSA פרטי ואז מפענח את ההודעה.'
+];
+function hybridStep(){
+  if(hStep===0) hybridLog.innerHTML='';
+  hybridLog.innerHTML += hSteps[hStep]+'<br>';
+  hStep=(hStep+1)%hSteps.length;
+}
+function resetHybrid(){hStep=0; hybridLog.innerHTML='שלבים יוצגו כאן...';}
+
+function revealPart(part){
+  if(part==='msg') envelopeAns.innerHTML='<span class="goodText">✅ כן. הקובץ המוצפן נשלח.</span>';
+  if(part==='key') envelopeAns.innerHTML='<span class="goodText">✅ כן. מפתח AES מוצפן ב-RSA נשלח.</span>';
+  if(part==='priv') envelopeAns.innerHTML='<span class="badText">❌ לא. המפתח הפרטי נשאר אצל המקבל בלבד.</span>';
+}
+function showQuantumFeedback(){
+  quantumFeedback.innerHTML='<span class="goodText">כיוון טוב: מידע מוצפן שנשמר היום עלול להיות מפוענח בעתיד. לכן ארגונים מתכננים מעבר מוקדם להצפנה עמידה לקוונטים.</span>';
+}
+function labFactor(){
+  const n=+labN.value;
+  let found=null, checks=0;
+  const limit=Math.floor(Math.sqrt(n));
+  for(let i=2;i<=limit;i++){
+    checks++;
+    if(n%i===0){found=[i,n/i];break;}
+    if(checks>2000000) break;
+  }
+  if(found) labAns.innerHTML='<span class="goodText">נמצא: '+n+' = '+found[0]+' × '+found[1]+'</span><br><span class="mini">מספר בדיקות: '+checks+'</span>';
+  else labAns.innerHTML='<span class="warnText">לא נמצא גורם בטווח שנבדק. ייתכן שהמספר ראשוני או גדול מדי להדגמה בדפדפן.</span>';
+}
+
+const quiz=[
+  {q:'מה נדרש בעיקר כדי לפרוץ RSA?', a:['למצוא את p ו-q מתוך n','לנחש את כתובת ה-IP','לשבור את AES תמיד','למחוק את המפתח הציבורי'], c:0, exp:'המטרה היא לפרק את n לגורמים הראשוניים שלו.'},
+  {q:'למה RSA-2048 נחשב בטוח מעשית כיום?', a:['כי אי אפשר להכפיל מספרים','כי פירוק n גדול אינו מעשי בזמן סביר','כי המפתח הציבורי סודי','כי אין מחשבים מהירים'], c:1, exp:'הביטחון הוא חישובי: אפשר תאורטית, לא מעשי כיום.'},
+  {q:'מה תפקיד OAEP?', a:['להאיץ את המעבד','להוסיף Padding ואקראיות בטוחה','להחליף את AES','לשמור סיסמאות'], c:1, exp:'OAEP מונע הצפנה דטרמיניסטית ומוסיף מבנה בטוח.'},
+  {q:'למה משלבים RSA עם AES?', a:['RSA מהיר יותר מ-AES','AES מיועד רק למפתחות ציבוריים','RSA מצפין מפתח קטן ו-AES מצפין מידע גדול במהירות','כי AES חייב p ו-q'], c:2, exp:'זהו הרעיון של הצפנה היברידית.'}
+];
+let quizAnswers=Array(quiz.length).fill(null);
+function renderQuiz(){
+  const box=document.getElementById('quizBox');
+  box.innerHTML='';
+  quiz.forEach((item,i)=>{
+    const div=document.createElement('div');
+    div.className='card';
+    div.style.marginBottom='16px';
+    div.innerHTML='<h3>'+(i+1)+'. '+item.q+'</h3>';
+    item.a.forEach((opt,j)=>{
+      const b=document.createElement('button');
+      b.className='btn quizOption';
+      b.textContent=opt;
+      if(quizAnswers[i]===j) b.classList.add('selected');
+      b.onclick=()=>{quizAnswers[i]=j; renderQuiz();};
+      div.appendChild(b);
+    });
+    if(quizAnswers[i]!==null){
+      const ok=quizAnswers[i]===item.c;
+      div.innerHTML += '<p class="'+(ok?'goodText':'badText')+'">'+(ok?'✅ נכון.':'❌ לא מדויק.')+' '+item.exp+'</p>';
+      [...div.querySelectorAll('.quizOption')].forEach((b,j)=>{
+        if(j===item.c) b.classList.add('correct');
+        else if(j===quizAnswers[i]) b.classList.add('wrong');
+      });
+    }
+    box.appendChild(div);
+  });
+  const score=quizAnswers.reduce((s,a,i)=>s+(a===quiz[i].c?1:0),0);
+  const sum=document.createElement('div');
+  sum.className='hintBox';
+  sum.textContent='ניקוד: '+score+' / '+quiz.length;
+  box.appendChild(sum);
+}
+</script>
+</body>
+</html>

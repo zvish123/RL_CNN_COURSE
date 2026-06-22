@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HMAC – אימות הודעות בקריפטוגרפיה</title>
+  <style>
+    :root{
+      --bg1:#07111f; --bg2:#12233d; --card:#ffffffee; --ink:#102033; --muted:#5f6f82;
+      --accent:#00d4ff; --accent2:#7c3aed; --good:#10b981; --bad:#ef4444; --warn:#f59e0b;
+      --shadow:0 18px 45px rgba(0,0,0,.28); --radius:26px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,"Noto Sans Hebrew",sans-serif;background:radial-gradient(circle at 20% 10%,#244b80 0,#07111f 38%,#050914 100%);color:#fff;overflow:hidden}
+    .deck{width:100vw;height:100vh;position:relative;padding:26px}
+    .slide{display:none;width:100%;height:100%;position:relative;border-radius:34px;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.03));box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.14);padding:54px 68px}
+    .slide.active{display:block;animation:fade .25s ease}
+    @keyframes fade{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:none}}
+    h1{font-size:58px;line-height:1.05;margin:0 0 18px;font-weight:900;letter-spacing:-1px}
+    h2{font-size:42px;line-height:1.15;margin:0 0 24px;font-weight:900;color:#fff}
+    h3{font-size:27px;margin:0 0 12px;color:#07111f}
+    p,li{font-size:23px;line-height:1.55}
+    .lead{font-size:29px;line-height:1.45;color:#dfefff;max-width:900px}
+    .pill{display:inline-block;padding:9px 18px;border-radius:999px;background:rgba(0,212,255,.16);border:1px solid rgba(0,212,255,.46);color:#bdf3ff;font-weight:800;margin-bottom:18px}
+    .grid{display:grid;gap:22px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+    .card{background:var(--card);color:var(--ink);border-radius:var(--radius);padding:26px;box-shadow:0 12px 28px rgba(0,0,0,.18)}
+    .darkcard{background:rgba(2,8,23,.72);border:1px solid rgba(255,255,255,.13);border-radius:var(--radius);padding:26px;color:#eaf6ff}
+    .bigicon{font-size:56px;display:block;margin-bottom:12px}.muted{color:var(--muted)}
+    .equation{direction:ltr;text-align:center;font-family:Consolas,monospace;background:#081120;color:#a7f3d0;border:1px solid rgba(167,243,208,.3);padding:18px;border-radius:18px;font-size:24px;white-space:normal}
+    code,pre{direction:ltr;text-align:left;font-family:Consolas,"Courier New",monospace}pre{background:#081120;color:#d1fae5;padding:20px;border-radius:18px;font-size:17px;line-height:1.35;overflow:auto;max-height:800px;border:1px solid rgba(255,255,255,.12)}
+    .btn{border:0;border-radius:16px;background:linear-gradient(135deg,var(--accent),#60a5fa);color:#04111f;font-weight:900;font-size:19px;padding:13px 18px;cursor:pointer;box-shadow:0 8px 20px rgba(0,212,255,.22);margin:6px}
+    .btn.secondary{background:#e6eef8;color:#102033}.btn.bad{background:#fee2e2;color:#991b1b}.btn.good{background:#d1fae5;color:#065f46}
+    .nav{position:fixed;bottom:24px;left:34px;right:34px;display:flex;align-items:center;justify-content:space-between;z-index:50;pointer-events:none;direction:ltr}.nav button{pointer-events:auto}.counter{background:rgba(0,0,0,.35);padding:10px 16px;border-radius:999px;color:#e8f5ff;font-weight:800}
+    .bar{position:fixed;top:0;right:0;height:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;z-index:99;transition:.25s}.note{font-size:18px;color:#cce3ff}.hidden{display:none}.ltr{direction:ltr;text-align:left}.hashout{direction:ltr;text-align:left;word-break:break-all;background:#f8fafc;border:1px solid #dbe5f0;border-radius:14px;padding:14px;font-family:Consolas,monospace;font-size:15px;color:#0f172a;min-height:55px}
+    textarea,input{width:100%;border:1px solid #cbd5e1;border-radius:14px;padding:12px;font-size:18px;font-family:Arial,"Noto Sans Hebrew",sans-serif;background:#fff;color:#0f172a}label{font-weight:900;color:#172033;display:block;margin:10px 0 6px;font-size:18px}.status{padding:14px 18px;border-radius:16px;font-weight:900;font-size:20px}.ok{background:#dcfce7;color:#166534}.fail{background:#fee2e2;color:#991b1b}.warn{background:#fef3c7;color:#92400e}.diagram{display:flex;align-items:center;justify-content:center;gap:18px;direction:rtl;margin-top:12px}.node{background:#fff;color:#102033;border-radius:22px;padding:22px;text-align:center;min-width:170px;box-shadow:0 10px 24px rgba(0,0,0,.18);font-weight:900;font-size:21px}.arrow{font-size:42px;color:#8eeaff}.small{font-size:18px}.q{font-size:22px;color:#102033;font-weight:900;margin-bottom:12px}.answer{margin-top:10px;padding:13px;border-radius:14px;background:#eef6ff;color:#102033;display:none;font-size:18px}.split{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center}.titleArt{position:absolute;left:60px;bottom:70px;width:360px;height:450px;border-radius:50%;background:radial-gradient(circle,#00d4ff 0,#7c3aed 50%,transparent 70%);filter:blur(1px);opacity:.75}.lock{font-size:190px;text-shadow:0 18px 50px rgba(0,0,0,.45)}
+    @media(max-width:900px){.slide{padding:34px 28px}.g2,.g3,.split{grid-template-columns:1fr}h1{font-size:42px}h2{font-size:32px}p,li{font-size:19px}.lead{font-size:22px}.deck{padding:10px}.nav{left:12px;right:12px}}
+  </style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck">
+  <section class="slide active">
+    <div class="pill">קריפטוגרפיה מעשית</div>
+    <h1>HMAC<br>Message Authentication Code</h1>
+    <p class="lead">איך יודעים שההודעה לא שונתה — וגם שמי ששלח אותה מכיר את הסוד המשותף?</p>
+    <div class="titleArt"></div><div style="position:absolute;left:145px;bottom:120px" class="lock">🔐</div>
+  </section>
+
+  <section class="slide">
+    <h2>הבעיה: Hash רגיל לא מספיק</h2>
+    <div class="split">
+      <div>
+        <p>אם שולחים הודעה עם <b>SHA-256</b> בלבד, כל אחד יכול לשנות את ההודעה ולחשב Hash חדש.</p>
+        <div class="darkcard"><p class="ltr">message = "Transfer 100$"<br>hash = SHA256(message)</p></div>
+        <p>התוקף משנה ל־<b>Transfer 900$</b> ומחשב Hash חדש. המקבל לא יודע שהייתה התקפה.</p>
+      </div>
+      <div class="card"><span class="bigicon">🧨</span><h3>Hash בודק שלמות בלבד</h3><p>הוא לא מוכיח מי יצר את ההודעה.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>הרעיון של HMAC</h2>
+    <div class="diagram">
+      <div class="node">הודעה<br><span class="small">Message</span></div><div class="arrow">+</div>
+      <div class="node">מפתח סודי<br><span class="small">Secret Key</span></div><div class="arrow">←</div>
+      <div class="node">HMAC</div><div class="arrow">←</div>
+      <div class="node">תג אימות<br><span class="small">Authentication Tag</span></div>
+    </div>
+    <div class="grid g2" style="margin-top:34px">
+      <div class="card"><span class="bigicon">✅</span><h3>שלמות</h3><p>אם ההודעה השתנתה — ה־HMAC ישתנה.</p></div>
+      <div class="card"><span class="bigicon">🗝️</span><h3>אימות מקור</h3><p>רק מי שמכיר את המפתח הסודי יכול לייצר HMAC תקין.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>הנוסחה האמיתית: מה הם ipad ו־opad?</h2>
+    <div class="equation">HMAC(K,M)=H((K ⊕ opad) || H((K ⊕ ipad) || M))</div>
+    <div class="grid g2" style="margin-top:24px">
+      <div class="card">
+        <h3>ipad = Inner Pad</h3>
+        <p>רצף קבוע של בתים בערך <b>0x36</b>. משתמשים בו כדי ליצור מהמפתח הסודי <b>מפתח פנימי</b>:</p>
+        <div class="mini-code">K ⊕ ipad</div>
+      </div>
+      <div class="card">
+        <h3>opad = Outer Pad</h3>
+        <p>רצף קבוע של בתים בערך <b>0x5C</b>. משתמשים בו כדי ליצור מהמפתח הסודי <b>מפתח חיצוני</b>:</p>
+        <div class="mini-code">K ⊕ opad</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <h3>איך החישוב מתבצע?</h3>
+      <p><b>שלב פנימי:</b> מחשבים Hash על המפתח הפנימי יחד עם ההודעה.</p>
+      <div class="mini-code">Inner = H((K ⊕ ipad) || M)</div>
+      <p><b>שלב חיצוני:</b> מחשבים Hash נוסף על המפתח החיצוני יחד עם התוצאה הפנימית.</p>
+      <div class="mini-code">HMAC = H((K ⊕ opad) || Inner)</div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <h3>דוגמה לתלמידים</h3>
+      <p>נניח שהמפתח הוא <b>pizza</b> וההודעה היא <b>"נפגשים ב־17:00"</b>. HMAC לא עושה רק <code>Hash(message)</code>, אלא יוצר שתי גרסאות שונות של המפתח: אחת פנימית עם <b>ipad</b> ואחת חיצונית עם <b>opad</b>. אם ההודעה תשתנה ל־20:00, או אם משתמשים במפתח אחר, התג הסופי יהיה שונה לחלוטין.</p>
+    </div>
+    <p class="note">הסבר אינטואיטיבי: ipad ו־opad הם שתי “שכבות ערבול” שונות של אותו מפתח סודי. כך HMAC בטוח יותר מ־Hash פשוט של מפתח + הודעה.</p>
+  </section>
+
+  <section class="slide">
+    <h2>הדגמה חיה: SHA-256 לעומת HMAC</h2>
+    <div class="grid g2">
+      <div class="card">
+        <p class="muted" style="font-size:18px;margin-top:0">בהדגמה זו מחשבים שני ערכים לאותה הודעה: SHA-256 רגיל, שכל אחד יכול לחשב, ו־HMAC-SHA256 שמחייב ידיעת מפתח סודי. לחיצה על “התוקף משנה שעה” ממחישה ששינוי קטן משנה את הפלט.</p>
+        <label>הודעה</label><textarea id="msg" rows="4">נפגשים במעבדה בשעה 17:00</textarea>
+        <label>מפתח סודי</label><input id="key" value="cyber-class-secret" />
+        <button class="btn" onclick="calcAll()">חשב SHA ו-HMAC</button>
+        <button class="btn secondary" onclick="tamper()">התוקף משנה שעה</button>
+      </div>
+      <div class="card">
+        <h3>SHA-256 של ההודעה</h3><div id="sha" class="hashout"></div>
+        <h3 style="margin-top:16px">HMAC-SHA256</h3><div id="hmac" class="hashout"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>אימות הודעה</h2>
+    <div class="grid g2">
+      <div class="card">
+        <p class="muted" style="font-size:18px;margin-top:0">כעת המקבל מקבל חבילה: הודעה + תג HMAC. הוא מחשב HMAC חדש מההודעה ומהמפתח שברשותו ומשווה אותו לתג שהגיע. התאמה פירושה שההודעה לא שונתה ושנוצרה על ידי מי שמכיר את המפתח.</p>
+        <label>ההודעה שהתקבלה</label><textarea id="verifyMsg" rows="4">נפגשים במעבדה בשעה 17:00</textarea>
+        <label>המפתח אצל המקבל</label><input id="verifyKey" value="cyber-class-secret" />
+        <label>ה־HMAC שהגיע עם ההודעה</label><textarea id="verifyTag" rows="3" class="ltr"></textarea>
+        <button class="btn good" onclick="verify()">אמת הודעה</button>
+        <button class="btn bad" onclick="changeReceived()">שנה את ההודעה</button>
+      </div>
+      <div class="card"><h3>תוצאה</h3><div id="verifyResult" class="status warn">לחצו על אימות</div><p class="muted">במערכת אמיתית משווים את התג שחושב מחדש לתג שהתקבל.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>קוד Python מינימלי</h2>
+    <pre>import hmac
+import hashlib
+
+SEPARATOR = "||HMAC||"
+
+# צד שולח: יצירת הודעה + תג אימות
+message = "נפגשים במעבדה בשעה 17:00"
+key = b"cyber-class-secret"
+
+message_bytes = message.encode("utf-8")
+signature = hmac.new(key, message_bytes, hashlib.sha256).hexdigest()
+
+# זו החבילה שנשלחת ברשת: ההודעה גלויה, ולידה תג האימות
+packet = message + SEPARATOR + signature
+print("sent packet:", packet)
+
+# צד מקבל: פירוק החבילה ובדיקת התג
+received_message, received_signature = packet.rsplit(SEPARATOR, 1)
+
+new_signature = hmac.new(
+    key,
+    received_message.encode("utf-8"),
+    hashlib.sha256
+).hexdigest()
+
+if hmac.compare_digest(received_signature, new_signature):
+    print("OK - ההודעה תקינה")
+else:
+    print("ERROR - ההודעה שונתה או המפתח שגוי")</pre>
+    <p class="note">חשוב: משתמשים ב־compare_digest ולא ב־== כדי להקטין סיכון להתקפות תזמון.</p>
+  </section>
+
+  <section class="slide">
+    <h2>מה HMAC עושה — ומה לא?</h2>
+    <div class="grid g2">
+      <div class="card"><span class="bigicon">✅</span><h3>עושה</h3><ul><li>מזהה שינוי בהודעה</li><li>מאמת שמי ששלח מכיר את הסוד</li><li>מהיר ומתאים ל־API ושרתים</li></ul></div>
+      <div class="card"><span class="bigicon">❌</span><h3>לא עושה</h3><ul><li>לא מצפין את תוכן ההודעה</li><li>לא נותן אי־הכחשה</li><li>לא מתאים אם אין סוד משותף</li></ul></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>השוואה: Hash, HMAC, חתימה דיגיטלית</h2>
+    <div class="card">
+      <table style="width:100%;border-collapse:collapse;font-size:22px;color:#102033">
+        <tr style="background:#e0f2fe"><th>מנגנון</th><th>מפתח?</th><th>בודק שלמות?</th><th>מאמת שולח?</th><th>אי-הכחשה?</th></tr>
+        <tr><td>Hash</td><td>לא</td><td>כן</td><td>לא</td><td>לא</td></tr>
+        <tr><td>HMAC</td><td>סוד משותף</td><td>כן</td><td>כן</td><td>לא</td></tr>
+        <tr><td>חתימה דיגיטלית</td><td>פרטי/ציבורי</td><td>כן</td><td>כן</td><td>כן</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>בדיקת הבנה</h2>
+    <div class="grid g2">
+      <div class="card"><div class="q">1. האם HMAC מצפין את ההודעה?</div><button class="btn secondary" onclick="showAns(1)">הצג תשובה</button><div class="answer" id="a1">לא. הוא מוסיף תג אימות, אבל ההודעה עצמה יכולה להיות גלויה.</div></div>
+      <div class="card"><div class="q">2. למה Hash רגיל לא מספיק?</div><button class="btn secondary" onclick="showAns(2)">הצג תשובה</button><div class="answer" id="a2">כי כל אחד יכול לחשב Hash חדש להודעה מזויפת.</div></div>
+      <div class="card"><div class="q">3. מה קורה אם המפתח שגוי?</div><button class="btn secondary" onclick="showAns(3)">הצג תשובה</button><div class="answer" id="a3">ה־HMAC שיחושב מחדש לא יתאים לתג שהתקבל.</div></div>
+      <div class="card"><div class="q">4. האם HMAC נותן אי־הכחשה?</div><button class="btn secondary" onclick="showAns(4)">הצג תשובה</button><div class="answer" id="a4">לא. שני הצדדים מכירים את אותו מפתח, לכן אי אפשר להוכיח מי מהם יצר את התג.</div></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>משימת תרגול לתלמידים</h2>
+    <div class="card">
+      <h3>בנו מערכת קטנה לאימות הודעה</h3>
+      <ol>
+        <li>קלט: הודעה ומפתח סודי.</li>
+        <li>פלט: HMAC-SHA256.</li>
+        <li>מסך אימות: הודעה + מפתח + תג שהתקבל.</li>
+        <li>הציגו האם ההודעה תקינה או זויפה.</li>
+      </ol>
+      <p><b>אתגר:</b> הוסיפו כפתור “תוקף” שמשנה תו אחד ומוכיח שהאימות נכשל.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>סיכום</h2>
+    <div class="grid g3">
+      <div class="card"><span class="bigicon">#️⃣</span><h3>Hash</h3><p>בודק שינוי, אבל לא מקור.</p></div>
+      <div class="card"><span class="bigicon">🔐</span><h3>HMAC</h3><p>בודק שינוי ומוכיח הכרת סוד משותף.</p></div>
+      <div class="card"><span class="bigicon">✍️</span><h3>חתימה</h3><p>מוסיפה מפתח ציבורי ואי־הכחשה.</p></div>
+    </div>
+    <p class="lead" style="margin-top:32px">המשפט החשוב: HMAC הוא מנגנון אימות — לא מנגנון הצפנה.</p>
+  </section>
+</div>
+<div class="nav">
+  <button class="btn secondary" onclick="nextSlide()">← הבא</button>
+  <div class="counter" id="counter"></div>
+  <button class="btn secondary" onclick="prevSlide()">הקודם →</button>
+</div>
+<script>
+let current=0;const slides=[...document.querySelectorAll('.slide')];
+function update(){slides.forEach((s,i)=>s.classList.toggle('active',i===current));document.getElementById('counter').textContent=(current+1)+' / '+slides.length;document.getElementById('bar').style.width=((current+1)/slides.length*100)+'%';}
+function nextSlide(){if(current<slides.length-1){current++;update();}}
+function prevSlide(){if(current>0){current--;update();}}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='PageDown')nextSlide();if(e.key==='ArrowRight'||e.key==='PageUp')prevSlide();});
+async function sha256Hex(text){const data=new TextEncoder().encode(text);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function hmacHex(key,msg){const enc=new TextEncoder();const cryptoKey=await crypto.subtle.importKey('raw',enc.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);const sig=await crypto.subtle.sign('HMAC',cryptoKey,enc.encode(msg));return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function calcAll(){const msg=document.getElementById('msg').value;const key=document.getElementById('key').value;const s=await sha256Hex(msg);const h=await hmacHex(key,msg);document.getElementById('sha').textContent=s;document.getElementById('hmac').textContent=h;document.getElementById('verifyMsg').value=msg;document.getElementById('verifyKey').value=key;document.getElementById('verifyTag').value=h;}
+function tamper(){document.getElementById('msg').value='נפגשים במעבדה בשעה 20:00';calcAll();}
+async function verify(){const msg=document.getElementById('verifyMsg').value;const key=document.getElementById('verifyKey').value;const tag=document.getElementById('verifyTag').value.trim();const fresh=await hmacHex(key,msg);const res=document.getElementById('verifyResult');if(fresh===tag){res.className='status ok';res.textContent='✅ תקין: ההודעה והמפתח תואמים לתג האימות';}else{res.className='status fail';res.textContent='❌ נכשל: ההודעה שונתה או שהמפתח אינו נכון';}}
+function changeReceived(){document.getElementById('verifyMsg').value='נפגשים במעבדה בשעה 20:00';verify();}
+function showAns(n){const el=document.getElementById('a'+n);el.style.display=el.style.display==='block'?'none':'block';}
+update();calcAll();
+</script>
+</body>
+</html>

@@ -165,6 +165,14 @@ label{cursor:pointer;}
   <textarea class="reflect"></textarea>
 </section>
 
+<section>
+  <h2><span class="task-num">7</span>הגשת הדף</h2>
+  <p>לחיצה על הכפתור תאסוף את כל מה שמילאתם בדף ותשמור אותו כקובץ JSON להגשה (לוודא שכל חברי הקבוצה מילאו את החלק שלהם לפני ההגשה).</p>
+  <input type="text" id="teamName" placeholder="שם הקבוצה / השמות שלכם" style="margin-bottom:10px;">
+  <button class="check-btn" style="font-size:1em;padding:10px 22px;" onclick="submitWorksheet()">📥 הגש ושמור כ-JSON</button>
+  <div class="fb" id="submitFb"></div>
+</section>
+
 <footer>
   דף עבודה - שלב 3: תכנון וארכיטקטורה · פרויקט הכספת המאובטחת ומערכת ניטור האנומליות
 </footer>
@@ -207,6 +215,101 @@ function addUmlRow(){
   area.appendChild(row);
 }
 addUmlRow(); addUmlRow(); addUmlRow();
+
+function submitWorksheet(){
+  const teamName = document.getElementById('teamName').value.trim();
+
+  // סעיף 2 - טבלת אחריות
+  const respRows = document.querySelectorAll('section:nth-of-type(2) table tr');
+  const responsibilities = [];
+  respRows.forEach((row,i)=>{
+    if(i===0) return; // header
+    const cells = row.querySelectorAll('td');
+    if(cells.length < 4) return;
+    responsibilities.push({
+      class_name: cells[0].textContent.trim(),
+      layer: cells[1].querySelector('input').value,
+      responsibility: cells[2].querySelector('input').value,
+      lead: cells[3].querySelector('input').value
+    });
+  });
+
+  // סעיף 3 - שאלות
+  function selectedRadioText(name){
+    const radios = document.getElementsByName(name);
+    for(const r of radios){ if(r.checked) return r.parentElement.textContent.trim(); }
+    return null;
+  }
+  const q3 = document.querySelector('#q3 textarea').value;
+
+  // סעיף 4 - תרשים UML
+  const umlClasses = [];
+  document.querySelectorAll('.uml-row').forEach(row=>{
+    const inputs = row.querySelectorAll('input, textarea');
+    umlClasses.push({
+      name: inputs[0].value,
+      attributes: inputs[1].value,
+      methods: inputs[2].value
+    });
+  });
+
+  // סעיף 5 - מה יקרה אם
+  const whatIf = [];
+  const s5Rows = document.querySelectorAll('section:nth-of-type(5) table tr');
+  s5Rows.forEach((row,i)=>{
+    if(i===0) return;
+    const cells = row.querySelectorAll('td');
+    if(cells.length < 2) return;
+    whatIf.push({
+      question: cells[0].textContent.trim(),
+      answer: cells[1].querySelector('textarea').value
+    });
+  });
+
+  // סעיף 6 - רפלקציה
+  const reflectBoxes = document.querySelectorAll('.reflect');
+  const reflection = {
+    least_confident_class: reflectBoxes[0] ? reflectBoxes[0].value : '',
+    what_changed: reflectBoxes[1] ? reflectBoxes[1].value : ''
+  };
+
+  const data = {
+    stage: 'שלב 3 - תכנון וארכיטקטורה',
+    team_name: teamName,
+    submitted_at: new Date().toISOString(),
+    class_responsibilities: responsibilities,
+    quiz: {
+      q1_dashboard_hashing: selectedRadioText('q1'),
+      q2_server_handler_relation: selectedRadioText('q2'),
+      q3_protocol_split_explanation: q3
+    },
+    uml_classes: umlClasses,
+    what_if_questions: whatIf,
+    reflection: reflection
+  };
+
+  const fb = document.getElementById('submitFb');
+  if(!teamName){
+    fb.className='fb bad'; fb.style.display='block';
+    fb.textContent='נא להזין שם קבוצה לפני ההגשה.';
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = teamName.replace(/[^א-תa-zA-Z0-9_-]+/g,'_');
+  a.href = url;
+  a.download = `stage3_${safeName}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  fb.className='fb ok'; fb.style.display='block';
+  fb.textContent='✓ הקובץ נשמר להורדות שלכם - שלחו אותו למורה לפי ההנחיות.';
+}
+
 </script>
 </body>
 </html>

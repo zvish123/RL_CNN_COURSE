@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שלב 11 | Scapy ככלי איסוף/ניתוח</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;height:100%;overflow:hidden;}
+  .deck{position:relative;width:100%;height:100vh;}
+  .slide{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:60px 8vw 110px;opacity:0;transition:opacity .35s ease;overflow-y:auto;}
+  .slide.active{display:flex;opacity:1;}
+  .slide-inner{max-width:1020px;width:100%;}
+
+  .eyebrow{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 16px;margin-bottom:22px;letter-spacing:1px;}
+  h1.big{font-size:42px;line-height:1.25;margin-bottom:16px;}
+  h1.big .accent{color:var(--accent);}
+  h2.slide-title{font-size:30px;margin-bottom:24px;color:var(--text);}
+  h2.slide-title .accent{color:var(--accent);}
+  h2.slide-title small{display:block;font-size:18px;color:var(--text2);font-weight:400;margin-top:6px;}
+  p.lead{font-size:18px;color:var(--text2);line-height:1.7;max-width:780px;}
+  p.lead.center{margin:0 auto;text-align:center;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px;}
+  @media (max-width:800px){.grid2{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
+  .card h3{font-size:18px;color:var(--accent);margin-bottom:8px;}
+  .card p{font-size:18px;color:var(--text2);line-height:1.6;}
+  .card .icon{font-size:24px;margin-bottom:10px;display:block;}
+
+  .checklist{list-style:none;margin:0;padding:0;max-width:760px;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:4px;border:1.5px solid var(--accent);border-radius:4px;}
+  .checklist li b{color:var(--text);}
+
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:4px;font-size:18px;color:var(--accent);}
+
+  .code-block{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:18px;color:#cdd9e5;text-align:left;direction:ltr;line-height:1.6;overflow-x:auto;margin-top:14px;}
+  .code-block .c1{color:#6b7785;}
+  .code-block .c2{color:var(--accent2);}
+  .code-block .c3{color:var(--accent);}
+
+  .expand-btn{background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 20px;border-radius:20px;font-size:18px;cursor:pointer;margin-top:16px;transition:background .2s,color .2s;}
+  .expand-btn:hover{background:var(--accent);color:#0b0f14;}
+  .expand-content{max-height:0;overflow:hidden;transition:max-height .4s ease;margin-top:0;}
+  .expand-content.open{max-height:700px;margin-top:16px;}
+
+  .compare-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:18px;}
+  .compare-table th{color:var(--accent);text-align:right;padding:10px 14px;border-bottom:1px solid var(--border);font-size:18px;}
+  .compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+  .compare-table td b{color:var(--text);}
+
+  /* ethics warning slide */
+  .slide.warn .slide-inner{border:2px solid var(--accent3);border-radius:16px;padding:36px;background:rgba(239,68,68,0.06);}
+  .warn-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:18px;color:var(--accent3);border:1px solid var(--accent3);border-radius:20px;padding:5px 16px;margin-bottom:18px;}
+
+  .quiz-options{display:flex;flex-direction:column;gap:10px;max-width:620px;margin:0 auto;}
+  .quiz-opt{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px 18px;text-align:right;cursor:pointer;font-size:18px;color:var(--text);transition:border-color .15s;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,0.1);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,0.08);}
+  .quiz-feedback{margin-top:16px;font-size:18px;color:var(--text2);min-height:20px;}
+
+  .slide.stop .slide-inner{border:2px solid var(--accent2);border-radius:16px;padding:36px;background:rgba(245,158,11,0.05);}
+  .stop-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:18px;color:var(--accent2);border:1px solid var(--accent2);border-radius:20px;padding:5px 16px;margin-bottom:18px;}
+
+  .nav-ui{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:linear-gradient(0deg, var(--bg) 60%, transparent);z-index:10;}
+  .nav-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:46px;height:46px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+  .nav-btn:hover{border-color:var(--accent);}
+  .nav-btn:disabled{opacity:0.25;cursor:default;}
+  .nav-center{display:flex;align-items:center;gap:14px;}
+  .slide-counter{font-family:var(--mono);font-size:18px;color:var(--text2);}
+  .dots{display:flex;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s;}
+  .dot.active{background:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <div class="slide active">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">סמסטר ב' — אבטחה וניטור | שלב 11</span>
+      <h1 class="big">Scapy ככלי <span class="accent">איסוף וניתוח</span></h1>
+      <p class="lead center">בשלב 10 בנינו את PacketAnalyzer מסביב לתאוריה של Wireshark. בשלב הזה אנחנו פותחים את הקופסה השחורה: לומדים איך Scapy עצמו עובד בפייתון — <code>sniff</code>, <code>filter</code>, <code>lfilter</code> — ומשתמשים בו כדי שהמודול יידע לקרוא תעבורה בעצמו, לא רק מקובץ Wireshark מוכן.</p>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">תזכורת: <span class="accent">Packet</span> ב-Scapy</h2>
+      <p class="lead">Scapy מייצג כל פקטה כאוסף שכבות מקוננות — בדיוק כמו ב-Wireshark, רק שכאן זה אובייקט פייתון שאפשר לתשאל בקוד.</p>
+      <pre class="code-block">
+&gt;&gt;&gt; packets[<span class="c3">0</span>].show()
+###[ Ethernet ]###
+  dst= ...
+###[ IP ]###
+     src= 10.0.0.3
+     dst= 82.166.201.177
+###[ TCP ]###
+        sport= 49420
+        dport= <span class="c3">80</span>
+###[ Raw ]###
+           load= <span class="c3">'GET / HTTP/1.1...'</span>
+      </pre>
+      <p class="lead" style="margin-top:14px;">כל שכבה היא שדה בתוך השכבה הקודמת — בדיוק כמו ה-encapsulation שלמדנו ב-Wireshark.</p>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title"><span class="accent">sniff()</span> — לכידת תעבורה חיה</h2>
+      <p class="lead">הפונקציה המרכזית לקליטת פקטות בזמן אמת. כמה פרמטרים שכדאי להכיר:</p>
+      <pre class="code-block">
+<span class="c2">from</span> scapy.all <span class="c2">import</span> sniff
+
+packets = sniff(
+    count=<span class="c3">20</span>,        <span class="c1"># כמה פקטות לקלוט ואז לעצור</span>
+    timeout=<span class="c3">10</span>,       <span class="c1"># או לעצור אחרי X שניות, המוקדם מביניהם</span>
+    iface=<span class="c3">"eth0"</span>,     <span class="c1"># איזה כרטיס רשת להאזין לו</span>
+    filter=<span class="c3">"tcp"</span>      <span class="c1"># פילטר BPF - כמו ב-Wireshark</span>
+)
+      </pre>
+      <button class="expand-btn" onclick="toggleExpand(this,'exp3')">▾ למה לא להשתמש ב-count=0 בלי timeout?</button>
+      <div class="expand-content" id="exp3">
+        <p style="color:var(--text2);font-size:18px;line-height:1.6;">
+          הסנפה בלי <code>count</code> ובלי <code>timeout</code> רצה <b style="color:var(--text);">לנצח</b> עד שעוצרים אותה ביד.
+          בעבודה על הפרויקט (ובמיוחד בבדיקות אוטומטיות) תמיד להגביל אחד מהשניים — אחרת התרגיל "נתקע".
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title"><span class="accent">filter</span> מול <span class="accent">lfilter</span></h2>
+      <p class="lead">שני מנגנוני סינון שונים בתכלית — לבחור נכון חוסך הרבה זמן עיבוד:</p>
+      <table class="compare-table">
+        <tr><th></th><th>filter (BPF)</th><th>lfilter (פייתון)</th></tr>
+        <tr><td><b>מתי מסנן</b></td><td>ברמת מערכת ההפעלה, לפני שהפקטה מגיעה ל-Scapy</td><td>בתוך פייתון, אחרי שהפקטה כבר נקלטה</td></tr>
+        <tr><td><b>מהירות</b></td><td>מהיר יותר (פחות עומס)</td><td>איטי יותר אך הרבה יותר גמיש</td></tr>
+        <tr><td><b>תחביר</b></td><td>מחרוזת BPF, כמו ב-Wireshark capture filter</td><td>פונקציית פייתון שמקבלת פקטה ומחזירה True/False</td></tr>
+        <tr><td><b>מתאים ל</b></td><td>סינון פשוט (פרוטוקול, פורט, IP)</td><td>תנאי מורכב (שדה ספציפי, ערך מחושב, כמה תנאים יחד)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">דוגמת <span class="accent">lfilter</span> מהתרגול</h2>
+      <p class="lead">פילטר תיכנותי שמחפש שאילתת DNS מסוג A (כתובת רגילה) — בדיוק כמו שראינו בתרגול ה-Scapy:</p>
+      <pre class="code-block">
+<span class="c2">def</span> dns_filter(p):
+    <span class="c2">return</span> DNS <span class="c2">in</span> p <span class="c2">and</span> p[DNS].opcode == <span class="c3">0</span> <span class="c2">and</span> p[DNSQR].qtype == <span class="c3">1</span>
+
+packets = sniff(count=<span class="c3">4</span>, lfilter=dns_filter)
+      </pre>
+      <p class="lead" style="margin-top:14px;">שימו לב: <code>filter</code> ו-<code>lfilter</code> אפשר לשלב יחד — <code>filter="udp"</code> מסנן ברמת המערכת, ו-<code>lfilter</code> בודק תנאי מדויק יותר על מה שעבר.</p>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">גישה לשכבות ול-<span class="accent">Raw data</span></h2>
+      <ul class="checklist" style="margin-top:6px;">
+        <li><code>packet.haslayer(TCP)</code> — בדיקה אם השכבה קיימת בפקטה</li>
+        <li><code>packet[TCP].dport</code> — גישה לשדה ספציפי בתוך שכבה</li>
+        <li><code>packet[Raw].load</code> — התוכן הגולמי של שכבת האפליקציה (bytes) — חייבים להמיר ל-str לפני חיפוש טקסט בו</li>
+      </ul>
+      <pre class="code-block">
+<span class="c2">if</span> packet.haslayer(Raw):
+    content = packet[Raw].load.decode(errors=<span class="c3">"ignore"</span>)
+    <span class="c2">if</span> <span class="c3">"GET /admin"</span> <span class="c2">in</span> content:
+        ...
+      </pre>
+    </div>
+  </div>
+
+  <!-- 7: ethics warning -->
+  <div class="slide warn">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="warn-tag">⚠ עיקרון מחייב</span>
+      <h2 class="slide-title">לא בונים <span class="accent" style="color:var(--accent3);">כלי תקיפה</span></h2>
+      <p class="lead center">Scapy מאפשר גם <b style="color:var(--text);">לבנות ולשלוח</b> פקטות (לא רק לקלוט) — אבל בפרויקט הזה אנחנו משתמשים בו <b style="color:var(--text);">רק לקריאה, ניתוח וזיהוי</b>.</p>
+      <ul class="checklist" style="margin:18px auto 0;text-align:right;">
+        <li>מותר: <code>sniff</code>, <code>rdpcap</code>, ניתוח שדות, ספירה, התרעה</li>
+        <li><b>לא</b> מותר בפרויקט: בניית פקטות לשליחה (<code>send</code>/<code>sr</code>) לצורך תקיפה, הצפה, או הטעיה (ARP spoofing בפועל, DoS, וכו')</li>
+        <li>גם אם הנושא שלכם הוא "זיהוי ARP spoofing" — אתם מזהים אותו, <b>לא מדמים אותו על רשת אמיתית</b> ללא אישור מורה מפורש ובסביבת מעבדה סגורה</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מתבנית ל<span class="accent">פונקציה אחת</span></h2>
+      <p class="lead">התוצר של השלב הזה הוא פונקציה אחת ברורה — לא תוכנה שלמה. היא מקבלת תעבורה, ומחזירה <b style="color:var(--text);">רשימת אירועים</b>.</p>
+      <pre class="code-block">
+<span class="c2">def</span> analyze_traffic(packets: list) -&gt; list[dict]:
+    <span class="c1">"""
+    מקבלת רשימת פקטות (מ-sniff או rdpcap)
+    מחזירה רשימת אירועים שזוהו, כל אחד כ-dict
+    """</span>
+    events = []
+    <span class="c1"># ... לוגיקת הזיהוי שהצוות הגדיר בשלב 10 ...</span>
+    <span class="c2">return</span> events
+      </pre>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מבנה אירוע אחיד</h2>
+      <p class="lead">כדי שרכיב הניטור הראשי בפרויקט יוכל "להבין" כל מודול בלי קוד מיוחד לכל אחד, כל אירוע צריך מבנה קבוע:</p>
+      <pre class="code-block">
+{
+  <span class="c3">"timestamp"</span>: <span class="c3">"2026-06-28T10:14:02"</span>,
+  <span class="c3">"source"</span>: <span class="c3">"10.0.0.5"</span>,
+  <span class="c3">"event_type"</span>: <span class="c3">"dns_repeat"</span>,
+  <span class="c3">"detail"</span>: <span class="c3">"domain evil.example.com queried 8 times in 10s"</span>,
+  <span class="c3">"severity"</span>: <span class="c3">"medium"</span>
+}
+      </pre>
+      <p class="lead" style="margin-top:14px;">זה אותו עקרון שהגדרתם בעצמכם במשימה 3.2 בשלב 10 — עכשיו ממשים אותו בפונקציה אמיתית.</p>
+    </div>
+  </div>
+
+  <!-- 10: stop and do -->
+  <div class="slide stop">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="stop-tag">⏸ תחנת עצירה</span>
+      <h2 class="slide-title">מה עושים השבוע?</h2>
+      <p class="lead center">פותחים את <code>דף העבודה — Scapy לאיסוף וניתוח</code>, וביחד עם הצוות:</p>
+      <ul class="checklist" style="margin:18px auto 0;">
+        <li>קוראים תעבורה עם <code>sniff</code> או <code>rdpcap</code>, ובוחנים את השכבות בפועל</li>
+        <li>כותבים <code>lfilter</code> שמתאים לתבנית החריגה שבחרתם בשלב 10</li>
+        <li>ממשים את <code>analyze_traffic()</code> שמחזירה רשימת אירועים, ומגישים קובץ JSON עם התשובות</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 11: quiz -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <h2 class="slide-title">בדיקת הבנה</h2>
+      <p class="lead center" style="margin-bottom:8px;">מתי הכי הגיוני להשתמש ב-<code>lfilter</code> ולא רק ב-<code>filter</code>?</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">כשרוצים לסנן רק לפי פרוטוקול, כמו "רק TCP"</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,true)">כשהתנאי תלוי בערך שדה ספציפי או בחישוב, כמו "qtype == 1 וגם opcode == 0"</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">כשרוצים לכלוך הסנפה מהירה יותר ככל האפשר</div>
+      </div>
+      <p class="quiz-feedback" id="quiz-fb"></p>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">קדימה לבנייה</span>
+      <h1 class="big">מ<span class="accent">קלט תעבורה</span> ל<span class="accent">פונקציית זיהוי</span></h1>
+      <p class="lead center">בשלב הזה ה-PacketAnalyzer שלכם מפסיק להיות "תכנון על הנייר" והופך לפונקציית פייתון שרצה בפועל. השלבים הבאים יחברו אותה לשאר רכיבי הניטור בפרויקט.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-ui">
+  <button class="nav-btn" id="prevBtn" title="הקודם (חץ ימינה)">→</button>
+  <div class="nav-center">
+    <span class="slide-counter" id="counter">1 / 12</span>
+    <div class="dots" id="dots"></div>
+  </div>
+  <button class="nav-btn" id="nextBtn" title="הבא (חץ שמאלה / רווח)">←</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  var dotsWrap = document.getElementById('dots');
+  for (var i = 0; i < total; i++) {
+    var d = document.createElement('span');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', (function(idx){ return function(){ goTo(idx); }; })(i));
+    dotsWrap.appendChild(d);
+  }
+
+  function updateUI(){
+    slides.forEach(function(s, idx){ s.classList.toggle('active', idx === current); });
+    document.getElementById('counter').textContent = (current+1) + ' / ' + total;
+    var dots = dotsWrap.querySelectorAll('.dot');
+    dots.forEach(function(d, idx){ d.classList.toggle('active', idx === current); });
+    document.getElementById('prevBtn').disabled = (current === 0);
+    document.getElementById('nextBtn').disabled = (current === total - 1);
+  }
+
+  function goTo(idx){
+    if (idx < 0 || idx >= total) return;
+    current = idx;
+    updateUI();
+  }
+  function next(){ goTo(current + 1); }
+  function prev(){ goTo(current - 1); }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowLeft' || e.key === ' '){ e.preventDefault(); next(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); prev(); }
+  });
+
+  function toggleExpand(btn, id){
+    var el = document.getElementById(id);
+    el.classList.toggle('open');
+    if (el.classList.contains('open')){
+      btn.textContent = btn.textContent.replace('▾','▴');
+    } else {
+      btn.textContent = btn.textContent.replace('▴','▾');
+    }
+  }
+
+  function checkQuiz(el, isCorrect){
+    var opts = el.parentElement.querySelectorAll('.quiz-opt');
+    opts.forEach(function(o){ o.classList.remove('correct','wrong'); });
+    var fb = document.getElementById('quiz-fb');
+    if (isCorrect){
+      el.classList.add('correct');
+      fb.textContent = '✓ נכון! lfilter שווה בדיוק כשהתנאי לא נכתב בתחביר BPF פשוט.';
+      fb.style.color = '#5dcaa5';
+    } else {
+      el.classList.add('wrong');
+      fb.textContent = '✗ לא מדויק — filter (BPF) מתאים לתנאים פשוטים ומהירים; lfilter לתנאים מורכבים על תוכן השדות.';
+      fb.style.color = '#f87171';
+    }
+  }
+
+  updateUI();
+</script>
+
+</body>
+</html>

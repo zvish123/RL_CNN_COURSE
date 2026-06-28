@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה | שלב 11 - Scapy ככלי איסוף/ניתוח</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;margin:0;line-height:1.7;}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 24px 90px;}
+  header.hero{background:linear-gradient(180deg,var(--bg2),var(--bg));border-bottom:1px solid var(--border);padding:40px 24px 30px;text-align:center;}
+  header.hero .tag{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;margin-bottom:16px;letter-spacing:1px;}
+  header.hero h1{font-size:28px;margin:0 0 8px;}
+  .meta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;font-size:18px;color:var(--text2);}
+  .meta-bar span{border:1px solid var(--border);border-radius:14px;padding:5px 14px;}
+
+  .ethics-banner{
+    background:rgba(239,68,68,0.06);border:1px solid var(--accent3);border-radius:10px;
+    padding:16px 20px;margin:24px 0;font-size:18px;color:var(--text2);
+  }
+  .ethics-banner b{color:var(--accent3);}
+
+  section{margin:44px 0;}
+  .activity-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .activity-num{flex:0 0 auto;background:var(--accent);color:#0b0f14;font-family:var(--mono);font-weight:700;font-size:18px;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+  h2.section-title{font-size:21px;color:var(--text);margin:0;}
+  h2.section-title small{display:block;color:var(--accent);font-size:18px;font-weight:400;margin-top:3px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .card.project-name{text-align:center;border:1px solid var(--accent);background:linear-gradient(180deg, rgba(45,212,191,0.08), var(--card));}
+  .card.project-name h3{margin:0 0 8px;font-size:22px;color:var(--accent);}
+  .card.project-name p{margin:0;color:var(--text2);font-size:18px;}
+
+  h3.sub-title{font-size:18px;color:var(--text);margin:22px 0 10px;}
+
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:3px;border:1.5px solid var(--accent);border-radius:4px;}
+  .checklist li b{color:var(--text);}
+
+  .code-block{
+    background:#0d1117;border:1px solid var(--border);border-radius:8px;
+    padding:14px 16px;font-family:var(--mono);font-size:18px;color:#cdd9e5;
+    text-align:left;direction:ltr;line-height:1.55;overflow-x:auto;margin:14px 0;
+  }
+  .code-block .c1{color:#6b7785;}
+
+  .task{background:var(--card);border:1px solid var(--border);border-right:4px solid var(--accent2);border-radius:10px;padding:20px 22px;margin:18px 0;}
+  .task .task-label{font-family:var(--mono);font-size:18px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;}
+  .task h4{margin:0 0 10px;font-size:18px;}
+  .task p.instr{margin:0 0 12px;color:var(--text2);font-size:18px;}
+  .task textarea, .reflection textarea{
+    width:100%;min-height:110px;background:#0b0f14;border:1px solid var(--border);
+    color:var(--text);border-radius:8px;padding:12px;font-size:18px;font-family:inherit;
+    direction:rtl;text-align:right;resize:vertical;
+  }
+  .task textarea.small, .reflection textarea.small{min-height:70px;}
+  .task textarea.code{font-family:var(--mono);direction:ltr;text-align:left;min-height:170px;}
+  .task input[type=text]{
+    width:100%;background:#0b0f14;border:1px solid var(--border);
+    color:var(--text);border-radius:8px;padding:10px 12px;font-size:18px;font-family:inherit;
+    direction:rtl;text-align:right;
+  }
+  .grading-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:#fbbf24;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+
+  .check-row{display:flex;align-items:flex-start;gap:10px;margin:10px 0;}
+  .check-row input{margin-top:4px;}
+  .check-row label{font-size:18px;color:var(--text2);}
+
+  .reflection{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-top:30px;}
+  .reflection h4{margin:0 0 10px;color:var(--purple);font-size:18px;}
+
+  footer{text-align:center;color:var(--text2);font-size:18px;padding:30px 0 0;border-top:1px solid var(--border);margin-top:50px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="tag">דף עבודה | שלב 11 - אבטחה וניטור</span>
+  <h1>Scapy ככלי איסוף וניתוח</h1>
+  <div class="meta-bar">
+    <span>⏱ זמן משוער: 60-90 דק'</span>
+    <span>✏️ עבודה בצוות הפרויקט</span>
+    <span>📋 דורש: בחירת תבנית חריגה משלב 10</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card project-name">
+    <h3>פונקציה: analyze_traffic(packets) → list[dict]</h3>
+    <p>
+      התוצר של דף העבודה הזה הוא פונקציית פייתון יחידה, שמקבלת תעבורה (מ-<code style="color:var(--accent);">sniff</code> או
+      <code style="color:var(--accent);">rdpcap</code>) ומחזירה רשימת אירועים שזוהו — לפי התבנית שהצוות בחר בשלב 10.
+    </p>
+  </div>
+
+  <div class="ethics-banner">
+    <b>⚠ תזכורת מחייבת:</b> בתרגיל הזה משתמשים ב-Scapy <b>רק לקליטה וניתוח</b> (sniff, rdpcap, קריאת שדות). אין לבנות או לשלוח
+    פקטות לצורך תקיפה, הצפה, או הטעיה (כמו ARP spoofing בפועל) — גם אם הנושא של הצוות הוא זיהוי התקפה כזו. כל בדיקה מול
+    תעבורה "חיה" מתבצעת רק במעבדה הסגורה של הכיתה ובאישור מורה.
+  </div>
+
+  <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <label for="student_name" style="font-size:18px;color:var(--text2);white-space:nowrap;">שמות התלמידים בצוות:</label>
+    <input id="student_name" type="text" style="flex:1;min-width:180px;background:#0b0f14;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:18px;font-family:inherit;direction:rtl;text-align:right;" placeholder="לדוגמה: דנה כהן, רועי לוי, ...">
+  </div>
+
+  <!-- ============== פעילות 1 ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">1</span>
+      <h2 class="section-title">קריאת תעבורה ב-Scapy<small>מתרגלים sniff / rdpcap ובוחנים שכבות בקוד</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">השתמשו בקובץ ה-pcap משלב 10 (או בהסנפה קצרה ומבוקרת, אם המורה אישר). הריצו בפועל את הקוד הבא ושנו אותו לפי הצורך:</p>
+      <pre class="code-block">
+<span class="c1">from scapy.all import rdpcap</span>
+packets = rdpcap(<span style="color:#e6edf3;">"capture.pcap"</span>)
+<span class="c1">print(len(packets))</span>
+<span class="c1">packets[0].show()</span>
+      </pre>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.1</span>
+      <h4>כמה פקטות נקלטו, ואילו שכבות מופיעות בפקטה הראשונה?</h4>
+      <p class="instr">הריצו את הקוד מהכרטיס שלמעלה ורשמו את הפלט בקצרה.</p>
+      <textarea id="t1_1" class="small" placeholder="מספר פקטות: ...&#10;שכבות בפקטה הראשונה: Ether / IP / TCP / ..."></textarea>
+<!--      <div class="grading-note">⚠ ייבדק ע"י המורה</div>-->
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.2</span>
+      <h4>הדפיסו שדה ספציפי מתוך שכבה</h4>
+      <p class="instr">לדוגמה: <code>packets[0][IP].dst</code> או <code>packets[0][TCP].dport</code>. בחרו שדה הרלוונטי לתבנית החריגה שלכם, והדביקו את השורת קוד ואת התוצאה שהתקבלה.</p>
+      <textarea id="t1_2" class="code" placeholder="הקוד שהרצתי:&#10;...&#10;&#10;התוצאה שהתקבלה:&#10;..."></textarea>
+<!--      <div class="grading-note">⚠ ייבדק ע"י המורה</div>-->
+    </div>
+  </section>
+
+  <!-- ============== פעילות 2 ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">2</span>
+      <h2 class="section-title">כתיבת lfilter לתבנית שלכם<small>הופכים את הכלל מפעילות 2 בשלב 10 לקוד פייתון</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">תזכורת לתבנית שבחרתם בשלב 10 (DNS Watchdog / ARP Guardian / NetGuard / Chat Security / רעיון אחר). עכשיו כותבים פונקציית <code>lfilter</code> שמבודדת רק את הפקטות הרלוונטיות לתבנית הזו.</p>
+      <pre class="code-block">
+<span class="c1"># דוגמה מהתרגול - לסנן רק שאילתות DNS מסוג A</span>
+<span style="color:#e6edf3;">def</span> dns_filter(p):
+    <span style="color:#e6edf3;">return</span> DNS in p and p[DNS].opcode == 0 and p[DNSQR].qtype == 1
+      </pre>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.1</span>
+      <h4>כתבו את ה-lfilter שלכם</h4>
+      <p class="instr">פונקציה שמקבלת פקטה אחת (<code>p</code>) ומחזירה True רק אם היא רלוונטית לתבנית החריגה שבחרתם.</p>
+      <textarea id="t2_1" class="code" placeholder="def my_filter(p):&#10;    return ..."></textarea>
+<!--      <div class="grading-note">⚠ ייבדק ע"י המורה</div>-->
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.2</span>
+      <h4>בדקו את ה-lfilter על קובץ ההסנפה</h4>
+      <p class="instr">הריצו <code>sniff(...)</code> או סננו ידנית את <code>packets</code> עם הפונקציה שלכם, ורשמו כמה פקטות עברו את הסינון מתוך הכלל.</p>
+      <textarea id="t2_2" class="small" placeholder="לדוגמה: מתוך 150 פקטות בקובץ, 12 עברו את ה-lfilter שלנו"></textarea>
+<!--      <div class="grading-note">⚠ ייבדק ע"י המורה</div>-->
+    </div>
+  </section>
+
+  <!-- ============== פעילות 3 ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">3</span>
+      <h2 class="section-title">מימוש analyze_traffic()<small>הפונקציה שמחזירה רשימת אירועים</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0 0 10px;">משלבים את ה-lfilter, חלון הזמן והסף שהגדרתם בשלב 10, לפונקציה אחת שמייצרת רשימת dict-ים בפורמט אחיד.</p>
+      <pre class="code-block">
+<span class="c1">def analyze_traffic(packets: list) -> list[dict]:</span>
+<span class="c1">    events = []</span>
+<span class="c1">    # 1. לסנן רק פקטות רלוונטיות (lfilter מפעילות 2)</span>
+<span class="c1">    # 2. לספור/לקבץ לפי חלון הזמן והסף משלב 10</span>
+<span class="c1">    # 3. לכל חריגה - להוסיף dict בפורמט האחיד ל-events</span>
+<span class="c1">    return events</span>
+      </pre>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.1</span>
+      <h4>ממשו את הפונקציה בקובץ קוד נפרד</h4>
+      <p class="instr">הדביקו כאן את הגרסה הסופית של הפונקציה (אפשר גם פונקציות עזר נוספות מסביבה).</p>
+      <textarea id="t3_1" class="code" placeholder="def analyze_traffic(packets):&#10;    ..."></textarea>
+<!--      <div class="grading-note">⚠ ייבדק ע"י המורה</div>-->
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.2 — הגשה</span>
+      <h4>הריצו את הפונקציה והגישו את הקוד + פלט בדיקה</h4>
+      <p class="instr">הריצו את <code>analyze_traffic()</code> מול קובץ ה-pcap, ושמרו את קובץ הקוד ואת הפלט שהתקבל (תדפיס/Screenshot).</p>
+      <div class="check-row"><input type="checkbox" id="c1"><label for="c1">הפונקציה רצה בלי שגיאות מול קובץ pcap תקין</label></div>
+      <div class="check-row"><input type="checkbox" id="c2"><label for="c2">על תעבורה תקינה — אין אירועים, או מספר סביר מאוד נמוך</label></div>
+      <div class="check-row"><input type="checkbox" id="c3"><label for="c3">על תעבורה עם הדפוס שבחרנו — מוחזר לפחות אירוע אחד בפורמט שהוגדר בשלב 10</label></div>
+      <div class="check-row"><input type="checkbox" id="c4"><label for="c4">בקוד אין שום קריאה ל-send / sr / שליחת פקטות</label></div>
+      <p class="instr" style="margin-top:10px;">שם קובץ הקוד: <code>analyze_traffic_שם_הצוות.py</code></p>
+    </div>
+  </section>
+
+  <div class="reflection">
+    <h4>רפלקציה קצרה לסיום</h4>
+    <p style="margin:0 0 10px;color:var(--text2);font-size:18px;">לפני שממשיכים לשלב הבא של הפרויקט — חשוב, כתוב, בדוק עם השותף, ואז שאלו את המורה אם נשארה אי-בהירות.</p>
+    <textarea id="t_reflect" class="small" placeholder="הדבר שהכי הפתיע אותי מהשלב הזה: ...&#10;שאלה שנשארה לי פתוחה: ..."></textarea>
+    <br>
+    <div class="grading-note">⚠ רפלקציה אישית — לא נבדקת "נכון/לא נכון"</div>
+  </div>
+
+  <div class="card" id="submit-block" style="text-align:center;margin-top:30px;border-color:var(--accent);">
+    <p style="margin:0 0 14px;color:var(--text2);font-size:18px;">
+      בסיום מילוי הדף — לחצו על הכפתור כדי לשמור את כל התשובות שלכם כקובץ JSON, ולהגיש אותו למורה בנוסף לקובץ הקוד מפעילות 3.2.
+    </p>
+    <button id="submit-btn" type="button"
+      style="background:var(--accent);color:#0b0f14;border:none;padding:13px 28px;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;">
+      📥 הפק קובץ הגשה (JSON)
+    </button>
+    <p id="submit-status" style="margin:12px 0 0;font-size:18px;color:var(--text2);"></p>
+  </div>
+
+</div>
+
+<script>
+  function gv(id){
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+  function gc(id){
+    var el = document.getElementById(id);
+    return el ? el.checked : false;
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function(){
+    var studentName = gv('student_name') || 'ללא_שם';
+
+    var data = {
+      meta: {
+        worksheet: "שלב 11 - Scapy ככלי איסוף/ניתוח",
+        student_or_team: studentName,
+        submitted_at: new Date().toISOString()
+      },
+      activity_1_reading_traffic: {
+        "1_1_packet_count_and_layers": gv('t1_1'),
+        "1_2_field_access_example": gv('t1_2')
+      },
+      activity_2_lfilter: {
+        "2_1_filter_function": gv('t2_1'),
+        "2_2_test_result": gv('t2_2')
+      },
+      activity_3_analyze_function: {
+        "3_1_function_code": gv('t3_1'),
+        "3_2_checklist": {
+          runs_without_errors: gc('c1'),
+          low_false_positives_on_normal_traffic: gc('c2'),
+          detects_event_on_anomalous_traffic: gc('c3'),
+          no_packet_sending_calls: gc('c4')
+        },
+        note: "קובץ הקוד הסופי (משימה 3.2) מוגש בנפרד, לא כחלק מקובץ ה-JSON הזה."
+      },
+      reflection: gv('t_reflect')
+    };
+
+    var missing = [];
+    if(!gv('student_name')) missing.push("שם התלמיד/צוות");
+    if(!gv('t2_1')) missing.push("פונקציית lfilter (משימה 2.1)");
+    if(!gv('t3_1')) missing.push("פונקציית analyze_traffic (משימה 3.1)");
+    if(!gc('c4')) missing.push("אישור שאין קריאות שליחת פקטות (משימה 3.2)");
+
+    var jsonStr = JSON.stringify(data, null, 2);
+    var blob = new Blob([jsonStr], {type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var safeName = studentName.replace(/[^א-תa-zA-Z0-9_\-]+/g, "_");
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = "הגשה_Scapy_" + safeName + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    var statusEl = document.getElementById('submit-status');
+    if(missing.length){
+      statusEl.style.color = "#fbbf24";
+      statusEl.textContent = "⚠ הקובץ נוצר, אך שדות אלו ריקים/לא מאושרים: " + missing.join(", ") + " — מומלץ למלא ולהגיש קובץ מעודכן.";
+    } else {
+      statusEl.style.color = "#5dcaa5";
+      statusEl.textContent = "✓ קובץ ה-JSON הופק ונשמר להורדה.";
+    }
+  });
+</script>
+
+<footer>
+  <div class="wrap" style="padding:0;">דף עבודה | שלב 11 - Scapy ככלי איסוף/ניתוח לפרויקט הסיום</div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה | שלב 5 - שרת ולקוח בסיסיים (Sockets)</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;margin:0;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 90px;}
+  header.hero{background:linear-gradient(180deg,var(--bg2),var(--bg));border-bottom:1px solid var(--border);padding:40px 24px 30px;text-align:center;}
+  header.hero .tag{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;margin-bottom:16px;letter-spacing:1px;}
+  header.hero h1{font-size:27px;margin:0 0 8px;}
+  header.hero p.subtitle{color:var(--text2);font-size:18px;margin:0;}
+  .meta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;font-size:18px;color:var(--text2);}
+  .meta-bar span{border:1px solid var(--border);border-radius:14px;padding:5px 14px;}
+
+  section{margin:44px 0;}
+  .activity-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .activity-num{flex:0 0 auto;background:var(--accent);color:#0b0f14;font-family:var(--mono);font-weight:700;font-size:18px;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+  h2.section-title{font-size:21px;color:var(--text);margin:0;}
+  h2.section-title small{display:block;color:var(--accent);font-size:18px;font-weight:400;margin-top:3px;}
+  h3.sub-title{font-size:16.5px;color:var(--text);margin:22px 0 10px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .example-box{background:#0d1117;border:1px dashed var(--border);border-radius:8px;padding:14px 16px;font-size:18px;color:var(--text2);margin:14px 0;}
+  .example-box b{color:var(--accent2);}
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:5px;color:var(--accent2);font-size:.93em;}
+
+  .task{background:var(--card);border:1px solid var(--border);border-right:4px solid var(--accent2);border-radius:10px;padding:20px 22px;margin:18px 0;}
+  .task .task-label{font-family:var(--mono);font-size:18px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;}
+  .task h4{margin:0 0 10px;font-size:18px;}
+  .task p.instr{margin:0 0 12px;color:var(--text2);font-size:18px;}
+
+  textarea, input[type=text]{
+    width:100%;background:#0b0f14;border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:18px;font-family:inherit;direction:rtl;text-align:right;resize:vertical;
+  }
+  textarea:focus, input:focus{outline:1px solid var(--accent);border-color:var(--accent);}
+  textarea.small{min-height:70px;}
+  label.field-label{display:block;font-size:18px;color:var(--text2);margin:10px 0 4px;}
+
+  .code-editor{
+    width:100%;min-height:160px;background:#0d1117;color:#e6edf3;border:1px solid var(--border);
+    font-family:var(--mono);direction:ltr;text-align:left;border-radius:8px;padding:14px;font-size:18px;
+  }
+  .code-editor:focus{outline:1px solid var(--accent);}
+
+  .grading-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:#fbbf24;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .teacher-run-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:3px;border:1.5px solid var(--accent);border-radius:4px;}
+
+  .flow{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--mono);font-size:1.2em;margin:14px 0;flex-wrap:wrap;}
+  .flow .box{background:#0d1117;border:1px solid var(--accent);border-radius:8px;padding:8px 16px;}
+
+  table.theory-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:15px;}
+  table.theory-table th{background:var(--card);color:var(--accent);padding:8px 10px;border:1px solid var(--border);text-align:right;}
+  table.theory-table td{border:1px solid var(--border);padding:8px 10px;}
+
+  .reflection{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-top:30px;}
+  .reflection h4{margin:0 0 10px;color:var(--purple);font-size:18px;}
+
+  footer{text-align:center;color:var(--text2);font-size:18px;padding:30px 0 0;border-top:1px solid var(--border);margin-top:50px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="tag">דף עבודה | שלב 5 בפרויקט</span>
+  <h1>🔌 Sockets — שרת ולקוח בסיסיים</h1>
+  <p class="subtitle">הצעד הראשון בפרויקט: שני תוכניות נפרדות שמדברות ביניהן דרך הרשת</p>
+  <div class="meta-bar">
+    <span>⏱ זמן משוער: 45-60 דק'</span>
+    <span>👥 עבודה בצוות הפרויקט</span>
+    <span>🛠 כלים: Python + PyCharm/IDE, שני חלונות הרצה</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <label for="team_name" style="font-size:18px;color:var(--text2);white-space:nowrap;">שמות התלמידים בצוות:</label>
+    <input id="team_name" type="text" style="flex:1;min-width:180px;" placeholder="לדוגמה: דנה כהן, רועי לוי">
+  </div>
+
+  <!-- ============== THEORY RECAP ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">0</span>
+      <h2 class="section-title">תזכורת תאורטית<small>חובה לקרוא לפני שמתחילים לכתוב קוד</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0 0 12px;">
+        <code>socket</code> הוא נקודת קצה של חיבור בין שני רכיבים. כדי שהוא ישמש להעברת מידע, צריך להגדיר את נקודות הקצה
+        שלו: <b>כתובת IP</b> (איזה מחשב) ו-<b>מספר Port</b> (איזו תוכנה על אותו מחשב). חיבור <code>TCP</code> הוא
+        <b>זרם בתים (stream)</b> — לא הודעות בדידות — מה שאומר ש<code>recv</code> בודד לא מבטיח קבלת "הודעה שלמה אחת".
+      </p>
+      <table class="theory-table">
+        <tr><th>פעולה</th><th>מי קורא לה</th><th>תפקיד</th></tr>
+        <tr><td><code>socket()</code></td><td>שרת + לקוח</td><td>יוצר socket חדש (TCP: <code>SOCK_STREAM</code>)</td></tr>
+        <tr><td><code>bind()</code></td><td>שרת</td><td>קושר את ה-socket לכתובת IP ולפורט מקומיים</td></tr>
+        <tr><td><code>listen()</code></td><td>שרת</td><td>מתחיל להאזין לחיבורים נכנסים, וקובע כמה לקוחות יכולים להמתין בתור</td></tr>
+        <tr><td><code>accept()</code></td><td>שרת</td><td><b>חוסם (blocking)</b> וממתין לחיבור לקוח; מחזיר socket חדש שמייצג את הלקוח הספציפי + הכתובת שלו</td></tr>
+        <tr><td><code>connect()</code></td><td>לקוח</td><td>מתחבר לשרת בכתובת IP+Port מסוימים</td></tr>
+        <tr><td><code>send()</code></td><td>שרת + לקוח</td><td>שולח בתים בצד השני של ה-socket</td></tr>
+        <tr><td><code>recv(n)</code></td><td>שרת + לקוח</td><td><b>חוסם</b> וממתין לקבלת עד n בתים (יכול להחזיר פחות!)</td></tr>
+        <tr><td><code>close()</code></td><td>שרת + לקוח</td><td>סוגר את ה-socket ומשחרר את הפורט</td></tr>
+      </table>
+    </div>
+
+    <div class="flow">
+      <span class="box">socket()</span>→<span class="box">bind()</span>→<span class="box">listen()</span>→<span class="box">accept()</span>
+    </div>
+    <p style="text-align:center;font-size:.9em;color:var(--text2);">סדר הפעולות בשרת — אסור לדלג או להחליף סדר</p>
+    <div class="flow">
+      <span class="box">socket()</span>→<span class="box">connect()</span>→<span class="box">send()/recv()</span>
+    </div>
+    <p style="text-align:center;font-size:.9em;color:var(--text2);">סדר הפעולות בלקוח</p>
+
+    <div class="example-box">
+      💡 <b>טיפ קריטי מהספר:</b> עבדו עם PyCharm במצב <b>דיבוג</b>. אם התוכנית קורסת לפני שהגעתם ל-<code>close()</code>,
+      הפורט "נתפס" ולא תוכלו להריץ שוב מבלי לשחרר אותו (עצירת הדיבוג משחררת את הפורט).
+    </div>
+  </section>
+
+  <!-- ============== TASK 1: SERVER ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">1</span>
+      <h2 class="section-title">כתבו את השרת הבסיסי<small>קל</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.1 — server.py</span>
+      <h4>שרת שמאזין, מקבל הודעת HELLO, ועונה WELCOME</h4>
+      <p class="instr">
+        השלימו את הקוד: שרת שנפתח על פורט 5050, מקבל לקוח אחד, קורא הודעה ממנו, ואם זו ההודעה <code>HELLO</code> —
+        עונה <code>WELCOME</code>. כל הודעה אחרת — עונה <code>UNKNOWN</code>.
+      </p>
+      <textarea class="code-editor" id="server_code">
+import socket
+
+HOST = '0.0.0.0'
+PORT = 5050
+
+def main():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # השלימו: bind על HOST, PORT
+    # השלימו: listen (כמה לקוחות יכולים להמתין בתור?)
+
+    print(f"השרת מאזין על {HOST}:{PORT} ...")
+
+    client_socket, address = None, None
+    # השלימו: accept - קבלת חיבור מהלקוח, שמירה ב-client_socket ו-address
+    print(f"התחבר לקוח מ-{address}")
+
+    data = client_socket.recv(1024)
+    message = data.decode('utf-8')
+    print(f"התקבל מהלקוח: {message}")
+
+    if message == "HELLO":
+        response = "WELCOME"
+    else:
+        response = "UNKNOWN"
+
+    # השלימו: שליחת response בחזרה ללקוח (זכרו לקודד ל-bytes!)
+
+    # השלימו: סגירת client_socket וגם server_socket
+
+if __name__ == "__main__":
+    main()
+</textarea>
+      <div class="teacher-run-note">▶ קוד זה דורש socket אמיתי — להריץ ב-PyCharm/IDE מקומי, לא בדף זה</div>
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לבדיקה עצמית (לאחר הרצה):</strong>
+      <ul class="checklist">
+        <li>השרת עולה בלי שגיאה ומדפיס "השרת מאזין על..."</li>
+        <li>אם מנסים להריץ שרת שני באותו פורט בלי לסגור את הראשון — מתקבלת שגיאת <code>Address already in use</code> (זה תקין ומלמד למה צריך <code>close()</code>!)</li>
+        <li>השרת ממתין (לא מסיים) עד שמתחבר לקוח — זו ההתנהגות הצפויה מ-<code>accept()</code> חוסם</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============== TASK 2: CLIENT ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">2</span>
+      <h2 class="section-title">כתבו את הלקוח הבסיסי<small>קל</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.1 — client.py</span>
+      <h4>לקוח שמתחבר לשרת, שולח HELLO, ומדפיס את התשובה</h4>
+      <textarea class="code-editor" id="client_code">
+import socket
+
+HOST = '127.0.0.1'
+PORT = 5050
+
+def main():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # השלימו: connect לשרת בכתובת HOST, PORT
+
+    # השלימו: שליחת ההודעה "HELLO" (קודדו ל-bytes!)
+
+    data = client_socket.recv(1024)
+    # השלימו: פענוח data למחרוזת, והדפסה למשתמש כמו "השרת ענה: WELCOME"
+
+    # השלימו: סגירת client_socket
+
+if __name__ == "__main__":
+    main()
+</textarea>
+      <div class="teacher-run-note">▶ קוד זה דורש socket אמיתי — להריץ ב-PyCharm/IDE מקומי, לא בדף זה</div>
+    </div>
+
+    <div class="example-box">
+      ⚠ <b>שאלה למחשבה:</b> מדוע ב-<code>client.py</code> כתובת ה-HOST היא <code>127.0.0.1</code> (כתובת הבית)
+      ולא כתובת IP "אמיתית"? רמז: שאלה זהה הופיעה כבר בפרק על תכנות socketים הבסיסי.
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לבדיקה עצמית:</strong>
+      <ul class="checklist">
+        <li>הריצו קודם את <code>server.py</code> (בחלון command line / טאב נפרד ב-PyCharm), <b>ואז</b> את <code>client.py</code></li>
+        <li>הלקוח מתחבר בלי שגיאה (אם מקבלים <code>ConnectionRefusedError</code> — בדקו שהשרת רץ ושהפורט תואם בשני הקבצים)</li>
+        <li>הלקוח מדפיס "השרת ענה: WELCOME"</li>
+        <li>חלון השרת מדפיס "התחבר לקוח מ-(...)" ו"התקבל מהלקוח: HELLO"</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============== TASK 3: PROTOCOL PLANNING (BASIC) ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">3</span>
+      <h2 class="section-title">תכנון פרוטוקול ראשוני<small>הצעד הראשון לפני שמתרחבים לפרוטוקול המלא של הפרויקט</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        בשלב הזה הפרוטוקול הוא הכי פשוט שיכול להיות: הודעה אחת קבועה (<code>HELLO</code>) ותשובה אחת קבועה
+        (<code>WELCOME</code>). זה <b>לא</b> הפרוטוקול הסופי של הפרויקט (כספת + ניטור) — אבל הוא מבסס את התשתית
+        שעליה תבנו בהמשך (פקודות LOGIN, UPLOAD, DOWNLOAD ועוד).
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.1</span>
+      <h4>מה הבעיה הבאה שצריך לפתור, ולמה?</h4>
+      <p class="instr">
+        כרגע ההודעה <code>"HELLO"</code> קצרה וקבועה — אין סיכוי שתיקטע ב-<code>recv(1024)</code>. אבל בשלבים הבאים
+        תרצו לשלוח תוכן קובץ שלם (יכול להיות אלפי בתים). מה הסיכון, ואיזה רעיון תציעו לפתור אותו?
+      </p>
+      <textarea id="t3_1" placeholder="הסיכון: ...&#10;הרעיון שלנו לפתרון: ..."></textarea>
+<!--      <div class="grading-note">⚠ שאלה פתוחה — ייבדק ע"י המורה (רמז: זה הנושא של מחלקת Protocol שתבנו בשלב הבא)</div>-->
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.2</span>
+      <h4>הרחיבו את הפרוטוקול: הוסיפו הודעה שלישית</h4>
+      <p class="instr">
+        מלבד <code>HELLO</code>/<code>WELCOME</code> ו-<code>UNKNOWN</code>, הוסיפו הודעה אחת חדשה משלכם שתרצו שהשרת
+        הזה הבסיסי יידע לטפל בה (לדוגמה: <code>PING</code> שמחזיר <code>PONG</code>, או <code>BYE</code> שמסיים את החיבור
+        בצורה מסודרת). כתבו: שם ההודעה, והתשובה הצפויה.
+      </p>
+      <input type="text" id="t3_2_msg" placeholder="שם ההודעה החדשה, לדוגמה: PING">
+      <input type="text" id="t3_2_resp" style="margin-top:8px;" placeholder="התשובה הצפויה, לדוגמה: PONG">
+      <textarea id="t3_2_why" class="small" style="margin-top:8px;" placeholder="למה בחרתם בהודעה הזו?"></textarea>
+<!--      <div class="grading-note">⚠ שאלה פתוחה — ייבדק ע"י המורה</div>-->
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.3 — אתגר (לא חובה)</span>
+      <h4>הוסיפו בפועל את ההודעה שתכננתם לקוד</h4>
+      <p class="instr">חזרו ל-<code>server.py</code> ו-<code>client.py</code> שכתבתם, והוסיפו תמיכה בהודעה החדשה שהגדרתם במשימה 3.2.</p>
+<!--      <div class="grading-note">⚠ אתגר אופציונלי — ייבדק ע"י המורה אם הוגש</div>-->
+    </div>
+  </section>
+
+  <!-- ============== TROUBLESHOOTING ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">4</span>
+      <h2 class="section-title">פתרון תקלות נפוצות<small>קריאת חובה אם משהו לא עבד</small></h2>
+    </div>
+    <table class="theory-table">
+      <tr><th>שגיאה</th><th>סיבה סבירה</th><th>פתרון</th></tr>
+      <tr>
+        <td><code>OSError: Address already in use</code></td>
+        <td>הרצה קודמת של השרת לא נסגרה (לא הגיעה ל-<code>close()</code>)</td>
+        <td>עצרו את הדיבוג ב-PyCharm לשחרור הפורט, או בחרו פורט אחר זמנית</td>
+      </tr>
+      <tr>
+        <td><code>ConnectionRefusedError</code></td>
+        <td>הלקוח רץ לפני שהשרת התחיל להאזין, או פורט שגוי</td>
+        <td>הריצו את <code>server.py</code> ראשון, וודאו ש-PORT זהה בשני הקבצים</td>
+      </tr>
+      <tr>
+        <td>השרת "נתקע" ולא מגיב</td>
+        <td>זה תקין! <code>accept()</code> ו-<code>recv()</code> חוסמים (blocking) עד שמשהו קורה</td>
+        <td>הריצו את הלקוח כדי "להעיר" את השרת</td>
+      </tr>
+      <tr>
+        <td><code>TypeError</code> בקריאה ל-<code>send</code></td>
+        <td>שלחתם מחרוזת (<code>str</code>) ולא <code>bytes</code></td>
+        <td>הוסיפו <code>.encode('utf-8')</code> לפני השליחה</td>
+      </tr>
+    </table>
+  </section>
+
+  <div class="reflection">
+    <h4>רפלקציה קצרה</h4>
+    <p style="margin:0 0 10px;color:var(--text2);font-size:18px;">לפני שממשיכים לשלב הבא (מחלקות הרשת ופרוטוקול מלא) — מה הבנתם, ומה עדיין מבלבל?</p>
+    <textarea class="small" id="t_reflect" placeholder="הדבר שהבנתי הכי טוב: ...&#10;שאלה שנשארה לי פתוחה: ..."></textarea>
+    <div class="grading-note">⚠ רפלקציה אישית — לא נבדקת "נכון/לא נכון"</div>
+  </div>
+
+  <div class="card" style="text-align:center;margin-top:30px;border-color:var(--accent);">
+    <p style="margin:0 0 14px;color:var(--text2);font-size:18px;">
+      בסיום העבודה — לחצו על הכפתור כדי להפיק קובץ JSON עם הקוד שכתבתם והתשובות שלכם, ולהגיש אותו למורה.
+    </p>
+    <button id="submit-btn" type="button"
+      style="background:var(--accent);color:#0b0f14;border:none;padding:13px 28px;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;">
+      📥 הפק קובץ הגשה (JSON)
+    </button>
+    <p id="submit-status" style="margin:12px 0 0;font-size:18px;color:var(--text2);"></p>
+  </div>
+
+</div>
+
+<script>
+  function gv(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    const teamName = gv('team_name') || 'ללא_שם';
+
+    const data = {
+      meta: {
+        worksheet: "שלב 5 - שרת ולקוח בסיסיים (Sockets)",
+        team: teamName,
+        submitted_at: new Date().toISOString()
+      },
+      server_code: gv('server_code'),
+      client_code: gv('client_code'),
+      protocol_planning: {
+        "3_1_next_problem_and_idea": gv('t3_1'),
+        "3_2_new_message_name": gv('t3_2_msg'),
+        "3_2_new_message_response": gv('t3_2_resp'),
+        "3_2_reasoning": gv('t3_2_why')
+      },
+      reflection: gv('t_reflect')
+    };
+
+    const missing = [];
+    if (!gv('team_name')) missing.push("שם הצוות");
+    if (!gv('t3_1')) missing.push("משימה 3.1");
+    if (!gv('t3_2_msg')) missing.push("משימה 3.2");
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const safeName = teamName.replace(/[^א-תa-zA-Z0-9_\-]+/g, "_");
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "הגשה_שרת_לקוח_בסיסי_" + safeName + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const statusEl = document.getElementById('submit-status');
+    if (missing.length) {
+      statusEl.style.color = "#fbbf24";
+      statusEl.textContent = "⚠ הקובץ נוצר, אך שדות אלו ריקים: " + missing.join(", ") + " — מומלץ להשלים ולהגיש קובץ מעודכן.";
+    } else {
+      statusEl.style.color = "#5dcaa5";
+      statusEl.textContent = "✓ קובץ ההגשה הופק ונשמר להורדה.";
+    }
+  });
+</script>
+
+<footer>
+  <div class="wrap" style="padding:0;">דף עבודה | שלב 5 — שרת ולקוח בסיסיים (Sockets) — פרויקט הסיום</div>
+</footer>
+
+</body>
+</html>

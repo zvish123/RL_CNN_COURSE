@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שלב 13 | שכבת התעבורה - TCP/UDP</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;height:100%;overflow:hidden;}
+  .deck{position:relative;width:100%;height:100vh;}
+  .slide{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:60px 8vw 110px;opacity:0;transition:opacity .35s ease;overflow-y:auto;}
+  .slide.active{display:flex;opacity:1;}
+  .slide-inner{max-width:1040px;width:100%;}
+
+  .eyebrow{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 16px;margin-bottom:22px;letter-spacing:1px;}
+  h1.big{font-size:40px;line-height:1.25;margin-bottom:16px;}
+  h1.big .accent{color:var(--accent);}
+  h2.slide-title{font-size:29px;margin-bottom:22px;color:var(--text);}
+  h2.slide-title .accent{color:var(--accent);}
+  h2.slide-title small{display:block;font-size:18px;color:var(--text2);font-weight:400;margin-top:6px;}
+  p.lead{font-size:18px;color:var(--text2);line-height:1.7;max-width:800px;}
+  p.lead.center{margin:0 auto;text-align:center;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px;}
+  @media (max-width:800px){.grid2{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+  .card h3{font-size:18px;color:var(--accent);margin-bottom:8px;}
+  .card p{font-size:18px;color:var(--text2);line-height:1.55;}
+  .card .icon{font-size:22px;margin-bottom:8px;display:block;}
+
+  .checklist{list-style:none;margin:0;padding:0;max-width:780px;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:4px;border:1.5px solid var(--accent);border-radius:4px;}
+  .checklist li b{color:var(--text);}
+
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:4px;font-size:18px;color:var(--accent);}
+
+  .code-block{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:var(--mono);font-size:18px;color:#cdd9e5;text-align:left;direction:ltr;line-height:1.55;overflow-x:auto;margin-top:12px;}
+  .code-block .c1{color:#6b7785;}
+  .code-block .c2{color:var(--accent2);}
+  .code-block .c3{color:var(--accent);}
+
+  .compare-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:18px;}
+  .compare-table th{color:var(--accent);text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);font-size:18px;}
+  .compare-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);}
+  .compare-table td b{color:var(--text);}
+
+  .handshake{display:flex;justify-content:center;gap:60px;margin:16px 0;}
+  .hs-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .hs-col .hs-label{font-family:var(--mono);font-size:18px;color:var(--text2);margin-bottom:8px;}
+  .hs-arrow{font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:var(--card);}
+  .hs-arrow.ack{color:var(--accent2);}
+
+  .module-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .module-card h4{font-size:18px;color:var(--text);margin-bottom:6px;}
+  .module-card p{font-size:18px;color:var(--text2);line-height:1.5;}
+
+  .quiz-options{display:flex;flex-direction:column;gap:10px;max-width:620px;margin:0 auto;}
+  .quiz-opt{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px 18px;text-align:right;cursor:pointer;font-size:18px;color:var(--text);transition:border-color .15s;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,0.1);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,0.08);}
+  .quiz-feedback{margin-top:16px;font-size:18px;color:var(--text2);min-height:20px;}
+
+  .slide.stop .slide-inner{border:2px solid var(--accent2);border-radius:16px;padding:34px;background:rgba(245,158,11,0.05);}
+  .stop-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:18px;color:var(--accent2);border:1px solid var(--accent2);border-radius:20px;padding:5px 16px;margin-bottom:16px;}
+
+  .nav-ui{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:linear-gradient(0deg, var(--bg) 60%, transparent);z-index:10;}
+  .nav-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:46px;height:46px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+  .nav-btn:hover{border-color:var(--accent);}
+  .nav-btn:disabled{opacity:0.25;cursor:default;}
+  .nav-center{display:flex;align-items:center;gap:14px;}
+  .slide-counter{font-family:var(--mono);font-size:18px;color:var(--text2);}
+  .dots{display:flex;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s;}
+  .dot.active{background:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <div class="slide active">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">סמסטר ב' — אבטחה וניטור | שלב 13</span>
+      <h1 class="big">שכבת התעבורה: <span class="accent">TCP מול UDP</span></h1>
+      <p class="lead center">בשלבים הקודמים <b style="color:var(--text);">ניתחתם</b> תעבורה קיימת. בשלב הזה אתם <b style="color:var(--text);">מחליטים</b> — איזה פרוטוקול תעבורה הפרויקט שלכם עצמו ישתמש בו, ולמה. ההחלטה הזו, עם ההסברים, היא פרק שלם בתיק הפרויקט שלכם.</p>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">תזכורת: <span class="accent">פורטים</span> ושכבת התעבורה</h2>
+      <p class="lead">שכבת התעבורה מאפשרת לכמה תוכניות על אותו מחשב "לשתף" את חיבור הרשת — בעזרת <b style="color:var(--text);">פורטים</b>. כל פקטה נכנסת נמסרת לתוכנית הנכונה לפי הפורט.</p>
+      <ul class="checklist" style="margin-top:14px;">
+        <li>סוקט TCP מזוהה לפי <b>4 ערכים</b>: IP מקור, פורט מקור, IP יעד, פורט יעד</li>
+        <li>סוקט UDP מזוהה רק לפי <b>פורט היעד</b> — אין "חיבור" שצריך לזהות</li>
+        <li>זה הבסיס לכך שהשרת של הפרויקט שלכם יכול לשרת כמה לקוחות במקביל</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title"><span class="accent">UDP</span> — פשוט, מהיר, לא אמין</h2>
+      <ul class="checklist" style="margin-top:6px;">
+        <li><b>Connectionless</b> — אין handshake לפני שליחה, פשוט שולחים</li>
+        <li><b>Best-effort</b> — אין הבטחה שהפקטה תגיע, ואין הבטחה לסדר הגעה</li>
+        <li>אין flow control ואין congestion control מובנים — האפליקציה צריכה לטפל בזה אם רוצה</li>
+        <li>מתאים ל: וידאו/אודיו בזמן אמת, DNS, מצבים שבהם פקטה אבודה <b style="color:var(--text);">פחות גרועה</b> מהמתנה לה</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title"><span class="accent">TCP</span> — אמין, מסודר, עם תקורה</h2>
+      <ul class="checklist" style="margin-top:6px;">
+        <li><b>Connection-oriented</b> — לפני שליחת מידע, מתבצע 3-way handshake</li>
+        <li><b>אמינות</b>: כל בית מקבל מספר סידורי (sequence number), והנמען שולח <b>ACK</b> על מה שקיבל</li>
+        <li>אם ACK לא מתקבל בזמן (<b>timeout</b>) — השולח <b>שולח מחדש</b></li>
+        <li>מתאים ל: כל מקרה שבו אובדן מידע הוא בעיה — קבצים, הודעות, פקודות אימות</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">תזכורת: <span class="accent">3-Way Handshake</span></h2>
+      <div class="handshake">
+        <div class="hs-col"><span class="hs-label">לקוח</span></div>
+        <div class="hs-col"><span class="hs-label">שרת</span></div>
+      </div>
+      <div style="max-width:500px;margin:0 auto;display:flex;flex-direction:column;gap:10px;">
+        <div class="hs-arrow">1. לקוח → שרת: SYN</div>
+        <div class="hs-arrow ack">2. שרת → לקוח: SYN, ACK</div>
+        <div class="hs-arrow">3. לקוח → שרת: ACK</div>
+      </div>
+      <p class="lead" style="margin-top:16px;text-align:center;">רק אחרי שלושת השלבים האלה — שני הצדדים "מסכימים" שיש חיבור, ומתחילים להעביר מידע.</p>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">TCP מול UDP — <span class="accent">טבלת השוואה</span></h2>
+      <table class="compare-table">
+        <tr><th></th><th>TCP</th><th>UDP</th></tr>
+        <tr><td><b>חיבור</b></td><td>נדרש handshake</td><td>אין חיבור</td></tr>
+        <tr><td><b>אמינות</b></td><td>מובטחת (ACK + retransmit)</td><td>לא מובטחת</td></tr>
+        <tr><td><b>סדר הגעה</b></td><td>מובטח</td><td>לא מובטח</td></tr>
+        <tr><td><b>מהירות/תקורה</b></td><td>תקורה גבוהה יותר</td><td>קלילה ומהירה</td></tr>
+        <tr><td><b>דוגמה בפרויקט</b></td><td>העברת קובץ, פקודות אימות</td><td>התרעת ניטור בזמן אמת (לא קריטית)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מה קורה כש<span class="accent">לקוח מתנתק</span>?</h2>
+      <p class="lead">שני סוגי "התנתקות" שצריך להבחין ביניהם:</p>
+      <div class="grid2">
+        <div class="card">
+          <span class="icon">👋</span>
+          <h3>התנתקות מסודרת</h3>
+          <p>הלקוח שולח <code>FIN</code> — "סיימתי לשלוח". השרת מגיב ב-ACK, וסוגר את הסוקט בצורה נקייה.</p>
+        </div>
+        <div class="card" style="border-color:var(--accent2);">
+          <span class="icon">⚡</span>
+          <h3>התנתקות פתאומית</h3>
+          <p>קריסת תוכנית / ניתוק רשת — אין FIN. השרת מגלה את זה רק כש<code>recv()</code> מחזיר נתונים ריקים, או כשפעולת שליחה נכשלת.</p>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:14px;">לכל שרת בפרויקט חייבת להיות תשובה ברורה לשתי המקרים — מה קורה למשאבים (סוקט, thread, נעילות) שהוקצו לאותו לקוח?</p>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">בעיית ה<span class="accent">הודעה החלקית</span></h2>
+      <p class="lead">TCP מעביר <b style="color:var(--text);">זרם בייטים</b>, לא הודעות. אם השרת שולח שתי הודעות, הלקוח עלול לקבל אותן <b style="color:var(--text);">מפוצלות</b> או <b style="color:var(--text);">מאוחדות</b> בקריאת <code>recv()</code> אחת.</p>
+      <pre class="code-block">
+<span class="c1"># בלי טיפול נכון - בעיה:</span>
+data = client_socket.recv(<span class="c3">1024</span>)
+message = json.loads(data)  <span class="c1"># עלול להיכשל אם ההודעה לא הגיעה במלואה!</span>
+      </pre>
+      <p class="lead" style="margin-top:12px;">שני פתרונות נפוצים:</p>
+      <ul class="checklist">
+        <li><b>תו מפריד (delimiter)</b> — לדוגמה <code>\n</code> בסוף כל הודעה, וקריאה עד שמוצאים אותו</li>
+        <li><b>קידומת אורך (length-prefix)</b> — שולחים תחילה את אורך ההודעה, ואז קוראים בדיוק כמות בייטים זו</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">זיהוי <span class="accent">הצפה / קצב חריג</span></h2>
+      <p class="lead">זה בדיוק העקרון מ-NetGuard ששלב 10: סופרים אירוע (כאן: הודעות/חיבורים מאותו לקוח) בתוך חלון זמן, ומתריעים מעבר לסף.</p>
+      <pre class="code-block">
+<span class="c1"># שלד מינימלי בצד השרת</span>
+message_counts = {}  <span class="c1"># client_id -> list of timestamps</span>
+
+<span class="c2">def</span> check_flood(client_id, now, window=<span class="c3">10</span>, threshold=<span class="c3">20</span>):
+    timestamps = message_counts.setdefault(client_id, [])
+    timestamps.append(now)
+    timestamps[:] = [t <span class="c2">for</span> t <span class="c2">in</span> timestamps <span class="c2">if</span> now - t &lt;= window]
+    <span class="c2">return</span> len(timestamps) &gt; threshold
+      </pre>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">התוצר: <span class="accent">פרק בתיק הפרויקט</span></h2>
+      <p class="lead">"בחירת פרוטוקול התעבורה" — פרק כתוב, לא קוד. צריך להסביר ולהדגים ארבע נקודות:</p>
+      <ul class="checklist" style="margin-top:6px;">
+        <li><b>1.</b> למה בחרנו TCP או UDP (לאיזה רכיב בפרויקט, ולמה זה מתאים לו)</li>
+        <li><b>2.</b> מה קורה כשלקוח מתנתק (מסודר ופתאומי)</li>
+        <li><b>3.</b> איך מטפלים בהודעה חלקית (הפתרון שבחרנו, עם קוד לדוגמה)</li>
+        <li><b>4.</b> איך מזהים הצפה או קצב הודעות חריג (חלון זמן + סף)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 11: stop and do -->
+  <div class="slide stop">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="stop-tag">⏸ תחנת עצירה</span>
+      <h2 class="slide-title">מה עושים השבוע?</h2>
+      <p class="lead center">פותחים את <code>דף העבודה — בחירת פרוטוקול התעבורה</code>, וביחד עם הצוות:</p>
+      <ul class="checklist" style="margin:18px auto 0;">
+        <li>מחליטים TCP או UDP לרכיב הרלוונטי בפרויקט, עם נימוק מנומק</li>
+        <li>כותבים בקצרה איך מטפלים בניתוק לקוח ובהודעה חלקית</li>
+        <li>מגדירים חלון זמן וסף לזיהוי הצפה, ומגישים את כל זה כטיוטה לפרק בתיק</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 12: quiz -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <h2 class="slide-title">בדיקת הבנה</h2>
+      <p class="lead center" style="margin-bottom:8px;">למה TCP לבדו לא מבטיח שכל קריאת recv() תכיל הודעה שלמה אחת?</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">כי TCP מאבד הודעות בדרך</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,true)">כי TCP מעביר זרם בייטים רציף, בלי גבולות הודעה מובנים</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">כי TCP לא תומך בהודעות גדולות מ-1024 בייט</div>
+      </div>
+      <p class="quiz-feedback" id="quiz-fb"></p>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">קדימה לבנייה</span>
+      <h1 class="big">מ<span class="accent">החלטה הנדסית</span> ל<span class="accent">פרק מתועד</span></h1>
+      <p class="lead center">ההחלטה על TCP/UDP, על טיפול בניתוקים, ועל זיהוי הצפה — היא חלק מהארכיטקטורה של הפרויקט שלכם. הפרק הזה בתיק הוא ההוכחה שחשבתם על זה, ולא רק "זה עבד אז המשכנו".</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-ui">
+  <button class="nav-btn" id="prevBtn" title="הקודם (חץ ימינה)">→</button>
+  <div class="nav-center">
+    <span class="slide-counter" id="counter">1 / 13</span>
+    <div class="dots" id="dots"></div>
+  </div>
+  <button class="nav-btn" id="nextBtn" title="הבא (חץ שמאלה / רווח)">←</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  var dotsWrap = document.getElementById('dots');
+  for (var i = 0; i < total; i++) {
+    var d = document.createElement('span');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', (function(idx){ return function(){ goTo(idx); }; })(i));
+    dotsWrap.appendChild(d);
+  }
+
+  function updateUI(){
+    slides.forEach(function(s, idx){ s.classList.toggle('active', idx === current); });
+    document.getElementById('counter').textContent = (current+1) + ' / ' + total;
+    var dots = dotsWrap.querySelectorAll('.dot');
+    dots.forEach(function(d, idx){ d.classList.toggle('active', idx === current); });
+    document.getElementById('prevBtn').disabled = (current === 0);
+    document.getElementById('nextBtn').disabled = (current === total - 1);
+  }
+
+  function goTo(idx){
+    if (idx < 0 || idx >= total) return;
+    current = idx;
+    updateUI();
+  }
+  function next(){ goTo(current + 1); }
+  function prev(){ goTo(current - 1); }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowLeft' || e.key === ' '){ e.preventDefault(); next(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); prev(); }
+  });
+
+  function checkQuiz(el, isCorrect){
+    var opts = el.parentElement.querySelectorAll('.quiz-opt');
+    opts.forEach(function(o){ o.classList.remove('correct','wrong'); });
+    var fb = document.getElementById('quiz-fb');
+    if (isCorrect){
+      el.classList.add('correct');
+      fb.textContent = '✓ נכון! TCP מבטיח שהבייטים יגיעו בשלמותם ובסדר הנכון - אבל לא שומר על "גבולות הודעה".';
+      fb.style.color = '#5dcaa5';
+    } else {
+      el.classList.add('wrong');
+      fb.textContent = '✗ לא מדויק — TCP אמין ומבטיח הגעה; הבעיה היא שהוא לא "יודע" איפה מתחילה/נגמרת הודעה אפליקטיבית.';
+      fb.style.color = '#f87171';
+    }
+  }
+
+  updateUI();
+</script>
+
+</body>
+</html>

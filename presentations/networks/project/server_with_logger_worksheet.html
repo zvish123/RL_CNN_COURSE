@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה | שלב 8 - Logger, Exceptions ושרת יציב</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;margin:0;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 90px;}
+  header.hero{background:linear-gradient(180deg,var(--bg2),var(--bg));border-bottom:1px solid var(--border);padding:40px 24px 30px;text-align:center;}
+  header.hero .tag{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;margin-bottom:16px;letter-spacing:1px;}
+  header.hero h1{font-size:27px;margin:0 0 8px;}
+  header.hero p.subtitle{color:var(--text2);font-size:18px;margin:0;}
+  .meta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;font-size:18px;color:var(--text2);}
+  .meta-bar span{border:1px solid var(--border);border-radius:14px;padding:5px 14px;}
+
+  section{margin:44px 0;}
+  .activity-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .activity-num{flex:0 0 auto;background:var(--accent);color:#0b0f14;font-family:var(--mono);font-weight:700;font-size:18px;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+  h2.section-title{font-size:21px;color:var(--text);margin:0;}
+  h2.section-title small{display:block;color:var(--accent);font-size:18px;font-weight:400;margin-top:3px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .example-box{background:#0d1117;border:1px dashed var(--border);border-radius:8px;padding:14px 16px;font-size:18px;color:var(--text2);margin:14px 0;}
+  .example-box b{color:var(--accent2);}
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:5px;color:var(--accent2);font-size:1.2em; direction:rtl;}
+  pre{font-size:18px;;}
+  .task{background:var(--card);border:1px solid var(--border);border-right:4px solid var(--accent2);border-radius:10px;padding:20px 22px;margin:18px 0;}
+  .task .task-label{font-family:var(--mono);font-size:18px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;}
+  .task h4{margin:0 0 10px;font-size:18px;}
+  .task p.instr{margin:0 0 12px;color:var(--text2);font-size:18px;}
+
+  textarea, input[type=text], select{
+    width:100%;background:#0b0f14;border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:18px;font-family:inherit;direction:rtl;text-align:right;resize:vertical;
+  }
+  textarea:focus, input:focus, select:focus{outline:1px solid var(--accent);border-color:var(--accent);}
+  textarea.small{min-height:70px;}
+
+  .code-editor{
+    width:100%;min-height:160px;background:#0d1117;color:#e6edf3;border:1px solid var(--border);
+    font-family:var(--mono);direction:ltr;text-align:left;border-radius:8px;padding:14px;font-size:.92em;
+  }
+  .code-editor:focus{outline:1px solid var(--accent);}
+
+  .grading-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:#fbbf24;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .teacher-run-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .auto-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--accent);background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:3px;border:1.5px solid var(--accent);border-radius:4px;}
+
+  table.theory-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:18px;}
+  table.theory-table th{background:var(--card);color:var(--accent);padding:8px 10px;border:1px solid var(--border);text-align:right;}
+  table.theory-table td{border:1px solid var(--border);padding:8px 10px;}
+
+  table.proto-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:18px;}
+  table.proto-table th{background:var(--card);color:var(--accent);padding:8px 8px;border:1px solid var(--border);text-align:right;font-size:18px;}
+  table.proto-table td{border:1px solid var(--border);padding:6px;vertical-align:top;}
+  table.proto-table td input, table.proto-table td select{font-size:18px;padding:6px 8px;}
+  .add-row-btn{background:none;border:1.5px dashed var(--accent);color:var(--accent);border-radius:8px;padding:8px 18px;font-size:18px;cursor:pointer;margin-top:10px;font-family:inherit;}
+  .add-row-btn:hover{background:rgba(45,212,191,.08);}
+  .remove-row{background:none;border:none;color:var(--accent3);cursor:pointer;font-size:18px;}
+  .row-feedback{font-size:18px;margin-top:8px;min-height:14px;}
+  .row-feedback.ok{color:var(--accent);}
+  .row-feedback.bad{color:var(--accent3);}
+
+  .quiz-opt{display:block;width:100%;text-align:right;background:#0d1117;border:1.5px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;margin:7px 0;cursor:pointer;font-size:18px;font-family:inherit;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,.12);color:var(--accent);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,.12);color:#fca5a5;}
+  .quiz-explain{display:none;margin-top:12px;padding:12px 14px;background:#0d1117;border-radius:8px;border-right:4px solid var(--accent);font-size:18px;color:var(--text2);direction:ltr;}
+  .quiz-explain.show{display:block;}
+
+  .reflection{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-top:30px;}
+  .reflection h4{margin:0 0 10px;color:var(--purple);font-size:18px;}
+
+  footer{text-align:center;color:var(--text2);font-size:18px;padding:30px 0 0;border-top:1px solid var(--border);margin-top:50px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="tag">דף עבודה | שלב 8 בפרויקט</span>
+  <h1>📝 Logger, Exceptions ושרת יציב</h1>
+  <p class="subtitle">משרת ש"קורס בשקט" לשרת שמתעד כל מה שקרה — ולא נופל אף פעם בגלל לקוח בעייתי אחד</p>
+  <div class="meta-bar">
+    <span>⏱ זמן משוער: 60 דק'</span>
+    <span>👥 עבודה בצוות הפרויקט</span>
+    <span>🛠 כלים: Python + PyCharm/IDE</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <label for="team_name" style="font-size:18px;color:var(--text2);white-space:nowrap;">שמות התלמידים בצוות:</label>
+    <input id="team_name" type="text" style="flex:1;min-width:180px;" placeholder="לדוגמה: דנה כהן, רועי לוי">
+  </div>
+
+  <!-- ============== THEORY ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">0</span>
+      <h2 class="section-title">תזכורת תאורטית<small>logging ברמה הבסיסית — לפני שמשתמשים בו בפרויקט</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0 0 12px;">
+        <code>logging</code> הוא אמצעי למעקב אחר אירועים שקורים כשהתוכנה רצה. לכל הודעה יש <strong>רמת חשיבות</strong>
+        (Level), שמסמנת כמה "דרמטי" האירוע:
+      </p>
+      <table class="theory-table">
+        <tr><th>רמה</th><th>מתי משתמשים בה</th></tr>
+        <tr><td><code>DEBUG</code></td><td>מידע מפורט, רלוונטי רק כשמנפים תקלות</td></tr>
+        <tr><td><code>INFO</code></td><td>אישור שהדברים עובדים כצפוי (לדוגמה: לקוח התחבר)</td></tr>
+        <tr><td><code>WARNING</code></td><td>משהו לא צפוי קרה, אך התוכנה ממשיכה לעבוד (לדוגמה: ניתוק לא צפוי)</td></tr>
+        <tr><td><code>ERROR</code></td><td>פעולה ספציפית נכשלה (לדוגמה: בקשה לקובץ לא קיים)</td></tr>
+        <tr><td><code>CRITICAL</code></td><td>שגיאה חמורה — יתכן שהתוכנה לא תוכל להמשיך לרוץ</td></tr>
+      </table>
+      <p style="margin:12px 0 0;font-size:18px;color:var(--text2);">ברירת המחדל של <code>logging</code> היא לרשום רק מ-<code>WARNING</code> ומעלה — לכן בפרויקט נגדיר את הרמה במפורש.</p>
+    </div>
+
+    <div class="example-box">
+      <pre style="margin:0;direction:ltr;text-align:left;overflow-x:auto;">import logging
+logging.basicConfig(
+    filename='server.log',
+    filemode='w',
+    format='%(asctime)s - %(levelname)-8s - %(message)s',
+    level=logging.INFO
+)
+logging.info("השרת עלה והתחיל להאזין")</pre>
+      <p style="margin:10px 0 0;">⚠ שימו לב: <code>filemode='w'</code> מוחק את הקובץ הקודם בכל הרצה. בלעדיו, הרישומים <strong>נוספים</strong> לסוף הקובץ הקיים.</p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">שאלת הבנה 0.1 (בדיקה אוטומטית)</span>
+      <h4>לקוח שלח בקשה לקובץ שלא קיים בכספת — לאיזו רמה זה הכי מתאים?</h4>
+      <div id="quiz1">
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">CRITICAL — השרת לא יכול להמשיך לרוץ</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,true,'quiz1','explain1')">ERROR — פעולה ספציפית (DOWNLOAD של אותו לקוח) נכשלה, אבל השרת ושאר הלקוחות ממשיכים לעבוד כרגיל</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">DEBUG — זה מידע רלוונטי רק למפתחים</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">INFO — זו פעולה שעבדה כצפוי</button>
+      </div>
+      <div class="quiz-explain" id="explain1">
+        ✅ נכון. ERROR מתאים לכשלון של פעולה <em>מסוימת</em> בלי שזה מאיים על השרת כולו. CRITICAL שמור למקרים שבהם
+        השרת עצמו עשוי לא לשרוד (לדוגמה: לא הצליח לפתוח את קובץ ה-log בכלל).
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 1: LOGGER CLASS ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">1</span>
+      <h2 class="section-title">צעד 1 — מחלקת Logger לעבודה בטוחה עם Threads<small>בינוני</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        בשלב 7 בניתם שרת עם <strong>thread נפרד לכל לקוח</strong>. אם כל ה-threads יכתבו ישירות לאותו קובץ log
+        בלי תיאום — השורות עשויות "להתערבב" זו בזו (בדיוק כמו ה-race condition שדיברנו עליו אז!). הפתרון: לעטוף
+        את הכתיבה ב-<code>Lock</code> נפרד — בדיוק כמו שעטפנו את הגישה ל-<code>active_clients</code>.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.1</span>
+      <h4>השלימו את מחלקת Logger</h4>
+      <p class="instr">המחלקה כותבת לקובץ, ויכולה גם להדפיס למסך (<code>print_screen=True</code>), ותומכת ב-Lock לעבודה בטוחה מול threads.</p>
+      <textarea class="code-editor" id="logger_class_code">
+import logging
+from threading import Lock
+
+class Logger:
+    def __init__(self, file_name, level=logging.INFO, print_screen=False, lock=None):
+        # השלימו: קריאה ל-logging.basicConfig עם filename=file_name, filemode='w',
+        # format עם asctime+levelname+message, ו-level=level
+        self.print_screen = print_screen
+        self.lock = lock
+
+    def write(self, message, level=logging.INFO):
+        # השלימו:
+        # 1. אם self.lock קיים - acquire
+        # 2. בהתאם ל-level, קריאה ל-logging.debug/info/warning/error/critical המתאימה
+        # 3. אם self.lock קיים - release
+        # 4. אם self.print_screen - הדפסה גם למסך
+        pass
+</textarea>
+       <div class="teacher-run-note">▶ קוד זה נבדק בפועל מול קובץ log — להריץ ב-PyCharm/IDE מקומי</div>
+      <button class="quiz-opt" style="margin-top:6px;width:auto;" onclick="this.nextElementSibling.classList.toggle('show')">💡 רמז</button>
+      <pre class="quiz-explain" id="hint1">
+        <code>if self.lock is not None:
+            self.lock.acquire()</code><br>
+        <code>if level == logging.ERROR:
+            logging.error(message)</code> וכן הלאה לכל הרמות<br>
+        <code>if self.lock is not None:
+            self.lock.release()</code>
+      </pre>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.2</span>
+      <h4>קובץ log אחד לשרת, וקובץ נפרד לכל לקוח</h4>
+      <p class="instr">
+        כך תוכלו לדעת בדיוק מה קרה בשיחה של לקוח ספציפי, בלי "לחפש" בתוך לוג אחד עמוס מכל הלקוחות יחד.
+      </p>
+      <textarea class="code-editor" id="logger_setup_code">
+import threading
+
+log_lock = threading.Lock()
+server_logger = Logger("server.log", lock=log_lock, print_screen=True)
+
+def handle_client(client_socket, address):
+    # השלימו: יצירת Logger נפרד לכל לקוח, לדוגמה לפי הכתובת:
+    # client_logger = Logger(f"client_{address[0]}_{address[1]}.log", lock=log_lock)
+    pass
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 2: WHAT GOES WHERE ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">2</span>
+      <h2 class="section-title">צעד 2 — מה הולך ללוג, ומה הולך למסך?<small>קל-בינוני</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0 0 10px;"><strong>למסך הרצה (print):</strong></p>
+      <ul style="margin:0 0 14px 22px;">
+        <li>הוראות למשתמש</li>
+        <li>קלט מהמשתמש</li>
+        <li>פלט של תוצאות הבקשות שלו</li>
+      </ul>
+      <p style="margin:0 0 10px;"><strong>לקובץ log:</strong></p>
+      <ul style="margin:0;padding-right:22px;">
+        <li>התחברות לשרת</li>
+        <li>שליחת/קבלת נתונים בין שרת ולקוח</li>
+        <li>(אם יש בסיס נתונים: התחברות, שליפה, כתיבה)</li>
+      </ul>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.1 (בדיקה אוטומטית בזמן הקלדה)</span>
+      <h4>מלאו טבלה: לכל אירוע ב-VaultGuard — לאיזו רמת לוג הוא שייך?</h4>
+      <p class="instr">שורת <code>LOGIN מוצלח</code> ממולאת כדוגמה. הוסיפו שורות לאירועים נוספים מהפרוטוקול שתכננתם (UPLOAD, DOWNLOAD, ALERT וכו').</p>
+      <div class="auto-note">🤖 בדיקה אוטומטית: רמת הלוג חייבת להיות אחת מתוך DEBUG/INFO/WARNING/ERROR/CRITICAL בדיוק (לא "חשוב" או "אזהרה")</div>
+      <table class="proto-table" id="eventTable">
+        <tr>
+          <th style="width:30%;">אירוע</th>
+          <th style="width:18%;">רמת לוג</th>
+          <th style="width:40%;">הנמקה קצרה</th>
+          <th style="width:4%;"></th>
+        </tr>
+        <tr class="prefilled">
+          <td><input type="text" class="ev-name" value="LOGIN מוצלח"></td>
+          <td>
+            <select class="ev-level">
+              <option value="DEBUG">DEBUG</option>
+              <option value="INFO" selected>INFO</option>
+              <option value="WARNING">WARNING</option>
+              <option value="ERROR">ERROR</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </td>
+          <td><input type="text" class="ev-why" value="פעולה תקינה - מתועדת לצורכי מעקב"></td>
+          <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>
+      </table>
+      <button class="add-row-btn" onclick="addEventRow()">+ הוסיפו אירוע</button>
+      <p id="event-feedback" class="row-feedback"></p>
+    </div>
+  </section>
+
+  <!-- ============== TASK 3: DISCONNECT MID-MESSAGE ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">3</span>
+      <h2 class="section-title">צעד 3 — לקוח שמתנתק באמצע הודעה<small>בינוני-מאתגר</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        תזכורת ממחלקת <code>Protocol</code> (שלב 6): הודעה מגיעה כ-<code>header</code> (אורך) + <code>body</code>.
+        מה קורה אם הלקוח מתנתק <strong>בדיוק</strong> אחרי ששלח את ה-header, אבל לפני שסיים לשלוח את כל ה-body?
+        השרת תקוע בלולאת <code>recv</code> שמנסה להשלים את האורך המובטח — וזה לעולם לא יקרה.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.1</span>
+      <h4>הוסיפו טיפול לניתוק באמצע קבלת body, עם תיעוד מתאים</h4>
+      <textarea class="code-editor" id="midmessage_code">
+def receive_full_message(client_socket, client_logger):
+    try:
+        header = client_socket.recv(Protocol.HEADER_SIZE)
+        if header == b'':
+            client_logger.write("הלקוח התנתק לפני שליחת header", level=logging.INFO)
+            return None
+
+        length = Protocol.decode_header(header)
+        body = b""
+        while len(body) < length:
+            chunk = client_socket.recv(length - len(body))
+            if chunk == b'':
+                # השלימו: הלקוח התנתק באמצע שליחת ההודעה - מה רושמים בלוג? איזו רמה?
+                return None
+            body += chunk
+
+        return body.decode('utf-8')
+
+    except ConnectionResetError:
+        # השלימו: רישום ללוג שהחיבור נסגר "בכוח", והחזרת None
+        return None
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.2</span>
+      <h4>איזו רמת לוג בחרתם לניתוק-באמצע-הודעה, ולמה?</h4>
+      <textarea id="t3_2" class="small" placeholder="הרמה שבחרנו: ... כי..."></textarea>
+      <div class="grading-note">⚠ תשובה פתוחה — תיבדק ע"י המורה (רמז: זה לא ERROR של הלוגיקה שלכם, וזה גם לא INFO רגיל)</div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 4: INVALID MESSAGE ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">4</span>
+      <h2 class="section-title">צעד 4 — הודעה לא תקינה<small>בינוני</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        לקוח (תקין, באג, או מישהו שמנסה לתקוף) שולח הודעה שלא תואמת את הפרוטוקול בכלל — לדוגמה בלי <code>|</code>,
+        או פקודה שלא קיימת במילון הפקודות. השרת <strong>חייב</strong> להגיב בלי לקרוס.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 4.1</span>
+      <h4>עטפו את handle_command ב-try/except, ותעדו כל שגיאה</h4>
+      <textarea class="code-editor" id="invalid_message_code">
+def safe_handle_command(self, command, client_logger):
+    try:
+        return self.handle_command(command)
+    except Exception as e:
+        # השלימו: רישום השגיאה ללוג (כולל פרטי command ו-e), ברמה מתאימה
+        # החזירו תשובת שגיאה ידידותית ללקוח - לא Exception גלוי!
+        return "ERROR|server_error"
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לבדיקה עצמית:</strong>
+      <ul class="checklist">
+        <li>שליחת הודעה תקינה (LOGIN/UPLOAD/וכו') ממשיכה לעבוד כרגיל</li>
+        <li>שליחת מחרוזת בלי <code>|</code> בכלל לא מקריסה את ה-thread</li>
+        <li>שליחת פקודה לא קיימת (כמו <code>FOO|bar</code>) מתועדת ב-log וגם מקבלת תשובת שגיאה ברורה</li>
+        <li>אחרי שליחת הודעה לא תקינה — אפשר להמשיך לשלוח הודעות תקינות באותו חיבור</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============== TASK 5: SECURITY EVENTS ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">5</span>
+      <h2 class="section-title">צעד 5 — לוג אירועי אבטחה (מתחבר ל-ALERT)<small>מתקדם</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        בשלב תכנון הפרוטוקול קבעתם דפוס שמפעיל <code>ALERT</code> (לדוגמה: 3+ נסיונות LOGIN כושלים). עכשיו, כשיש
+        Logger — זה הזמן לתעד את האירוע הזה <strong>ברמה מתאימה</strong> (לא INFO רגיל!), כדי שמי שיבדוק את
+        <code>server.log</code> בהמשך יוכל לזהות התקפות פוטנציאליות.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 5.1</span>
+      <h4>הוסיפו רישום log לרגע שמופעל ALERT</h4>
+      <textarea class="code-editor" id="security_log_code">
+def _handle_login(self, params, client_logger):
+    username, password = params[0], params[1]
+    if self.VALID_USERS.get(username) == password:
+        self.logged_in_user = username
+        self.failed_logins = 0
+        # השלימו: רישום INFO על התחברות מוצלחת
+        return f"OK|token"
+    else:
+        self.failed_logins += 1
+        if self.failed_logins >= self.FAILED_LOGIN_ALERT_THRESHOLD:
+            # השלימו: רישום ברמה גבוהה (WARNING/CRITICAL?) על חשד לאנומליה, כולל כתובת הלקוח
+            pass
+        return "ERROR|invalid_credentials"
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 6: PRODUCT - ERROR SCENARIO TABLE ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">6</span>
+      <h2 class="section-title">תוצר השלב — server.log + טבלת תרחישי שגיאה<small>הגשה</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        לאחר שהרצתם את השרת עם כמה תרחישי שגיאה (ניתוק באמצע הודעה, הודעה לא תקינה, נסיונות LOGIN כושלים) —
+        השלימו את הטבלה הבאה על סמך מה שראיתם בפועל בקובץ <code>server.log</code>.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 6.1</span>
+      <h4>טבלת תרחישי שגיאה שנבדקו בפועל</h4>
+      <table class="proto-table" id="scenarioTable">
+        <tr>
+          <th style="width:28%;">תרחיש שבדקנו</th>
+          <th style="width:16%;">רמת לוג בפועל</th>
+          <th style="width:32%;">מה נכתב בקובץ ה-log (תקציר)</th>
+          <th style="width:20%;">השרת המשיך לרוץ?</th>
+          <th style="width:4%;"></th>
+        </tr>
+        <tr class="prefilled">
+          <td><input type="text" class="sc-name" value="ניתוק לקוח באמצע שליחת body"></td>
+          <td>
+            <select class="sc-level">
+              <option value="DEBUG">DEBUG</option><option value="INFO">INFO</option>
+              <option value="WARNING" selected>WARNING</option><option value="ERROR">ERROR</option><option value="CRITICAL">CRITICAL</option>
+            </select>
+          </td>
+          <td><input type="text" class="sc-summary" placeholder="לדוגמה: 'Client disconnected mid-message from ...'"></td>
+          <td>
+            <select class="sc-survived"><option value="yes" selected>כן</option><option value="no">לא (באג!)</option></select>
+          </td>
+          <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>
+      </table>
+      <button class="add-row-btn" onclick="addScenarioRow()">+ הוסיפו תרחיש</button>
+      <p id="scenario-feedback" class="row-feedback"></p>
+      <div class="grading-note" style="margin-top:14px;">⚠ אם תרחיש כלשהו מסומן "לא (באג!)" — חזרו לקוד ותקנו לפני ההגשה. שרת שקורס מתרחיש מתועד הוא לא תוצר תקין לשלב הזה.</div>
+    </div>
+  </section>
+
+  <div class="reflection">
+    <h4>רפלקציה קצרה</h4>
+    <p style="margin:0 0 10px;color:var(--text2);font-size:18px;">לפני שממשיכים לשלב הבא בפרויקט:</p>
+    <textarea class="small" id="t_reflect" placeholder="מה היה הקטע הכי לא-טריוויאלי בשלב הזה? איזו שאלה נשארה לכם פתוחה למורה?"></textarea>
+    <div class="grading-note">⚠ רפלקציה אישית — לא נבדקת "נכון/לא נכון"</div>
+  </div>
+
+  <div class="card" style="text-align:center;margin-top:30px;border-color:var(--accent);">
+    <p style="margin:0 0 14px;color:var(--text2);font-size:18px;">
+      בסיום העבודה — לחצו על הכפתור כדי להפיק קובץ JSON עם הקוד, טבלאות האירועים והתרחישים, ולהגיש למורה.
+    </p>
+    <button id="submit-btn" type="button"
+      style="background:var(--accent);color:#0b0f14;border:none;padding:13px 28px;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;">
+      📥 הפק קובץ הגשה (JSON)
+    </button>
+    <p id="submit-status" style="margin:12px 0 0;font-size:18px;color:var(--text2);"></p>
+  </div>
+
+</div>
+
+<script>
+  function answerQuiz(btn, isCorrect, groupId, explainId) {
+    const group = document.getElementById(groupId);
+    group.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+    btn.classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect) {
+      group.querySelectorAll('.quiz-opt').forEach(b => {
+        if (b.getAttribute('onclick').includes(",true,")) b.classList.add('correct');
+      });
+    }
+    document.getElementById(explainId).classList.add('show');
+  }
+
+  // ---------- Event table (task 2) ----------
+  function addEventRow() {
+    const table = document.getElementById('eventTable');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="ev-name" placeholder="UPLOAD נכשל - שם קובץ ריק"></td>
+      <td>
+        <select class="ev-level">
+          <option value="DEBUG">DEBUG</option><option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option><option value="ERROR" selected>ERROR</option><option value="CRITICAL">CRITICAL</option>
+        </select>
+      </td>
+      <td><input type="text" class="ev-why" placeholder="הנמקה קצרה..."></td>
+      <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+    `;
+    table.appendChild(tr);
+    updateEventFeedback();
+  }
+  document.getElementById('eventTable').addEventListener('input', updateEventFeedback);
+  function updateEventFeedback() {
+    const rows = document.querySelectorAll('#eventTable tr:not(:first-child)');
+    let total = 0, filled = 0;
+    rows.forEach(tr => {
+      const name = tr.querySelector('.ev-name').value.trim();
+      const why = tr.querySelector('.ev-why').value.trim();
+      if (!name) return;
+      total++;
+      if (why) filled++;
+    });
+    const fb = document.getElementById('event-feedback');
+    if (total === 0) { fb.textContent = ''; return; }
+    fb.className = filled === total ? 'row-feedback ok' : 'row-feedback bad';
+    fb.textContent = `${filled} מתוך ${total} אירועים עם הנמקה. רמת הלוג נבחרת מתוך רשימה סגורה — אין צורך לבדוק תקינות תחבירית.`;
+  }
+
+  // ---------- Scenario table (task 6) ----------
+  function addScenarioRow() {
+    const table = document.getElementById('scenarioTable');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="sc-name" placeholder="הודעה לא תקינה (בלי |)"></td>
+      <td>
+        <select class="sc-level">
+          <option value="DEBUG">DEBUG</option><option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option><option value="ERROR" selected>ERROR</option><option value="CRITICAL">CRITICAL</option>
+        </select>
+      </td>
+      <td><input type="text" class="sc-summary" placeholder="תקציר מה שנכתב בלוג..."></td>
+      <td><select class="sc-survived"><option value="yes" selected>כן</option><option value="no">לא (באג!)</option></select></td>
+      <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+    `;
+    table.appendChild(tr);
+    updateScenarioFeedback();
+  }
+  document.getElementById('scenarioTable').addEventListener('input', updateScenarioFeedback);
+  document.getElementById('scenarioTable').addEventListener('change', updateScenarioFeedback);
+  function updateScenarioFeedback() {
+    const rows = document.querySelectorAll('#scenarioTable tr:not(:first-child)');
+    let total = 0, survived = 0;
+    rows.forEach(tr => {
+      const name = tr.querySelector('.sc-name').value.trim();
+      if (!name) return;
+      total++;
+      if (tr.querySelector('.sc-survived').value === 'yes') survived++;
+    });
+    const fb = document.getElementById('scenario-feedback');
+    if (total === 0) { fb.textContent = ''; return; }
+    fb.className = survived === total ? 'row-feedback ok' : 'row-feedback bad';
+    fb.textContent = `${survived} מתוך ${total} תרחישים שהשרת שרד בהצלחה.` + (survived < total ? ' יש תרחישים שמסומנים כבאג - לתקן לפני הגשה!' : ' מצוין.');
+  }
+
+  // ---------- Submission export ----------
+  function gv(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  function collectTable(tableId, fields) {
+    const rows = document.querySelectorAll('#' + tableId + ' tr:not(:first-child)');
+    const result = [];
+    rows.forEach(tr => {
+      const obj = {};
+      let hasContent = false;
+      for (const [key, selector] of Object.entries(fields)) {
+        const el = tr.querySelector(selector);
+        const val = el ? el.value.trim() : "";
+        obj[key] = val;
+        if (val) hasContent = true;
+      }
+      if (hasContent) result.push(obj);
+    });
+    return result;
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    const teamName = gv('team_name') || 'ללא_שם';
+
+    const data = {
+      meta: {
+        worksheet: "שלב 8 - Logger, Exceptions ושרת יציב",
+        team: teamName,
+        submitted_at: new Date().toISOString()
+      },
+      logger_class_code: gv('logger_class_code'),
+      logger_setup_code: gv('logger_setup_code'),
+      event_log_levels: collectTable('eventTable', {event: '.ev-name', level: '.ev-level', reasoning: '.ev-why'}),
+      mid_message_disconnect_code: gv('midmessage_code'),
+      mid_message_disconnect_reasoning: gv('t3_2'),
+      invalid_message_handling_code: gv('invalid_message_code'),
+      security_event_log_code: gv('security_log_code'),
+      error_scenarios_tested: collectTable('scenarioTable', {scenario: '.sc-name', log_level: '.sc-level', log_summary: '.sc-summary', server_survived: '.sc-survived'}),
+      reflection: gv('t_reflect')
+    };
+
+    const missing = [];
+    if (!gv('team_name')) missing.push("שם הצוות");
+    if (data.error_scenarios_tested.length === 0) missing.push("טבלת תרחישי שגיאה (אין אף תרחיש ממולא)");
+    const failedScenarios = data.error_scenarios_tested.filter(s => s.server_survived === 'no');
+    if (failedScenarios.length > 0) missing.push(`${failedScenarios.length} תרחיש/ים מסומנים כ"באג" - יש לתקן לפני הגשה סופית`);
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const safeName = teamName.replace(/[^א-תa-zA-Z0-9_\-]+/g, "_");
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "הגשה_logger_שרת_יציב_" + safeName + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const statusEl = document.getElementById('submit-status');
+    if (missing.length) {
+      statusEl.style.color = "#fbbf24";
+      statusEl.textContent = "⚠ הקובץ נוצר, אך: " + missing.join(" | ") + " — מומלץ לטפל ולהגיש קובץ מעודכן.";
+    } else {
+      statusEl.style.color = "#5dcaa5";
+      statusEl.textContent = "✓ קובץ ההגשה הופק ונשמר להורדה.";
+    }
+  });
+</script>
+
+<footer>
+  <div class="wrap" style="padding:0;">דף עבודה | שלב 8 — Logger, Exceptions ושרת יציב — פרויקט הסיום</div>
+</footer>
+
+</body>
+</html>

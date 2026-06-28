@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה | שלב 9 - שמירת נתונים: קבצים / JSON / SQLite</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;margin:0;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 90px;}
+  header.hero{background:linear-gradient(180deg,var(--bg2),var(--bg));border-bottom:1px solid var(--border);padding:40px 24px 30px;text-align:center;}
+  header.hero .tag{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;margin-bottom:16px;letter-spacing:1px;}
+  header.hero h1{font-size:27px;margin:0 0 8px;}
+  header.hero p.subtitle{color:var(--text2);font-size:18px;margin:0;}
+  .meta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;font-size:18px;color:var(--text2);}
+  .meta-bar span{border:1px solid var(--border);border-radius:14px;padding:5px 14px;}
+
+  section{margin:44px 0;}
+  .activity-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .activity-num{flex:0 0 auto;background:var(--accent);color:#0b0f14;font-family:var(--mono);font-weight:700;font-size:18px;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+  h2.section-title{font-size:21px;color:var(--text);margin:0;}
+  h2.section-title small{display:block;color:var(--accent);font-size:18px;font-weight:400;margin-top:3px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .example-box{background:#0d1117;border:1px dashed var(--border);border-radius:8px;padding:14px 16px;font-size:18px;color:var(--text2);margin:14px 0;}
+  .example-box b{color:var(--accent2);}
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:5px;color:var(--accent2);font-size:.93em;}
+
+  .task{background:var(--card);border:1px solid var(--border);border-right:4px solid var(--accent2);border-radius:10px;padding:20px 22px;margin:18px 0;}
+  .task .task-label{font-family:var(--mono);font-size:18px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;}
+  .task h4{margin:0 0 10px;font-size:18px;}
+  .task p.instr{margin:0 0 12px;color:var(--text2);font-size:18px;}
+
+  textarea, input[type=text], select{
+    width:100%;background:#0b0f14;border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:18px;font-family:inherit;direction:rtl;text-align:right;resize:vertical;
+  }
+  textarea:focus, input:focus, select:focus{outline:1px solid var(--accent);border-color:var(--accent);}
+  textarea.small{min-height:70px;}
+
+  .code-editor{
+    width:100%;min-height:160px;background:#0d1117;color:#e6edf3;border:1px solid var(--border);
+    font-family:var(--mono);direction:ltr;text-align:left;border-radius:8px;padding:14px;font-size:.92em;
+  }
+  .code-editor:focus{outline:1px solid var(--accent);}
+
+  .grading-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:#fbbf24;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .teacher-run-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .auto-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--accent);background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:3px;border:1.5px solid var(--accent);border-radius:4px;}
+
+  table.theory-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:18px;}
+  table.theory-table th{background:var(--card);color:var(--accent);padding:8px 10px;border:1px solid var(--border);text-align:right;}
+  table.theory-table td{border:1px solid var(--border);padding:8px 10px;}
+
+  table.proto-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:18px;}
+  table.proto-table th{background:var(--card);color:var(--accent);padding:8px 8px;border:1px solid var(--border);text-align:right;font-size:18px;}
+  table.proto-table td{border:1px solid var(--border);padding:6px;vertical-align:top;}
+  table.proto-table td input, table.proto-table td select{font-size:18px;padding:6px 8px;}
+  .add-row-btn{background:none;border:1.5px dashed var(--accent);color:var(--accent);border-radius:8px;padding:8px 18px;font-size:18px;cursor:pointer;margin-top:10px;font-family:inherit;}
+  .add-row-btn:hover{background:rgba(45,212,191,.08);}
+  .remove-row{background:none;border:none;color:var(--accent3);cursor:pointer;font-size:18px;}
+  .row-feedback{font-size:18px;margin-top:8px;min-height:14px;}
+  .row-feedback.ok{color:var(--accent);}
+  .row-feedback.bad{color:var(--accent3);}
+
+  .quiz-opt{display:block;width:100%;text-align:right;background:#0d1117;border:1.5px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;margin:7px 0;cursor:pointer;font-size:18px;font-family:inherit;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,.12);color:var(--accent);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,.12);color:#fca5a5;}
+  .quiz-explain{display:none;margin-top:12px;padding:12px 14px;background:#0d1117;border-radius:8px;border-right:4px solid var(--accent);font-size:18px;color:var(--text2);}
+  .quiz-explain.show{display:block;}
+
+  .reflection{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-top:30px;}
+  .reflection h4{margin:0 0 10px;color:var(--purple);font-size:18px;}
+
+  footer{text-align:center;color:var(--text2);font-size:18px;padding:30px 0 0;border-top:1px solid var(--border);margin-top:50px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="tag">דף עבודה | שלב 9 בפרויקט</span>
+  <h1>💾 שמירת נתונים — קבצים / JSON / SQLite</h1>
+  <p class="subtitle">כל אירוע שמתקבל בשרת חייב "להישאר" אחרי שהשרת נסגר — הצעד מ"זיכרון זמני" ל"היסטוריה אמיתית"</p>
+  <div class="meta-bar">
+    <span>⏱ זמן משוער: 70-90 דק'</span>
+    <span>👥 עבודה בצוות הפרויקט</span>
+    <span>🛠 כלים: Python + PyCharm/IDE + SQLite (DB Navigator plugin)</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <label for="team_name" style="font-size:18px;color:var(--text2);white-space:nowrap;">שמות התלמידים בצוות:</label>
+    <input id="team_name" type="text" style="flex:1;min-width:180px;" placeholder="לדוגמה: דנה כהן, רועי לוי">
+  </div>
+
+  <!-- ============== THEORY ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">0</span>
+      <h2 class="section-title">תזכורת תאורטית<small>3 דרכים לשמור נתונים, ומתי משתמשים בכל אחת</small></h2>
+    </div>
+
+    <table class="theory-table">
+      <tr><th>שיטה</th><th>מתי מתאימה</th><th>חיסרון מרכזי</th></tr>
+      <tr>
+        <td>קובץ טקסט פשוט</td>
+        <td>נתונים מאוד פשוטים, לוג חד-כיווני (כמו <code>server.log</code> משלב 8)</td>
+        <td>אין מבנה, קשה לחפש/לסנן בלי לקרוא הכול</td>
+      </tr>
+      <tr>
+        <td>קובץ JSON</td>
+        <td>נתונים מבניים עם קינון (אובייקטים בתוך אובייקטים), כמו האירוע שבדוגמה</td>
+        <td>כדי לסנן/לחפש צריך לטעון <strong>את כל הקובץ</strong> לזיכרון</td>
+      </tr>
+      <tr>
+        <td>SQLite (בסיס נתונים)</td>
+        <td>הרבה רשומות, צריך לשלוף/לסנן/למיין לפי שדות במהירות (לדוגמה: "כל האירועים בחומרה גבוהה מהיום")</td>
+        <td>צריך להגדיר מבנה טבלה מראש (סכמה)</td>
+      </tr>
+    </table>
+
+    <div class="example-box">
+      <b>דוגמת האירוע מהפרויקט:</b>
+      <pre style="margin:8px 0 0;direction:ltr;text-align:left;overflow-x:auto;">{
+  "time": "2026-06-25 10:43:12",
+  "client_id": "agent_03",
+  "event_type": "DNS_QUERY",
+  "severity": "medium",
+  "details": {
+    "domain": "example.com",
+    "count": 12
+  }
+}</pre>
+      <p style="margin:10px 0 0;">שימו לב: <code>details</code> הוא אובייקט <strong>מקונן</strong> — זה בדיוק סוג המידע ש-JSON
+      מתאר בקלות, אבל ש-SQLite (כמו כל בסיס נתונים רלציוני) לא תומך בו ישירות בעמודה רגילה.</p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">שאלת הבנה 0.1 (בדיקה אוטומטית)</span>
+      <h4>איך נשמור את שדה ה-details בטבלת SQLite?</h4>
+      <div id="quiz1">
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">ניצור טבלה נפרדת לכל סוג event_type עם עמודות מתאימות</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,true,'quiz1','explain1')">נמיר את ה-dict למחרוזת JSON עם json.dumps ונשמור אותה בעמודת טקסט רגילה, ונמיר אותה בחזרה עם json.loads כשנשלוף</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">SQLite לא יכול לשמור נתונים מקוננים בכלל, אז נצטרך לעבור לקובץ JSON בלבד</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">נשמור רק את domain ואת count כשתי עמודות נפרדות, ונתעלם מהמבנה המקונן</button>
+      </div>
+      <div class="quiz-explain" id="explain1">
+        ✅ נכון. הפתרון הפרקטי ביותר (ושמתאים לפרויקט שלכם): <code>json.dumps(details)</code> לפני השמירה,
+        ו-<code>json.loads(row['details'])</code> כששולפים. כך עמודת <code>details</code> בטבלה היא טקסט רגיל מנקודת
+        מבט SQLite, אבל היא "מבינה" מבנה מקונן מנקודת מבט הקוד שלכם. (אפשרות 3 גם תקפה אם יש לכם תמיד את אותם שני
+        שדות ב-details, אבל פחות גמישה אם event_type שונים מצריכים details שונה).
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 1: SCHEMA DESIGN ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">1</span>
+      <h2 class="section-title">צעד 1 — תכנון סכמת הטבלה<small>קל-בינוני</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        על בסיס דוגמת האירוע, תכננו את עמודות הטבלה <code>events</code>. שורות <code>id</code>, <code>time</code>,
+        <code>event_type</code> ממולאות כדוגמה — השלימו את שאר השדות.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.1 (בדיקה אוטומטית בזמן הקלדה)</span>
+      <h4>טבלת עמודות</h4>
+      <div class="auto-note">🤖 בדיקה אוטומטית: שם עמודה תקין (אנגלית, בלי רווחים/מקפים), וסוג נתון חייב להיות אחד מתוך הרשימה הסגורה</div>
+      <table class="proto-table" id="schemaTable">
+        <tr>
+          <th style="width:22%;">שם עמודה</th>
+          <th style="width:20%;">סוג נתון (SQLite)</th>
+          <th style="width:40%;">הערה</th>
+          <th style="width:4%;"></th>
+        </tr>
+        <tr class="prefilled">
+          <td><input type="text" class="col-name" value="id"></td>
+          <td><select class="col-type"><option value="INTEGER" selected>INTEGER</option><option value="TEXT">TEXT</option><option value="REAL">REAL</option><option value="BLOB">BLOB</option></select></td>
+          <td><input type="text" class="col-note" value="PRIMARY KEY, אוטומטי"></td>
+          <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>
+        <tr class="prefilled">
+          <td><input type="text" class="col-name" value="time"></td>
+          <td><select class="col-type"><option value="INTEGER">INTEGER</option><option value="TEXT" selected>TEXT</option><option value="REAL">REAL</option><option value="BLOB">BLOB</option></select></td>
+          <td><input type="text" class="col-note" value="פורמט: YYYY-MM-DD HH:MM:SS"></td>
+          <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>
+        <tr class="prefilled">
+          <td><input type="text" class="col-name" value="event_type"></td>
+          <td><select class="col-type"><option value="INTEGER">INTEGER</option><option value="TEXT" selected>TEXT</option><option value="REAL">REAL</option><option value="BLOB">BLOB</option></select></td>
+          <td><input type="text" class="col-note" value="DNS_QUERY / LOGIN_FAILED / וכו'"></td>
+          <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+        </tr>
+      </table>
+      <button class="add-row-btn" onclick="addColumnRow()">+ הוסיפו עמודה (client_id, severity, details...)</button>
+      <p id="schema-feedback" class="row-feedback"></p>
+    </div>
+
+    <div class="example-box">
+      💡 <b>רמז:</b> אל תשכחו עמודה ל-<code>client_id</code>, <code>severity</code>, ו-<code>details</code> (כ-TEXT,
+      כדי לשמור בה את ה-JSON המקונן כמו שדיברנו עליו בשאלה 0.1).
+    </div>
+  </section>
+
+  <!-- ============== TASK 2: SqliteDb CLASS ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">2</span>
+      <h2 class="section-title">צעד 2 — מחלקת SqliteDb<small>בינוני</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        כדי לא לכתוב SQL גולמי בכל מקום בקוד, נבנה מחלקת עזר אחת שמרכזת את כל הפעולות על בסיס הנתונים — בדיוק
+        כמו שעטפנו את הפרוטוקול ב-<code>Protocol</code> ואת ה-logging ב-<code>Logger</code> בשלבים קודמים.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.1</span>
+      <h4>השלימו את מחלקת SqliteDb</h4>
+      <p class="instr">מאפיינים: <code>connection</code>, <code>cursor</code>. מתודות: <code>__init__</code>, <code>create_table</code>, <code>insert</code>, <code>select</code>, <code>update</code>, <code>delete</code>, <code>commit</code>.</p>
+      <textarea class="code-editor" id="sqlitedb_class_code">
+import sqlite3
+
+class SqliteDb:
+    def __init__(self, db_name):
+        # השלימו: יצירת connection (sqlite3.connect) ו-cursor
+        pass
+
+    def create_table(self, create_query):
+        # השלימו: הרצת שאילתת CREATE TABLE
+        pass
+
+    def insert(self, tname, i_fields, values):
+        # i_fields: רשימת שמות עמודות, values: tuple של ערכים
+        # השלימו: בניית שאילתת INSERT עם placeholders (?) ולא f-string! (חשוב למניעת SQL Injection)
+        # לדוגמה: f"INSERT INTO {tname} ({','.join(i_fields)}) VALUES ({','.join(['?']*len(values))})"
+        pass
+
+    def select(self, tname, fields='*', where_clause=''):
+        # השלימו: בניית שאילתת SELECT, הרצה, והחזרת fetchall()
+        pass
+
+    def update(self, tname, fields_list, values_list, where_clause=''):
+        # השלימו (אופציונלי בשלב זה - נחוץ רק אם תרצו לעדכן אירועים קיימים)
+        pass
+
+    def delete(self, tname, where_cond):
+        # השלימו (אופציונלי בשלב זה)
+        pass
+
+    def commit(self):
+        # השלימו: שמירת השינויים לבסיס הנתונים
+        pass
+</textarea>
+      <div class="teacher-run-note">▶ קוד זה דורש sqlite3 אמיתי — להריץ ב-PyCharm/IDE מקומי</div>
+      <button class="quiz-opt" style="margin-top:6px;width:auto;" onclick="this.nextElementSibling.classList.toggle('show')">💡 רמז קריטי - אבטחה</button>
+      <div class="quiz-explain" id="hint2">
+        ⚠️ <b>לעולם אל תכניסו ערכים לשאילתה עם f-string ישירות</b> (לדוגמה <code>f"...WHERE name='{user_input}'"</code>) —
+        זו פגיעות אבטחה קלאסית בשם <b>SQL Injection</b>. תמיד תעבירו את הערכים בנפרד עם <code>?</code> placeholders:
+        <code>cursor.execute("INSERT INTO t VALUES (?, ?)", (val1, val2))</code>. שימו לב שזה רלוונטי גם ב-VaultGuard —
+        כל מה שמגיע מהלקוח (כולל בקשת LOGIN) הוא קלט חיצוני שאסור "להדביק" לתוך שאילתה כטקסט גולמי.
+      </div>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.2</span>
+      <h4>צרו את הטבלה בפועל</h4>
+      <p class="instr">כתבו שאילתת CREATE TABLE על בסיס הסכמה שתכננתם במשימה 1.1:</p>
+      <textarea class="code-editor" id="create_table_query">
+db = SqliteDb("vaultguard_events.db")
+db.create_table("""
+CREATE TABLE IF NOT EXISTS events (
+    -- השלימו לפי הסכמה שתכננתם
+);
+""")
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 3: STORE EVENT ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">3</span>
+      <h2 class="section-title">צעד 3 — שמירת אירוע שמתקבל בשרת<small>בינוני</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.1</span>
+      <h4>כתבו פונקציה ששומרת אירוע (dict) לבסיס הנתונים</h4>
+      <p class="instr">תזכורת: <code>details</code> הוא dict מקונן — צריך <code>json.dumps</code> לפני השמירה.</p>
+      <textarea class="code-editor" id="store_event_code">
+import json
+from datetime import datetime
+
+def store_event(db, client_id, event_type, severity, details):
+    event_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    details_json = json.dumps(details)
+
+    # השלימו: קריאה ל-db.insert עם שמות העמודות והערכים המתאימים
+    # אל תשכחו: db.commit() בסוף!
+
+
+# בדיקה ידנית (לא בדף הזה - ב-IDE):
+store_event(db, "agent_03", "DNS_QUERY", "medium", {"domain": "example.com", "count": 12})
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.2</span>
+      <h4>איפה בקוד הפרויקט תקראו לפונקציה הזו?</h4>
+      <p class="instr">תזכורת ממחלקת ClientHandler (שלב 6): לכל פקודה יש handler. לאיזה מהם תוסיפו את הקריאה ל-<code>store_event</code>?</p>
+      <textarea id="t3_2" class="small" placeholder="לדוגמה: בתוך _handle_login נכשל, ובתוך handle_command כשמתקבלת פקודה לא מוכרת..."></textarea>
+<!--      <div class="grading-note">⚠ תשובה פתוחה — תיבדק ע"י המורה</div>-->
+    </div>
+  </section>
+
+  <!-- ============== TASK 4: QUERY EVENTS ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">4</span>
+      <h2 class="section-title">צעד 4 — שליפת היסטוריית אירועים<small>בינוני-מאתגר</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        זה התוצר של השלב: "היסטוריית אירועים שניתן להציג בממשק". כלומר — פונקציה שמחזירה רשימת אירועים (לא שורות
+        גולמיות מ-SQLite!) כ-dicts, עם <code>details</code> מפורק בחזרה מ-JSON, מוכנים להצגה.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 4.1</span>
+      <h4>כתבו get_events_by_severity(db, severity)</h4>
+      <textarea class="code-editor" id="query_events_code">
+def get_events_by_severity(db, severity):
+    rows = db.select("events", fields="*", where_clause=f"severity='{severity}'")
+    # ⚠ רגע - האם יש כאן בעיה? (רמז: חזרו למשימה 2.1, הרמז הקריטי על אבטחה)
+
+    events = []
+    for row in rows:
+        event = {
+            # השלימו: בניית dict מהשורה הגולמית (id, time, client_id, event_type, severity)
+            # אל תשכחו: json.loads על עמודת details!
+        }
+        events.append(event)
+    return events
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 4.2 (בדיקה אוטומטית)</span>
+      <h4>מה הבעיה בשורה <code>where_clause=f"severity='{severity}'"</code> בקוד שלמעלה?</h4>
+      <div id="quiz2">
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz2','explain2')">אין בעיה, זה בסדר כי severity הוא רק "low"/"medium"/"high"</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,true,'quiz2','explain2')">אם severity מגיע ממקור לא מהימן (קלט משתמש/לקוח) ולא רק מקוד פנימי, זו אותה פגיעות SQL Injection מהרמז הקריטי - מישהו יכול להעביר טקסט שמשנה את השאילתה עצמה</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz2','explain2')">השאילתה תיכשל כי where_clause לא קיים בפייתון</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz2','explain2')">אין שום בעיה, זו רק שאילתת SELECT ולא INSERT</button>
+      </div>
+      <div class="quiz-explain" id="explain2">
+        ✅ נכון. SQL Injection רלוונטי גם ל-SELECT, לא רק ל-INSERT/UPDATE! אם <code>severity</code> מגיע ממקור שלא
+        בשליטתכם המלאה, צריך לבנות את ה-where_clause עם placeholders ולא f-string, או לפחות לוודא (validate) שהערך
+        הוא אחד מתוך רשימה סגורה (whitelist) של ערכים מותרים לפני שמרכיבים את השאילתה.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 5: PRODUCT ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">5</span>
+      <h2 class="section-title">תוצר השלב — הדגמת היסטוריית אירועים<small>הגשה</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        הריצו את השרת, גרמו לכמה אירועים לקרות (LOGIN כושל, UPLOAD, ALERT...), ואז הריצו שאילתה שמציגה את
+        ההיסטוריה. תארו/הדביקו כאן את הפלט שקיבלתם בפועל.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 5.1</span>
+      <h4>תוצאה בפועל מתוך SQLite (או מתוך get_events_by_severity)</h4>
+      <textarea class="code-editor" id="result_demo" placeholder="הדביקו כאן פלט אמיתי, לדוגמה:
+[{'id': 1, 'time': '2026-06-25 10:43:12', 'client_id': 'agent_03', 'event_type': 'DNS_QUERY', 'severity': 'medium', 'details': {'domain': 'example.com', 'count': 12}}, ...]"></textarea>
+<!--      <div class="grading-note">⚠ תוצר להגשה — ייבדק ע"י המורה שהפלט תואם את הסכמה שתכננתם</div>-->
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לבדיקה עצמית:</strong>
+      <ul class="checklist">
+        <li>הטבלה נוצרה ב-SQLite, וניתן לראות אותה ב-DB Navigator (PyCharm)</li>
+        <li>לפחות 3 אירועים שונים נשמרו בהצלחה (event_type שונה לכל אחד)</li>
+        <li>שליפה לפי severity מחזירה רק את האירועים הרלוונטיים</li>
+        <li>שדה details חוזר כ-dict פייתוני תקין (לא כמחרוזת JSON גולמית) בפלט הסופי</li>
+        <li>סגרתם את ה-connection (או טיפלתם בו) כשהתוכנית מסתיימת</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="reflection">
+    <h4>רפלקציה קצרה</h4>
+    <p style="margin:0 0 10px;color:var(--text2);font-size:18px;">לפני שממשיכים לשלב הבא בפרויקט:</p>
+    <textarea class="small" id="t_reflect" placeholder="מה היה הקטע הכי לא-טריוויאלי בשלב הזה (סכמת הטבלה? SQL Injection? משהו אחר)? איזו שאלה נשארה לכם פתוחה למורה?"></textarea>
+    <div class="grading-note">⚠ רפלקציה אישית — לא נבדקת "נכון/לא נכון"</div>
+  </div>
+
+  <div class="card" style="text-align:center;margin-top:30px;border-color:var(--accent);">
+    <p style="margin:0 0 14px;color:var(--text2);font-size:18px;">
+      בסיום העבודה — לחצו על הכפתור כדי להפיק קובץ JSON עם הסכמה, הקוד, והתוצר, ולהגיש למורה.
+    </p>
+    <button id="submit-btn" type="button"
+      style="background:var(--accent);color:#0b0f14;border:none;padding:13px 28px;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;">
+      📥 הפק קובץ הגשה (JSON)
+    </button>
+    <p id="submit-status" style="margin:12px 0 0;font-size:18px;color:var(--text2);"></p>
+  </div>
+
+</div>
+
+<script>
+  function answerQuiz(btn, isCorrect, groupId, explainId) {
+    const group = document.getElementById(groupId);
+    group.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+    btn.classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect) {
+      group.querySelectorAll('.quiz-opt').forEach(b => {
+        if (b.getAttribute('onclick').includes(",true,")) b.classList.add('correct');
+      });
+    }
+    document.getElementById(explainId).classList.add('show');
+  }
+
+  // ---------- Schema table (task 1) ----------
+  function addColumnRow() {
+    const table = document.getElementById('schemaTable');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="col-name" placeholder="client_id"></td>
+      <td><select class="col-type"><option value="INTEGER">INTEGER</option><option value="TEXT" selected>TEXT</option><option value="REAL">REAL</option><option value="BLOB">BLOB</option></select></td>
+      <td><input type="text" class="col-note" placeholder="הערה..."></td>
+      <td><button class="remove-row" onclick="this.closest('tr').remove()">✕</button></td>
+    `;
+    table.appendChild(tr);
+    tr.querySelector('.col-name').addEventListener('input', updateSchemaFeedback);
+    updateSchemaFeedback();
+  }
+  document.getElementById('schemaTable').addEventListener('input', updateSchemaFeedback);
+  function updateSchemaFeedback() {
+    const rows = document.querySelectorAll('#schemaTable tr:not(:first-child)');
+    let total = 0, valid = 0;
+    rows.forEach(tr => {
+      const nameInput = tr.querySelector('.col-name');
+      const name = nameInput.value.trim();
+      if (!name) return;
+      total++;
+      const ok = /^[a-zA-Z][a-zA-Z0-9_]*$/.test(name);
+      nameInput.style.borderColor = ok ? 'var(--accent)' : 'var(--accent3)';
+      if (ok) valid++;
+    });
+    const fb = document.getElementById('schema-feedback');
+    if (total === 0) { fb.textContent = ''; return; }
+    fb.className = valid === total ? 'row-feedback ok' : 'row-feedback bad';
+    fb.textContent = `${valid} מתוך ${total} שמות עמודה תקינים (אנגלית, בלי רווחים/מקפים).`;
+  }
+
+  // ---------- Submission export ----------
+  function gv(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  function collectSchema() {
+    const rows = document.querySelectorAll('#schemaTable tr:not(:first-child)');
+    const result = [];
+    rows.forEach(tr => {
+      const name = tr.querySelector('.col-name').value.trim();
+      if (!name) return;
+      result.push({
+        column: name,
+        type: tr.querySelector('.col-type').value,
+        note: tr.querySelector('.col-note').value.trim()
+      });
+    });
+    return result;
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    const teamName = gv('team_name') || 'ללא_שם';
+
+    const data = {
+      meta: {
+        worksheet: "שלב 9 - שמירת נתונים (קבצים / JSON / SQLite)",
+        team: teamName,
+        submitted_at: new Date().toISOString()
+      },
+      events_table_schema: collectSchema(),
+      sqlitedb_class_code: gv('sqlitedb_class_code'),
+      create_table_query: gv('create_table_query'),
+      store_event_code: gv('store_event_code'),
+      store_event_integration_point: gv('t3_2'),
+      query_events_code: gv('query_events_code'),
+      demo_output: gv('result_demo'),
+      reflection: gv('t_reflect')
+    };
+
+    const missing = [];
+    if (!gv('team_name')) missing.push("שם הצוות");
+    if (data.events_table_schema.length === 0) missing.push("סכמת הטבלה (אין אף עמודה ממולאת)");
+    if (!gv('result_demo')) missing.push("הדגמת התוצר (משימה 5.1)");
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const safeName = teamName.replace(/[^א-תa-zA-Z0-9_\-]+/g, "_");
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "הגשה_שמירת_נתונים_" + safeName + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const statusEl = document.getElementById('submit-status');
+    if (missing.length) {
+      statusEl.style.color = "#fbbf24";
+      statusEl.textContent = "⚠ הקובץ נוצר, אך שדות אלו ריקים/חסרים: " + missing.join(", ") + " — מומלץ להשלים ולהגיש קובץ מעודכן.";
+    } else {
+      statusEl.style.color = "#5dcaa5";
+      statusEl.textContent = "✓ קובץ ההגשה הופק ונשמר להורדה.";
+    }
+  });
+</script>
+
+<footer>
+  <div class="wrap" style="padding:0;">דף עבודה | שלב 9 — שמירת נתונים: קבצים / JSON / SQLite — פרויקט הסיום</div>
+</footer>
+
+</body>
+</html>

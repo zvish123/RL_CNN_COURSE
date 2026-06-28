@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מצגת | מהו פרוטוקול? מכאוס לסדר</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;overflow:hidden;}
+  .deck{position:relative;width:100%;height:100vh;}
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    justify-content:center; align-items:center; padding:60px 90px;
+    opacity:0; transition:opacity .35s ease;
+  }
+  .slide.active{display:flex; opacity:1;}
+  .slide-inner{max-width:980px; width:100%;}
+  .kicker{font-family:var(--mono); font-size:18px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; text-align:center;}
+  h1.title{font-size:2.4em; text-align:center; margin:0 0 16px;}
+  h2.slide-title{font-size:1.8em; color:var(--text); margin:0 0 22px; border-right:4px solid var(--accent); padding-right:14px;}
+  p, li{font-size:1.2em; line-height:1.75; color:var(--text2);}
+  strong{color:var(--text);}
+  .center-text{text-align:center;}
+  ul{margin:10px 26px;}
+
+  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px 26px; margin:14px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  .chaos-box{border:2px dashed var(--accent3); background:rgba(239,68,68,.07);}
+  .order-box{border:2px solid var(--accent); background:rgba(45,212,191,.07);}
+  .chaos-box h2{color:var(--accent3); margin:0 0 10px;}
+  .order-box h2{color:var(--accent); margin:0 0 10px;}
+
+  code, .mono{font-family:var(--mono); background:#0d1117; padding:2px 7px; border-radius:5px; color:var(--accent2); font-size:1.2em;}
+  pre code{background:none; padding:0;}
+  pre{background:#0d1117 !important; border:1px solid var(--border); border-radius:10px; padding:16px 18px; overflow-x:auto; font-size:1.2em; direction:ltr; text-align:left;}
+
+  .stop-slide{border:3px solid var(--accent2); background:linear-gradient(135deg, rgba(245,158,11,.10), var(--bg2));}
+  .stop-label{font-family:var(--mono); color:var(--accent2); font-size:1.2em; letter-spacing:2px; text-transform:uppercase; text-align:center; margin-bottom:8px;}
+
+  .expand-btn{
+    background:none; border:1.5px solid var(--accent); color:var(--accent); border-radius:20px;
+    padding:8px 18px; font-size:1.2em; cursor:pointer; margin-top:10px; font-family:inherit;
+  }
+  .expand-btn:hover{background:rgba(45,212,191,.1);}
+  .expand-content{
+    max-height:0; overflow:hidden; transition:max-height .4s ease; margin-top:0;
+  }
+  .expand-content.open{max-height:600px; margin-top:14px;}
+
+  .quiz-opt{
+    display:block; width:100%; text-align:right; background:var(--card); border:1.5px solid var(--border);
+    color:var(--text); border-radius:10px; padding:12px 16px; margin:8px 0; cursor:pointer; font-size:18px; font-family:inherit;
+  }
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent); background:rgba(45,212,191,.12); color:var(--accent);}
+  .quiz-opt.wrong{border-color:var(--accent3); background:rgba(239,68,68,.12); color:#fca5a5;}
+  .quiz-explain{display:none; margin-top:14px; padding:14px 16px; background:#0d1117; border-radius:10px; border-right:4px solid var(--accent); font-size:1.2em;}
+  .quiz-explain.show{display:block;}
+
+  .table-cmp{width:100%; border-collapse:collapse; margin-top:10px; font-size:1.2em;}
+  .table-cmp th{background:var(--card); color:var(--accent); padding:10px 12px; border:1px solid var(--border); text-align:right;}
+  .table-cmp td{padding:10px 12px; border:1px solid var(--border);}
+
+  /* nav */
+  .nav-ui{position:fixed; bottom:22px; left:0; right:0; display:flex; justify-content:center; align-items:center; gap:18px; z-index:50;}
+  .nav-btn{
+    background:var(--card); border:1px solid var(--border); color:var(--text);
+    width:46px; height:46px; border-radius:50%; font-size:1.3em; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .nav-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .nav-btn:disabled{opacity:.25; cursor:default;}
+  .counter{font-family:var(--mono); font-size:18px; color:var(--text2); min-width:90px; text-align:center;}
+  .dots{position:fixed; top:18px; left:0; right:0; display:flex; justify-content:center; gap:6px; z-index:50;}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--border); cursor:pointer;}
+  .dot.active{background:var(--accent);}
+
+  .badge{display:inline-block; font-family:var(--mono); font-size:18px; background:var(--accent); color:#0b0f14; padding:3px 10px; border-radius:10px; margin-left:8px;}
+  .arrow-flow{display:flex; align-items:center; justify-content:center; gap:10px; font-family:var(--mono); font-size:1.2em; margin:14px 0; flex-wrap:wrap;}
+  .arrow-flow span.box{background:var(--card); border:1px solid var(--accent); border-radius:8px; padding:8px 16px;}
+</style>
+</head>
+<body>
+
+<div class="dots" id="dots"></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <section class="slide active">
+    <div class="slide-inner center-text">
+      <div class="kicker">רשתות ותקשורת · שכבת אפליקציה</div>
+      <h1 class="title">📜 מהו פרוטוקול?<br><span style="color:var(--accent);">מכאוס לסדר</span></h1>
+      <p>איך שני צדדים שלא מכירים זה את זה — לקוח ושרת — מצליחים "להבין" אחד את השני?</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: CHAOS HOOK -->
+  <section class="slide">
+    <div>
+      <h2 class="slide-title">דמיינו את זה...</h2>
+      <div class="grid2">
+        <div class="card chaos-box">
+          <h2>😵 לקוח שולח</h2>
+          <pre><code class="language-python">sock.send(b"can you give me the file please thanks")</code></pre>
+          <p style="font-size:1.2em;">השרת מקבל מחרוזת חופשייה. מה הוא בעצם צריך לעשות איתה?</p>
+        </div>
+        <div class="card chaos-box">
+          <h2>😵 שרת מקבל</h2>
+          <pre><code class="language-python">data = sock.recv(1024)
+# data = b"can you give me the f"  (!)
+# נקטע באמצע - השרת לא יודע שיש עוד</code></pre>
+          <p style="font-size:1.2em;">בלי הסכם מראש, גם הודעה "פשוטה" יכולה להישבר.</p>
+        </div>
+      </div>
+      <p class="center-text" style="margin-top:18px;">בלי כללים מוסכמים מראש — כל תקשורת היא הימור.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: DEFINITION -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">הגדרה: מהו Protocol?</h2>
+      <div class="card order-box">
+        <p style="margin:0;">
+          <strong>פרוטוקול</strong> הוא אוסף <strong>חוקים מוסכם מראש</strong>, שמאפשר לשני צדדים (או יותר) להעביר ביניהם
+          מידע ולהבין אחד את השנייה — בלי תלות בכך שמישהו "יסביר" באותו רגע מה קורה.
+        </p>
+      </div>
+      <p>שני הצדדים חייבים להסכים על הפרוטוקול <strong>לפני</strong> שמתחילים לדבר — לא ניתן "להמציא" אותו תוך כדי תנועה.</p>
+      <button class="expand-btn" onclick="toggleExpand(this)">💬 דוגמה מהיומיום</button>
+      <div class="expand-content">
+        <div class="card">
+          <p style="margin:0;">שיחת טלפון היא גם פרוטוקול: מי מתקשר אומר "הלו", המקבל עונה, יש "סליחה?" כשלא שומעים,
+          ו"להתחדש"/"שלום" כדי לסגור את השיחה. אם תדלגו על השלבים — השיחה "תישבר" גם אם שני הצדדים מבינים עברית מצוין.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: WHAT A PROTOCOL MUST INCLUDE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מה פרוטוקול תקשורת צריך לכלול?</h2>
+      <ul>
+        <li><strong>שם הפעולה</strong> (Command) — מה בעצם רוצים לעשות? (לדוגמה <code>LOGIN</code>, <code>GET</code>)</li>
+        <li><strong>פרמטרים</strong> — איזה מידע נוסף צריך לשלוח עם הפעולה? (לדוגמה שם משתמש, שם קובץ)</li>
+        <li><strong>פורמט תשובה</strong> — איך נראית תשובת ההצלחה? ואיך תשובת שגיאה?</li>
+        <li><strong>גבולות הודעה</strong> — איך יודעים שהודעה <strong>הסתיימה</strong>? (שלא תיקטע באמצע)</li>
+        <li><strong>טיפול בשגיאות</strong> — מה קורה אם הצד השני שלח משהו לא תקין?</li>
+        <li><strong>סדר פעולות</strong> — האם יש דברים שמוכרחים לקרות לפני אחרים? (למשל: התחברות לפני בקשת קובץ)</li>
+      </ul>
+      <button class="expand-btn" onclick="toggleExpand(this)">🌐 איך זה נראה ב-HTTP האמיתי?</button>
+      <div class="expand-content">
+        <pre><code>GET /index.html HTTP/1.1
+Host: example.com
+Accept: text/html
+
+→ תשובה:
+HTTP/1.1 200 OK
+Content-Length: 1024
+
+&lt;html&gt;...&lt;/html&gt;</code></pre>
+        <p style="font-size:1.2em;">שימו לב: שם הפעולה (<code>GET</code>), פרמטר (כתובת), header עם metadata, ותשובה עם קוד סטטוס (<code>200</code>) ואורך תוכן מדויק — כל מה שמנינו ברשימה!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: HOW TO DECIDE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">איך מחליטים על פרוטוקול? 4 שאלות מפתח</h2>
+      <div class="grid2">
+        <div class="card">
+          <h2 style="color:var(--accent); margin-top:0;">1. טקסט או בינארי?</h2>
+          <p style="font-size:1.2em; margin:0;">טקסט (כמו JSON) — קל לדבג, פחות יעיל. בינארי — מהיר וקומפקטי, קשה יותר לקרוא "בעין".</p>
+        </div>
+        <div class="card">
+          <h2 style="color:var(--accent); margin-top:0;">2. איך מסמנים סוף הודעה?</h2>
+          <p style="font-size:1.2em; margin:0;">תו מפריד (כמו <code>\n</code>)? אורך קבוע? כותרת (header) שמצהירה על האורך מראש?</p>
+        </div>
+        <div class="card">
+          <h2 style="color:var(--accent); margin-top:0;">3. עם/בלי מצב (state)?</h2>
+          <p style="font-size:1.2em; margin:0;">חסר-מצב: כל בקשה עומדת בפני עצמה. עם-מצב: השרת "זוכר" מי מחובר ובאיזה שלב (כמו LOGIN לפני UPLOAD).</p>
+        </div>
+        <div class="card">
+          <h2 style="color:var(--accent); margin-top:0;">4. מה קורה בשגיאה?</h2>
+          <p style="font-size:1.2em; margin:0;">קוד שגיאה מובנה? חיתוך החיבור? ניסיון חזרה (retry)? צריך להגדיר את זה <strong>מראש</strong>, לא "כשזה יקרה".</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: QUIZ -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">בדיקת הבנה</h2>
+      <p><strong>שאלה:</strong> שרת מקבל הודעות מלקוח באמצעות <code>sock.recv(1024)</code> בלבד, ומניח שכל קריאה אחת = הודעה
+        אחת שלמה. מה הבעיה המרכזית בעיצוב הזה?</p>
+      <div id="quiz1">
+        <button class="quiz-opt" onclick="answerQuiz(this,false)">השרת לא יכול לקבל הודעות בעברית</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,true)">הודעה ארוכה מ-1024 בתים עשויה להתקבל בכמה קריאות recv, ולהתפצל בטעות לכמה "הודעות"</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false)">socket.recv לא קיים בפייתון</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false)">צריך תמיד להשתמש ב-UDP במקום TCP</button>
+      </div>
+      <div class="quiz-explain" id="explain1">
+        ✅ נכון! TCP הוא <strong>זרם בתים</strong> (stream) ולא הודעות בדידות. <code>recv()</code> יכול להחזיר חלק מההודעה,
+        הודעה שלמה, או כמה הודעות ביחד — תלוי בתזמון הרשת. בלי מנגנון שמסמן איפה הודעה <strong>מתחילה ונגמרת</strong>
+        (header עם אורך, או תו מפריד) — אי אפשר לדעת מתי "לעצור ולקרוא".
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: CHAOS EXAMPLES -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">כאוס: 3 טעויות נפוצות בעיצוב פרוטוקול</h2>
+      <div class="card chaos-box">
+        <h2>❌ "נשלח טקסט חופשי ונבין"</h2>
+        <p style="font-size:1.2em; margin:0;"><code>"please send file vacation.jpg now"</code> — איך מפרקים את זה אוטומטית? כל ניסוח שונה דורש קוד חדש.</p>
+      </div>
+      <div class="card chaos-box">
+        <h2>❌ "נסמוך על recv אחד = הודעה אחת"</h2>
+        <p style="font-size:1.2em; margin:0;">כמו שראינו בשאלה הקודמת — לא מובטח. צריך framing מפורש.</p>
+      </div>
+      <div class="card chaos-box">
+        <h2>❌ "לא נגדיר מה קורה בשגיאה"</h2>
+        <p style="font-size:1.2em; margin:0;">לקוח מבקש קובץ שלא קיים — השרת קורס? שולח משהו לא צפוי? בלי הגדרה — כל מימוש יתנהג אחרת.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: PROPOSED STRUCTURE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מבנה מוצע לפרוטוקול שלנו</h2>
+      <p class="center-text">שתי שכבות פתרון, אחת מעל השנייה:</p>
+      <div class="card order-box">
+        <h2>שכבה 1 — Framing (גבולות ההודעה)</h2>
+        <div class="arrow-flow">
+          <span class="box">HEADER (4 בתים = אורך)</span> + <span class="box">BODY (תוכן ההודעה)</span>
+        </div>
+        <p style="font-size:1.2em; margin:0;">פותר את בעיית ה-recv: הצד המקבל קורא תמיד 4 בתים ראשונים, לומד כמה בתים עוד מגיעים, וקורא בדיוק את הכמות הזו.</p>
+      </div>
+      <div class="card order-box">
+        <h2>שכבה 2 — תוכן ההודעה (Command Format)</h2>
+        <div class="arrow-flow"><span class="box mono">COMMAND|param1|param2|...</span></div>
+        <p style="font-size:1.2em; margin:0;">שם הפעולה ופרמטרים, מופרדים בתו מוסכם (<code>|</code>). פשוט לפענוח עם <code>str.split("|")</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: STOP - DESIGN YOUR OWN -->
+  <section class="slide">
+    <div class="slide-inner stop-slide" style="padding:30px;">
+      <div class="stop-label">⏸ עכשיו אתם — תחנת עצירה</div>
+      <p class="center-text" style="margin:0;">
+        בזוגות: רשמו על דף נייר/מחברת — אילו <strong>פקודות</strong> תזדקקו להן בפרוטוקול של הפרויקט שלכם
+        (כספת קבצים + ניטור), ולכל פקודה: <strong>שם, פרמטרים, ותשובת הצלחה/שגיאה</strong>.
+        אני אעבור בין הקבוצות. <strong>5 דקות.</strong>
+      </p>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: FROM CHAOS TO ORDER (concrete project example) -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מכאוס לסדר — הדוגמה שלנו</h2>
+      <table class="table-cmp">
+        <tr><th>פקודה</th><th>בקשה</th><th>תשובה</th></tr>
+        <tr><td><code>LOGIN</code></td><td><code>LOGIN|user|pass</code></td><td><code>OK|token</code> / <code>ERROR|invalid_credentials</code></td></tr>
+        <tr><td><code>UPLOAD</code></td><td><code>UPLOAD|name|content</code></td><td><code>OK|stored</code></td></tr>
+        <tr><td><code>DOWNLOAD</code></td><td><code>DOWNLOAD|name</code></td><td><code>FILE|name|content</code> / <code>ERROR|not_found</code></td></tr>
+        <tr><td><code>LIST</code></td><td><code>LIST</code></td><td><code>FILES|f1,f2,f3</code></td></tr>
+      </table>
+      <p style="font-size:1.2em;">בדיוק כך הגענו מ"שלחו טקסט חופשי ונבין" (כאוס) לטבלה ברורה שכל אחד בצוות יכול לממש בלי לתאם איתי כל פעם (סדר).</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 11: WHY A CLASS -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">למה לעטוף את כל זה במחלקה אחת — Protocol?</h2>
+      <ul>
+        <li>גם <strong>הלקוח</strong> וגם <strong>השרת</strong> צריכים את אותו קוד קידוד/פענוח — אם כל צד יכתוב את זה בנפרד,
+          באג קטן באחד מהם ישבור את כל התקשורת.</li>
+        <li>מחלקה אחת = <strong>מקור אמת יחיד (single source of truth)</strong> — מתקנים פעם אחת, שני הצדדים מיובאים ממנה.</li>
+        <li>קל לבדוק אותה <strong>בנפרד</strong> מהקוד של socket — אין צורך בחיבור רשת אמיתי כדי לבדוק שקידוד+פענוח עובדים.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SLIDE 12: CODE DEMO -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">מחלקת Protocol — הקוד</h2>
+      <pre><code class="language-python">class Protocol:
+    HEADER_SIZE = 4
+
+    @staticmethod
+    def encode_message(message: str) -> bytes:
+        data = message.encode('utf-8')
+        header = len(data).to_bytes(Protocol.HEADER_SIZE, 'big')
+        return header + data
+
+    @staticmethod
+    def decode_header(header_bytes: bytes) -> int:
+        return int.from_bytes(header_bytes, 'big')</code></pre>
+      <button class="expand-btn" onclick="toggleExpand(this)">🔍 איך זה נראה בצד המקבל בפועל?</button>
+      <div class="expand-content">
+        <pre><code class="language-python">header = sock.recv(Protocol.HEADER_SIZE)
+length = Protocol.decode_header(header)
+
+body = b""
+while len(body) < length:          # לולאה! recv בודד לא מבטיח הכל
+    body += sock.recv(length - len(body))
+
+message = body.decode('utf-8')</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 13: SUMMARY -->
+  <section class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">סיכום</h2>
+      <ul>
+        <li>פרוטוקול = חוקים מוסכמים <strong>מראש</strong>, לא משהו שמבינים תוך כדי תנועה.</li>
+        <li>צריך להגדיר: שם פעולה, פרמטרים, פורמט תשובה, גבולות הודעה, וטיפול בשגיאות.</li>
+        <li>4 שאלות עיצוב: טקסט/בינארי, סימון סוף הודעה, עם/בלי מצב, טיפול בשגיאות.</li>
+        <li>המבנה שבחרנו: <code>header (אורך)</code> + <code>COMMAND|param1|param2</code>.</li>
+        <li>מחלקת <code>Protocol</code> משותפת לשרת ולקוח = פחות באגים, יותר סדר.</li>
+      </ul>
+      <p class="center-text" style="margin-top:20px; color:var(--accent);">בשלב הבא: כותבים את מחלקת Protocol בעצמכם, ובודקים אותה בפועל.</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav-ui">
+  <button class="nav-btn" id="prevBtn" onclick="goTo(current-1)">→</button>
+  <span class="counter" id="counter">1 / 13</span>
+  <button class="nav-btn" id="nextBtn" onclick="goTo(current+1)">←</button>
+</div>
+
+<script>
+hljs.highlightAll();
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+let current = 0;
+
+slides.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+});
+
+function goTo(i) {
+  if (i < 0 || i >= slides.length) return;
+  slides[current].classList.remove('active');
+  current = i;
+  slides[current].classList.add('active');
+  document.querySelectorAll('.dot').forEach((d, idx) => d.classList.toggle('active', idx === current));
+  document.getElementById('counter').textContent = (current + 1) + ' / ' + slides.length;
+  document.getElementById('prevBtn').disabled = (current === 0);
+  document.getElementById('nextBtn').disabled = (current === slides.length - 1);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') goTo(current + 1);   // RTL: שמאלה = הבא
+  else if (e.key === 'ArrowRight') goTo(current - 1); // ימינה = הקודם
+  else if (e.key === ' ') { goTo(current + 1); e.preventDefault(); }
+});
+
+function toggleExpand(btn) {
+  const content = btn.nextElementSibling;
+  content.classList.toggle('open');
+}
+
+function answerQuiz(btn, isCorrect) {
+  const group = btn.parentElement;
+  group.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    group.querySelectorAll('.quiz-opt').forEach(b => {
+      if (b.getAttribute('onclick').includes(',true)')) b.classList.add('correct');
+    });
+  }
+  document.getElementById('explain1').classList.add('show');
+}
+
+goTo(0);
+</script>
+</body>
+</html>

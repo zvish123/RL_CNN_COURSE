@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף עבודה | שלב 7 - שרת מרובה לקוחות עם Threads</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;margin:0;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 90px;}
+  header.hero{background:linear-gradient(180deg,var(--bg2),var(--bg));border-bottom:1px solid var(--border);padding:40px 24px 30px;text-align:center;}
+  header.hero .tag{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;margin-bottom:16px;letter-spacing:1px;}
+  header.hero h1{font-size:27px;margin:0 0 8px;}
+  header.hero p.subtitle{color:var(--text2);font-size:18px;margin:0;}
+  .meta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;font-size:18px;color:var(--text2);}
+  .meta-bar span{border:1px solid var(--border);border-radius:14px;padding:5px 14px;}
+
+  section{margin:44px 0;}
+  .activity-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .activity-num{flex:0 0 auto;background:var(--accent);color:#0b0f14;font-family:var(--mono);font-weight:700;font-size:18px;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+  h2.section-title{font-size:21px;color:var(--text);margin:0;}
+  h2.section-title small{display:block;color:var(--accent);font-size:18px;font-weight:400;margin-top:3px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .example-box{background:#0d1117;border:1px dashed var(--border);border-radius:8px;padding:14px 16px;font-size:18px;color:var(--text2);margin:14px 0;}
+  .example-box b{color:var(--accent2);}
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:5px;color:var(--accent2);font-size:.93em;}
+
+  .task{background:var(--card);border:1px solid var(--border);border-right:4px solid var(--accent2);border-radius:10px;padding:20px 22px;margin:18px 0;}
+  .task .task-label{font-family:var(--mono);font-size:18px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;}
+  .task h4{margin:0 0 10px;font-size:18px;}
+  .task p.instr{margin:0 0 12px;color:var(--text2);font-size:18px;}
+
+  textarea, input[type=text]{
+    width:100%;background:#0b0f14;border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:18px;font-family:inherit;direction:rtl;text-align:right;resize:vertical;
+  }
+  textarea:focus, input:focus{outline:1px solid var(--accent);border-color:var(--accent);}
+  textarea.small{min-height:70px;}
+
+  .code-editor{
+    width:100%;min-height:170px;background:#0d1117;color:#e6edf3;border:1px solid var(--border);
+    font-family:var(--mono);direction:ltr;text-align:left;border-radius:8px;padding:14px;font-size:.92em;
+  }
+  .code-editor:focus{outline:1px solid var(--accent);}
+
+  .grading-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:#fbbf24;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .teacher-run-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+  .auto-note{display:inline-flex;align-items:center;gap:6px;font-size:18px;color:var(--accent);background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.3);border-radius:12px;padding:3px 12px;margin-top:10px;}
+
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:3px;border:1.5px solid var(--accent);border-radius:4px;}
+
+  table.theory-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:18px;}
+  table.theory-table th{background:var(--card);color:var(--accent);padding:8px 10px;border:1px solid var(--border);text-align:right;}
+  table.theory-table td{border:1px solid var(--border);padding:8px 10px;}
+
+  .quiz-opt{display:block;width:100%;text-align:right;background:#0d1117;border:1.5px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;margin:7px 0;cursor:pointer;font-size:18px;font-family:inherit;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,.12);color:var(--accent);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,.12);color:#fca5a5;}
+  .quiz-explain{display:none;margin-top:12px;padding:12px 14px;background:#0d1117;border-radius:8px;border-right:4px solid var(--accent);font-size:18px;color:var(--text2);}
+  .quiz-explain.show{display:block;}
+
+  .flow{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--mono);font-size:1.2em;margin:14px 0;flex-wrap:wrap;}
+  .flow .box{background:#0d1117;border:1px solid var(--accent);border-radius:8px;padding:8px 16px;}
+
+  .reflection{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-top:30px;}
+  .reflection h4{margin:0 0 10px;color:var(--purple);font-size:18px;}
+
+  footer{text-align:center;color:var(--text2);font-size:18px;padding:30px 0 0;border-top:1px solid var(--border);margin-top:50px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="tag">דף עבודה | שלב 7 בפרויקט</span>
+  <h1>🧵 שרת מרובה לקוחות עם Threads</h1>
+  <p class="subtitle">מ"שרת שמשרת לקוח אחד" ל"שרת שמשרת את כולם בלי לחכות בתור"</p>
+  <div class="meta-bar">
+    <span>⏱ זמן משוער: 60-75 דק'</span>
+    <span>👥 עבודה בצוות הפרויקט</span>
+    <span>🛠 כלים: Python + PyCharm/IDE, 4 חלונות הרצה (שרת + 3 לקוחות)</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <label for="team_name" style="font-size:18px;color:var(--text2);white-space:nowrap;">שמות התלמידים בצוות:</label>
+    <input id="team_name" type="text" style="flex:1;min-width:180px;" placeholder="לדוגמה: דנה כהן, רועי לוי">
+  </div>
+
+  <!-- ============== THEORY ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">0</span>
+      <h2 class="section-title">תזכורת תאורטית<small>חובה לקרוא לפני שמתחילים — זה הבסיס לכל הקוד בדף הזה</small></h2>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--accent);">למה השרת שכתבנו בשלב 5 לא מספיק?</h4>
+      <p style="margin:0;">
+        השרת הבסיסי קרא ל-<code>accept()</code> פעם אחת, טיפל בלקוח <strong>אחד</strong>, וסגר את עצמו. הבעיה:
+        <code>accept()</code> ו-<code>recv()</code> הן פעולות <strong>חוסמות (blocking)</strong> — כל עוד השרת מחובר ללקוח
+        אחד וממתין למידע ממנו, הוא <strong>לא יכול</strong> לטפל בלקוח שני שמנסה להתחבר. צריך לפתוח "מסלול" נפרד לכל לקוח.
+      </p>
+    </div>
+
+    <h3 style="font-size:18px;margin:20px 0 8px;">Process מול Thread</h3>
+    <table class="theory-table">
+      <tr><th></th><th>Process (תהליך)</th><th>Thread (תהליכון)</th></tr>
+      <tr><td>זיכרון</td><td>לכל תהליך זיכרון <b>נפרד</b></td><td>כל ה-threads בתוך תהליך אחד <b>חולקים</b> את אותו הזיכרון</td></tr>
+      <tr><td>משקל</td><td>"כבד" — יצירה איטית יחסית</td><td>"קל" — יצירה מהירה, יעיל לריבוי לקוחות</td></tr>
+      <tr><td>שימוש כאן</td><td>—</td><td>thread נפרד לכל לקוח שמתחבר לשרת</td></tr>
+    </table>
+
+    <h3 style="font-size:18px;margin:20px 0 8px;">יצירת Thread בפייתון</h3>
+    <pre style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:14px 16px;direction:ltr;text-align:left;overflow-x:auto;"><code>import threading
+
+def handle_client(client_socket, address):
+    ...  # כל הקוד שמטפל בלקוח הזה בלבד
+
+t = threading.Thread(target=handle_client, args=(client_socket, address))
+t.start()   # מריץ את handle_client במקביל, לא חוסם את הלולאה הראשית</code></pre>
+
+    <h3 style="font-size:18px;margin:20px 0 8px;">⚠️ Race Condition ולמה צריך Lock</h3>
+    <div class="card">
+      <p style="margin:0 0 10px;">
+        כל ה-threads <b>חולקים זיכרון</b> — כולל כל רשימה משותפת שתחזיקו (לדוגמה רשימת הלקוחות המחוברים).
+        אם שני threads מנסים לשנות את אותה רשימה <b>בדיוק באותו רגע</b> (אחד מוסיף לקוח, אחד מסיר לקוח שהתנתק) —
+        יכולה להיווצר <b>race condition</b>: התנהגות לא צפויה שתלויה ב"מי הספיק קודם", ולעיתים גם קריסה.
+      </p>
+      <p style="margin:0;">
+        הפתרון: <code>threading.Lock()</code> — "מנעול" שמבטיח שרק thread אחד בכל רגע נתון יכול לגשת לקוד הרגיש
+        (לדוגמה לשנות את רשימת הלקוחות):
+      </p>
+      <pre style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:14px 16px;direction:ltr;text-align:left;overflow-x:auto;margin-top:10px;"><code>clients_lock = threading.Lock()
+
+with clients_lock:
+    active_clients.append(client_socket)   # רק thread אחד בפנים בכל רגע</code></pre>
+    </div>
+
+    <div class="task">
+      <span class="task-label">שאלת הבנה 0.1 (בדיקה אוטומטית)</span>
+      <h4>מה עלול לקרות בלי Lock על רשימת הלקוחות המשותפת?</h4>
+      <div id="quiz1">
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">הקוד ירוץ לאט יותר אבל התוצאה תמיד תהיה נכונה</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,true,'quiz1','explain1')">שני threads עשויים לשנות את הרשימה "בדריסה" זה על זה — לקוח עשוי "להיעלם" מהרשימה בלי שהתנתק, או לגרום לשגיאה כששני threads משנים אותה בו-זמנית</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">פייתון חוסם אוטומטית כל גישה לרשימה, אז זה לא רלוונטי</button>
+        <button class="quiz-opt" onclick="answerQuiz(this,false,'quiz1','explain1')">השרת יתחבר רק ללקוח אחד לעולם</button>
+      </div>
+      <div class="quiz-explain" id="explain1">
+        ✅ נכון. רשימות (כמו מבני נתונים רבים אחרים) אינן "בטוחות אוטומטית" לעדכון מכמה threads בו-זמנית.
+        בלי Lock, פעולות כמו <code>append</code> ו-<code>remove</code> שמתבצעות "בערך באותו זמן" משני threads יכולות
+        להתנגש ולגרום לתוצאה שגויה או לשגיאה. זו הסיבה שעוטפים אותן ב-<code>with clients_lock:</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TASK 1: THREAD PER CLIENT ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">1</span>
+      <h2 class="section-title">צעד 1 — Thread לכל לקוח<small>קל-בינוני</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 1.1</span>
+      <h4>שדרגו את לולאת ה-accept בשרת כך שתפעיל thread לכל לקוח</h4>
+      <p class="instr">
+        השרת ממשיך להאזין ולקבל לקוחות חדשים <strong>בלי לחכות</strong> שהלקוח הקודם יתנתק. כל לקוח מטופל בפונקציה
+        <code>handle_client</code> שרצה ב-thread נפרד.
+      </p>
+      <textarea class="code-editor" id="server_code">
+import socket
+import threading
+
+HOST = '0.0.0.0'
+PORT = 5050
+
+active_clients = []          # רשימת כל ה-sockets המחוברים כרגע
+clients_lock = threading.Lock()
+
+
+def handle_client(client_socket, address):
+    print(f"[+] לקוח התחבר: {address}")
+    # השלימו בצעדים 2-3 בהמשך: ניהול הרשימה, קבלת הודעות, טיפול בניתוק
+    pass
+
+
+def main():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # השלימו: bind + listen
+
+    print(f"השרת מאזין על {HOST}:{PORT} ...")
+
+    while True:
+        # השלימו: accept לקוח חדש
+        client_socket, address = None, None
+
+        # השלימו: יצירת thread חדש שמריץ handle_client(client_socket, address) ומפעיל אותו
+        pass
+
+
+if __name__ == "__main__":
+    main()
+</textarea>
+      <div class="teacher-run-note">▶ קוד זה דורש socket ו-threading אמיתיים — להריץ ב-PyCharm/IDE מקומי</div>
+    </div>
+
+    <div class="example-box">
+      💡 <b>שאלה למחשבה:</b> מדוע הלולאה הראשית בשרת (<code>while True</code> שקוראת ל-<code>accept</code>) חייבת
+      להישאר <b>פשוטה ומהירה</b>, ולא לבצע בעצמה את כל הטיפול בלקוח? (רמז: מה קורה ללקוחות אחרים בזמן שהיא "תקועה"?)
+    </div>
+  </section>
+
+  <!-- ============== TASK 2: CLIENT LIST + LOCK ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">2</span>
+      <h2 class="section-title">צעד 2 — ניהול רשימת לקוחות פעילים<small>בינוני</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 2.1</span>
+      <h4>הוסיפו את הלקוח לרשימה בתחילת handle_client, והסירו אותו בסיומה</h4>
+      <p class="instr">
+        כל גישה לרשימה המשותפת <code>active_clients</code> חייבת לעבור דרך <code>clients_lock</code> — גם הוספה
+        וגם הסרה, כדי למנוע את ה-race condition שדיברנו עליו בשאלה 0.1.
+      </p>
+      <textarea class="code-editor" id="handler_code">
+def handle_client(client_socket, address):
+    print(f"[+] לקוח התחבר: {address}")
+
+    # השלימו: הוספת client_socket ל-active_clients, תחת with clients_lock
+
+    try:
+        while True:
+            # השלימו: recv מהלקוח (בצעד 3 תוסיפו טיפול במקרה שהלקוח התנתק)
+            pass
+    finally:
+        # השלימו: הסרת client_socket מ-active_clients, תחת with clients_lock
+        # השלימו: סגירת client_socket
+        print(f"[-] לקוח התנתק: {address}. לקוחות פעילים כרגע: {len(active_clients)}")
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+      <button class="quiz-opt" style="margin-top:6px;width:auto;" onclick="this.nextElementSibling.classList.toggle('open')" id="hint2-btn">💡 רמז</button>
+      <div class="quiz-explain" style="display:none;" id="hint2">
+        <code>with clients_lock:<br>&nbsp;&nbsp;&nbsp;&nbsp;active_clients.append(client_socket)</code>
+        <br>שימוש ב-<code>try/finally</code> מבטיח שהלקוח <b>יוסר</b> מהרשימה וייסגר תמיד — גם אם קרתה שגיאה
+        באמצע הטיפול בו, וגם אם הלקוח התנתק "בצורה לא מסודרת".
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לבדיקה עצמית:</strong>
+      <ul class="checklist">
+        <li>בכל הוספה/הסרה מ-<code>active_clients</code> משתמשים ב-<code>with clients_lock:</code></li>
+        <li>אחרי שלקוח מתנתק, מספר הלקוחות הפעילים שמודפס באמת קטן ב-1</li>
+        <li>אם מריצים 2 לקוחות ומנתקים אחד, השני נשאר מחובר ופעיל (זה ה"מבחן" האמיתי ל-thread-per-client)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============== TASK 3: GRACEFUL DISCONNECT ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">3</span>
+      <h2 class="section-title">צעד 3 — ניתוק לקוח בלי להפיל את השרת<small>בינוני-מאתגר</small></h2>
+    </div>
+
+    <div class="card">
+      <p style="margin:0;">
+        כשלקוח נסגר (למשל סוגרים את חלון ה-client, או קוראים ל-<code>close()</code> בצד שלו), הקריאה הבאה ל-
+        <code>recv()</code> בצד השרת <strong>לא תזרוק שגיאה</strong> — היא תחזיר <code>b''</code> (בתים ריקים).
+        זה הסימן שהלקוח התנתק. בנוסף, כל קריאה ל-socket עלולה לזרוק <code>ConnectionResetError</code> אם הניתוק
+        היה "פתאומי" — לכן עוטפים גם ב-<code>try/except</code>.
+      </p>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.1</span>
+      <h4>השלימו את לולאת הקבלה ב-handle_client כך שתזהה ניתוק ותצא בצורה מסודרת</h4>
+      <textarea class="code-editor" id="disconnect_code">
+def handle_client(client_socket, address):
+    print(f"[+] לקוח התחבר: {address}")
+    with clients_lock:
+        active_clients.append(client_socket)
+
+    try:
+        while True:
+            try:
+                data = client_socket.recv(1024)
+            except ConnectionResetError:
+                # השלימו: מה עושים כשהחיבור נסגר "בכוח"? (רמז: break מהלולאה)
+                pass
+
+            if data == b'':
+                # השלימו: זה הסימן שהלקוח התנתק "בצורה מסודרת" - מה עושים?
+                pass
+
+            message = data.decode('utf-8')
+            print(f"[{address}] התקבל: {message}")
+            # השלימו (אופציונלי): שליחת תשובה חזרה ללקוח
+
+    finally:
+        with clients_lock:
+            if client_socket in active_clients:
+                active_clients.remove(client_socket)
+        client_socket.close()
+        print(f"[-] לקוח התנתק: {address}. לקוחות פעילים כרגע: {len(active_clients)}")
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 3.2</span>
+      <h4>הוכיחו שזה עובד: תרחיש בדיקה</h4>
+      <p class="instr">תארו בקצרה איך תבדקו שניתוק לקוח אחד לא מפיל את השרת או את הלקוחות האחרים:</p>
+      <textarea id="t3_2" class="small" placeholder="לדוגמה: נריץ שרת + 3 לקוחות, ננתק לקוח 2 (Ctrl+C), ונבדוק ש..."></textarea>
+<!--      <div class="grading-note">⚠ תשובה פתוחה — תיבדק ע"י המורה</div>-->
+    </div>
+  </section>
+
+  <!-- ============== TASK 4: CLIENT + INTEGRATION ============== -->
+  <section>
+    <div class="activity-header">
+      <span class="activity-num">4</span>
+      <h2 class="section-title">צעד 4 — מבחן אינטגרציה: 3 לקוחות במקביל<small>תוצר עובד של השלב</small></h2>
+    </div>
+
+    <div class="task">
+      <span class="task-label">משימה 4.1</span>
+      <h4>לקוח (client.py) ללא שינוי מהותי משלב 5</h4>
+      <p class="instr">תוכלו להשתמש בלקוח שכתבתם בשלב 5 (מתחבר, שולח הודעה, מקבל תשובה). אם שלחתם <code>HELLO</code> בלבד עד כה — שנו כך שהמשתמש יוכל להקליד הודעה חופשית בלולאה:</p>
+      <textarea class="code-editor" id="client_code">
+import socket
+
+HOST = '127.0.0.1'
+PORT = 5050
+
+def main():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+
+    while True:
+        msg = input("הקלידו הודעה (או 'exit' לסיום): ")
+        if msg == "exit":
+            break
+        client_socket.send(msg.encode('utf-8'))
+
+    client_socket.close()
+
+if __name__ == "__main__":
+    main()
+</textarea>
+      <div class="teacher-run-note">▶ דורש הרצה אמיתית ב-IDE</div>
+    </div>
+
+    <div class="flow">
+      <span class="box">חלון 1: server.py</span>→<span class="box">חלון 2: client.py</span>→<span class="box">חלון 3: client.py</span>→<span class="box">חלון 4: client.py</span>
+    </div>
+
+    <div class="card">
+      <strong>צ'ק-ליסט לתוצר העובד של השלב (כל הסעיפים חייבים לעבור):</strong>
+      <ul class="checklist">
+        <li>הרצתם <code>server.py</code> בחלון אחד, ו-3 מופעים נפרדים של <code>client.py</code> בשלושה חלונות נוספים</li>
+        <li>שלושת הלקוחות מחוברים <strong>בו-זמנית</strong> — ראיתם בקונסולת השרת 3 הודעות "לקוח התחבר"</li>
+        <li>כל לקוח שולח הודעה משלו, והשרת מדפיס אותה עם הכתובת הנכונה (לא "מתבלבל" בין לקוחות)</li>
+        <li>ניתקתם לקוח אחד (הקלדת <code>exit</code> או סגירת החלון) — השרת המשיך לרוץ, ושני הלקוחות האחרים נשארו פעילים</li>
+        <li>קונסולת השרת הדפיסה את מספר הלקוחות הפעילים הנכון לפני ואחרי הניתוק</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="reflection">
+    <h4>רפלקציה קצרה</h4>
+    <p style="margin:0 0 10px;color:var(--text2);font-size:18px;">לפני שממשיכים לשלב הבא — חשבו על מה שבניתם.</p>
+    <textarea class="small" id="t_reflect" placeholder="מה היה הקטע הכי לא-טריוויאלי בשלב הזה (Lock? ניתוק לקוח? משהו אחר)? איזו שאלה נשארה פתוחה למורה?"></textarea>
+    <div class="grading-note">⚠ רפלקציה אישית — לא נבדקת "נכון/לא נכון"</div>
+  </div>
+
+  <div class="card" style="text-align:center;margin-top:30px;border-color:var(--accent);">
+    <p style="margin:0 0 14px;color:var(--text2);font-size:18px;">
+      בסיום העבודה — לחצו על הכפתור כדי להפיק קובץ JSON עם הקוד שכתבתם ותשובותיכם, ולהגיש אותו למורה.
+    </p>
+    <button id="submit-btn" type="button"
+      style="background:var(--accent);color:#0b0f14;border:none;padding:13px 28px;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;">
+      📥 הפק קובץ הגשה (JSON)
+    </button>
+    <p id="submit-status" style="margin:12px 0 0;font-size:18px;color:var(--text2);"></p>
+  </div>
+
+</div>
+
+<script>
+  function answerQuiz(btn, isCorrect, groupId, explainId) {
+    const group = document.getElementById(groupId);
+    group.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+    btn.classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect) {
+      group.querySelectorAll('.quiz-opt').forEach(b => {
+        if (b.getAttribute('onclick').includes(',true,')) b.classList.add('correct');
+      });
+    }
+    document.getElementById(explainId).classList.add('show');
+  }
+
+  function gv(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  document.getElementById('submit-btn').addEventListener('click', function () {
+    const teamName = gv('team_name') || 'ללא_שם';
+
+    const data = {
+      meta: {
+        worksheet: "שלב 7 - שרת מרובה לקוחות עם Threads",
+        team: teamName,
+        submitted_at: new Date().toISOString()
+      },
+      server_code_step1: gv('server_code'),
+      handler_code_step2: gv('handler_code'),
+      disconnect_handling_code_step3: gv('disconnect_code'),
+      client_code_step4: gv('client_code'),
+      test_scenario_description: gv('t3_2'),
+      reflection: gv('t_reflect')
+    };
+
+    const missing = [];
+    if (!gv('team_name')) missing.push("שם הצוות");
+    if (!gv('t3_2')) missing.push("תרחיש הבדיקה (משימה 3.2)");
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const safeName = teamName.replace(/[^א-תa-zA-Z0-9_\-]+/g, "_");
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "הגשה_שרת_מרובה_לקוחות_" + safeName + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const statusEl = document.getElementById('submit-status');
+    if (missing.length) {
+      statusEl.style.color = "#fbbf24";
+      statusEl.textContent = "⚠ הקובץ נוצר, אך שדות אלו ריקים: " + missing.join(", ") + " — מומלץ להשלים ולהגיש קובץ מעודכן.";
+    } else {
+      statusEl.style.color = "#5dcaa5";
+      statusEl.textContent = "✓ קובץ ההגשה הופק ונשמר להורדה.";
+    }
+  });
+</script>
+
+<footer>
+  <div class="wrap" style="padding:0;">דף עבודה | שלב 7 — שרת מרובה לקוחות עם Threads — פרויקט הסיום</div>
+</footer>
+
+</body>
+</html>

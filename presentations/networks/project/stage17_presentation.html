@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שלב 17 | בדיקות - VaultGuard</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#11161d; --card:#151b23; --border:#243240;
+    --accent:#2dd4bf; --accent2:#f59e0b; --accent3:#ef4444; --purple:#a78bfa;
+    --text:#e6edf3; --text2:#9fb0c0; --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;height:100%;overflow:hidden;}
+  .deck{position:relative;width:100%;height:100vh;}
+
+  .slide{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:60px 8vw 110px;opacity:0;transition:opacity .35s ease;overflow-y:auto;}
+  .slide.active{display:flex;opacity:1;}
+  .slide-inner{max-width:1040px;width:100%;}
+
+  .eyebrow{display:inline-block;font-family:var(--mono);font-size:18px;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 16px;margin-bottom:22px;letter-spacing:1px;}
+  h1.big{font-size:42px;line-height:1.25;margin-bottom:16px;}
+  h1.big .accent{color:var(--accent);}
+  h2.slide-title{font-size:29px;margin-bottom:22px;color:var(--text);}
+  h2.slide-title .accent{color:var(--accent);}
+  p.lead{font-size:18px;color:var(--text2);line-height:1.7;max-width:800px;}
+  p.lead.center{margin:0 auto;text-align:center;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:10px;}
+  @media (max-width:800px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
+  .card h3{font-size:18px;color:var(--accent);margin-bottom:8px;}
+  .card p{font-size:18px;color:var(--text2);line-height:1.6;}
+  .card .icon{font-size:24px;margin-bottom:8px;display:block;}
+
+  .checklist{list-style:none;margin:0;padding:0;max-width:780px;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:18px;color:var(--text2);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist li::before{content:'';flex:0 0 16px;width:16px;height:16px;margin-top:4px;border:1.5px solid var(--accent);border-radius:4px;}
+
+  .expand-btn{background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 20px;border-radius:20px;font-size:18px;cursor:pointer;margin-top:18px;transition:background .2s,color .2s;}
+  .expand-btn:hover{background:var(--accent);color:#0b0f14;}
+  .expand-content{max-height:0;overflow:hidden;transition:max-height .4s ease;margin-top:0;}
+  .expand-content.open{max-height:700px;margin-top:18px;}
+
+  pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;text-align:left;direction:ltr;font-family:var(--mono);font-size:18px;line-height:1.55;color:#d1e8e2;margin-top:14px;}
+  pre .c1{color:#6a9955;} pre .kw{color:#c586c0;} pre .fn{color:#dcdcaa;} pre .str{color:#ce9178;} pre .bi{color:#4ec9b0;}
+
+  .quiz-options{display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto;}
+  .quiz-opt{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px 18px;text-align:right;cursor:pointer;font-size:18px;color:var(--text);transition:border-color .15s;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--accent);background:rgba(45,212,191,0.1);}
+  .quiz-opt.wrong{border-color:var(--accent3);background:rgba(239,68,68,0.08);}
+  .quiz-feedback{margin-top:16px;font-size:18px;color:var(--text2);min-height:20px;}
+
+  .slide.stop .slide-inner{border:2px solid var(--accent2);border-radius:16px;padding:34px;background:rgba(245,158,11,0.05);}
+  .stop-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:18px;color:var(--accent2);border:1px solid var(--accent2);border-radius:20px;padding:5px 16px;margin-bottom:18px;}
+
+  table.req-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:18px;}
+  table.req-table th, table.req-table td{border:1px solid var(--border);padding:10px 14px;text-align:right;}
+  table.req-table th{background:var(--card);color:var(--accent);font-size:18px;}
+  table.req-table tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  .tag{display:inline-block;font-family:var(--mono);font-size:18px;border-radius:10px;padding:2px 9px;}
+  .tag.unit{color:var(--accent);border:1px solid var(--accent);}
+  .tag.integ{color:var(--purple);border:1px solid var(--purple);}
+  .tag.load{color:var(--accent2);border:1px solid var(--accent2);}
+  .tag.neg{color:var(--accent3);border:1px solid var(--accent3);}
+
+  .nav-ui{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:linear-gradient(0deg, var(--bg) 60%, transparent);z-index:10;}
+  .nav-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:46px;height:46px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+  .nav-btn:hover{border-color:var(--accent);}
+  .nav-btn:disabled{opacity:0.25;cursor:default;}
+  .nav-center{display:flex;align-items:center;gap:14px;}
+  .slide-counter{font-family:var(--mono);font-size:18px;color:var(--text2);}
+  .dots{display:flex;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s;}
+  .dot.active{background:var(--accent);}
+
+  code{font-family:var(--mono);background:#0d1117;padding:2px 6px;border-radius:4px;font-size:18px;color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <div class="slide active">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">VaultGuard · שלב 17 מתוך 17</span>
+      <h1 class="big">בדיקות<br>איך מוכיחים ש<span class="accent">VaultGuard</span> עובד?</h1>
+      <p class="lead center">בנינו שרת, הצפנה, ניטור, ממשק. עד כה בדקנו "בעין" - הרצנו ידנית וראינו שזה עובד. בשלב הזה אנחנו בונים <b style="color:var(--text);">בדיקות אוטומטיות</b> שמוכיחות את זה בלחיצת כפתור, כל פעם מחדש.</p>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">למה "זה עבד לי פעם אחת" לא מספיק?</h2>
+      <ul class="checklist">
+        <li>שיניתם קוד בשלב 12 (ניטור) — איך תדעו שלא שברתם את ההתחברות משלב 3?</li>
+        <li>בהגנה בעל פה, המורה ישנה קלט (סיסמה שגויה, קובץ פגום) — אם לא בדקתם, לא תדעו מה קורה</li>
+        <li>"זה עבד אצלי במחשב" — לא מוכיח שזה יעבוד עם 3 לקוחות במקביל, או עם payload לא תקין</li>
+      </ul>
+      <p class="lead" style="margin-top:18px;">בדיקה אוטומטית = קוד שמרים סוגיה ספציפית, מריץ אותה, ומשווה תוצאה בפועל לתוצאה צפויה — בלי שאתם צריכים לבדוק בעין כל פעם.</p>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <h2 class="slide-title">ארבעה סוגי בדיקות</h2>
+      <div class="grid2">
+        <div class="card">
+          <span class="icon">🧩</span>
+          <h3><span class="tag unit">UNIT</span> בדיקת יחידה</h3>
+          <p>בודקת <b style="color:var(--text);">פונקציה אחת</b> בבידוד מהשאר. לדוגמה: <code>encrypt()</code> מחזירה טקסט מוצפן שונה מהמקור.</p>
+        </div>
+        <div class="card">
+          <span class="icon">🔗</span>
+          <h3><span class="tag integ">INTEGRATION</span> בדיקת אינטגרציה</h3>
+          <p>בודקת ש<b style="color:var(--text);">כמה חלקים עובדים נכון יחד</b>. לדוגמה: לקוח אמיתי מתחבר לשרת אמיתי, השרת שומר ומגיב.</p>
+        </div>
+        <div class="card">
+          <span class="icon">📈</span>
+          <h3><span class="tag load">LOAD</span> בדיקת עומס בסיסית</h3>
+          <p>בודקת מה קורה <b style="color:var(--text);">כשיש כמה לקוחות במקביל</b> — לא קורס, לא "תופס" אחד ומשאיר אחרים תקועים.</p>
+        </div>
+        <div class="card">
+          <span class="icon">🚫</span>
+          <h3><span class="tag neg">NEGATIVE</span> בדיקה שלילית</h3>
+          <p>בודקת ש<b style="color:var(--text);">קלט פגום/זדוני</b> לא מקריס את המערכת, אלא מטופל בצורה מסודרת (שגיאה, לא Exception לא מטופל).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">pytest: מבנה בסיסי</h2>
+      <p class="lead">בדיקה ב-pytest היא פונקציה ששמה מתחיל ב-<code>test_</code>, ובסופה <code>assert</code> שמשווה תוצאה בפועל לתוצאה צפויה.</p>
+      <pre><span class="kw">def</span> <span class="fn">encrypt</span>(text):
+    <span class="kw">return</span> <span class="str">"".join(chr(ord(c) + 1) for c in text)</span>
+
+<span class="kw">def</span> <span class="fn">test_encrypt_changes_text</span>():
+    <span class="c1">"""בדיקת יחידה: ההצפנה לא מחזירה את הטקסט המקורי"""</span>
+    result = encrypt(<span class="str">"hello"</span>)
+    <span class="kw">assert</span> result != <span class="str">"hello"</span>
+
+<span class="kw">def</span> <span class="fn">test_encrypt_same_length</span>():
+    <span class="kw">assert</span> <span class="bi">len</span>(encrypt(<span class="str">"hello"</span>)) == <span class="bi">len</span>(<span class="str">"hello"</span>)</pre>
+      <p class="lead" style="margin-top:14px;">הרצה: <code>pytest test_encrypt.py -v</code> — pytest מאתר את כל פונקציות ה-<code>test_</code> ומדפיס PASSED/FAILED לכל אחת.</p>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">בדיקה שלילית: pytest.raises</h2>
+      <p class="lead">לא בודקים רק "מה קורה כשהכל תקין" — גם "מה קורה כשהקלט פגום, ושהשרת לא מקבל אותו".</p>
+      <pre><span class="kw">import</span> pytest
+
+<span class="kw">def</span> <span class="fn">parse_message</span>(raw):
+    <span class="kw">if</span> <span class="str">":"</span> <span class="kw">not in</span> raw:
+        <span class="kw">raise</span> <span class="bi">ValueError</span>(<span class="str">"הודעה לא תקינה - חסר מפריד"</span>)
+    <span class="kw">return</span> raw.split(<span class="str">":"</span>, <span class="number">1</span>)
+
+<span class="kw">def</span> <span class="fn">test_invalid_message_raises_error</span>():
+    <span class="c1">"""בדיקה שלילית: הודעה לא תקינה מחזירה שגיאה, לא קורסת בשקט"""</span>
+    <span class="kw">with</span> pytest.raises(<span class="bi">ValueError</span>):
+        parse_message(<span class="str">"בלי מפריד בכלל"</span>)</pre>
+      <p class="lead" style="margin-top:14px;"><b style="color:var(--text);">חוסר</b> בדיקה שלילית = הסיכון האמיתי: קוד שעובד מצוין עם קלט תקין, אבל קורס (Exception לא מטופל) ברגע שמישהו שולח קלט מוזר — וזה בדיוק מה שתוקף עושה.</p>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">Fixture: מקימים ומפילים שרת אמיתי לבדיקה</h2>
+      <p class="lead"><code>fixture</code> מכין משאב לפני הבדיקה (כאן: מריץ את שרת ה-VaultGuard ב-thread נפרד), ומסיר אותו אחרי (סוגר את ה-socket) — כדי שכל בדיקה תתחיל ממצב נקי.</p>
+      <pre><span class="kw">import</span> pytest, threading, time, socket
+
+<span class="kw">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">running_server</span>():
+    <span class="c1"># מריץ את שרת הפרויקט ב-thread נפרד לפני הבדיקה</span>
+    server_thread = threading.Thread(target=start_vaultguard_server, args=(<span class="str">"localhost"</span>, <span class="number">9999</span>))
+    server_thread.daemon = <span class="bi">True</span>
+    server_thread.start()
+    time.sleep(<span class="number">0.3</span>)  <span class="c1"># זמן עלייה</span>
+    <span class="kw">yield</span> (<span class="str">"localhost"</span>, <span class="number">9999</span>)
+    <span class="c1"># כאן אפשר לסגור חיבורים אחרי הבדיקה</span></pre>
+      <button class="expand-btn" onclick="toggleExpand(this,'fixture-use')">💡 איך משתמשים בפיקסצ'ר בבדיקה? ▾</button>
+      <div class="expand-content" id="fixture-use">
+        <pre><span class="kw">def</span> <span class="fn">test_client_connects_and_server_logs_it</span>(running_server):
+    <span class="c1">"""בדיקת אינטגרציה: לקוח מתחבר, השרת מזהה ושומר"""</span>
+    host, port = running_server
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+    <span class="kw">assert</span> client_socket <span class="kw">is not</span> <span class="bi">None</span>
+    client_socket.close()</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">בדיקת עומס בסיסית: כמה לקוחות במקביל</h2>
+      <pre><span class="kw">def</span> <span class="fn">test_three_clients_handled_concurrently</span>(running_server):
+    <span class="c1">"""בדיקת עומס: 3 לקוחות במקביל - כולם מטופלים"""</span>
+    host, port = running_server
+    sockets = []
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="bi">range</span>(<span class="number">3</span>):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        sockets.append(s)
+
+    <span class="kw">for</span> s <span class="kw">in</span> sockets:
+        s.send(<span class="str">b"PING"</span>)
+        response = s.recv(<span class="number">1024</span>)
+        <span class="kw">assert</span> response == <span class="str">b"PONG"</span>  <span class="c1"># כל לקוח קיבל מענה, אף אחד לא "נשכח"</span>
+
+    <span class="kw">for</span> s <span class="kw">in</span> sockets:
+        s.close()</pre>
+      <p class="lead" style="margin-top:14px;">זו לא בדיקת עומס "אמיתית" (אלפי משתמשים) — אבל היא חושפת בעיות נפוצות: שרת שמטפל בלקוח אחד בלבד ומשאיר אחרים תקועים.</p>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <h2 class="slide-title">טבלת הבדיקות החובה לפרויקט</h2>
+      <table class="req-table">
+        <tr><th>בדיקה</th><th>ציפייה</th><th>סוג</th></tr>
+        <tr><td>לקוח מתחבר</td><td>השרת מזהה ושומר</td><td><span class="tag integ">INTEGRATION</span></td></tr>
+        <tr><td>לקוח מתנתק</td><td>השרת לא קורס</td><td><span class="tag integ">INTEGRATION</span></td></tr>
+        <tr><td>הודעה לא תקינה</td><td>מוחזרת שגיאה</td><td><span class="tag neg">NEGATIVE</span></td></tr>
+        <tr><td>3 לקוחות במקביל</td><td>כולם מטופלים</td><td><span class="tag load">LOAD</span></td></tr>
+        <tr><td>payload מוצפן</td><td>לא עובר כטקסט גלוי</td><td><span class="tag unit">UNIT</span></td></tr>
+        <tr><td>ניסיון הצפה</td><td>המערכת מזהה או חוסמת</td><td><span class="tag neg">NEGATIVE</span></td></tr>
+        <tr><td>קובץ/pcap לא תקין</td><td>מוצגת שגיאה מסודרת</td><td><span class="tag neg">NEGATIVE</span></td></tr>
+      </table>
+      <p class="lead center" style="margin-top:18px;">אלו שבע הבדיקות שכל צוות חייב שיהיו לו, עם תוצאה בפועל (לא רק "ציפינו ש...") — את זה בונים בדף העבודה.</p>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="slide">
+    <div class="slide-inner">
+      <h2 class="slide-title">בדיקת הבנה</h2>
+      <p class="lead center" style="margin-bottom:8px;">אתם בודקים ש-<code>encrypt("vault")</code> מחזיר תוצאה שונה מ-<code>"vault"</code>, בלי להריץ שרת בכלל. איזה סוג בדיקה זו?</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">בדיקת אינטגרציה - כי זה חלק מהפרויקט הגדול</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,true)">בדיקת יחידה (Unit) - בודקת פונקציה אחת בבידוד</div>
+        <div class="quiz-opt" onclick="checkQuiz(this,false)">בדיקת עומס - כי יש כמה תווים בטקסט</div>
+      </div>
+      <p class="quiz-feedback" id="quiz-fb"></p>
+    </div>
+  </div>
+
+  <!-- 10: stop and do -->
+  <div class="slide stop">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="stop-tag">⏸ תחנת עצירה</span>
+      <h2 class="slide-title">מה עושים עכשיו?</h2>
+      <p class="lead center">פותחים את <code>דף העבודה — שלב 17</code> ובצוות:</p>
+      <ul class="checklist" style="margin:18px auto 0;">
+        <li>כותבים בדיקת יחידה (unit) אחת לפונקציית הצפנה/אימות שלכם</li>
+        <li>כותבים fixture שמריץ את השרת שלכם לבדיקה</li>
+        <li>מריצים בפועל את כל שבע הבדיקות מהטבלה, ורושמים PASS/FAIL אמיתי</li>
+        <li>מגישים קובץ JSON עם הקוד והתוצאות</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="slide">
+    <div class="slide-inner" style="text-align:center;">
+      <span class="eyebrow">סיימתם את שלב 17</span>
+      <h1 class="big">מ"זה <span class="accent">עבד אצלי</span>" ל"זה <span class="accent">מוכח</span>"</h1>
+      <p class="lead center">התוצר הסופי: טבלת בדיקות עם תוצאות בפועל — ההוכחה שלכם, לא רק לעצמכם אלא גם למורה בהגנה, ש-VaultGuard עומד במה שהבטחתם שהוא יעשה.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-ui">
+  <button class="nav-btn" id="prevBtn" title="הקודם (חץ ימינה)">→</button>
+  <div class="nav-center">
+    <span class="slide-counter" id="counter">1 / 11</span>
+    <div class="dots" id="dots"></div>
+  </div>
+  <button class="nav-btn" id="nextBtn" title="הבא (חץ שמאלה / רווח)">←</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  var dotsWrap = document.getElementById('dots');
+  for (var i = 0; i < total; i++) {
+    var d = document.createElement('span');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', (function(idx){ return function(){ goTo(idx); }; })(i));
+    dotsWrap.appendChild(d);
+  }
+
+  function updateUI(){
+    slides.forEach(function(s, idx){ s.classList.toggle('active', idx === current); });
+    document.getElementById('counter').textContent = (current+1) + ' / ' + total;
+    var dots = dotsWrap.querySelectorAll('.dot');
+    dots.forEach(function(d, idx){ d.classList.toggle('active', idx === current); });
+    document.getElementById('prevBtn').disabled = (current === 0);
+    document.getElementById('nextBtn').disabled = (current === total - 1);
+  }
+
+  function goTo(idx){
+    if (idx < 0 || idx >= total) return;
+    current = idx;
+    updateUI();
+  }
+  function next(){ goTo(current + 1); }
+  function prev(){ goTo(current - 1); }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowLeft' || e.key === ' '){ e.preventDefault(); next(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); prev(); }
+  });
+
+  function toggleExpand(btn, id){
+    var el = document.getElementById(id);
+    el.classList.toggle('open');
+    if (el.classList.contains('open')){
+      btn.textContent = btn.textContent.replace('▾','▴');
+    } else {
+      btn.textContent = btn.textContent.replace('▴','▾');
+    }
+  }
+
+  function checkQuiz(el, isCorrect){
+    var opts = el.parentElement.querySelectorAll('.quiz-opt');
+    opts.forEach(function(o){ o.classList.remove('correct','wrong'); });
+    var fb = document.getElementById('quiz-fb');
+    if (isCorrect){
+      el.classList.add('correct');
+      fb.textContent = '✓ נכון! אין כאן שרת, רשת או thread - רק פונקציה אחת שנבדקת בבידוד מלא.';
+      fb.style.color = '#5dcaa5';
+    } else {
+      el.classList.add('wrong');
+      fb.textContent = '✗ לא מדויק - שימו לב שאין כאן שרת רץ ואין כמה לקוחות, רק פונקציה אחת בבידוד.';
+      fb.style.color = '#f87171';
+    }
+  }
+
+  updateUI();
+</script>
+
+</body>
+</html>

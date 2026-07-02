@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker – מהקפאת קוד להרצה בכל מקום</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #0f1624;
+    --surface2: #141d30;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --code-bg: #0d1117;
+    --glow: 0 0 20px rgba(0,212,255,0.15);
+    --glow-strong: 0 0 40px rgba(0,212,255,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Arial Hebrew', Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    direction: rtl;
+  }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed;
+    top: 0; right: 0; left: 0;
+    height: 3px;
+    background: var(--border);
+    z-index: 100;
+  }
+  #progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.4s ease;
+  }
+
+  /* Nav dots */
+  #dot-nav {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+    direction: ltr;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid var(--border);
+  }
+  .dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    transform: scale(1.3);
+  }
+  .dot:hover { background: var(--text-dim); }
+
+  /* Slide counter */
+  #slide-counter {
+    position: fixed;
+    top: 14px;
+    left: 20px;
+    font-size: 18px;
+    color: var(--text-dim);
+    font-family: monospace;
+    z-index: 100;
+    background: var(--surface);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* Nav buttons */
+  .nav-btn {
+    position: fixed;
+    bottom: 50%;
+    transform: translateY(50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s;
+    z-index: 100;
+  }
+  .nav-btn:hover {
+    background: var(--border);
+    box-shadow: var(--glow);
+    border-color: var(--accent);
+  }
+  #btn-next { left: 16px; }
+  #btn-prev { right: 16px; }
+  .nav-btn:disabled { opacity: 0.25; cursor: default; }
+
+  /* Slides */
+  #slides-wrapper {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 70px 60px;
+  }
+
+  .slide {
+    display: none;
+    width: 100%;
+    max-width: 920px;
+    animation: fadeIn 0.35s ease;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Slide types */
+  .slide-tag {
+    font-size: 18px;
+    font-family: monospace;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+
+  h1.slide-title {
+    font-size: 2.1rem;
+    line-height: 1.25;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+    font-weight: 700;
+  }
+  h2.slide-title {
+    font-size: 1.65rem;
+    color: var(--accent);
+    margin-bottom: 18px;
+    font-weight: 700;
+  }
+
+  .slide-content { flex: 1; overflow-y: auto; min-height: 0;}
+  .slide-content::-webkit-scrollbar { width: 4px; }
+  .slide-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Cards */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    transition: all 0.25s;
+  }
+  .card:hover { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-2px); }
+  .card-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+  .card-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .card-body { font-size: 18px; color: var(--text-dim); line-height: 1.6; }
+
+  /* Bullet list */
+  .bullet-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .bullet-list li {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-right: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 18px;
+    line-height: 1.55;
+  }
+  .bullet-list li .icon { font-size: 1.2rem; flex-shrink: 0; }
+  .bullet-list.green li { border-right-color: var(--accent3); }
+  .bullet-list.purple li { border-right-color: var(--accent2); }
+  .bullet-list.warn li { border-right-color: var(--warn); }
+
+  /* Code block */
+  .code-wrap {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .code-header {
+    background: var(--surface2);
+    padding: 8px 14px;
+    font-size: 18px;
+    font-family: monospace;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    direction: ltr;
+  }
+  .code-wrap pre { margin: 0 !important; }
+  .code-wrap code { font-size: 1.2em !important; padding: 14px 16px !important; line-height: 1.6 !important; }
+
+  /* Expand button */
+  .expand-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 7px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 18px;
+    font-family: inherit;
+    transition: all 0.2s;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .expand-btn:hover { background: rgba(0,212,255,0.1); box-shadow: var(--glow); }
+  .expand-btn.open { background: rgba(0,212,255,0.1); }
+
+  .expandable {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.45s ease, opacity 0.35s ease;
+    opacity: 0;
+  }
+  .expandable.open { max-height: 800px; opacity: 1; }
+
+  /* Quiz */
+  .quiz-box {
+    background: var(--surface2);
+    border: 1px solid var(--accent2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 8px;
+  }
+  .quiz-question { font-size: 1.2rem; font-weight: 600; margin-bottom: 14px; color: var(--text); }
+  .quiz-options { display: flex; flex-direction: column; gap: 9px; }
+  .quiz-opt {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text);
+    text-align: right;
+    transition: all 0.2s;
+    font-family: inherit;
+    width: 100%;
+    direction: rtl;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(0,212,255,0.06); }
+  .quiz-opt.correct { border-color: var(--accent3) !important; background: rgba(16,185,129,0.15) !important; color: var(--accent3); }
+  .quiz-opt.wrong { border-color: var(--danger) !important; background: rgba(239,68,68,0.12) !important; color: var(--danger); }
+  .quiz-feedback {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 1.55;
+    display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(16,185,129,0.1); border: 1px solid var(--accent3); color: var(--accent3); }
+  .quiz-feedback.wrong-fb { background: rgba(239,68,68,0.08); border: 1px solid var(--danger); color: #fca5a5; }
+  .quiz-reset {
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 18px;
+    font-family: inherit;
+    display: none;
+    transition: all 0.2s;
+  }
+  .quiz-reset.show { display: inline-block; }
+  .quiz-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Task slide */
+  .task-box {
+    background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(0,212,255,0.05));
+    border: 2px solid var(--accent2);
+    border-radius: 14px;
+    padding: 22px 26px;
+    position: relative;
+  }
+  .task-badge {
+    position: absolute;
+    top: -12px; right: 20px;
+    background: var(--accent2);
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .task-box h3 { color: var(--accent2); margin-bottom: 14px; font-size: 1.2rem; }
+  .task-steps { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .task-step {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 18px;
+    line-height: 1.55;
+  }
+  .step-num {
+    background: var(--accent2);
+    color: white;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Compare table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 18px;
+  }
+  .compare-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    color: var(--accent);
+    text-align: center;
+  }
+  .compare-table td {
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .compare-table tr:nth-child(even) td { background: var(--surface2); }
+  .compare-table .good { color: var(--accent3); }
+  .compare-table .bad { color: var(--danger); }
+
+  /* Flow diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 16px 0;
+    direction: ltr;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px 18px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .flow-box .flow-icon { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+  .flow-box .flow-label { font-size: 18px; color: var(--accent); font-weight: 600; font-family: monospace; }
+  .flow-box .flow-sub { font-size: 18px; color: var(--text-dim); margin-top: 2px; }
+  .flow-arrow {
+    font-size: 1.4rem;
+    color: var(--accent);
+    padding: 0 6px;
+    opacity: 0.7;
+  }
+
+  /* Highlight inline */
+  .hl { color: var(--accent); font-family: monospace; font-weight: 600; }
+  .hl-g { color: var(--accent3); font-family: monospace; }
+  .hl-p { color: var(--accent2); }
+  .hl-w { color: var(--warn); font-family: monospace; }
+
+  /* Info box */
+  .info-box {
+    background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.25);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin-top: 12px;
+  }
+  .info-box strong { color: var(--accent); }
+
+  .warn-box {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 18px;
+    color: var(--warn);
+    margin-top: 10px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 4px;
+  }
+
+  /* Title slide */
+  .title-slide-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    gap: 18px;
+  }
+  .big-icon { font-size: 5rem; line-height: 1; }
+  .title-slide-content h1 {
+    font-size: 2.8rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+  }
+  .title-slide-content p { font-size: 1.2rem; color: var(--text-dim); max-width: 580px; line-height: 1.7; }
+  .subtitle-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 18px;
+    font-size: 18px;
+    color: var(--text-dim);
+    font-family: monospace;
+  }
+
+  /* Code annotation */
+  .code-line-explain {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .cle-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  .cle-code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: monospace;
+    font-size: 18px;
+    color: var(--accent3);
+    white-space: nowrap;
+    direction: ltr;
+  }
+  .cle-explain {
+    font-size: 18px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .language-python {
+    direction: ltr;
+<!--    font-size: 18px;-->
+  }
+  pre {
+    direction: ltr;
+<!--    font-size: 18px;-->
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"><div id="progress-fill"></div></div>
+<div id="slide-counter">שקף <span id="cur">1</span> מתוך <span id="tot">20</span></div>
+
+<div id="slides-wrapper">
+
+<!-- SLIDE 1: כותרת -->
+  <div class="slide active" id="s1">
+    <div class="slide-content">
+      <div class="title-slide-content">
+        <div class="big-icon">🐳</div>
+        <h1>Docker</h1>
+        <p>מהקפאת קוד להרצה בכל מקום — פעם אחת כותבים, בכל מקום רץ</p>
+        <div class="subtitle-tag">$ docker run --rm -it hello-world</div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;">
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:1.2rem;color:var(--text-dim);">🎓 כיתות י'–י"ב</span>
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size: 18px;color:var(--text-dim);">🐍 Python + Flask</span>
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size: 18px;color:var(--text-dim);">⏱ 90 דקות</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: התקנת Docker -->
+  <div class="slide" id="s2">
+    <div class="slide-tag">// התקנה</div>
+    <h2 class="slide-title">⚙️ התקנת Docker — Windows / Mac / Linux</h2>
+    <div class="slide-content">
+      <div class="info-box" style="margin-bottom:14px;">
+        Docker Desktop הוא הדרך המומלצת להתקין Docker על Windows ו-Mac — כולל ממשק גרפי, CLI ו-Docker Compose. על Linux מתקינים ישירות את Docker Engine.
+      </div>
+      <div class="cards-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="card" style="border-color:var(--accent);">
+          <span class="card-icon">🪟</span>
+          <div class="card-title">Windows</div>
+          <div class="card-body">
+            <strong>דרישה:</strong> Windows 10/11 עם WSL2<br><br>
+            1. הורידו מ-docker.com/get-started<br>
+            2. הפעילו WSL2<br>
+            3. הריצו את ה-installer<br>
+            4. הפעילו מחדש
+          </div>
+          <button class="expand-btn" onclick="toggleExpand('e_win', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>🔧</span> הפעלת WSL2
+          </button>
+          <div class="expandable" id="e_win">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>PowerShell (Admin)</span></div>
+              <pre><code class="language-bash">wsl --install
+# הפעילו מחדש
+wsl --set-default-version 2</code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--accent2);">
+          <span class="card-icon">🍎</span>
+          <div class="card-title">macOS</div>
+          <div class="card-body">
+            <strong>דרישה:</strong> macOS 12+ Intel/Apple Silicon<br><br>
+            1. הורידו Docker Desktop<br>
+            2. גררו ל-Applications<br>
+            3. הפעילו — 🐳 בשורת התפריט<br>
+            4. אשרו הרשאות
+          </div>
+          <button class="expand-btn" onclick="toggleExpand('e_mac', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>🍺</span> עם Homebrew
+          </button>
+          <div class="expandable" id="e_mac">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>Terminal</span></div>
+              <pre><code class="language-bash">brew install --cask docker</code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--accent3);">
+          <span class="card-icon">🐧</span>
+          <div class="card-title">Linux (Ubuntu)</div>
+          <div class="card-body">
+            <strong>דרישה:</strong> Ubuntu 20.04+<br><br>
+            ללא Docker Desktop — מתקינים Docker Engine ישירות, קל ומהיר יותר
+          </div>
+          <button class="expand-btn" onclick="toggleExpand('e_linux', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>📋</span> פקודות התקנה
+          </button>
+          <div class="expandable" id="e_linux">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>Terminal</span></div>
+              <pre><code class="language-bash">sudo apt update
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# התנתקו והתחברו מחדש</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="warn-box" style="margin-top:12px;">
+        ✅ <strong>בדיקת ההתקנה:</strong> <span class="hl">docker --version</span> ואז <span class="hl">docker run hello-world</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Docker Desktop -->
+  <div class="slide" id="s3">
+    <div class="slide-tag">// Docker Desktop</div>
+    <h2 class="slide-title">🖥️ Docker Desktop — הממשק הגרפי</h2>
+    <div class="slide-content">
+      <div class="two-col">
+        <div>
+          <p style="font-size: 18px;color:var(--text-dim);margin-bottom:10px;">Docker Desktop מספק ממשק ויזואלי לניהול קונטיינרים, Images ו-Volumes — בלי צורך לזכור פקודות.</p>
+          <ul class="bullet-list" style="margin-bottom:10px;">
+            <li><span class="icon">📦</span><span><strong>Containers</strong> — רשימת קונטיינרים, Start/Stop/Delete, לוגים בזמן אמת</span></li>
+            <li><span class="icon">📸</span><span><strong>Images</strong> — כל האימג'ים, גודל, תאריך יצירה, pull מ-Hub</span></li>
+            <li><span class="icon">💾</span><span><strong>Volumes</strong> — ניהול אחסון נתונים קבועים בין הרצות</span></li>
+            <li><span class="icon">🔧</span><span><strong>Dev Environments</strong> — סביבת פיתוח שלמה בלחיצה</span></li>
+          </ul>
+          <button class="expand-btn" onclick="toggleExpand('e_dd_cli', this)">
+            <span>💻</span> CLI לעומת GUI — מה עדיף?
+          </button>
+          <div class="expandable" id="e_dd_cli">
+            <div class="info-box">
+              <strong>CLI (טרמינל)</strong> — מדויק, ניתן לסקריפטינג, משמש ב-production<br>
+              <strong>GUI (Docker Desktop)</strong> — מצוין ללמידה וניפוי שגיאות<br><br>
+              בעולם האמיתי: מפתחים משתמשים ב-CLI בשרתים וב-CI/CD, וב-Desktop לפיתוח מקומי.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;font-family:monospace;font-size: 18px;">
+            <div style="color:var(--text-dim);margin-bottom:10px;font-size: 18px;">Docker Desktop — Containers</div>
+            <div style="display:flex;flex-direction:column;gap:6px;direction:ltr;">
+              <div style="background:var(--bg);border:1px solid var(--accent3);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                <span>📦 my-game</span>
+                <span style="display:flex;gap:6px;align-items:center;">
+                  <span style="background:rgba(16,185,129,0.2);color:var(--accent3);padding:2px 7px;border-radius:10px;font-size: 18px;">Running</span>
+                  <span style="color:var(--text-dim);">⏹ 🗑</span>
+                </span>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:var(--text-dim);">📦 old-server</span>
+                <span style="display:flex;gap:6px;align-items:center;">
+                  <span style="background:rgba(239,68,68,0.15);color:var(--danger);padding:2px 7px;border-radius:10px;font-size: 18px;">Exited</span>
+                  <span style="color:var(--text-dim);">▶ 🗑</span>
+                </span>
+              </div>
+              <div style="background:var(--bg);border:1px solid var(--accent3);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                <span>📦 postgres-db</span>
+                <span style="display:flex;gap:6px;align-items:center;">
+                  <span style="background:rgba(16,185,129,0.2);color:var(--accent3);padding:2px 7px;border-radius:10px;font-size: 18px;">Running</span>
+                  <span style="color:var(--text-dim);">⏹ 🗑</span>
+                </span>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);color:var(--text-dim);font-size: 18px;">2 containers running · 1 stopped</div>
+          </div>
+          <div class="warn-box" style="margin-top:10px;font-size: 18px;">
+            💡 Docker Desktop דורש חשבון חינמי ב-docker.com (Docker ID)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 4: הבעיה -->
+  <div class="slide" id="s4">
+    <div class="slide-tag">// הבעיה</div>
+    <h2 class="slide-title">❌ "אצלי זה עובד…"</h2>
+    <div class="slide-content">
+      <div class="two-col">
+        <div>
+          <ul class="bullet-list warn" style="margin-bottom:12px;">
+            <li><span class="icon">💻</span><span>מפתח כתב קוד על <strong>Mac</strong> עם Python 3.11 וספריה Flask 3.0</span></li>
+            <li><span class="icon">🖥️</span><span>שרת הייצור רץ על <strong>Linux</strong> עם Python 3.8 וללא Flask</span></li>
+            <li><span class="icon">💥</span><span>האפליקציה קורסת בשרת — אפשר לנחש למה?</span></li>
+          </ul>
+          <button class="expand-btn" onclick="toggleExpand('e2a', this)">
+            <span>🔍</span> למה זה קורה בדיוק?
+          </button>
+          <div class="expandable" id="e2a">
+            <div class="info-box" style="margin-top:10px;">
+              <strong>הבדלי סביבה</strong> — כל מחשב הוא "עולם" שונה:<br>
+              • גרסאות שפה שונות (Python 3.8 vs 3.11)<br>
+              • ספריות שחסרות / גרסאות שונות<br>
+              • משתני סביבה שונים<br>
+              • מערכת הפעלה שונה (Windows/Mac/Linux)<br><br>
+              הפתרון המסורתי היה <em>מכונה וירטואלית</em> — אבל זה כבד וקשה לניהול. Docker הציע פתרון קל בהרבה.
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:24px 20px;">
+            <div style="font-size:3rem;margin-bottom:8px;">🤯</div>
+            <div style="font-size: 18px;color:var(--warn);font-weight:600;">"It works on my machine"</div>
+            <div style="font-size: 18px;color:var(--text-dim);margin-top:6px;">— כל מפתח, בכל זמן</div>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+              <div style="font-size:2.5rem;">🐳</div>
+              <div style="font-size: 18px;color:var(--accent3);font-weight:600;margin-top:6px;">Docker פותר את זה!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 5: מה זה Docker -->
+  <div class="slide" id="s5">
+    <div class="slide-tag">// מושגי יסוד</div>
+    <h2 class="slide-title">🐳 מה זה Docker?</h2>
+    <div class="slide-content">
+      <div class="cards-grid">
+        <div class="card">
+          <span class="card-icon">📦</span>
+          <div class="card-title">קונטיינר (Container)</div>
+          <div class="card-body">חבילה שמכילה את הקוד + כל מה שצריך להרצתו. פועל מבודד מהמחשב המארח.</div>
+        </div>
+        <div class="card">
+          <span class="card-icon">📸</span>
+          <div class="card-title">Image (אימג')</div>
+          <div class="card-body">תמונת מצב קפואה של האפליקציה. כמו "תבנית" שממנה יוצרים קונטיינרים.</div>
+        </div>
+        <div class="card">
+          <span class="card-icon">📋</span>
+          <div class="card-title">Dockerfile</div>
+          <div class="card-body">קובץ הוראות לבניית האימג'. שורה אחר שורה — Docker בונה לפי זה.</div>
+        </div>
+        <div class="card">
+          <span class="card-icon">🏬</span>
+          <div class="card-title">Docker Hub</div>
+          <div class="card-body">מאגר מרכזי (כמו GitHub לקוד) שבו שומרים ומשתפים Image-ים.</div>
+        </div>
+      </div>
+      <button class="expand-btn" onclick="toggleExpand('e3a', this)" style="margin-top:14px;">
+        <span>🍕</span> אנלוגיה — Docker כמו מתכון לפיצה
+      </button>
+      <div class="expandable" id="e3a">
+        <div class="info-box">
+          <strong>Dockerfile</strong> = מתכון הפיצה (רשימת מרכיבים + הוראות אפייה)<br>
+          <strong>Image</strong> = הפיצה הקפואה, ארוזה, מוכנה לאפייה<br>
+          <strong>Container</strong> = הפיצה האפויה שאוכלים עכשיו<br>
+          <strong>Docker Hub</strong> = חנות הפיצות הקפואות (אפשר להוריד של אחרים!)
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 6: Image vs Container -->
+  <div class="slide" id="s6">
+    <div class="slide-tag">// עמיקה</div>
+    <h2 class="slide-title">📸 Image vs 📦 Container</h2>
+    <div class="slide-content">
+      <div class="flow" style="direction:ltr;margin-bottom:16px;">
+        <div class="flow-box" style="border-color:var(--accent2);">
+          <span class="flow-icon">📋</span>
+          <div class="flow-label" style="color:var(--accent2);">Dockerfile</div>
+          <div class="flow-sub">הוראות בנייה</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--accent);">
+          <span class="flow-icon">📸</span>
+          <div class="flow-label">Image</div>
+          <div class="flow-sub">תמונה קפואה</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--accent3);">
+          <span class="flow-icon">📦</span>
+          <div class="flow-label" style="color:var(--accent3);">Container</div>
+          <div class="flow-sub">רץ בפועל</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--accent3);">
+          <span class="flow-icon">📦</span>
+          <div class="flow-label" style="color:var(--accent3);">Container</div>
+          <div class="flow-sub">עותק נוסף</div>
+        </div>
+      </div>
+      <table class="compare-table">
+        <tr>
+          <th>מאפיין</th>
+          <th>📸 Image</th>
+          <th>📦 Container</th>
+        </tr>
+        <tr>
+          <td>מצב</td>
+          <td>סטטי, לא משתנה</td>
+          <td>דינמי, פועל</td>
+        </tr>
+        <tr>
+          <td>אנלוגיה</td>
+          <td>קובץ ISO / תמונת דיסק</td>
+          <td>מחשב שדולק ועובד</td>
+        </tr>
+        <tr>
+          <td>כמה יכולים לרוץ?</td>
+          <td>—</td>
+          <td class="good">∞ עותקים מאותו Image</td>
+        </tr>
+        <tr>
+          <td>שמירה</td>
+          <td class="good">נשמר לצמיתות</td>
+          <td>נמחק כשנעצר (אם לא מגדירים)</td>
+        </tr>
+      </table>
+      <button class="expand-btn" onclick="toggleExpand('e4', this)" style="margin-top:12px;">
+        <span>💡</span> למה אפשר להריץ כמה קונטיינרים מאותו Image?
+      </button>
+      <div class="expandable" id="e4">
+        <div class="info-box">
+          Image הוא <strong>read-only</strong> — כל קונטיינר מקבל "שכבה" נוספת לכתיבה מעל ה-Image. כמו שאפשר להדפיס 100 עותקים מאותו מסמך — הדפוס המקורי לא משתנה, כל עותק עצמאי.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 7: הפרויקט שלנו -->
+  <div class="slide" id="s7">
+    <div class="slide-tag">// הפרויקט</div>
+    <h2 class="slide-title">🎮 משחק ניחוש מספרים — Flask</h2>
+    <div class="slide-content">
+      <div class="info-box" style="margin-bottom:12px;">
+        נבנה <strong>שרת Flask פשוט</strong> — משחק ניחוש מספרים בין 1–100 עם 4 ניסיונות. נארוז אותו ב-Docker ונריץ אותו בכל מקום.
+      </div>
+      <div class="code-wrap">
+        <div class="code-header">
+          <span style="direction:rtl;">app.py — שרת המשחק</span>
+          <span style="color:var(--accent3);">Python 🐍</span>
+        </div>
+        <pre><code class="language-python">from flask import Flask, request, jsonify
+import random
+
+app = Flask(__name__)
+target = random.randint(1, 100)
+attempts = 0
+
+@app.route('/guess', methods=['POST'])
+def guess():
+    global attempts
+    data = request.json
+    num = data.get('number')
+    attempts += 1
+    
+    if attempts > 4:
+        return jsonify({"msg": "הפסדת! נגמרו הנסיונות", "target": target})
+    if num == target:
+        return jsonify({"msg": f"זכית! ניחשת ב-{attempts} ניסיונות"})
+    return jsonify({"msg": "גבוה! 📈" if num > target else "נמוך! 📉"})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)</code></pre>
+      </div>
+      <button class="expand-btn" onclick="toggleExpand('e5', this)">
+        <span>🤔</span> למה host='0.0.0.0' ולא 'localhost'?
+      </button>
+      <div class="expandable" id="e5">
+        <div class="info-box">
+          <strong>localhost / 127.0.0.1</strong> = "רק אני עצמי יכול לגשת אליי"<br>
+          <strong>0.0.0.0</strong> = "כולם שיכולים להגיע לנתב הרשת שלי, יכולים לגשת אליי"<br><br>
+          בתוך Docker, הקונטיינר הוא עולם נפרד. אם נאמר <code>localhost</code>, הדפדפן <em>שלנו</em> לא יצליח לגשת לשרת — כי "localhost" בתוך הקונטיינר זה לא אנחנו. <code>0.0.0.0</code> מאפשר לתקשורת לחצות את גבול הקונטיינר.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 8: Dockerfile -->
+  <div class="slide" id="s8">
+    <div class="slide-tag">// שלב 1 מתוך 3</div>
+    <h2 class="slide-title">📋 כתיבת ה-Dockerfile</h2>
+    <div class="slide-content">
+      <div class="code-wrap">
+        <div class="code-header">
+          <span>Dockerfile</span>
+          <span style="color:var(--text-dim);">ללא סיומת!</span>
+        </div>
+        <pre><code class="language-dockerfile">
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]</code></pre>
+      </div>
+      <div class="code-line-explain">
+        <div class="cle-row">
+          <span class="cle-code">FROM python:3.11-slim</span>
+          <span class="cle-explain">נקודת התחלה — Base Image מ-Docker Hub. python:3.11-slim = גרסה קטנה ויעילה</span>
+        </div>
+        <div class="cle-row">
+          <span class="cle-code">WORKDIR /app</span>
+          <span class="cle-explain">יוצרים תיקיית עבודה בתוך האימג'. כל הפקודות הבאות ירוצו מתוכה</span>
+        </div>
+        <div class="cle-row">
+          <span class="cle-code">COPY . .</span>
+          <span class="cle-explain">מעתיקים את הקבצים מהמחשב <em>שלנו</em> לתוך האימג'</span>
+        </div>
+        <div class="cle-row">
+          <span class="cle-code">RUN pip install</span>
+          <span class="cle-explain">מתקינים ספריות <em>בתוך</em> האימג' — לא על המחשב האישי!</span>
+        </div>
+        <div class="cle-row">
+          <span class="cle-code">CMD ["python","app.py"]</span>
+          <span class="cle-explain">הפקודה שתרוץ אוטומטית כשמפעילים קונטיינר</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 9: requirements + build -->
+  <div class="slide" id="s9">
+    <div class="slide-tag">// שלב 2 מתוך 3</div>
+    <h2 class="slide-title">🔨 בניית האימג' — docker build</h2>
+    <div class="slide-content">
+      <div class="two-col">
+        <div>
+          <p style="font-size: 18px;color:var(--text-dim);margin-bottom:8px;">קודם ניצור קובץ requirements.txt:</p>
+          <div class="code-wrap">
+            <div class="code-header"><span>requirements.txt</span></div>
+            <pre><code class="language-text">flask==3.0.0</code></pre>
+          </div>
+          <p style="font-size: 18px;color:var(--text-dim);margin:10px 0 6px;">עכשיו נבנה את האימג':</p>
+          <div class="code-wrap">
+            <div class="code-header"><span>Terminal</span><span style="color:var(--accent3);">bash</span></div>
+            <pre><code class="language-bash"># מהתיקייה שמכילה את Dockerfile
+docker build -t guess-game .
+
+# -t = שם תג (tag) לאימג'
+# .  = הנקודה = "כאן נמצא ה-Dockerfile"</code></pre>
+          </div>
+        </div>
+        <div>
+          <p style="font-size: 18px;color:var(--accent);margin-bottom:8px;">🔄 מה קורה בזמן ה-Build?</p>
+          <ul class="bullet-list" style="font-size: 18px;">
+            <li><span class="icon">⬇️</span><span>מוריד Base Image (python:3.11-slim) מ-Docker Hub</span></li>
+            <li><span class="icon">📁</span><span>יוצר תיקיית <code>/app</code> בתוך האימג'</span></li>
+            <li><span class="icon">📋</span><span>מעתיק את הקבצים</span></li>
+            <li><span class="icon">📦</span><span>מריץ pip install — מתקין Flask</span></li>
+            <li><span class="icon">✅</span><span>מייצר Image ID ייחודי (hash)</span></li>
+          </ul>
+          <div class="code-wrap" style="margin-top:10px;">
+            <div class="code-header"><span>לצפייה בכל האימג'ים</span></div>
+            <pre><code class="language-bash">docker images</code></pre>
+          </div>
+        </div>
+      </div>
+      <button class="expand-btn" onclick="toggleExpand('e7', this)" style="margin-top:8px;">
+        <span>⚡</span> מה זה Layer Caching ולמה COPY requirements.txt קודם?
+      </button>
+      <div class="expandable" id="e7">
+        <div class="info-box">
+          Docker שומר כל שורת Dockerfile כ<strong>שכבה (layer)</strong> בנפרד. אם שכבה לא השתנתה — Docker לא בונה אותה מחדש, אלא לוקח מה-cache. זו הסיבה שמעתיקים <code>requirements.txt</code> ומריצים pip <em>לפני</em> COPY . . — כך שינוי בקוד לא ייגרום להתקנה מחדש של כל הספריות.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 10: docker run + port mapping -->
+  <div class="slide" id="s10">
+    <div class="slide-tag">// שלב 3 מתוך 3</div>
+    <h2 class="slide-title">🚀 הרצת הקונטיינר — docker run</h2>
+    <div class="slide-content">
+      <div class="code-wrap">
+        <div class="code-header"><span>Terminal</span><span style="color:var(--accent3);">bash</span></div>
+        <pre><code class="language-bash">docker run -d -p 5001:5000 --name my-game guess-game
+
+# -d        = detached — רץ ברקע (לא נתקע בטרמינל)
+# -p 5001:5000 = PORT MAPPING
+# --name    = שם ידידותי לקונטיינר</code></pre>
+      </div>
+
+      <div style="margin-top:14px;">
+        <p style="color:var(--accent);font-weight:600;font-size: 18px;margin-bottom:8px;">🔌 Port Mapping — גשר בין הקונטיינר למחשב</p>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;direction:ltr;text-align:center;font-family:monospace;font-size: 18px;">
+          <span style="color:var(--text-dim);">מחשב שלנו </span>
+          <span style="background:rgba(0,212,255,0.15);border:1px solid var(--accent);border-radius:6px;padding:3px 10px;color:var(--accent);">:5001</span>
+          <span style="color:var(--text-dim);margin:0 10px;font-size:1.2rem;">→</span>
+          <span style="background:rgba(16,185,129,0.12);border:1px solid var(--accent3);border-radius:6px;padding:3px 10px;color:var(--accent3);">:5000</span>
+          <span style="color:var(--text-dim);"> קונטיינר</span>
+          <br><br>
+          <span style="color:var(--text-dim);font-size: 18px;">http://localhost:5001/guess  →  Flask שרץ בקונטיינר על port 5000</span>
+        </div>
+      </div>
+
+      <button class="expand-btn" onclick="toggleExpand('e8', this)" style="margin-top:10px;">
+        <span>🤔</span> למה צריך Port Mapping בכלל?
+      </button>
+      <div class="expandable" id="e8">
+        <div class="info-box">
+          הקונטיינר הוא <strong>רשת מבודדת</strong> — כמו מחשב בתוך מחשב. יש לו כתובת IP משלו ופורטים משלו. כברירת מחדל, אי אפשר "להגיע" אליו מהדפדפן שלנו. <strong>Port mapping</strong> יוצר "מנהרה" שמחברת פורט במחשב שלנו לפורט בתוך הקונטיינר.
+          <br><br>
+          דוגמה: אפשר להריץ 3 עותקי משחק מאותו Image:<br>
+          <code>-p 5001:5000</code> → משחק 1<br>
+          <code>-p 5002:5000</code> → משחק 2<br>
+          <code>-p 5003:5000</code> → משחק 3
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 11: ניהול קונטיינרים -->
+  <div class="slide" id="s11">
+    <div class="slide-tag">// ניהול</div>
+    <h2 class="slide-title">🛠️ פקודות ניהול חיוניות</h2>
+    <div class="slide-content">
+      <div class="code-wrap">
+        <div class="code-header"><span>Terminal — פקודות ניהול</span></div>
+        <pre><code class="language-bash"># צפייה בקונטיינרים שרצים עכשיו
+docker ps
+
+# צפייה בכולם (כולל עצורים)
+docker ps -a
+
+# לוגים (הפלט של האפליקציה)
+docker logs my-game
+
+# עצירת קונטיינר
+docker stop my-game
+
+# הפעלה מחדש
+docker start my-game
+
+# מחיקת קונטיינר (חייב לעצור קודם)
+docker rm my-game
+
+# מחיקת Image
+docker rmi guess-game</code></pre>
+      </div>
+      <button class="expand-btn" onclick="toggleExpand('e9', this)" style="margin-top:10px;">
+        <span>🧪</span> הדגמה: שכפול המשחק — שני עותקים במקביל
+      </button>
+      <div class="expandable" id="e9">
+        <div class="code-wrap" style="margin-top:8px;">
+          <div class="code-header"><span>שני משחקים במקביל מאותו Image</span></div>
+          <pre><code class="language-bash"># עותק ראשון — סביב משחק עם מספר 42
+docker run -d -p 5001:5000 --name game1 guess-game
+
+# עותק שני — משחק עצמאי לגמרי עם מספר אחר!
+docker run -d -p 5002:5000 --name game2 guess-game
+
+# לראות ששניהם רצים
+docker ps</code></pre>
+        </div>
+        <div class="info-box">
+          כל קונטיינר "לא יודע" על הקיום של השני. <code>target</code> בכל קונטיינר הוא מספר שנוצר <strong>בנפרד</strong> בזמן ההרצה. זו הכוח של Docker — scale-up פשוט.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 12: בדיקת הבנה 1 -->
+  <div class="slide" id="s12">
+    <div class="slide-tag">// שאלה 1</div>
+    <h2 class="slide-title">❓ בדיקת הבנה — חלק א'</h2>
+    <div class="slide-content" style="display:flex;flex-direction:column;gap:14px;">
+
+      <div class="quiz-box" id="q1">
+        <div class="quiz-question">1. מה ההבדל בין Image לקונטיינר?</div>
+        <div class="quiz-options" id="q1-opts"></div>
+        <div class="quiz-feedback" id="q1-fb"></div>
+        <button class="quiz-reset" id="q1-reset" onclick="resetQuiz('q1')">↺ נסה שוב</button>
+      </div>
+
+      <div class="quiz-box" id="q2">
+        <div class="quiz-question">2. מה עושה הפקודה <code>docker build -t myapp .</code>?</div>
+        <div class="quiz-options" id="q2-opts"></div>
+        <div class="quiz-feedback" id="q2-fb"></div>
+        <button class="quiz-reset" id="q2-reset" onclick="resetQuiz('q2')">↺ נסה שוב</button>
+      </div>
+
+    </div>
+  </div>
+
+<!-- SLIDE 13: בדיקת הבנה 2 -->
+  <div class="slide" id="s13">
+    <div class="slide-tag">// שאלה 2</div>
+    <h2 class="slide-title">❓ בדיקת הבנה — חלק ב'</h2>
+    <div class="slide-content" style="display:flex;flex-direction:column;gap:14px;">
+
+      <div class="quiz-box" id="q3">
+        <div class="quiz-question">3. מה משמעות <code>-p 8080:5000</code> בפקודת docker run?</div>
+        <div class="quiz-options" id="q3-opts"></div>
+        <div class="quiz-feedback" id="q3-fb"></div>
+        <button class="quiz-reset" id="q3-reset" onclick="resetQuiz('q3')">↺ נסה שוב</button>
+      </div>
+
+      <div class="quiz-box" id="q4">
+        <div class="quiz-question">4. מה הפקודה שמציגה את כל הקונטיינרים שרצים כרגע?</div>
+        <div class="quiz-options" id="q4-opts"></div>
+        <div class="quiz-feedback" id="q4-fb"></div>
+        <button class="quiz-reset" id="q4-reset" onclick="resetQuiz('q4')">↺ נסה שוב</button>
+      </div>
+
+    </div>
+  </div>
+
+<!-- SLIDE 14: Docker vs VM -->
+  <div class="slide" id="s14">
+    <div class="slide-tag">// השוואה</div>
+    <h2 class="slide-title">⚔️ Docker vs. מכונה וירטואלית (VM)</h2>
+    <div class="slide-content">
+      <div class="two-col" style="margin-bottom:12px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:6px;">🏠</div>
+          <div style="font-weight:700;color:var(--accent2);margin-bottom:8px;">מכונה וירטואלית</div>
+          <div style="font-size: 18px;color:var(--text-dim);text-align:right;">
+            • מכילה מערכת הפעלה שלמה<br>
+            • משקל: כמה GB<br>
+            • זמן הפעלה: דקות<br>
+            • בידוד חזק (מלא)
+          </div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--accent);border-radius:12px;padding:16px;text-align:center;box-shadow:var(--glow);">
+          <div style="font-size:2rem;margin-bottom:6px;">🐳</div>
+          <div style="font-weight:700;color:var(--accent);margin-bottom:8px;">Docker Container</div>
+          <div style="font-size: 18px;color:var(--text-dim);text-align:right;">
+            • חולק את ה-kernel של המחשב<br>
+            • משקל: MB בודדים<br>
+            • זמן הפעלה: שניות<br>
+            • בידוד טוב (ברמת תהליך)
+          </div>
+        </div>
+      </div>
+      <table class="compare-table">
+        <tr><th>קריטריון</th><th>🏠 VM</th><th>🐳 Docker</th></tr>
+        <tr><td>גודל</td><td class="bad">כמה GB</td><td class="good">כמה MB</td></tr>
+        <tr><td>זמן הפעלה</td><td class="bad">דקות</td><td class="good">שניות</td></tr>
+        <tr><td>ביצועים</td><td class="bad">אובדן ביצועים</td><td class="good">כמעט ביצועים מלאים</td></tr>
+        <tr><td>בידוד</td><td class="good">מלא (OS שלם)</td><td>ברמת תהליך</td></tr>
+        <tr><td>שכפול</td><td class="bad">מסורבל</td><td class="good">שנייה אחת</td></tr>
+      </table>
+    </div>
+  </div>
+
+<!-- SLIDE 15: Docker Hub -->
+  <div class="slide" id="s15">
+    <div class="slide-tag">// שיתוף</div>
+    <h2 class="slide-title">🏬 Docker Hub — GitHub לאימג'ים</h2>
+    <div class="slide-content">
+      <div class="info-box" style="margin-bottom:12px;">
+        Docker Hub הוא מאגר ציבורי (ופרטי) לאימג'ים. אפשר להוריד אימג'ים מוכנים של כמעט כל דבר — MySQL, Redis, Nginx — ולדחוף אימג'ים שיצרנו.
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><span>Push & Pull — שיתוף האימג' שלנו</span></div>
+        <pre><code class="language-bash"># 1. התחברות ל-Docker Hub
+docker login
+
+# 2. תיוג האימג' עם שם משתמש
+docker tag guess-game myusername/guess-game:v1
+
+# 3. דחיפה ל-Hub
+docker push myusername/guess-game:v1
+
+# --- על מחשב אחר ---
+# 4. הורדה
+docker pull myusername/guess-game:v1
+
+# 5. הרצה ישירה (אם לא קיים מקומי — יוריד אוטומטית)
+docker run -p 5001:5000 myusername/guess-game:v1</code></pre>
+      </div>
+      <button class="expand-btn" onclick="toggleExpand('e13', this)" style="margin-top:10px;">
+        <span>🔍</span> Base Images פופולריים ב-Docker Hub
+      </button>
+      <div class="expandable" id="e13">
+        <div class="cards-grid" style="grid-template-columns:repeat(3,1fr);margin-top:8px;">
+          <div class="card"><span class="card-icon">🐍</span><div class="card-title">python:3.11-slim</div><div class="card-body">בסיס לפרויקטי Python קטנים</div></div>
+          <div class="card"><span class="card-icon">🟩</span><div class="card-title">node:20-alpine</div><div class="card-body">בסיס Node.js קל במיוחד</div></div>
+          <div class="card"><span class="card-icon">🐘</span><div class="card-title">postgres:16</div><div class="card-body">שרת PostgreSQL מלא</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 16: אפליקציות מוכנות -->
+  <div class="slide" id="s16">
+    <div class="slide-tag">// שימוש מיידי</div>
+    <h2 class="slide-title">🏬 הרצת אפליקציות מוכנות מ-Docker Hub</h2>
+    <div class="slide-content">
+      <div class="info-box" style="margin-bottom:12px;">
+        אחד היתרונות הגדולים של Docker: אפשר להריץ <strong>כל שרת או שירות</strong> תוך שניות, בלי להתקין כלום — רק <span class="hl">docker run</span>.
+      </div>
+      <div class="cards-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
+        <div class="card" style="border-color:var(--accent3);">
+          <span class="card-icon">🌐</span>
+          <div class="card-title">Nginx — שרת Web</div>
+          <div class="card-body">שרת HTTP סטטי. מגיש קבצי HTML, CSS, JS כאתר</div>
+          <button class="expand-btn" onclick="toggleExpand('e_nginx', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>▶</span> הרצה מיידית
+          </button>
+          <div class="expandable" id="e_nginx">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>Terminal</span></div>
+              <pre><code class="language-bash">docker run -d -p 8080:80 \
+  --name my-nginx nginx:latest
+# גישה: http://localhost:8080</code></pre>
+            </div>
+            <div class="info-box" style="font-size: 18px;margin-top:6px;">הגשת קבצים מקומיים:<br><code style="font-size: 18px;">-v ./html:/usr/share/nginx/html</code></div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--accent);">
+          <span class="card-icon">🐘</span>
+          <div class="card-title">PostgreSQL — בסיס נתונים</div>
+          <div class="card-body">שרת DB מלא, תוך שניות, בלי הגדרות ידניות</div>
+          <button class="expand-btn" onclick="toggleExpand('e_pg', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>▶</span> הרצה מיידית
+          </button>
+          <div class="expandable" id="e_pg">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>Terminal</span></div>
+              <pre><code class="language-bash">docker run -d -p 5432:5432 \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_DB=mydb \
+  --name my-postgres postgres:16
+# כניסה:
+docker exec -it my-postgres \
+  psql -U postgres</code></pre>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--accent2);">
+          <span class="card-icon">🔴</span>
+          <div class="card-title">Redis — Cache מהיר</div>
+          <div class="card-body">מאגר key-value בזיכרון, לcaching וsessions</div>
+          <button class="expand-btn" onclick="toggleExpand('e_redis', this)" style="margin-top:8px;font-size: 18px;padding:5px 10px;">
+            <span>▶</span> הרצה מיידית
+          </button>
+          <div class="expandable" id="e_redis">
+            <div class="code-wrap" style="margin-top:8px;">
+              <div class="code-header" style="font-size: 18px;"><span>Terminal</span></div>
+              <pre><code class="language-bash">docker run -d -p 6379:6379 \
+  --name my-redis redis:latest
+# כניסה:
+docker exec -it my-redis redis-cli</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><span>חיפוש אימג'ים ב-Docker Hub</span><span style="color:var(--accent3);">bash</span></div>
+        <pre><code class="language-bash">docker search postgres      # חיפוש אימג'ים ב-Hub
+docker pull postgres:16     # הורדה ללא הרצה
+docker images               # כל האימג'ים המקומיים</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 17: שאלות התקנה ואפליקציות -->
+  <div class="slide" id="s17">
+    <div class="slide-tag">// שאלה</div>
+    <h2 class="slide-title">❓ בדיקת הבנה — התקנה ואפליקציות</h2>
+    <div class="slide-content" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="quiz-box" id="q7">
+        <div class="quiz-question">7. לאחר התקנת Docker, איזו פקודה מריצים בטרמינל כדי לאמת שההתקנה הצליחה?</div>
+        <div class="quiz-options" id="q7-opts"></div>
+        <div class="quiz-feedback" id="q7-fb"></div>
+        <button class="quiz-reset" id="q7-reset" onclick="resetQuiz('q7')">↺ נסה שוב</button>
+      </div>
+      <div class="quiz-box" id="q8">
+        <div class="quiz-question">8. רוצים להריץ PostgreSQL ב-Docker ולהעביר ערך לתוכו (כמו סיסמה). איזה דגל משמש להעברת משתני סביבה לתוך קונטיינר?</div>
+        <div class="quiz-options" id="q8-opts"></div>
+        <div class="quiz-feedback" id="q8-fb"></div>
+        <button class="quiz-reset" id="q8-reset" onclick="resetQuiz('q8')">↺ נסה שוב</button>
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 18: משימה מעשית -->
+  <div class="slide" id="s18">
+    <div class="slide-tag">// משימה</div>
+    <h2 class="slide-title">🧪 משימה — הקמת הפרויקט בעצמכם</h2>
+    <div class="slide-content">
+      <div class="task-box">
+        <div class="task-badge">⏱ 20 דקות</div>
+        <h3>🎯 הרצת משחק הניחוש ב-Docker</h3>
+        <div class="task-steps">
+          <div class="task-step"><span class="step-num">1</span><span>צרו תיקייה חדשה בשם <span class="hl">guess-game</span> ובתוכה שלושה קבצים: <span class="hl">app.py</span>, <span class="hl">requirements.txt</span>, <span class="hl">Dockerfile</span></span></div>
+          <div class="task-step"><span class="step-num">2</span><span>הכניסו לתוכם את הקוד מהשקפים הקודמים. שימו לב: <span class="hl-w">ללא סיומת</span> ל-Dockerfile!</span></div>
+          <div class="task-step"><span class="step-num">3</span><span>פתחו טרמינל בתוך התיקייה והריצו: <span class="hl">docker build -t guess-game .</span></span></div>
+          <div class="task-step"><span class="step-num">4</span><span>הריצו את הקונטיינר: <span class="hl">docker run -d -p 5001:5000 --name my-game guess-game</span></span></div>
+          <div class="task-step"><span class="step-num">5</span><span>בדקו שהכל עובד עם curl או Postman: שלחו POST ל-<span class="hl">http://localhost:5001/guess</span> עם body: <span class="hl">{"number": 50}</span></span></div>
+          <div class="task-step"><span class="step-num">6</span><span><strong style="color:var(--accent2);">בונוס:</strong> הריצו קונטיינר שני מאותו Image על פורט 5002 ושחקו בו במקביל!</span></div>
+        </div>
+      </div>
+      <div class="warn-box" style="margin-top:12px;">
+        ⚠️ נתקעתם? הריצו <span class="hl">docker logs my-game</span> לראות שגיאות. שגיאת "port already in use" אומר שפורט 5001 תפוס — שנו ל-5003.
+      </div>
+    </div>
+  </div>
+
+<!-- SLIDE 19: שאלת יישום -->
+  <div class="slide" id="s19">
+    <div class="slide-tag">// יישום</div>
+    <h2 class="slide-title">🧠 שאלות יישום — חשבו על זה</h2>
+    <div class="slide-content" style="display:flex;flex-direction:column;gap:14px;">
+
+      <div class="quiz-box" id="q5">
+        <div class="quiz-question">5. חברת startup רוצה להריץ את אפליקציית Flask שלהם על 3 שרתים שונים. הם בנו Image ורוצים להבטיח שאפליקציה זהה ירוץ בכולם. מה צריך לעשות?</div>
+        <div class="quiz-options" id="q5-opts"></div>
+        <div class="quiz-feedback" id="q5-fb"></div>
+        <button class="quiz-reset" id="q5-reset" onclick="resetQuiz('q5')">↺ נסה שוב</button>
+      </div>
+
+      <div class="quiz-box" id="q6">
+        <div class="quiz-question">6. מה קורה ל-data (נתונים) שנשמרת בתוך קונטיינר כשמריצים docker rm?</div>
+        <div class="quiz-options" id="q6-opts"></div>
+        <div class="quiz-feedback" id="q6-fb"></div>
+        <button class="quiz-reset" id="q6-reset" onclick="resetQuiz('q6')">↺ נסה שוב</button>
+      </div>
+
+    </div>
+  </div>
+
+<!-- SLIDE 20: סיכום -->
+  <div class="slide" id="s20">
+    <div class="slide-tag">// סיכום</div>
+    <h2 class="slide-title">✅ סיכום — מה למדנו היום</h2>
+    <div class="slide-content">
+      <div class="flow" style="margin-bottom:16px;">
+        <div class="flow-box" style="border-color:var(--accent2);">
+          <span class="flow-icon">📋</span>
+          <div class="flow-label" style="color:var(--accent2);">Dockerfile</div>
+          <div class="flow-sub">הוראות בנייה</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">
+          <span class="flow-icon">🔨</span>
+          <div class="flow-label">build</div>
+          <div class="flow-sub">docker build</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--accent);">
+          <span class="flow-icon">📸</span>
+          <div class="flow-label">Image</div>
+          <div class="flow-sub">תמונה קפואה</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">
+          <span class="flow-icon">🚀</span>
+          <div class="flow-label">run</div>
+          <div class="flow-sub">docker run</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="border-color:var(--accent3);">
+          <span class="flow-icon">📦</span>
+          <div class="flow-label" style="color:var(--accent3);">Container</div>
+          <div class="flow-sub">רץ בפועל!</div>
+        </div>
+      </div>
+      <ul class="bullet-list green">
+        <li><span class="icon">🐳</span><span><strong>Docker</strong> פותר את בעיית "אצלי זה עובד" — האפליקציה רצה אותו דבר בכל מקום</span></li>
+        <li><span class="icon">📋</span><span><strong>Dockerfile</strong> = הוראות לבנייה | <strong>Image</strong> = תוצר מוכן | <strong>Container</strong> = הרצה בפועל</span></li>
+        <li><span class="icon">🔌</span><span><strong>Port Mapping</strong> (-p X:Y) חובר בין העולם שלנו לעולם הקונטיינר</span></li>
+        <li><span class="icon">⚡</span><span>קונטיינרים קלים, מהירים וניתנים לשכפול — הבסיס ל-DevOps מודרני</span></li>
+      </ul>
+      <div class="info-box" style="margin-top:12px;text-align:center;">
+        <strong>➡️ הצעד הבא:</strong> Docker Compose — הרצת כמה שירותים ביחד (Flask + PostgreSQL + Redis) בקובץ YAML אחד
+      </div>
+    </div>
+  </div>
+
+</div><!-- end slides-wrapper -->
+
+<!-- Nav buttons -->
+<button class="nav-btn" id="btn-prev" onclick="changeSlide(-1)" title="הקודם (→)">‹</button>
+<button class="nav-btn" id="btn-next" onclick="changeSlide(1)" title="הבא (←)">›</button>
+
+<!-- Dot nav -->
+<div id="dot-nav"></div>
+
+<script>
+hljs.highlightAll();
+
+const TOTAL = 20;
+let cur = 1;
+
+// === Quiz data ===
+const quizzes = {
+  q1: {
+    question: "מה ההבדל בין Image לקונטיינר?",
+    options: [
+      { text: "Image הוא תמונה סטטית קפואה שממנה יוצרים קונטיינרים — הקונטיינר הוא ה-Image שפועל בפועל", correct: true, fb: "✅ בדיוק! Image = תבנית קפואה, Container = ה-Image שפועל. כמו הבדל בין קובץ ISO למחשב שדולק." },
+      { text: "Image הוא קובץ הקוד של האפליקציה, וקונטיינר הוא הספרייה שמותקנת עליו לצורך הרצה", correct: false, fb: "❌ לא מדויק. Image מכיל את הקוד + כל התלויות ביחד. הוא לא רק הקוד." },
+      { text: "Image ו-Container הם שמות שונים לאותו דבר — שניהם תיאורים של אפליקציה שרצה", correct: false, fb: "❌ שגוי. Image הוא סטטי ולא 'רץ' — רק Container הוא ה-instance החי שרץ בפועל." },
+    ]
+  },
+  q2: {
+    question: "מה עושה הפקודה docker build -t myapp . ?",
+    options: [
+      { text: "יוצרת קונטיינר בשם myapp מהתיקייה הנוכחית ומריצה אותו על פורט ברירת מחדל", correct: false, fb: "❌ לא. build יוצר Image — לא קונטיינר. לזה משתמשים ב-docker run." },
+      { text: "קוראת את ה-Dockerfile בתיקייה הנוכחית ובונה Image בשם myapp הכולל קוד, שפה וספריות", correct: true, fb: "✅ נכון! -t myapp = שם לאימג'. הנקודה = תיקייה עם ה-Dockerfile. התוצאה: Image מוכן להרצה." },
+      { text: "מתקינה את האפליקציה myapp ממאגר Docker Hub ומכניסה אותה לתיקייה הנוכחית", correct: false, fb: "❌ ל-pull מ-Hub משתמשים ב-docker pull. הפקודה build בונה Image *מהקוד שלנו*." },
+    ]
+  },
+  q3: {
+    question: "מה משמעות -p 8080:5000 בפקודת docker run?",
+    options: [
+      { text: "מגביל את הקונטיינר לשימוש ב-8080 חיבורים מקסימום ולפתיחת 5000 תהליכים", correct: false, fb: "❌ לא קשור להגבלות כאלה. -p עוסק ב-port mapping בלבד." },
+      { text: "פורט 8080 במחשב שלנו מועבר לפורט 5000 בתוך הקונטיינר — כך דפדפן בפורט 8080 מגיע לשרת", correct: true, fb: "✅ נכון! המבנה הוא HOST:CONTAINER. כל בקשה לפורט 8080 במחשב 'מנותבת' לפורט 5000 בתוך הקונטיינר." },
+      { text: "מגדיר שהקונטיינר ישתמש ב-8 ליבות CPU ו-5000MB זיכרון RAM לצורך הרצה", correct: false, fb: "❌ להגדרת משאבים משתמשים ב-flags אחרים כמו --cpus ו---memory. -p עוסק בפורטים בלבד." },
+    ]
+  },
+  q4: {
+    question: "מה הפקודה שמציגה את כל הקונטיינרים שרצים כרגע?",
+    options: [
+      { text: "docker ps — מציגה שם, ID, מצב ופורטים של כל קונטיינר פעיל ברגע זה", correct: true, fb: "✅ נכון! docker ps = 'process status'. כמו הפקודה ps בלינוקס. docker ps -a מציג גם קונטיינרים עצורים." },
+      { text: "docker status — מדווחת על מצב כל קונטיינר בסביבה ומציגה שגיאות פעילות", correct: false, fb: "❌ אין פקודה כזו ב-Docker. docker ps היא הפקודה הנכונה לצפייה במצב קונטיינרים." },
+      { text: "docker list --running — מציגה רשימה מסוננת רק של קונטיינרים בסטטוס running", correct: false, fb: "❌ אין פקודה כזו ב-Docker. הפקודה הנכונה היא docker ps (ברירת מחדל מציגה רק running)." },
+    ]
+  },
+  q5: {
+    question: "חברת startup רוצה להריץ Flask על 3 שרתים. בנו Image — מה לעשות?",
+    options: [
+      { text: "לדחוף את ה-Image ל-Docker Hub, ואז על כל שרת להריץ docker pull + docker run — ייקח שניות", correct: true, fb: "✅ זה כוח Docker! Image אחד → Docker Hub → pull לכל שרת → docker run. זהה לחלוטין בכל שרת. זו הסיבה ש-Docker הפך לתקן בעולם הענן." },
+      { text: "להעתיק ידנית את כל קבצי הקוד לכל שרת ולהריץ pip install בכל אחד בנפרד", correct: false, fb: "❌ זה בדיוק הבעיה שDocker פותר — תלות בסביבה, pip install ידני, שגיאות גרסאות. עם Docker, Image כולל הכל." },
+      { text: "ליצור VM נפרדת לכל שרת עם snapshot מלא של מערכת ההפעלה של המפתח", correct: false, fb: "❌ VM הוא פתרון כבד שלוקח GB של אחסון ודקות הפעלה. Docker Image קל בהרבה ועושה את אותה עבודה." },
+    ]
+  },
+  q6: {
+    question: "מה קורה ל-data שנשמרת בתוך קונטיינר כשמריצים docker rm?",
+    options: [
+      { text: "ה-data נשמרת אוטומטית ב-Docker Hub ואפשר לשחזר אותה בהרצה הבאה", correct: false, fb: "❌ לא נכון. Docker Hub מחזיק Images — לא data ש-runtime יצר. אין שמירה אוטומטית כזו." },
+      { text: "ה-data ניתנת לשחזור עד 30 יום אחרי המחיקה מ-docker cache המקומי", correct: false, fb: "❌ לא נכון. docker rm מוחקת סופית. אין docker cache לנתוני runtime. לשמירת נתונים משתמשים ב-volumes." },
+      { text: "ה-data אובדת לצמיתות — לשמירת נתונים בין הרצות יש להשתמש ב-Docker Volumes", correct: true, fb: "✅ נכון ומאוד חשוב! קונטיינרים הם ephemeral (זמניים). כל שינוי שנוצר ב-runtime נמחק עם הקונטיינר. לנתונים קבועים: docker volume create ו-flag -v בהרצה." },
+    ]
+  }
+,
+  q7: {
+    question: "לאחר התקנת Docker, איזו פקודה מריצים לאימות שההתקנה הצליחה?",
+    options: [
+      { text: "docker run hello-world — מוריד ומריץ קונטיינר בדיקה רשמי של Docker ומדפיס הודעת אישור", correct: true, fb: "✅ נכון! docker run hello-world הוא הבדיקה הרשמית. Docker מוריד Image קטן ומריץ אותו — אם מופיעה הודעת Hello — הכל תקין. אפשר גם docker --version לבדיקת גרסה." },
+      { text: "docker status --check — פקודת בדיקה מובנית שמאמתת כל רכיבי ה-daemon ומדווחת על שגיאות", correct: false, fb: "❌ אין פקודה כזו ב-Docker. הבדיקה הסטנדרטית היא docker run hello-world או docker --version." },
+      { text: "docker verify install — מריצה בדיקת תקינות מלאה של ה-Engine ומוציאה דוח מפורט", correct: false, fb: "❌ אין פקודה כזו. Docker לא מספק פקודת verify נפרדת. הדרך הפשוטה והרשמית היא docker run hello-world." },
+    ]
+  },
+  q8: {
+    question: "רוצים להעביר משתני סביבה (כמו סיסמה) לתוך קונטיינר. איזה דגל משמש לכך?",
+    options: [
+      { text: "-v (volume) — הדגל שמחבר תיקיה מקומית לתיקיה בתוך הקונטיינר להעברת קבצים וסיסמאות", correct: false, fb: "❌ -v משמש ל-Volume Mapping (חיבור תיקיות), לא להעברת משתני סביבה. לסיסמאות ב-DB משתמשים ב--e." },
+      { text: "--env-file — דגל שטוען קובץ .env שלם עם כל המשתנים, שיטה נפוצה בפרויקטים גדולים", correct: false, fb: "❌ --env-file אכן קיים ושימושי, אבל הדגל הבסיסי והנפוץ להעברת משתנה בודד הוא -e. בשאלה מדובר על משתנה בודד." },
+      { text: "-e (environment) — מגדיר משתנה סביבה בודד בקונטיינר, לדוגמה: -e POSTGRES_PASSWORD=secret", correct: true, fb: "✅ נכון! -e או --env מגדיר משתנה סביבה: docker run -e KEY=VALUE image. פוסטגרס, MySQL ועוד שירותים רבים משתמשים ב-environment variables להגדרת סיסמאות ושמות DB." },
+    ]
+  }
+};
+
+// Shuffle array
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Normalize option length (pad with non-breaking spaces)
+function equalizeLength(opts) {
+  // Just render as-is; equal visual weight achieved by consistent card styling
+  return opts;
+}
+
+function buildQuiz(id) {
+  const q = quizzes[id];
+  if (!q) return;
+  const optsEl = document.getElementById(id + '-opts');
+  if (!optsEl || optsEl.dataset.built) return;
+  optsEl.dataset.built = '1';
+
+  const shuffled = shuffle(q.options);
+  shuffled.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.textContent = opt.text;
+    btn.onclick = () => answerQuiz(id, btn, opt.correct, opt.fb, optsEl);
+    optsEl.appendChild(btn);
+  });
+}
+
+function answerQuiz(id, btn, correct, fb, optsEl) {
+  const btns = optsEl.querySelectorAll('.quiz-opt');
+  btns.forEach(b => { b.disabled = true; });
+  btn.classList.add(correct ? 'correct' : 'wrong');
+
+  const fbEl = document.getElementById(id + '-fb');
+  fbEl.textContent = fb;
+  fbEl.className = 'quiz-feedback show ' + (correct ? 'correct-fb' : 'wrong-fb');
+
+  document.getElementById(id + '-reset').classList.add('show');
+}
+
+function resetQuiz(id) {
+  const optsEl = document.getElementById(id + '-opts');
+  optsEl.innerHTML = '';
+  optsEl.dataset.built = '';
+  document.getElementById(id + '-fb').className = 'quiz-feedback';
+  document.getElementById(id + '-reset').classList.remove('show');
+  buildQuiz(id);
+}
+
+// Build all quizzes
+['q1','q2','q3','q4','q5','q6','q7','q8'].forEach(buildQuiz);
+
+// === Navigation ===
+function buildDots() {
+  const nav = document.getElementById('dot-nav');
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    nav.appendChild(d);
+  }
+}
+buildDots();
+
+function goTo(n) {
+  if (n < 1 || n > TOTAL) return;
+  document.getElementById('s' + cur).classList.remove('active');
+  document.querySelectorAll('.dot')[cur - 1].classList.remove('active');
+  cur = n;
+  document.getElementById('s' + cur).classList.add('active');
+  document.querySelectorAll('.dot')[cur - 1].classList.add('active');
+  document.getElementById('cur').textContent = cur;
+  document.getElementById('progress-fill').style.width = (cur / TOTAL * 100) + '%';
+  document.getElementById('btn-prev').disabled = (cur === 1);
+  document.getElementById('btn-next').disabled = (cur === TOTAL);
+}
+
+function changeSlide(dir) { goTo(cur + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); changeSlide(-1); }
+});
+
+// Init
+goTo(1);
+
+// === Expand toggle ===
+function toggleExpand(id, btn) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  el.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  btn.innerHTML = isOpen
+    ? `<span>${btn.dataset.icon || '🔍'}</span> ${btn.dataset.label || btn.textContent.trim().replace(/^[^\s]+\s/, '')}`
+    : `<span>✕</span> סגור`;
+  if (!isOpen) {
+    btn.dataset.icon = btn.innerHTML.match(/<span>(.*?)<\/span>/)?.[1] || '🔍';
+  }
+}
+// Store original labels
+document.querySelectorAll('.expand-btn').forEach(btn => {
+  const match = btn.innerHTML.match(/<span>(.*?)<\/span>\s*(.*)/s);
+  if (match) {
+    btn.dataset.icon = match[1];
+    btn.dataset.label = match[2].trim();
+  }
+});
+</script>
+</body>
+</html>

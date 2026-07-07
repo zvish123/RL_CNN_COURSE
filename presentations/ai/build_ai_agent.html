@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> הסוכן הראשון שלך</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121a24; --border:#1f2b3a;
+    --accent:#00e5a0; --accent2:#3ea6ff; --warn:#ffb347; --danger:#ff5470;
+    --text:#dbe7f0; --text-dim:#7d93a8; --mono:'Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:radial-gradient(circle at 50% 0%, #0e1620, var(--bg));
+    color:var(--text); font-family:'Segoe UI',Arial,sans-serif;
+    overflow:hidden;
+  }
+  #deck{position:relative; width:100%; height:100vh;}
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:60px 8% 100px; overflow-y:auto;
+  }
+  .slide.active{display:flex;}
+  .slide h1{color:var(--accent); font-size:2.1em; margin:0 0 6px; letter-spacing:0.5px;}
+  .slide h2{color:var(--accent2); font-size:1.4em; margin-top:0;}
+  .kicker{color:var(--text-dim); font-size:0.95em; margin-bottom:18px; text-transform:uppercase; letter-spacing:1px;}
+  .slide p, .slide li{font-size:1.15em; line-height:1.75;}
+  .two-col{display:flex; gap:28px; flex-wrap:wrap;}
+  .col{flex:1; min-width:280px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px 24px; margin:14px 0;
+  }
+  .card.chatbot{border-right:4px solid var(--text-dim);}
+  .card.agent{border-right:4px solid var(--accent);}
+  pre{
+    background:#060a10; border:1px solid var(--border); border-radius:8px;
+    padding:18px; overflow-x:auto; direction:ltr; text-align:left;
+    font-family:var(--mono); font-size:0.95em; color:#c7f0d8;
+  }
+  .comment{color:#5f7a8f;}
+  .kw{color:#ff8fb1;} .str{color:#ffd479;} .fn{color:#3ea6ff;}
+  .expand-btn{
+    background:transparent; border:1px solid var(--accent2); color:var(--accent2);
+    padding:6px 16px; border-radius:20px; cursor:pointer; font-size:0.9em; margin:8px 4px 0 0;
+  }
+  .expand-content{
+    max-height:0; overflow:hidden; transition:max-height 0.35s ease, padding 0.35s ease;
+    background:#0f1a26; border-radius:8px; margin-top:8px;
+  }
+  .expand-content.open{max-height:600px; padding:14px 18px;}
+  .stop-slide{border:2px solid var(--warn); border-radius:14px; padding:26px 30px; background:#1a1608;}
+  .stop-slide h1{color:var(--warn);}
+  .task-item{
+    background:#0f1a26; border-radius:8px; padding:14px 18px; margin:10px 0;
+    border-right:3px solid var(--accent2);
+  }
+  .qbtn{
+    background:var(--accent); color:#04140f; border:none; padding:8px 20px;
+    border-radius:6px; cursor:pointer; font-weight:bold;
+  }
+  .answer-box{
+    display:none; margin-top:12px; background:#0f1e2b; border-right:3px solid var(--accent);
+    padding:12px 18px; border-radius:6px;
+  }
+  .answer-box.show{display:block;}
+  .protocol-step{display:flex; align-items:center; gap:16px; margin:14px 0;}
+  .protocol-num{
+    background:var(--accent); color:#04140f; width:36px; height:36px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;
+  }
+  .teacher-tag{
+    display:inline-block; background:#3a2f10; color:var(--warn); font-size:0.75em;
+    padding:2px 12px; border-radius:10px; margin-bottom:14px;
+  }
+  table{width:100%; border-collapse:collapse; margin:14px 0;}
+  th,td{border:1px solid var(--border); padding:10px 14px; text-align:right; font-size:0.95em;}
+  th{background:#0f1a26; color:var(--accent2);}
+
+  /* Navigation */
+  #nav-bar{
+    position:fixed; bottom:0; right:0; left:0; height:64px;
+    background:var(--panel); border-top:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; padding:0 5%; z-index:10;
+  }
+  .nav-btn{
+    background:#1a2634; color:var(--text); border:1px solid var(--border);
+    padding:10px 22px; border-radius:8px; cursor:pointer; font-size:1em;
+  }
+  .nav-btn:hover{border-color:var(--accent);}
+  .nav-btn:disabled{opacity:0.35; cursor:default;}
+  #slide-counter{color:var(--text-dim); font-family:var(--mono);}
+  #dots{display:flex; gap:6px;}
+  .dot{width:9px; height:9px; border-radius:50%; background:#2a3a4a; cursor:pointer;}
+  .dot.active{background:var(--accent);}
+</style>
+</head>
+<body>
+
+<div id="deck"></div>
+
+<div id="nav-bar">
+  <button class="nav-btn" id="btn-prev">הקודם ▶</button>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div id="dots"></div>
+    <span id="slide-counter"></span>
+  </div>
+  <button class="nav-btn" id="btn-next">◀ הבא</button>
+</div>
+
+<script>
+const slidesHTML = [
+
+// 0 - Title
+`<div class="kicker">VaultGuard :: AI Agents Track</div>
+<h1>🤖 הסוכן הראשון שלך</h1>
+<p>  לא עוד רק קוד שרץ פעם אחת ומחזיר תשובה — היום בונים משהו שיכול <strong>לפעול</strong>, לא רק "לענות".</p>
+<div class="card agent">
+  <p>עד סוף המצגת הזו תדעו: מה ההבדל בין צ'אטבוט לסוכן, איך מתקינים את ה-SDK הרשמי, ותריצו את הסוכן האוטונומי הראשון שלכם.</p>
+</div>`,
+
+// 1 - Chatbot vs Agent
+`<div class="kicker">מושג יסוד</div>
+<h1>צ'אטבוט לעומת סוכן — מה בעצם השתנה?</h1>
+<div class="two-col">
+  <div class="col card chatbot">
+    <h2>💬 צ'אטבוט (מה שהכרתם)</h2>
+    <p>שולחים טקסט → מקבלים טקסט חזרה.</p>
+    <p>המודל <strong>לא</strong> יכול לקרוא קובץ, להריץ קוד, או לחפש ברשת בעצמו. כל מה שהוא יודע לעשות זה לענות במילים.</p>
+  </div>
+  <div class="col card agent">
+    <h2>⚙️ סוכן (agent)</h2>
+    <p>המודל פועל ב<strong>לולאה</strong>: חושב → בוחר כלי (tool) → מקבל תוצאה → חושב שוב → ... עד שהמשימה הושלמה.</p>
+    <p>הסוכן יכול בפועל לקרוא/לכתוב קבצים, להריץ פקודות, ולחפש מידע — לא רק לתאר מה הוא <em>היה</em> עושה.</p>
+  </div>
+</div>
+<button class="expand-btn" onclick="toggleExpand(this)">עוד פרטים ⌄</button>
+<div class="expand-content">
+  <p>ה-Claude Agent SDK היא הספרייה הרשמית של Anthropic שמממשת את לולאת הסוכן הזו בשבילכם — אתם לא כותבים את הלולאה בעצמכם, רק מגדירים what/how, וה-SDK מטפל בהרצת הכלים בפועל.</p>
+</div>`,
+
+// 2 - Agent loop visual
+`<div class="kicker">מודל מנטלי</div>
+<h1>לולאת הסוכן (Agent Loop)</h1>
+<div class="card">
+  <p style="font-family:var(--mono); font-size:1.3em; text-align:center; letter-spacing:2px;">
+  Think → Act (Tool Call) → Observe → Think → ... → Done
+  </p>
+</div>
+<p>דוגמה: ביקשתם מהסוכן "בדוק אם יש שגיאות בקובץ auth.py".</p>
+<ol>
+  <li><strong>Think:</strong> "אני צריך לקרוא את הקובץ קודם"</li>
+  <li><strong>Act:</strong> קורא ל-tool בשם <code>Read</code> עם הנתיב</li>
+  <li><strong>Observe:</strong> מקבל את תוכן הקובץ בחזרה</li>
+  <li><strong>Think:</strong> מנתח את הקוד, מוצא בעיה</li>
+  <li><strong>Done:</strong> מדווח בטקסט מה מצא</li>
+</ol>`,
+
+// 3 - Install
+`<div class="kicker">התקנה</div>
+<h1>מתקינים את ה-SDK הרשמי</h1>
+<p>שם החבילה הנוכחי הוא <code>claude-agent-sdk</code> (זה לא <code>claude-code-sdk</code> הישן — זה גרסה מיושנת שהוחלפה).</p>
+<pre><span class="comment"># דורש Python 3.10 ומעלה</span>
+pip install claude-agent-sdk</pre>
+<p>וגם צריך API key פעיל, מוגדר כמשתנה סביבה:</p>
+<pre>ANTHROPIC_API_KEY=your-api-key</pre>
+<button class="expand-btn" onclick="toggleExpand(this)">מה אם מקבלים שגיאת CLINotFoundError? ⌄</button>
+<div class="expand-content">
+  <p>ה-CLI של Claude Code ארוז אוטומטית בתוך החבילה של פייתון — אין צורך בהתקנה נפרדת. אם בכל זאת יש שגיאה, זה כמעט תמיד סימן להתקנה כפולה/מתנגשת של גרסאות; מחיקת venv והתקנה מחדש בדרך כלל פותרת.</p>
+</div>`,
+
+// 4 - First code
+`<div class="kicker">קוד ראשון</div>
+<h1>הסוכן הראשון שלכם — שורה אחרי שורה</h1>
+<pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> claude_agent_sdk <span class="kw">import</span> query, ClaudeAgentOptions
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="kw">async for</span> message <span class="kw">in</span> <span class="fn">query</span>(
+        prompt=<span class="str">"אילו קבצים יש בתיקייה הזו?"</span>,
+        options=ClaudeAgentOptions(allowed_tools=[<span class="str">"Bash"</span>, <span class="str">"Glob"</span>]),
+    ):
+        <span class="fn">print</span>(message)
+
+asyncio.<span class="fn">run</span>(main())</pre>
+<button class="expand-btn" onclick="toggleExpand(this)">מה זה allowed_tools? ⌄</button>
+<div class="expand-content">
+  <p><code>allowed_tools</code> היא רשימת הכלים שמאושרים מראש (auto-approved) — הסוכן יכול להשתמש רק בכלים שברשימה, בלי לעצור ולבקש אישור בכל פעם. זו רשימת "אישור מראש", לא רשימת כל הכלים הקיימים.</p>
+</div>`,
+
+// 5 - Code walkthrough deeper
+`<div class="kicker">קוד ראשון — המשך</div>
+<h1>למה <code>async for</code> ולא סתם <code>result = query(...)</code>?</h1>
+<p>הסוכן לא מחזיר תשובה אחת — הוא <strong>מזרים</strong> (stream) הודעות: מחשבה, קריאה לכלי, תוצאת כלי, ולבסוף התוצאה הסופית.</p>
+<div class="card">
+  <p>ה-<code>async for</code> מאפשר לכם לראות כל שלב בלולאה בזמן אמת, לא לחכות "בעיניים עצומות" לתוצאה הסופית.</p>
+</div>
+<button class="expand-btn" onclick="toggleExpand(this)">שגיאה נפוצה: asyncio ב-Jupyter ⌄</button>
+<div class="expand-content">
+  <p>אם מריצים בתוך Jupyter Notebook, לפעמים מקבלים <code>RuntimeError: asyncio.run() cannot be called from a running event loop</code> — כי ל-Jupyter כבר יש event loop רץ. הפתרון: או להריץ כקובץ <code>.py</code> רגיל מהטרמינל, או להשתמש ב-<code>await main()</code> ישירות בתא של Jupyter במקום <code>asyncio.run(main())</code>.</p>
+</div>`,
+
+// 6 - STOP: Student work station
+`<div class="stop-slide">
+<h1>🛑 תחנת עצירה — עכשיו אתם</h1>
+<p>עצרו כאן. תקבלו 15 דקות. עבדו לפי הסדר — כל משימה בונה על הקודמת.</p>
+<div class="task-item"><strong>משימה 1 (קל):</strong> התקינו את ה-SDK והריצו את הדוגמה בדיוק כמו שהיא. ודאו שאתם רואים פלט.</div>
+<div class="task-item"><strong>משימה 2 (בינוני):</strong> שנו את ה-<code>prompt</code> כך שהסוכן יחפש קבצי <code>.py</code> בלבד בתיקייה, ולא את כל הקבצים.</div>
+<div class="task-item"><strong>משימה 3 (מאתגר):</strong> הוסיפו לרשימת ה-<code>allowed_tools</code> את <code>"Read"</code>, ובקשו מהסוכן גם לקרוא את תוכן אחד הקבצים שמצא ולסכם מה יש בו.</div>
+</div>`,
+
+// 7 - Upgrade 1 intro: agent2.py permission callback
+`<div class="kicker">שדרוג 1 · שליטה על הסוכן</div>
+<h1>מהאישור המובנה ל-<code>can_use_tool</code> משלכם</h1>
+<p>ב-<code>agent.py</code> השתמשנו ב-<code>allowed_tools</code> — רשימה סטטית שנקבעת <strong>לפני</strong> ההרצה. אבל מה אם רוצים להחליט <strong>בזמן אמת</strong>, לכל קריאה לכלי בנפרד?</p>
+<div class="card agent">
+  <p>ב-<code>agent2.py</code> מוסיפים callback בשם <code>can_use_tool</code> — פונקציה שהסוכן <strong>חייב</strong> לעבור דרכה לפני כל שימוש בכלי. היא מקבלת את שם הכלי והקלט שלו, ומחזירה <code>PermissionResultAllow</code> (אשר) או <code>PermissionResultDeny</code> (דחה).</p>
+</div>
+<p>כדי שזה יעבוד צריך שני שינויים ב-<code>ClaudeAgentOptions</code>:</p>
+<ul>
+  <li><code>permission_mode="default"</code> — בלי זה, הכלים לא עוברים דרך הבדיקה בכלל.</li>
+  <li><code>can_use_tool=can_use_tool</code> — מחברים את הפונקציה שכתבתם ללולאת הסוכן.</li>
+</ul>
+<button class="expand-btn" onclick="toggleExpand(this)">מה ההבדל מ-allowed_tools? ⌄</button>
+<div class="expand-content">
+  <p><code>allowed_tools</code> = "רשימה לבנה" קבועה מראש, בלי לוגיקה. <code>can_use_tool</code> = פונקציה חיה שיכולה לשאול את המשתמש, לבדוק את הקלט הספציפי (למשל: לאשר <code>Read</code> אוטומטית אבל לעצור על <code>Bash</code>), או אפילו לשנות את הקלט לפני שהוא מבוצע (<code>updated_input</code>).</p>
+</div>`,
+
+// 8 - Code walkthrough agent2.py
+`<div class="kicker">קוד · agent2.py</div>
+<h1>אישור ידני לכל פעולה — שורה אחרי שורה</h1>
+<pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> claude_agent_sdk <span class="kw">import</span> (
+    ClaudeSDKClient, ClaudeAgentOptions,
+    PermissionResultAllow, PermissionResultDeny, ToolPermissionContext,
+)
+
+<span class="kw">async def</span> <span class="fn">can_use_tool</span>(tool_name: <span class="fn">str</span>, input_data: <span class="fn">dict</span>, context: ToolPermissionContext):
+    <span class="fn">print</span>(<span class="str">f"\n🔧 הסוכן מבקש להשתמש ב-{tool_name}"</span>)
+    <span class="fn">print</span>(<span class="str">f"   קלט: {input_data}"</span>)
+    answer = <span class="fn">input</span>(<span class="str">"   לאשר? (y/n): "</span>).strip().lower()
+    <span class="kw">if</span> answer == <span class="str">"y"</span>:
+        <span class="kw">return</span> PermissionResultAllow(updated_input=input_data)
+    <span class="kw">return</span> PermissionResultDeny(message=<span class="str">"המשתמש דחה את הפעולה"</span>)
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    options = ClaudeAgentOptions(
+        permission_mode=<span class="str">"default"</span>,   <span class="comment"># חובה - בלי זה שום קריאה לכלי לא נעצרת</span>
+        can_use_tool=can_use_tool,   <span class="comment"># כאן העצירה בפועל קורית</span>
+    )
+    <span class="kw">async with</span> ClaudeSDKClient(options=options) <span class="kw">as</span> client:
+        <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">"אילו קבצים יש בתיקייה הזו?"</span>)
+        <span class="kw">async for</span> message <span class="kw">in</span> client.<span class="fn">receive_response</span>():
+            <span class="fn">print</span>(message)
+
+asyncio.<span class="fn">run</span>(main())</pre>
+<button class="expand-btn" onclick="toggleExpand(this)">שימו לב: כאן עוצרים על הכל ⌄</button>
+<div class="expand-content">
+  <p>הקוד הזה עוצר ומבקש אישור ידני על <strong>כל</strong> כלי, בלי הבחנה — גם על <code>Glob</code> שרק קורא רשימת קבצים (לא מזיק), וגם על משהו כמו <code>Bash</code> שיכול למחוק דברים. זה תקף ללימוד העיקרון, אבל בפועל זה מעצבן — אחת המשימות בהמשך תבקש מכם לתקן בדיוק את זה.</p>
+</div>`,
+
+// 8b - Theory 1/2: ClaudeAgentOptions & ClaudeSDKClient
+`<div class="kicker">רקע תאורטי 1/2 · שכבת ההגדרות</div>
+<h1><code>ClaudeAgentOptions</code> ו-<code>ClaudeSDKClient</code> — מה בעצם ייבאנו</h1>
+<p><code>ClaudeAgentOptions</code> הוא <strong>dataclass</strong> אחד גדול שמרכז את כל הגדרות הסוכן — אותו סוג אובייקט משמש גם את <code>query()</code> החד-פעמי וגם את <code>ClaudeSDKClient</code>. יש בו הרבה יותר פרמטרים ממה שהשתמשנו בהם; הטבלה מכסה רק את מה שרלוונטי לשני הקבצים שראינו.</p>
+<table>
+<tr><th>פרמטר</th><th>ברירת מחדל</th><th>תפקיד</th></tr>
+<tr><td><code>allowed_tools</code></td><td>רשימה ריקה</td><td>"רשימה לבנה" של כלים שמאושרים אוטומטית מראש — לא קובעת אילו כלים <em>קיימים</em>, רק אילו לא עוצרים לבקשת אישור.</td></tr>
+<tr><td><code>disallowed_tools</code></td><td>רשימה ריקה</td><td>"רשימה שחורה" — חוסמת כלים גם אם permission_mode היה מאשר אותם.</td></tr>
+<tr><td><code>permission_mode</code></td><td>None</td><td>מדיניות כללית: <code>"default"</code> (הכל עובר הערכה, כולל can_use_tool), <code>"acceptEdits"</code> (מאשר עריכות קבצים אוטומטית), <code>"bypassPermissions"</code> (מאשר הכל — מסוכן), ועוד.</td></tr>
+<tr><td><code>can_use_tool</code></td><td>None</td><td>הפונקציה שכתבתם. זה "קו ההגנה האחרון" בלבד — לא נקרא על כלים שכבר אושרו ע"י allowed_tools, hooks, או permission_mode.</td></tr>
+<tr><td><code>cwd</code></td><td>None</td><td>תיקיית העבודה של הסוכן — קובעת לאילו קבצים יש גישת ברירת מחדל.</td></tr>
+<tr><td><code>max_turns</code></td><td>None</td><td>הגבלת מספר "תורות" — רשת ביטחון נגד לולאה שלא נגמרת.</td></tr>
+</table>
+<button class="expand-btn" onclick="toggleExpand(this)">מה זה tools= ב-agent3.py, ולמה זה לא allowed_tools? ⌄</button>
+<div class="expand-content">
+  <p>שימו לב: ב-<code>agent3.py</code> נכתב <code>tools=[...]</code>, לא <code>allowed_tools=[...]</code>. אלו <strong>שני פרמטרים שונים</strong> — <code>tools</code> הוא שדה חדש יחסית ב-SDK (מוגדר כ-<code>list[str] | ToolsPreset | None</code>) שכנראה שולט על עצם <em>חשיפת</em> הכלים לסוכן, ולא רק על אישור מראש כמו <code>allowed_tools</code>. ⚠️ נכון לכתיבת השקף הזה, אפילו בתיעוד הרשמי של Anthropic יש חוסר עקביות מתועד סביב השדה הזה (issue פתוח ב-GitHub) — מומלץ לבדוק בפועל מול הגרסה המותקנת אצלכם (<code>pip show claude-agent-sdk</code>) לפני שסומכים על ההתנהגות המדויקת בפרויקט אמיתי.</p>
+</div>
+<div class="card agent">
+  <p><code>ClaudeSDKClient</code> הוא context manager אסינכרוני (<code>async with</code>) שפותח <strong>session חי</strong> מול הסוכן. בניגוד ל-<code>query()</code> שמתחיל שיחה חדשה בכל קריאה (בלי זיכרון), קריאות חוזרות ל-<code>client.query(...)</code> בתוך אותו <code>async with</code> ממשיכות את <strong>אותה</strong> שיחה — זה בדיוק מה שמאפשר את לולאת ה-<code>while True</code> ב-agent3.py. שתי הפעולות המרכזיות: <code>client.query(prompt)</code> (שולח הודעה חדשה) ו-<code>client.receive_response()</code> (async generator שמזרים הודעות עד סוף התור הנוכחי).</p>
+</div>`,
+
+// 8c - Theory 2/2: PermissionResultAllow/Deny & ToolPermissionContext
+`<div class="kicker">רקע תאורטי 2/2 · תוצאות ההרשאה</div>
+<h1><code>PermissionResultAllow</code>, <code>PermissionResultDeny</code>, <code>ToolPermissionContext</code></h1>
+<p>אלו שלוש המחלקות שה-callback <code>can_use_tool</code> מקבל כקלט (context) ומחזיר כפלט (Allow/Deny).</p>
+<table>
+<tr><th>מחלקה</th><th>שדות עיקריים</th><th>הערה</th></tr>
+<tr><td><code>PermissionResultAllow</code></td><td><code>updated_input</code> (dict|None), <code>updated_permissions</code> (רשימה, מתקדם)</td><td><code>updated_input</code> הוא הקלט שבאמת יורץ — יכול להיות זהה למקור, או גרסה ששיניתם (למשל: לתקן נתיב קובץ לפני ריצה).</td></tr>
+<tr><td><code>PermissionResultDeny</code></td><td><code>message</code> (str, ברירת מחדל ריק), <code>interrupt</code> (bool, ברירת מחדל False)</td><td><code>message</code> מוצג לסוכן עצמו — הוא יכול להתאים את הגישה שלו לפי הסיבה. <code>interrupt=True</code> עוצר את כל הריצה מיד, במקום לתת לסוכן לנסות גישה אחרת.</td></tr>
+<tr><td><code>ToolPermissionContext</code></td><td><code>signal</code>, <code>suggestions</code> (רשימת המלצות הרשאה מה-SDK עצמו)</td><td>מידע נוסף על ההקשר של הבקשה, מעבר לשם הכלי והקלט. בתיעוד יש אינדיקציות לשדות נוספים (כמו <code>decision_reason</code>) שלא בהכרח יציבים בין גרסאות.</td></tr>
+</table>
+<button class="expand-btn" onclick="toggleExpand(this)">מתי can_use_tool בכלל נקרא? ⌄</button>
+<div class="expand-content">
+  <p>נקודה קריטית: <code>can_use_tool</code> נקרא <strong>רק</strong> כשההערכה של הכלי "נופלת" עד אליו — כלומר הכלי לא אושר כבר ע"י <code>allowed_tools</code>, כלל אישור ב-settings, או permission_mode כמו <code>acceptEdits</code>/<code>bypassPermissions</code>. ב-<code>agent2.py</code> זה לא משנה כי לא הגדרנו <code>allowed_tools</code> ו-permission_mode הוא <code>"default"</code> — לכן הכל אכן מגיע ל-callback. אבל בפרויקט גדול יותר, אם רוצים לוודא שהכלי נבדק <strong>בכל מקרה</strong> ללא תלות בהגדרות אחרות, הדרך הנכונה היא hook מסוג <code>PreToolUse</code>, לא <code>can_use_tool</code> לבדו.</p>
+</div>`,
+
+// 9 - Upgrade 2 intro: agent3.py AskUserQuestion + loop
+`<div class="kicker">שדרוג 2 · שיחה אמיתית</div>
+<h1>מ"שאלה חד-פעמית" ל-<code>AskUserQuestion</code> ושיחה מתמשכת</h1>
+<p>ב-<code>agent3.py</code> יש שני שדרוגים נוספים ביחס ל-<code>agent2.py</code>:</p>
+<div class="two-col">
+  <div class="col card agent">
+    <h2>1. הכלי <code>AskUserQuestion</code></h2>
+    <p>כשהסוכן לא בטוח מה בדיוק אתם רוצים, הוא יכול לעצור ו<strong>לשאול אתכם</strong> — עם כותרת, שאלה, ורשימת אפשרויות ממוספרות. את הטיפול בזה כותבים בעצמכם בתוך <code>can_use_tool</code>.</p>
+  </div>
+  <div class="col card agent">
+    <h2>2. לולאת <code>while True</code></h2>
+    <p>במקום שיחה של הודעה אחת, הסוכן ממתין לתגובה שלכם אחרי כל תשובה — ממש כמו צ'אט — עד שמקלידים <code>exit</code> / <code>יציאה</code> / <code>quit</code>.</p>
+  </div>
+</div>
+<button class="expand-btn" onclick="toggleExpand(this)">איך פונקציית parse_response עובדת? ⌄</button>
+<div class="expand-content">
+  <p>כשהמשתמש מקליד תשובה כמו <code>"1, 3"</code>, הפונקציה מפרקת את המחרוזת לפי פסיקים, ממירה כל חלק למספר (עם <code>-1</code> כי בני אדם סופרים מ-1 והרשימה ב-Python מתחילה מ-0), ומחזירה את שמות ה-<code>label</code> המתאימים. אם ההמרה נכשלת (למשל המשתמש הקליד טקסט חופשי), הקוד תופס <code>ValueError</code> ומחזיר את התשובה הגולמית כמו שהיא — כדי לא לקרוס.</p>
+</div>`,
+
+// 10 - Code walkthrough agent3.py (key parts)
+`<div class="kicker">קוד · agent3.py</div>
+<h1>הטיפול ב-AskUserQuestion ובלולאת השיחה</h1>
+<pre><span class="kw">async def</span> <span class="fn">handle_ask_user_question</span>(input_data: <span class="fn">dict</span>) -> PermissionResultAllow:
+    answers = {}
+    <span class="kw">for</span> q <span class="kw">in</span> input_data.get(<span class="str">"questions"</span>, []):
+        <span class="fn">print</span>(<span class="str">f"\n{q['header']}: {q['question']}"</span>)
+        <span class="kw">for</span> i, opt <span class="kw">in</span> <span class="fn">enumerate</span>(q[<span class="str">"options"</span>]):
+            <span class="fn">print</span>(<span class="str">f"  {i + 1}. {opt['label']} - {opt['description']}"</span>)
+        response = <span class="fn">input</span>(<span class="str">"הבחירה שלך: "</span>).strip()
+        answers[q[<span class="str">"question"</span>]] = <span class="fn">parse_response</span>(response, q[<span class="str">"options"</span>])
+    <span class="kw">return</span> PermissionResultAllow(
+        updated_input={<span class="str">"questions"</span>: input_data.get(<span class="str">"questions"</span>, []), <span class="str">"answers"</span>: answers}
+    )
+
+<span class="kw">async def</span> <span class="fn">can_use_tool</span>(tool_name, input_data, context) -> PermissionResultAllow:
+    <span class="kw">if</span> tool_name == <span class="str">"AskUserQuestion"</span>:
+        <span class="kw">return</span> <span class="kw">await</span> <span class="fn">handle_ask_user_question</span>(input_data)
+    <span class="kw">return</span> PermissionResultAllow(updated_input=input_data)   <span class="comment"># שאר הכלים - אישור אוטומטי</span>
+
+<span class="comment"># בתוך main(): לולאת שיחה במקום קריאה בודדת</span>
+user_message = <span class="str">"אילו קבצים יש בתיקייה הזו?"</span>
+<span class="kw">while</span> <span class="fn">True</span>:
+    <span class="kw">await</span> client.<span class="fn">query</span>(user_message)
+    <span class="kw">async for</span> message <span class="kw">in</span> client.<span class="fn">receive_response</span>():
+        <span class="kw">if</span> <span class="fn">isinstance</span>(message, ResultMessage) <span class="kw">and</span> message.subtype == <span class="str">"success"</span>:
+            <span class="fn">print</span>(<span class="str">"\n"</span> + message.result)
+    user_message = <span class="fn">input</span>(<span class="str">"\n> "</span>).strip()
+    <span class="kw">if</span> user_message.lower() <span class="kw">in</span> (<span class="str">"exit"</span>, <span class="str">"יציאה"</span>, <span class="str">"quit"</span>, <span class="str">""</span>):
+        <span class="kw">break</span></pre>
+<button class="expand-btn" onclick="toggleExpand(this)">שימו לב: כאן זה הפוך מ-agent2.py ⌄</button>
+<div class="expand-content">
+  <p>ב-<code>agent2.py</code> כל כלי עצר לאישור. כאן <code>can_use_tool</code> עוצר <strong>רק</strong> על <code>AskUserQuestion</code> — כל שאר הכלים (<code>Bash</code>, <code>Glob</code>, <code>Read</code>, <code>Write</code>) מאושרים אוטומטית בלי לשאול. זו בחירת עיצוב: שליטה מלאה על כל פעולה, מול עצירה רק כשהסוכן עצמו מבקש הבהרה.</p>
+</div>`,
+
+// 11 - Warning: must run from terminal
+`<div class="stop-slide">
+<h1>⚠️ חובה: מריצים מהטרמינל, לא לוחצים "Run"</h1>
+<p>שני הקבצים <code>agent2.py</code> ו-<code>agent3.py</code> משתמשים בפונקציית <code>input()</code> של Python בתוך <code>can_use_tool</code> — כלומר הסוכן <strong>עוצר באמצע</strong> וממתין שתקלידו תשובה.</p>
+<div class="task-item">
+  <strong>אם מריצים מתוך כלי שלא נותן שליטה אינטראקטיבית אמיתית</strong> (למשל כפתור "Run" בסביבת IDE מסוימות, או תא Jupyter שלא מוגדר לקלט חי) — <code>input()</code> ייתקע או ייכשל, כי אין ל-Python "טרמינל" אמיתי לקרוא ממנו הקלדה.
+</div>
+<p>לכן מריצים תמיד ישירות מ-terminal/PowerShell פעיל:</p>
+<pre>(.venv) PS C:\Users\zvish\Downloads\first_ai_agent> py .\agent3.py</pre>
+<p>ורק אז השיחה הדו-כיוונית — אתם מקלידים, הסוכן שואל, אתם עונים — יכולה לקרות בזמן אמת.</p>
+</div>`,
+
+// 12 - Demo: real conversation transcript with agent3.py
+`<div class="kicker">הדגמה חיה</div>
+<h1>🎬 ככה זה נראה בפועל: שיחה עם agent3.py</h1>
+<p>הדוגמה למטה היא תמלול אמיתי של הרצה — שימו לב איך הסוכן שואל שאלה מובנית (<code>AskUserQuestion</code>) כשהבקשה לא ברורה לו.</p>
+<pre>(.venv) PS ...\first_ai_agent> py .\agent3.py
+
+בתיקייה הנוכחית נמצאים:
+- .idea, .venv, Mastering_AI_Agents.pptx, agent.py, agent2.py, agent3.py
+
+> הצג תקציר של הקובץ Mastering_AI_Agents.pptx
+<span class="comment">[הסוכן פותח את הקובץ, עובר שקף-שקף, ומחזיר תקציר מובנה של 14 השקפים]</span>
+
+> מה ההבדל בין הקבצים agent.py, agent1.py, agent2.py
+<span class="comment">[הסוכן מזהה ש"agent1.py" לא קיים, ומסביר את מדרג agent → agent2 → agent3]</span>
+
+> finish work with agent
+כוונה: למה בדיוק אתה מתכוון ב"לסיים עבודה עם agent"?
+  1. לאחד לקובץ סופי אחד
+  2. לנקות ולסדר את הקבצים הקיימים
+  3. לבצע commit ל-git
+  4. משהו אחר
+הבחירה שלך: stop run</pre>
+<button class="expand-btn" onclick="toggleExpand(this)">למה הסוכן שאל שאלה במקום סתם לבחור? ⌄</button>
+<div class="expand-content">
+  <p>הבקשה <code>"finish work with agent"</code> מעורפלת מדי — יש לפחות 3-4 פירושים סבירים. במקום לנחש (ואולי למחוק קבצים בטעות!), הסוכן קרא ל-<code>AskUserQuestion</code>, ש-<code>can_use_tool</code> שלנו תפס והציג כרשימת אפשרויות ממוספרת. זו בדיוק ההתנהגות ש"האנטומיה של סוכן חכם" מוקדם יותר במצגת דיברה עליה: <em>שואל שאלות לפני שהוא מניח</em>.</p>
+</div>`,
+
+// 13 - STOP 2: extend agent capabilities
+`<div class="stop-slide">
+<h1>🛑 תחנת עצירה 2 — שדרגו את הסוכן בעצמכם</h1>
+<p>עצרו כאן. 20 דקות. עבדו על בסיס <code>agent2.py</code> ו-<code>agent3.py</code> שראיתם — כל משימה בונה על הקודמת.</p>
+<div class="task-item"><strong>משימה 1 (קל):</strong> הריצו את <code>agent2.py</code> מהטרמינל. נסו פעם אחת לאשר (<code>y</code>) ופעם אחת לדחות (<code>n</code>) קריאה לכלי. מה ההבדל בתגובת הסוכן בין השתיים?</div>
+<div class="task-item"><strong>משימה 2 (בינוני):</strong> שלבו את שתי הגישות: קחו את <code>can_use_tool</code> מ-<code>agent2.py</code> והוסיפו לו הבחנה — אם <code>tool_name == "Read"</code> אשרו אוטומטית בלי לשאול, אבל על <code>Bash</code> ו-<code>Write</code> המשיכו לבקש אישור ידני כמו קודם.</div>
+<div class="task-item"><strong>משימה 3 (מאתגר):</strong> הרחיבו את <code>parse_response</code> ב-<code>agent3.py</code> כך שתומך גם בתשובה טקסטואלית חופשית — למשל אם המשתמש מקליד את שם ה-<code>label</code> עצמו ולא מספר, הפונקציה עדיין תזהה את הבחירה.</div>
+<div class="task-item"><strong>משימה 4 (בונוס):</strong> הוסיפו ל-<code>can_use_tool</code> ב-<code>agent3.py</code> תנאי נוסף: אם <code>tool_name == "Bash"</code>, תבקשו אישור ידני (כמו ב-agent2.py) לפני שממשיכים לאשר אוטומטית את כל השאר.</div>
+</div>`,
+
+// 14 - Think-Write-Check-Ask
+`<div class="kicker">פרוטוקול עבודה</div>
+<h1>חשוב · כתוב · בדוק · שאל</h1>
+<div class="protocol-step"><div class="protocol-num">1</div><p><strong>חשוב:</strong> מה בדיוק אני רוצה שהסוכן יעשה? איזה כלים באמת נדרשים?</p></div>
+<div class="protocol-step"><div class="protocol-num">2</div><p><strong>כתוב:</strong> נסחו את ה-prompt וה-allowed_tools בעצמכם, לפני שאתם שואלים כלי AI לעזרה.</p></div>
+<div class="protocol-step"><div class="protocol-num">3</div><p><strong>בדוק:</strong> הריצו בפועל. האם התוצאה תואמת את מה שציפיתם?</p></div>
+<div class="protocol-step"><div class="protocol-num">4</div><p><strong>שאל:</strong> אם תקועים — שאלו כלי AI "למה", לא רק "תן לי קוד מוכן".</p></div>
+<p style="color:var(--text-dim); font-size:0.95em;">בדיוק כמו בפרויקטי VaultGuard — המטרה היא שתבינו <em>למה</em> הקוד עובד, לא רק שהוא עובד.</p>`,
+
+// 8 - Comprehension Q1
+`<div class="kicker">בדיקת הבנה — 1/6</div>
+<h1>מה ההבדל המרכזי בין קריאת API רגילה לבין הרצת סוכן?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>קריאת API רגילה מחזירה טקסט בלבד — תשובה אחת. סוכן פועל בלולאה ויכול לבצע פעולות בפועל (לקרוא קבצים, להריץ פקודות) לפני שהוא מגיע לתשובה סופית.</p></div>`,
+
+// 9 - Q2
+`<div class="kicker">בדיקת הבנה — 2/6</div>
+<h1>מה קורה אם אשכח להוסיף כלי לרשימת <code>allowed_tools</code>, אבל הסוכן מנסה להשתמש בו?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>הקריאה לכלי לא תאושר אוטומטית — היא תיפול תחת ה-permission_mode הכללי (למשל תעצור ותבקש אישור, או תיחסם, תלוי בהגדרה). זו לא הגבלה על "מה הסוכן יודע לעשות" אלא על מה מאושר מראש בלי לעצור.</p></div>`,
+
+// 10 - Q3
+`<div class="kicker">בדיקת הבנה — 3/6</div>
+<h1>למה השתמשנו ב-<code>async for</code> ולא בקריאה סינכרונית רגילה?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>כי הסוכן מזרים הודעות לאורך כל הלולאה (מחשבה, קריאות כלים, תוצאות) — לא מחזיר תוצאה אחת בסוף. <code>async for</code> מאפשר לצפות בכל שלב בזמן אמת.</p></div>`,
+
+// 11 - Q4
+`<div class="kicker">בדיקת הבנה — 4/6</div>
+<h1>מה תפקידה של ClaudeAgentOptions בקוד שכתבנו?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>היא אובייקט ההגדרות של הסוכן — כאן קבענו אילו כלים מאושרים מראש (allowed_tools). בהמשך התוכנית נראה שאפשר להגדיר בה גם system_prompt, מודל, מגבלת תורות (max_turns) ועוד.</p></div>`,
+
+// 11b - Q5 (new, about can_use_tool)
+`<div class="kicker">בדיקת הבנה — 5/6</div>
+<h1>ב-<code>agent3.py</code>, למה <code>can_use_tool</code> עוצר רק על <code>AskUserQuestion</code> ולא על כל כלי, כמו ב-<code>agent2.py</code>?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>זו בחירת עיצוב מכוונת: ב-agent2.py המטרה הייתה ללמד שליטה מלאה (עצירה על הכל). ב-agent3.py המטרה שונה — לאפשר לסוכן לעבוד בזרימה חופשית, ולעצור רק כשהוא <em>עצמו</em> מזהה שהוא צריך הבהרה מהמשתמש. אין תשובה "נכונה" אחת — זה תלוי כמה שליטה רוצים לתת לסוכן מול כמה נוחות בזרימה.</p></div>`,
+
+// 11c - Q6 (new, about terminal requirement)
+`<div class="kicker">בדיקת הבנה — 6/6</div>
+<h1>למה חובה להריץ את agent2.py/agent3.py מטרמינל אינטראקטיבי אמיתי?</h1>
+<button class="qbtn" onclick="toggleAnswer(this)">הצג תשובה</button>
+<div class="answer-box"><p>כי הקוד קורא ל-<code>input()</code> בתוך <code>can_use_tool</code> — הסוכן ממש עוצר ומחכה שתקלידו תשובה. בלי טרמינל אינטראקטיבי חי (למשל דרך כפתור "Run" שלא מזין קלט, או תא שלא תומך בקלט חי), הקריאה ל-<code>input()</code> תיתקע או תיכשל, כי אין ממי לקרוא את ההקלדה.</p></div>`,
+
+// 12 - Reflection
+<!--`<div class="kicker">רפלקציה</div>-->
+<!--<h1>מחברים ל-VaultGuard</h1>-->
+<!--<ul>-->
+<!--  <li>ב-VaultGuard כתבתם קוד דטרמיניסטי — אתם קבעתם כל צעד. במה זה שונה מרגע שהסוכן "מחליט" איזה כלי להפעיל?</li>-->
+<!--  <li>מתי לדעתכם מסוכן לתת לסוכן יותר מדי כלים בבת אחת?</li>-->
+<!--  <li>ראיתם שני מודלים שונים של <code>can_use_tool</code>: "עצור על הכל" (agent2) מול "עצור רק כשהסוכן שואל" (agent3). באיזה סוג פרויקט הייתם בוחרים בכל אחד מהם?</li>-->
+<!--  <li>איפה בפרויקט הבא שלכם יכול להיות שימושי סוכן, ולא רק קוד רגיל?</li>-->
+<!--</ul>`,-->
+
+// 13 - Teacher notes
+<!--`<div class="teacher-tag">שקף למורה בלבד</div>-->
+<!--<h1>הערות הוראה</h1>-->
+<!--<div class="card">-->
+<!--  <h2>תזמון מוצע (90 דק' / שני מפגשים)</h2>-->
+<!--  <table>-->
+<!--    <tr><th>חלק</th><th>זמן</th></tr>-->
+<!--    <tr><td>מבוא + chatbot vs agent</td><td>8 דק'</td></tr>-->
+<!--    <tr><td>התקנה + קוד ראשון (agent.py)</td><td>10 דק'</td></tr>-->
+<!--    <tr><td>תחנת עצירה 1 (3 משימות)</td><td>15 דק'</td></tr>-->
+<!--    <tr><td>שדרוג 1: agent2.py (can_use_tool)</td><td>10 דק'</td></tr>-->
+<!--    <tr><td>שדרוג 2: agent3.py (AskUserQuestion + לולאה)</td><td>10 דק'</td></tr>-->
+<!--    <tr><td>הדגמת השיחה + חובת הרצה מטרמינל</td><td>7 דק'</td></tr>-->
+<!--    <tr><td>תחנת עצירה 2 (4 משימות שדרוג)</td><td>20 דק'</td></tr>-->
+<!--    <tr><td>שאלות הבנה (6) + רפלקציה</td><td>7 דק'</td></tr>-->
+<!--    <tr><td>סיכום + גשר לשלב הבא</td><td>3 דק'</td></tr>-->
+<!--  </table>-->
+<!--  <p style="color:var(&#45;&#45;text-dim); font-size:0.9em;">אם יש רק 45 דק' זמינות — עצרו אחרי "תחנת עצירה 1" והמשיכו את שדרוגי agent2/agent3 במפגש נפרד.</p>-->
+<!--</div>-->
+<!--<div class="card">-->
+<!--  <h2>טעויות נפוצות של תלמידים</h2>-->
+<!--  <ul>-->
+<!--    <li><strong>חבילה שגויה:</strong> חלק יתקינו <code>claude-code-sdk</code> הישן (מיושן) במקום <code>claude-agent-sdk</code> — הקוד ייכשל ב-import.</li>-->
+<!--    <li><strong>שגיאת asyncio ב-Jupyter:</strong> כפי שצוין בשקף 5 — יש להנחות מראש להשתמש ב-<code>await main()</code> בתוך Jupyter, לא <code>asyncio.run()</code>.</li>-->
+<!--    <li><strong>שכחת API key:</strong> ריצה בלי <code>ANTHROPIC_API_KEY</code> מוגדר תיכשל בשגיאת אימות מבלבלת.</li>-->
+<!--    <li><strong>הרצה לא מטרמינל אינטראקטיבי:</strong> תלמידים שינסו להריץ את agent2.py/agent3.py דרך כפתור "Run" של IDE בלי טרמינל חי — ה-<code>input()</code> ייתקע. יש להדגיש <em>לפני</em> תחנת העצירה השנייה שההרצה חייבת להיות משורת פקודה פעילה (טרמינל/PowerShell), בדיוק כמו בהדגמה.</li>-->
+<!--    <li><strong>בלבול בין שני מודלי can_use_tool:</strong> תלמידים עלולים לחשוב שצריך "לבחור" בין agent2 ל-agent3 במקום להבין שמשימה 2 בתחנת העצירה השנייה מבקשת <em>לשלב</em> ביניהם.</li>-->
+<!--  </ul>-->
+<!--</div>-->
+<!--<div class="card">-->
+<!--  <h2>התאמה</h2>-->
+<!--  <p><strong>קשה יותר:</strong> לבקש מתלמידים מהירים להוסיף <code>system_prompt</code> משלהם ל-ClaudeAgentOptions, ולנסות משימה 3 (טקסט חופשי ב-parse_response) כולל טיפול ב-edge cases (למשל תשובה ריקה, label לא קיים). <strong>קל יותר:</strong> לספק את פתרון משימה 2 מראש ולבקש רק להריץ, להסביר מה קרה, ולנסות רק את משימה 1 מתחנת העצירה השנייה.</p>-->
+<!--</div>-->
+<!--<div class="card">-->
+<!--  <h2>גשר ל-Stage 2</h2>-->
+<!--  <p>בשלב הבא נעמיק ב-system_prompt ובהגבלות נוספות על ClaudeAgentOptions (max_turns, permission_mode), ונרחיב את דגם ה-can_use_tool המשולב (מ"תחנת עצירה 2", משימה 2) לקראת בניית הסוכן הראשון שבאמת "עובד" על VaultGuard.</p>-->
+<!--</div>`-->
+];
+
+let current = 0;
+const deck = document.getElementById('deck');
+const dotsContainer = document.getElementById('dots');
+
+slidesHTML.forEach((html, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide' + (i === 0 ? ' active' : '');
+  div.innerHTML = html;
+  deck.appendChild(div);
+
+  const dot = document.createElement('div');
+  dot.className = 'dot' + (i === 0 ? ' active' : '');
+  dot.onclick = () => goTo(i);
+  dotsContainer.appendChild(dot);
+});
+
+const slideEls = document.querySelectorAll('.slide');
+const dotEls = document.querySelectorAll('.dot');
+const counter = document.getElementById('slide-counter');
+const btnNext = document.getElementById('btn-next');
+const btnPrev = document.getElementById('btn-prev');
+
+function render(){
+  slideEls.forEach((s,i)=> s.classList.toggle('active', i===current));
+  dotEls.forEach((d,i)=> d.classList.toggle('active', i===current));
+  counter.textContent = `שקף ${current+1} מתוך ${slidesHTML.length}`;
+  btnPrev.disabled = current === 0;
+  btnNext.disabled = current === slidesHTML.length - 1;
+}
+function goTo(i){ current = Math.max(0, Math.min(slidesHTML.length-1, i)); render(); }
+function next(){ goTo(current+1); }
+function prev(){ goTo(current-1); }
+
+btnNext.onclick = next;
+btnPrev.onclick = prev;
+
+// RTL nav convention: ArrowLeft = next (forward in reading direction), ArrowRight = previous
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowLeft' || e.key === ' '){ e.preventDefault(); next(); }
+  else if(e.key === 'ArrowRight'){ e.preventDefault(); prev(); }
+});
+
+function toggleExpand(btn){
+  const content = btn.nextElementSibling;
+  content.classList.toggle('open');
+  btn.textContent = content.classList.contains('open') ? btn.textContent.replace('⌄','⌃') : btn.textContent.replace('⌃','⌄');
+}
+function toggleAnswer(btn){
+  const box = btn.nextElementSibling;
+  box.classList.toggle('show');
+}
+
+render();
+</script>
+</body>
+</html>

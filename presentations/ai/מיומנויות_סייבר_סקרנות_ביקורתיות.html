@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>לחקור. לפקפק. ללמוד. — מיומנויות סייבר למאה ה-21</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg: #070a0f;
+    --bg2: #0d1219;
+    --panel: #10151d;
+    --border: #1f2b38;
+    --accent: #00e0a8;
+    --accent2: #00b8ff;
+    --warn: #ff5d5d;
+    --gold: #ffcf5c;
+    --text: #d9e2ec;
+    --text-dim: #8fa1b3;
+    --mono: 'Consolas','Courier New',monospace;
+    --sans: 'Segoe UI','Arial',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;padding:0;}
+  body{
+    background: radial-gradient(circle at 20% 10%, #0d1a1f 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow:hidden;
+    direction: rtl;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, rgba(0,224,168,0.025) 0px, rgba(0,224,168,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; z-index:1;
+  }
+  .stage{position:relative; width:100%; height:100vh; z-index:2;}
+  .slide{
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column;
+    justify-content:center;
+    padding: 60px 90px 110px 90px;
+    opacity:0;
+    transform: translateY(12px);
+    transition: opacity .35s ease, transform .35s ease;
+  }
+  .slide.active{ display:flex; opacity:1; transform:translateY(0); }
+
+  .kicker{ color:var(--accent2); font-family:var(--mono); font-size:15px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;}
+  h1{ font-size:44px; margin:0 0 14px 0; color:#fff; line-height:1.25;}
+  h2{ font-size:30px; margin:0 0 22px 0; color:var(--accent); border-right:4px solid var(--accent); padding-right:16px;}
+  h3{ font-size:21px; color:var(--gold); margin:0 0 10px 0;}
+  p, li{ font-size:19px; line-height:1.65; color:var(--text);}
+  .dim{ color:var(--text-dim); }
+  .content{ max-width:1080px; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  .card{
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px 24px;
+  }
+  .card.accent{ border-color: var(--accent); box-shadow: 0 0 18px rgba(0,224,168,.08); }
+  .card.warn{ border-color: var(--warn); box-shadow: 0 0 18px rgba(255,93,93,.08); }
+  .card.gold{ border-color: var(--gold); }
+
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:12.5px;
+    padding:3px 10px; border-radius:20px; margin-left:6px; margin-bottom:10px;
+    border:1px solid var(--accent2); color:var(--accent2);
+  }
+
+  .quote{
+    font-size:20px; color:#fff; border-right:3px solid var(--gold);
+    padding:6px 18px; margin:14px 0; font-style:italic;
+  }
+  .quote cite{ display:block; font-style:normal; color:var(--text-dim); font-size:14.5px; margin-top:6px;}
+
+  .terminal{
+    background:#040608; border:1px solid var(--border); border-radius:8px;
+    padding:16px 20px; font-family:var(--mono); font-size:15px; color:var(--accent);
+    white-space:pre-wrap; line-height:1.55; direction:ltr; text-align:left;
+  }
+  .terminal .err{ color:var(--warn); }
+  .terminal .ok{ color:var(--accent2); }
+
+  details{ margin-top:16px; }
+  summary{
+    cursor:pointer; user-select:none; font-family:var(--mono);
+    color:var(--accent2); border:1px solid var(--accent2); border-radius:6px;
+    padding:8px 16px; display:inline-block; font-size:15px;
+    transition: background .2s ease;
+  }
+  summary:hover{ background: rgba(0,184,255,.08); }
+  .reveal{
+    margin-top:14px; padding:16px 20px; background:#0b1620;
+    border:1px dashed var(--accent2); border-radius:8px;
+    max-height:0; overflow:hidden; opacity:0;
+    transition: max-height .4s ease, opacity .4s ease, padding .4s ease;
+  }
+  details[open] .reveal{ max-height:700px; opacity:1; }
+
+  .stop{
+    border:2px solid var(--gold) !important;
+    background: linear-gradient(180deg, rgba(255,207,92,.06), transparent);
+  }
+  .stop-badge{
+    font-family:var(--mono); color:var(--bg); background:var(--gold);
+    display:inline-block; padding:5px 14px; border-radius:5px; font-weight:bold;
+    margin-bottom:14px; font-size:14px; letter-spacing:1px;
+  }
+
+  .mc{ display:flex; flex-direction:column; gap:10px; margin-top:14px;}
+  .mc button{
+    text-align:right; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); padding:12px 16px; border-radius:8px; font-size:17px;
+    cursor:pointer; font-family:var(--sans); transition: border-color .2s;
+  }
+  .mc button:hover{ border-color:var(--accent2); }
+  .mc button.correct{ border-color:var(--accent); background:rgba(0,224,168,.1); }
+  .mc button.wrong{ border-color:var(--warn); background:rgba(255,93,93,.1); }
+
+  .qa{ margin-bottom:20px; }
+  .qa .q{ font-size:19px; color:#fff; margin-bottom:6px;}
+  .qa .a{
+    max-height:0; overflow:hidden; opacity:0; transition:max-height .4s ease, opacity .4s ease;
+    background:#0b1620; border-right:3px solid var(--accent); padding:0 14px; border-radius:4px;
+  }
+  .qa.open .a{ max-height:300px; opacity:1; padding:10px 14px; margin-top:8px;}
+  .qa .toggle{
+    font-family:var(--mono); font-size:13px; color:var(--accent);
+    cursor:pointer; border:1px solid var(--accent); border-radius:14px;
+    padding:2px 12px; display:inline-block;
+  }
+
+  footer{
+    position:fixed; bottom:0; right:0; left:0; height:70px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 40px; background:linear-gradient(180deg, transparent, rgba(0,0,0,.55));
+    z-index:5; font-family:var(--mono);
+  }
+  .navbtn{
+    background:var(--panel); border:1px solid var(--accent2); color:var(--accent2);
+    width:44px;height:44px;border-radius:50%; font-size:20px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:.2s;
+  }
+  .navbtn:hover{ background:var(--accent2); color:#04121a; }
+  .navgroup{ display:flex; gap:14px; align-items:center; }
+  .counter{ color:var(--text-dim); font-size:14px; }
+  .dots{ display:flex; gap:6px; flex-wrap:wrap; max-width:420px; }
+  .dot{ width:9px;height:9px;border-radius:50%; background:#233040; cursor:pointer; transition:.2s;}
+  .dot.active{ background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+  .badge-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="stage" id="stage"></div>
+
+<footer>
+  <div class="navgroup">
+    <button class="navbtn" id="prevBtn" title="הקודם (חץ ימינה)">→</button>
+    <span class="counter" id="counter">1 / 1</span>
+    <button class="navbtn" id="nextBtn" title="הבא (חץ שמאלה)">←</button>
+  </div>
+  <div class="dots" id="dots"></div>
+</footer>
+
+<script>
+const slides = [];
+
+function slide(html){ slides.push(html); }
+
+// ---------- שקף 1 : שער ----------
+slide(`
+  <div class="kicker">מערך שיעור · סייבר · כיתה י"א</div>
+  <h1>לחקור. לפקפק. ללמוד.</h1>
+  <p style="font-size:22px;color:var(--accent2);margin-bottom:26px;">מיומנויות המאה ה-21 בעולם הסייבר: סקרנות, למידה עצמית וחשיבה ביקורתית</p>
+  <div class="card accent" style="max-width:820px;">
+    <p class="dim" style="margin-bottom:4px;">מבוסס על דברים שנאמרו בפאנל "אתגרי החינוך בעידן ה-AI", ועידת הכישורים, יוני 2026:</p>
+    <div class="quote">"סקרנות ולמידה עצמית." <cite>— אבי סלמון</cite></div>
+    <div class="quote">"ביקורתיות וסקרנות." <cite>— פרופ' ברכה שפירא, אונ' בן־גוריון</cite></div>
+    <div class="quote">"חשיבה ביקורתית." <cite>— ד"ר מריאן תחאוכו, אונ' רייכמן</cite></div>
+  </div>
+`);
+
+// ---------- שקף 2 : מטרות למידה ----------
+slide(`
+  <h2>מטרות למידה</h2>
+  <div class="content">
+    <ul>
+      <li>התלמיד/ה יזהו מצב שבו יש לאמת מידע טכני במקום לקבל אותו כפי שהוא — <b>ביקורתיות</b>.</li>
+      <li>התלמיד/ה ינסחו שאלת מחקר עצמאית ויאתרו מידע במקור רשמי (NVD, אתר יצרן) בלי הכוונה מלאה — <b>סקרנות ולמידה עצמית</b>.</li>
+      <li>התלמיד/ה יאתרו טעות עובדתית בפלט AI בנושא אבטחת מידע ויסבירו במונחים מקצועיים מדוע היא שגויה.</li>
+      <li>התלמיד/ה ייישמו תהליך שיטתי לאימות טענה טכנית: מקור → ראיה עצמאית → בדיקה חוזרת.</li>
+      <li>התלמיד/ה יקשרו את ההרגלים שתורגלו לתפקיד אמיתי בעולם הסייבר (SOC Analyst, Threat Intel).</li>
+    </ul>
+  </div>
+`);
+
+// ---------- שקף 3: סיפור פתיחה חלק א ----------
+slide(`
+  <div class="kicker">סיפור פתיחה · חלק א׳</div>
+  <h2>ה-30 בנובמבר, 2013</h2>
+  <div class="content">
+    <p>רשת קמעונאות ענקית בארה"ב, כמה שבועות לפני חג המולד — השיא של עונת הקניות.</p>
+    <p>שישה חודשים קודם לכן החברה השקיעה כ-1.6 מיליון דולר במערכת זיהוי תוקפים מתקדמת, מאותו ספק שמשרת גם את ה-CIA.</p>
+    <div class="terminal">FireEye ALERT [SEVERITY: CRITICAL]
+signature: malware.binary
+host: POS-terminal-cluster
+action_available: auto-delete [<span class="ok">ENABLED BY DEFAULT</span>]
+status: <span class="err">forwarded to SOC team — no action taken</span></div>
+    <p class="dim">המערכת זיהתה את התוקף. היא אפילו הציעה למחוק אותו אוטומטית. מישהו כיבה את זה.</p>
+  </div>
+`);
+
+// ---------- שקף 4: סיפור פתיחה חלק ב ----------
+slide(`
+  <div class="kicker">סיפור פתיחה · חלק ב׳</div>
+  <h2>מה קרה בפועל?</h2>
+  <div class="content">
+    <p>החברה היא <b>Target</b>. בין 27-30 בנובמבר 2013 הותקן תוכנת זדון על עמדות הקופה. מערכת FireEye <b>עבדה מצוין</b> — היא שלחה כמה התרעות "קריטי" ברצף, כולל כתובות של שרתי ה-staging של התוקפים.</p>
+    <p>צוות האבטחה בבנגלור ראה את ההתרעות והעביר אותן הלאה. צוות מיניאפוליס <b>לא הגיב</b>. אפשרות המחיקה האוטומטית — כובתה מראש, כי מישהו רצה "אישור אנושי סופי".</p>
+    <div class="card warn">
+      <p style="margin:0;">התוצאה: כ-40 מיליון מספרי כרטיסי אשראי ועוד כ-70 מיליון פרטים אישיים נגנבו. החברה גילתה שהיא נפרצה רק כששירותי החקירה הפדרליים התקשרו — כשלושה שבועות אחרי.</p>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 5: דיון - למה זה קרה ----------
+slide(`
+  <div class="kicker">רגע לפני שממשיכים</div>
+  <h2>אז מה בעצם השתבש?</h2>
+  <div class="content">
+    <p>לא חסר מידע. לא חסרה טכנולוגיה. מה שחסר היה משהו אנושי:</p>
+    <div class="grid2">
+      <div class="card"><h3>לא סקרנות</h3><p style="font-size:17px;">אף אחד לא שאל "רגע, למה זו כבר ההתרעה השלישית באותו שרת?"</p></div>
+      <div class="card"><h3>לא ביקורתיות</h3><p style="font-size:17px;">ההתרעה התקבלה כ"עוד רעש רגיל" בלי לבדוק אותה לגופה.</p></div>
+    </div>
+    <p style="margin-top:22px;">היום, במקום אנליסט אנושי שמסנן התרעות, יש לעיתים קרובות שכבת AI שמסננת/מסכמת בשבילנו. <b>השאלה של השיעור הזה: מה קורה כשגם ה-AI טועה — ואיש לא בודק?</b></p>
+  </div>
+`);
+
+// ---------- שקף 6: שלושת המומחים / הצגת הנושא ----------
+slide(`
+  <div class="kicker">למה זה בדיוק מה שאמרו במפגש הפסגה</div>
+  <h2>שלוש מיומנויות, מוסכמה אחת</h2>
+  <div class="content">
+    <p>בפאנל של "ועידת הכישורים" (TheMarker, יוני 2026) שלושה מומחים לעולם ה-AI והחינוך הצביעו, כל אחד בנפרד, על אותה תובנה:</p>
+    <div class="badge-row">
+      <span class="tag">אבי סלמון</span><span class="tag">פרופ' ברכה שפירא</span><span class="tag">ד"ר מריאן תחאוכו</span>
+    </div>
+    <p>שפירא הדגישה שיש הבדל בין מי שמפעיל AI מתוך הבנה אלגוריתמית לבין מי שמגיע רק עם ידע בפרומפטים. סלמון הוסיף: גם ברמת המשתמש הבסיסית ביותר, נדרשת <b>"חשיבה ביקורתית גבוהה"</b> כדי לדעת לשאול את השאלות הנכונות.</p>
+    <p>בתחום הסייבר זה לא תיאורטי — זו שאלה של: האם המערכת שלנו באמת מוגנת, או שקיבלנו תשובה שנשמעת משכנעת?</p>
+  </div>
+`);
+
+// ---------- שקף 7: הסבר מקצועי - ביקורתיות ----------
+slide(`
+  <h2>הסבר מקצועי (1/2) — לאמת טענה טכנית</h2>
+  <div class="content">
+    <p>בכל תחום מודיעין (Threat Intel, SOC, מחקר פגיעויות) עובדים לפי עיקרון דומה — לא "האם זה נשמע נכון" אלא <b>שלושה צעדים בדיקים</b>:</p>
+    <div class="grid2">
+      <div class="card accent"><h3>1. מקור (Source)</h3><p style="font-size:16.5px;">מי אמר את זה? יצרן רשמי / NVD / בלוג אנונימי / AI?</p></div>
+      <div class="card accent"><h3>2. ראיה עצמאית</h3><p style="font-size:16.5px;">האם אפשר לאמת את זה במקור שני, בלתי תלוי?</p></div>
+      <div class="card accent"><h3>3. בדיקה חוזרת</h3><p style="font-size:16.5px;">האם הפרטים (גרסה, תאריך, CVSS) תואמים בין המקורות?</p></div>
+    </div>
+    <p style="margin-top:18px;">כלל אצבע: <b>ככל שההשלכה של הטענה חמורה יותר (לפתוח פורט, להתקין patch, להתעלם מהתרעה) — כך רף האימות צריך להיות גבוה יותר.</b></p>
+  </div>
+`);
+
+// ---------- שקף 8: הסבר מקצועי - סקרנות ולמידה עצמית ----------
+slide(`
+  <h2>הסבר מקצועי (2/2) — לחקור לבד</h2>
+  <div class="content">
+    <p>"למידה עצמית" בסייבר לא אומרת "לגגל ולקחת את התוצאה הראשונה". זה תהליך עם מקורות מדורגים באמינות:</p>
+    <ul>
+      <li><b>הכי אמין:</b> תיעוד רשמי של היצרן, מאגר NVD (National Vulnerability Database), CVE.org</li>
+      <li><b>אמין בזהירות:</b> חברות אבטחה מוכרות (בלוג מחקר עם שם ותאריך)</li>
+      <li><b>לא לסמוך לבד:</b> פוסטים בפורומים, תשובת AI ללא בדיקה, כתבות משניות</li>
+    </ul>
+    <div class="card gold">
+      <p style="margin:0;">התרגול המרכזי היום: לקבל טענה טכנית לא מוכרת, ולמצוא לבד — בלי שהמורה יגיד לכם איפה לחפש — האם היא נכונה.</p>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 9: הדגמה - תפסו את הבאג של ה-AI ----------
+slide(`
+  <div class="kicker">הדגמה</div>
+  <h2>לתפוס את הטעות של ה-AI</h2>
+  <div class="content">
+    <p>הנה תשובה (מדומה) שכלי AI נתן כשנשאל "הסבר לי בקצרה מהי הפגיעות Log4Shell":</p>
+    <div class="terminal">"Log4Shell (CVE-2021-44228) היא פגיעות ב-Apache
+Log4j גרסה 1.x, שהתגלתה על-ידי צוות האבטחה
+של Apache באוגוסט 2021. הפגיעות מאפשרת הרצת
+קוד מרחוק (RCE) באמצעות buffer overflow קלאסי
+בזיכרון השרת."</div>
+    <details>
+      <summary>▸ נסו לזהות: כמה טעויות עובדתיות יש כאן?</summary>
+      <div class="reveal">
+        <p style="margin-top:0;"><b>שלוש טעויות:</b></p>
+        <p>1. הפגיעות בגרסאות <b>2.0-beta9 עד 2.14.1</b> של Log4j — לא בגרסה 1.x.</p>
+        <p>2. היא <b>לא</b> buffer overflow — זו פגיעות <b>JNDI injection</b>: מחרוזת שנרשמת ללוג גורמת לשרת לטעון קוד ממקור מרוחק.</p>
+        <p>3. היא לא התגלתה ע"י Apache עצמה, אלא דווחה ל-Apache ע"י חוקר בשם <b>Chen Zhaojun</b> מצוות האבטחה של Alibaba Cloud, ופורסמה בדצמבר 2021 (לא אוגוסט).</p>
+        <p class="dim" style="margin-bottom:0;">שימו לב: התשובה נשמעה בטוחה ומקצועית לגמרי. זה בדיוק הסיכון.</p>
+      </div>
+    </details>
+  </div>
+`);
+
+// ---------- שקף 10: תחנת עצירה 1 ----------
+slide(`
+  <div class="stop-badge">⏸ תחנת עצירה</div>
+  <h2 style="border:none;">עכשיו אתם</h2>
+  <div class="card stop content">
+    <p><b>בזוגות, 6 דקות:</b> קיבלתם "דו״ח ניתוח AI" מדומה על אנומליה שהתגלתה ברשת (המורה יחלק / יציג). המשימה:</p>
+    <ul>
+      <li>סמנו כל טענה עובדתית בדו"ח (גרסה, פרוטוקול, סוג התקפה, מספר פורט...).</li>
+      <li>בחרו <b>לפחות טענה אחת</b> ונסו לאמת אותה במקור עצמאי (תיעוד רשמי / RFC / NVD).</li>
+      <li>קריטריון הצלחה: לזוג יש החלטה מנומקת — "מאמינים לדו"ח" / "לא מאמינים, כי..." — עם מקור שבדקתם בעצמכם, לא רק תחושת בטן.</li>
+    </ul>
+  </div>
+`);
+
+// ---------- שקף 11: בדיקת הבנה משולבת ----------
+slide(`
+  <h2>בדיקת הבנה</h2>
+  <div class="content">
+    <p style="font-size:20px;color:#fff;">מה קרה בפועל בפריצת Target ב-2013?</p>
+    <div class="mc" id="mc1">
+      <button data-correct="false">המערכת לא זיהתה את התוקף בכלל</button>
+      <button data-correct="true">המערכת זיהתה נכון, אבל ההתרעה לא טופלה</button>
+      <button data-correct="false">לא הייתה מערכת הגנה מותקנת</button>
+      <button data-correct="false">התוקפים ניצלו פרצה שלא הייתה ידועה בכלל (Zero-Day)</button>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 12: פעילות עיקרית - הסבר ----------
+slide(`
+  <div class="kicker">פעילות תלמידים · מרכזית</div>
+  <h2>מבצע אימות: האם אנחנו חשופים?</h2>
+  <div class="content">
+    <p>קיבלתם פתק/כרטיסייה עם התרעה קצרה, לדוגמה:</p>
+    <div class="terminal">"השרת שלנו מריץ Apache Log4j גרסה 2.14.
+קיבלנו התרעה שאנחנו חשופים ל-Log4Shell.
+האם זה נכון? מה צריך לעשות?"</div>
+    <p>המשימה שלכם — <b>בלי לשאול את המורה קודם</b>:</p>
+    <ol style="font-size:18px;line-height:1.7;">
+      <li>נסחו שאלת חיפוש עצמאית (איזה מילות מפתח תשתמשו?)</li>
+      <li>אתרו את הרשומה הרשמית במאגר NVD או בעמוד האבטחה הרשמי של הפרויקט</li>
+      <li>קבעו: החברה חשופה? מהי הגרסה המתוקנת המומלצת?</li>
+      <li>כתבו החלטה של שורה-שתיים, עם קישור למקור שבדקתם</li>
+    </ol>
+  </div>
+`);
+
+// ---------- שקף 13: פעילות עיקרית - קריטריון הצלחה ----------
+slide(`
+  <div class="stop-badge">⏸ תחנת עצירה</div>
+  <h2 style="border:none;">קריטריון הצלחה — 12 דקות</h2>
+  <div class="card stop content">
+    <ul>
+      <li>הגעתם למקור <b>רשמי</b> (לא רק סיכום/פורום) — ותיעדתם קישור.</li>
+      <li>יש לכם תשובה ברורה: חשופים / לא חשופים, ולמה.</li>
+      <li>יש לכם המלצת פעולה קונקרטית (למשל: שדרוג לגרסה X ומעלה).</li>
+      <li>אם השתמשתם ב-AI בדרך — סימנתם בדיוק היכן, ואיך אימתתם את מה שהוא אמר.</li>
+    </ul>
+    <p class="dim" style="margin-bottom:0;">אם נתקעתם אחרי 4 דקות עצמאיות — מותר לבקש רמז מהמורה, לא תשובה.</p>
+  </div>
+`);
+
+// ---------- שקף 14: שימוש נכון ב-AI ----------
+slide(`
+  <h2>שימוש נכון ב-AI בפעילות הזו</h2>
+  <div class="content">
+    <p>הפרוטוקול שלנו: <b>חשוב → כתוב → בדוק → שאל</b></p>
+    <div class="grid2">
+      <div class="card"><h3>חשוב</h3><p style="font-size:16.5px;">נסו לענות לבד/עם בן-הזוג לפני שפונים ל-AI בכלל.</p></div>
+      <div class="card"><h3>כתוב</h3><p style="font-size:16.5px;">אם פניתם ל-AI — תעדו את השאלה ואת התשובה, לא רק "הבנתי".</p></div>
+      <div class="card"><h3>בדוק</h3><p style="font-size:16.5px;">כל טענה עובדתית (גרסה, CVSS, תאריך) — מול מקור רשמי אחד לפחות.</p></div>
+      <div class="card"><h3>שאל</h3><p style="font-size:16.5px;">שאלו את ה-AI "איך הייתי מוודא/ה שזה נכון?" — לא רק "מה התשובה?"</p></div>
+    </div>
+    <div class="card warn" style="margin-top:16px;">
+      <p style="margin:0;">אסור: להעתיק תשובת AI כמו שהיא כתשובה סופית לכרטיסייה. AI יכול לטעות בביטחון מלא — כפי שראינו בשקף הדגמת ה-Log4Shell.</p>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 15: שאלות הבנה ----------
+slide(`
+  <h2>שאלות הבנה</h2>
+  <div class="content">
+    <div class="qa" id="qa1">
+      <div class="q">1. מה ההבדל בין "מקור" ל"ראיה עצמאית" בתהליך האימות?</div>
+      <span class="toggle">הצג תשובה</span>
+      <div class="a">מקור = מאיפה הגיע המידע לראשונה. ראיה עצמאית = אישור מגורם שני, בלתי-תלוי, שמגיע לאותה מסקנה בלי להסתמך על המקור הראשון.</div>
+    </div>
+    <div class="qa" id="qa2">
+      <div class="q">2. מדוע דווקא תשובת AI "בטוחה ומנוסחת היטב" מסוכנת יותר מתשובה מהוססת?</div>
+      <span class="toggle">הצג תשובה</span>
+      <div class="a">כי הביטחון בניסוח לא מעיד על נכונות עובדתית — הוא גורם לנו להוריד את הגנות הביקורתיות בדיוק כשהן הכי נחוצות.</div>
+    </div>
+    <div class="qa" id="qa3">
+      <div class="q">3. בפרשת Target — מה היה שונה אילו הצוות "בדק פעמיים" את ההתרעה השלישית?</div>
+      <span class="toggle">הצג תשובה</span>
+      <div class="a">סביר שהפריצה הייתה נעצרת לפני שנתוני 40 מיליון לקוחות דלפו — המערכת כבר סיפקה את כל המידע הדרוש, רק לא טופל.</div>
+    </div>
+    <div class="qa" id="qa4">
+      <div class="q">4. מהו הסיכון בלחפש רק תוצאה אחת ולעצור שם?</div>
+      <span class="toggle">הצג תשובה</span>
+      <div class="a">תוצאה בודדת עלולה להיות שגויה, מיושנת, או מוטה. ללא אימות במקור שני אין דרך לדעת אם אפשר לסמוך עליה.</div>
+    </div>
+    <div class="qa" id="qa5">
+      <div class="q">5. תנו דוגמה למצב מהחיים (לא סייבר) שבו אותו עיקרון אימות רלוונטי.</div>
+      <span class="toggle">הצג תשובה</span>
+      <div class="a">תשובה פתוחה — למשל: ידיעה חדשותית, "עובדה" רפואית ברשת, שמועה על מבחן.</div>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 16: רפלקציה ----------
+slide(`
+  <h2>רפלקציה</h2>
+  <div class="content">
+    <div class="card">
+      <p style="font-size:20px;color:#fff;">1. באיזה שלב בשיעור הרגשת הכי הרבה חוסר-ודאות? מה עשית איתה?</p>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <p style="font-size:20px;color:#fff;">2. האם היה רגע שכמעט האמנת למידע לא מדויק — מה בסוף גרם לך לבדוק שוב?</p>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <p style="font-size:20px;color:#fff;">3. איך ההרגל "לבדוק לפני שמאמינים" יכול לשרת אותך גם מחוץ לעולם הסייבר?</p>
+    </div>
+  </div>
+`);
+
+// ---------- שקף 17: הערות למורה ----------
+// slide(`
+//   <div class="kicker">הערות למורה</div>
+//   <h2>מאחורי הקלעים</h2>
+//   <div class="content">
+//     <div class="grid2">
+//       <div class="card"><h3>תזמון (שיעור כפול, 90 דק')</h3>
+//         <p style="font-size:15.5px;">פתיחה + Target: 12 דק' · הסבר מקצועי: 10 דק' · הדגמת Log4Shell: 8 דק' · תחנת עצירה 1: 8 דק' · פעילות מרכזית + עצירה 2: 25 דק' · שימוש ב-AI: 7 דק' · הבנה+רפלקציה: 15 דק' · סיכום: 5 דק'.</p></div>
+//       <div class="card"><h3>טעויות נפוצות</h3>
+//         <p style="font-size:15.5px;">תלמידים עוצרים בתוצאת חיפוש ראשונה; מבלבלים "אתר שמדבר על CVE" עם "רשומת ה-CVE הרשמית"; מעתיקים תשובת AI כלשונה בלי ציון מקור.</p></div>
+//       <div class="card"><h3>הקלה</h3>
+//         <p style="font-size:15.5px;">לתת ישירות קישור ל-NVD/CVE.org ולבקש רק לאשר/להפריך פרט אחד.</p></div>
+//       <div class="card"><h3>הקשחה</h3>
+//         <p style="font-size:15.5px;">להוסיף בכרטיסיית האימות "רעש" — פרט אחד נכון ואחד שגוי, ולדרוש לזהות בדיוק איזה.</p></div>
+//     </div>
+//     <p class="dim" style="margin-top:18px;">ניתן לחבר את הפעילות המרכזית לפרויקט VaultGuard — "דו"ח האנומליה" יכול להיות פלט אמיתי ממודול ה-anomaly detection של התלמידים.</p>
+//   </div>
+// `);
+
+// ================= רינדור ומנגנון ניווט =================
+const stage = document.getElementById('stage');
+slides.forEach((html, i) => {
+  const div = document.createElement('div');
+  div.className = 'slide';
+  div.innerHTML = html;
+  div.dataset.index = i;
+  stage.appendChild(div);
+});
+
+const dotsWrap = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.title = 'שקף ' + (i+1);
+  d.addEventListener('click', () => goTo(i));
+  dotsWrap.appendChild(d);
+});
+
+let current = 0;
+const total = slides.length;
+const slideEls = document.querySelectorAll('.slide');
+const dotEls = document.querySelectorAll('.dot');
+const counterEl = document.getElementById('counter');
+
+function render(){
+  slideEls.forEach((el, i) => el.classList.toggle('active', i === current));
+  dotEls.forEach((el, i) => el.classList.toggle('active', i === current));
+  counterEl.textContent = (current+1) + ' / ' + total;
+}
+function goTo(i){
+  current = Math.max(0, Math.min(total-1, i));
+  render();
+}
+function next(){ if(current < total-1){ current++; render(); } }
+function prev(){ if(current > 0){ current--; render(); } }
+
+document.getElementById('nextBtn').addEventListener('click', next);
+document.getElementById('prevBtn').addEventListener('click', prev);
+
+// RTL: חץ שמאלה = הבא, חץ ימינה = הקודם
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowLeft'){ next(); }
+  else if(e.key === 'ArrowRight'){ prev(); }
+  else if(e.key === ' '){ e.preventDefault(); next(); }
+});
+
+render();
+
+// ---- מנגנון שאלת אמריקאי (שקף 11) ----
+document.addEventListener('click', function(e){
+  if(e.target.matches('#mc1 button')){
+    const buttons = document.querySelectorAll('#mc1 button');
+    buttons.forEach(b => b.disabled = true);
+    buttons.forEach(b => {
+      if(b.dataset.correct === 'true') b.classList.add('correct');
+    });
+    if(e.target.dataset.correct !== 'true'){
+      e.target.classList.add('wrong');
+    }
+  }
+});
+
+// ---- מנגנון שאלות הבנה (toggle) ----
+document.addEventListener('click', function(e){
+  if(e.target.matches('.qa .toggle')){
+    const qa = e.target.closest('.qa');
+    qa.classList.toggle('open');
+    e.target.textContent = qa.classList.contains('open') ? 'הסתר תשובה' : 'הצג תשובה';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שלוש גישות לחיבור קונבולוציות מקבילות</title>
+<style>
+  :root{
+    --bg-0:#0a0e0f;
+    --bg-1:#0f1517;
+    --bg-2:#141c1e;
+    --panel:#101718;
+    --border:#1f3336;
+    --accent:#4ee2c4;
+    --accent-2:#ff9f5a;
+    --accent-3:#7aa2ff;
+    --danger:#ff6b6b;
+    --good:#63e6a4;
+    --text:#dbe7e6;
+    --text-dim:#7f9997;
+    --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:radial-gradient(circle at 20% 10%, #0f1a1b 0%, var(--bg-0) 55%);
+    color:var(--text);
+    font-family:var(--mono);
+    overflow:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(78,226,196,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,226,196,0.025) 1px, transparent 1px);
+    background-size:36px 36px;
+    pointer-events:none;
+    z-index:0;
+  }
+  #deck{
+    position:relative;
+    width:100%;height:100vh;
+    z-index:1;
+  }
+  .slide{
+    position:absolute;inset:0;
+    display:none;
+    flex-direction:column;
+    padding:44px 64px 90px 64px;
+    opacity:0;
+    transform:translateX(-24px);
+    transition:opacity .35s ease, transform .35s ease;
+  }
+  .slide.active{
+    display:flex;
+    opacity:1;
+    transform:translateX(0);
+  }
+  .eyebrow{
+    color:var(--accent);
+    font-size:18px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    opacity:.85;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:34px;
+    margin:0 0 6px 0;
+    color:#f2fbf9;
+    letter-spacing:.5px;
+  }
+  h1 span.approach1{color:var(--accent-2);}
+  h1 span.approach2{color:var(--accent);}
+  h1 span.approach3{color:var(--accent-3);}
+  h2.sub{
+    font-size:18px;
+    color:var(--text-dim);
+    margin:0 0 22px 0;
+    font-weight:400;
+  }
+  .content{
+    flex:1;
+    display:flex;
+    gap:26px;
+    overflow:hidden;
+  }
+  .col{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0;}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 18px;
+  }
+  .card h3{
+    margin:0 0 10px 0;
+    font-size:18px;
+    color:var(--accent);
+    letter-spacing:.5px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h3::before{content:"▸";color:var(--accent-2);}
+  ul{margin:0;padding-right:18px;font-size:14.5px;line-height:1.75;color:var(--text);}
+  li{margin-bottom:4px;font-size:18px;}
+  li b{color:#fff;}
+  .bad{color:var(--danger);}
+  .good{color:var(--good);}
+  pre{
+    margin:0;
+    border-radius:8px;
+    overflow:auto;
+    font-size:18px;
+    max-height:100%;
+    border:1px solid var(--border);
+    background:#0d1315;
+  }
+  pre code{
+    display:block;
+    padding:14px 16px;
+    direction:ltr;
+    text-align:left;
+    color:#dbe7e6;
+    white-space:pre;
+  }
+  .tok-kw{color:#c586c0;}
+  .tok-fn{color:#4ee2c4;}
+  .tok-str{color:#e6c07b;}
+  .tok-num{color:#ff9f5a;}
+  .tok-com{color:#7f9997;font-style:italic;}
+  .tok-cls{color:#7aa2ff;}
+  .diagram{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px;
+  }
+  .box{
+    border:1.5px solid var(--border);
+    border-radius:8px;
+    padding:8px 12px;
+    text-align:center;
+    font-size:18px;
+    background:var(--bg-2);
+    color:var(--text);
+    white-space:nowrap;
+  }
+  .box.input{border-color:var(--text-dim);color:#fff;}
+  .box.c1{border-color:var(--accent-2);color:var(--accent-2);}
+  .box.c2{border-color:var(--accent-3);color:var(--accent-3);}
+  .box.merge{border-color:var(--accent);color:var(--accent);}
+  .box.flat{border-color:var(--danger);color:var(--danger);}
+  .box.dense{border-color:#fff;color:#fff;}
+  .arrow{color:var(--text-dim);font-size:18px;}
+  .flow{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .row{display:flex;align-items:center;gap:10px;}
+  .branch{display:flex;flex-direction:column;gap:14px;}
+
+  /* expand button */
+  .expand-btn{
+    align-self:flex-start;
+    background:transparent;
+    border:1px solid var(--accent);
+    color:var(--accent);
+    font-family:var(--mono);
+    font-size:18px;
+    padding:6px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    margin-top:8px;
+    transition:background .2s, color .2s;
+  }
+  .expand-btn:hover{background:var(--accent);color:#04211c;}
+  .expand-content{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .4s ease, padding .3s ease, margin .3s ease;
+  }
+  .expand-content.open{
+    max-height:600px;
+    margin-top:10px;
+  }
+
+  /* quiz */
+  .quiz-opt{
+    display:block;width:100%;text-align:right;
+    background:var(--bg-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:18px;
+    padding:12px 16px;
+    border-radius:8px;
+    margin-bottom:10px;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--good);background:rgba(99,230,164,0.1);color:var(--good);}
+  .quiz-opt.wrong{border-color:var(--danger);background:rgba(255,107,107,0.1);color:var(--danger);}
+  .quiz-feedback{
+    margin-top:12px;font-size:18px;color:var(--text-dim);
+    display:none;
+  }
+  .quiz-feedback.show{display:block;}
+
+  /* stop slide */
+  .slide.stop .content{border:2px dashed var(--accent-2);border-radius:12px;padding:26px;}
+  .stop-tag{
+    display:inline-block;
+    background:var(--accent-2);
+    color:#241000;
+    font-weight:700;
+    font-size:18px;
+    padding:4px 12px;
+    border-radius:20px;
+    margin-bottom:14px;
+    letter-spacing:1px;
+  }
+
+  /* comparison table */
+  table.cmp{
+    width:100%;
+    border-collapse:collapse;
+    font-size:18px;
+  }
+  table.cmp th, table.cmp td{
+    border:1px solid var(--border);
+    padding:8px 10px;
+    text-align:right;
+    vertical-align:top;
+    line-height:1.5;
+  }
+  table.cmp th{
+    background:var(--bg-2);
+    color:#fff;
+    position:sticky;top:0;
+  }
+  table.cmp th.a1{color:var(--accent-2);}
+  table.cmp th.a2{color:var(--accent);}
+  table.cmp th.a3{color:var(--accent-3);}
+  table.cmp td.crit{color:var(--text-dim);font-weight:600;white-space:nowrap;}
+  .table-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:10px;}
+
+  /* nav */
+  #nav{
+    position:fixed;bottom:0;left:0;right:0;
+    height:64px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 40px;
+    background:linear-gradient(0deg, rgba(10,14,15,0.95), rgba(10,14,15,0.0));
+    z-index:5;
+  }
+  .nav-btn{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:18px;
+    padding:9px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+    transition:border-color .2s, color .2s;
+  }
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .nav-btn:disabled{opacity:.3;cursor:default;}
+  .nav-btn:disabled:hover{border-color:var(--border);color:var(--text);}
+  #progress{
+    display:flex;align-items:center;gap:10px;
+    font-size:18px;color:var(--text-dim);
+  }
+  #dots{display:flex;gap:6px;}
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--border);
+    cursor:pointer;
+    transition:background .2s, transform .2s;
+  }
+  .dot.active{background:var(--accent);transform:scale(1.3);}
+
+  .footer-note{
+    font-size:18px;color:var(--text-dim);opacity:.6;margin-top:10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <section class="slide">
+    <div class="eyebrow">CNN Architecture — כיתה י׳-י״א</div>
+    <h1>שלוש גישות לחיבור קונבולוציות מקבילות</h1>
+    <h2 class="sub">Flatten מוקדם &nbsp;|&nbsp; מיזוג במרחב (channel-wise) &nbsp;|&nbsp; שרשור טורי</h2>
+    <div class="content" style="align-items:center;justify-content:center;">
+      <div class="diagram" style="width:100%;height:100%;">
+        <div style="display:flex;gap:60px;align-items:center;">
+          <div class="flow">
+            <div class="box input">Input</div>
+            <div class="row">
+              <div class="box c1">Conv 3×3</div>
+              <div class="box c2">Conv 5×5</div>
+            </div>
+            <div class="box flat">Flatten</div>
+            <div class="arrow">↓</div>
+            <div style="color:var(--accent-2);font-size:18px;">גישה 1</div>
+          </div>
+          <div class="flow">
+            <div class="box input">Input</div>
+            <div class="row">
+              <div class="box c1">Conv 3×3</div>
+              <div class="box c2">Conv 5×5</div>
+            </div>
+            <div class="box merge">Concat (axis=-1)</div>
+            <div class="arrow">↓</div>
+            <div style="color:var(--accent);font-size:18px;">גישה 2</div>
+          </div>
+          <div class="flow">
+            <div class="box input">Input</div>
+            <div class="box c1">Conv 3×3</div>
+            <div class="box c2">Conv 5×5</div>
+            <div class="arrow">↓</div>
+            <div style="color:var(--accent-3);font-size:18px;">גישה 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">שאלה מרכזית לשיעור: מתי שווה להסתעף במקביל, ומתי שווה להעמיק בטור?</div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">רקע</div>
+    <h1>הבעיה: איך לחבר שני "רואים" של אותו לוח?</h1>
+    <h2 class="sub">יש לנו קלט אחד (לוח משחק) ושתי קונבולוציות בגדלי קרנל שונים. השאלה — איך משלבים אותם?</h2>
+    <div class="content">
+      <div class="col">
+        <div class="card">
+          <h3>נקודת המוצא המשותפת לכל הגישות</h3>
+          <pre><code class="language-python">inputs = Input(shape=x_train.shape[1:])
+conv1 = Conv2D(32, (3,3), padding='same', activation='relu')(inputs)
+conv2 = Conv2D(32, (5,5), padding='same', activation='relu')(inputs)</code></pre>
+          <ul style="margin-top:12px;">
+            <li><b>conv1</b> — קרנל קטן (3×3): דפוסים מקומיים-צרים</li>
+            <li><b>conv2</b> — קרנל גדול (5×5): דפוסים מרחביים רחבים יותר</li>
+            <li><code>padding='same'</code> שומר על אותו H×W בפלט</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>מכאן יש שלוש דרכים אפשריות להמשיך</h3>
+          <ul>
+            <li><span style="color:var(--accent-2)">גישה 1</span> — לשטח (Flatten) כל ענף בנפרד, ואז לחבר</li>
+            <li><span style="color:var(--accent)">גישה 2</span> — לחבר על ציר הערוצים, ולהישאר מרחבי</li>
+            <li><span style="color:var(--accent-3)">גישה 3</span> — לא להסתעף בכלל: לשרשר בטור (conv2 מקבל את פלט conv1)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="diagram" style="max-width:260px;">
+        <div class="flow">
+          <div class="box input">Input לוח משחק</div>
+          <div class="arrow">↓ ↓</div>
+          <div style="font-size:18px;color:var(--text-dim);text-align:center;">שני "רואים" מקבילים<br>של אותה תמונה</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: APPROACH 1 CODE -->
+  <section class="slide">
+    <div class="eyebrow">גישה 1 מתוך 3</div>
+    <h1><span class="approach1">מקבילי + Flatten מוקדם</span></h1>
+    <h2 class="sub">כל ענף הופך לווקטור שטוח, ורק אז מתחברים</h2>
+    <div class="content">
+      <div class="col">
+        <pre style="flex:1"><code class="language-python">from tensorflow.keras.layers import Input, Conv2D, Flatten, Concatenate
+from tensorflow.keras.models import Model
+
+inputs = Input(shape=x_train.shape[1:])
+
+conv1 = Conv2D(32, (3,3), padding='same', activation='relu')(inputs)
+conv2 = Conv2D(32, (5,5), padding='same', activation='relu')(inputs)
+
+# שטיחה של כל ענף בנפרד — לפני המיזוג
+flat_input = Flatten()(inputs)
+flat_conv1 = Flatten()(conv1)
+flat_conv2 = Flatten()(conv2)
+
+# חיבור על ציר הווקטורים (ברירת מחדל axis=1)
+features = Concatenate()([flat_input, flat_conv1, flat_conv2])</code></pre>
+      </div>
+      <div class="col">
+        <div class="diagram">
+          <div class="flow">
+            <div class="box input">inputs</div>
+            <div class="row">
+              <div class="box c1">conv1 3×3</div>
+              <div class="box c2">conv2 5×5</div>
+            </div>
+            <div class="row">
+              <div class="box flat">flat_input</div>
+              <div class="box flat">flat_conv1</div>
+              <div class="box flat">flat_conv2</div>
+            </div>
+            <div class="arrow">↓</div>
+            <div class="box merge">Concatenate (וקטורים)</div>
+            <div class="arrow">↓</div>
+            <div class="box dense">features</div>
+          </div>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ מה היתרון כאן?</button>
+        <div class="expand-content">
+          <div class="card">
+            <ul>
+              <li><b>Raw input נשמר</b> — <code>flat_input</code> מכיל את הלוח הגולמי ללא עיבוד, כמו skip connection</li>
+              <li>ריבוי קני-מידה (multi-scale) — הרשת "רואה" 3×3, 5×5, וגם גולמי</li>
+              <li>קל להבנה ולכתיבה ראשונית</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: APPROACH 1 PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">גישה 1 — נקודת תורפה</div>
+    <h1>למה ה-<span class="approach1">Flatten המוקדם</span> בעייתי?</h1>
+    <h2 class="sub">ה-Flatten הורג את הקשר הגיאומטרי בין תאים סמוכים — לפני שהוא בכלל נוצל</h2>
+    <div class="content">
+      <div class="col">
+        <div class="card">
+          <h3>מה בדיוק נהרס</h3>
+          <ul>
+            <li>לפני Flatten: טנזור <code>(H, W, C)</code> — לכל תא יש "שכנים" ברורים</li>
+            <li>אחרי Flatten: וקטור ארוך — כל מיקום הוא סתם אינדקס, בלי משמעות מרחבית</li>
+            <li>שכבת <b>Dense</b> שתבוא אח״כ תצטרך "ללמוד מחדש" יחסים מרחביים <b class="bad">מאפס</b>, מתוך וקטור שטוח</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>מחיר נוסף — התנפחות</h3>
+          <ul>
+            <li>אורך <code>features</code> = <code>H·W·C_in + H·W·32 + H·W·32</code></li>
+            <li>עבור לוח 8×8 עם כמה ערוצים — הווקטור יכול להגיע לאלפי איברים</li>
+            <li>שכבת Dense שאחריו — <b class="bad">יקרה</b> ורגישה יותר ל-overfitting</li>
+          </ul>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="flow">
+          <div style="font-size:18px;color:var(--text-dim);">לפני</div>
+          <div class="box c1" style="width:90px;height:90px;display:flex;align-items:center;justify-content:center;">H×W×C<br>מרחבי</div>
+          <div class="arrow">Flatten ↓</div>
+          <div style="font-size:18px;color:var(--danger);">אחרי — קשר גיאומטרי אבד</div>
+          <div class="box flat" style="width:220px;">[v1, v2, v3, v4, ... , vn]</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: STOP / CHECK UNDERSTANDING -->
+  <section class="slide stop">
+    <div class="eyebrow">תחנת עצירה</div>
+    <h1>בדיקת הבנה</h1>
+    <div class="content">
+      <div class="col" style="max-width:640px;margin:0 auto;justify-content:center;">
+        <span class="stop-tag">עצרו כאן</span>
+        <div class="card">
+          <h3>מה קורה כאשר עושים Flatten לפני Concatenate, בהשוואה למיזוג על ציר הערוצים?</h3>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">שני הדברים זהים לגמרי מבחינת המידע שנשמר</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,true)">Flatten הורג את הקשר המרחבי בין תאים סמוכים; מיזוג על ציר הערוצים משמר אותו</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">מיזוג על ציר הערוצים תמיד מייצר יותר פרמטרים מ-Flatten</button>
+          <div class="quiz-feedback">
+            💡 נכון! ב-Flatten כל תא הופך לאיבר בווקטור שטוח ומאבד את הזהות הגיאומטרית שלו. במיזוג <code>axis=-1</code> הטנזור נשאר <code>(H, W, C)</code>, ואפשר להמשיך לעבד אותו spatially (למשל עוד Conv2D) לפני שמוותרים על המבנה.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: APPROACH 2 CODE -->
+  <section class="slide">
+    <div class="eyebrow">גישה 2 מתוך 3</div>
+    <h1><span class="approach2">מקבילי + מיזוג במרחב</span></h1>
+    <h2 class="sub">Concatenate על ציר הערוצים (axis=-1) — בלי Flatten מוקדם</h2>
+    <div class="content">
+      <div class="col">
+        <pre style="flex:1"><code class="language-python">from tensorflow.keras.layers import Input, Conv2D, Concatenate, Flatten, Dense, MaxPooling2D
+from tensorflow.keras.models import Model
+
+inputs = Input(shape=x_train.shape[1:])
+
+conv1 = Conv2D(32, (3,3), padding='same', activation='relu')(inputs)
+conv2 = Conv2D(32, (5,5), padding='same', activation='relu')(inputs)
+
+# מיזוג על ציר הערוצים — הצורה נשארת (H, W, 64)
+merged = Concatenate(axis=-1)([conv1, conv2])
+
+# עכשיו אפשר להמשיך לעבד spatially!
+x = Conv2D(64, (3,3), padding='same', activation='relu')(merged)
+x = MaxPooling2D((2,2))(x)
+
+# רק בסוף, אחרי שהמידע כבר עובד ומוזג — שוטחים
+flat = Flatten()(x)
+output = Dense(10, activation='softmax')(flat)
+
+model = Model(inputs=inputs, outputs=output)</code></pre>
+      </div>
+      <div class="col">
+        <div class="diagram">
+          <div class="flow">
+            <div class="box input">inputs</div>
+            <div class="row">
+              <div class="box c1">conv1 (H,W,32)</div>
+              <div class="box c2">conv2 (H,W,32)</div>
+            </div>
+            <div class="arrow">↓</div>
+            <div class="box merge">Concat axis=-1 → (H,W,64)</div>
+            <div class="arrow">↓</div>
+            <div class="box c1" style="border-color:var(--accent)">Conv2D נוסף (H,W,64)</div>
+            <div class="arrow">↓</div>
+            <div class="box flat">Flatten (מאוחר!)</div>
+            <div class="arrow">↓</div>
+            <div class="box dense">Dense output</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: APPROACH 2 WHY BETTER -->
+  <section class="slide">
+    <div class="eyebrow">גישה 2 — למה זה עדיף</div>
+    <h1>הדמיון למודול <span class="approach2">Inception</span></h1>
+    <h2 class="sub">כמה קונבולוציות בגדלים שונים על אותו קלט, ואז מיזוג בציר הערוצים — בדיוק העיקרון מ-GoogLeNet</h2>
+    <div class="content">
+      <div class="col">
+        <div class="card">
+          <h3>מה מרוויחים</h3>
+          <ul>
+            <li>המבנה המרחבי נשמר <b class="good">עד שלב מאוחר</b> — אפשר עוד "לדעת" מי שכן של מי</li>
+            <li>שכבת <code>Conv2D</code> נוספת אחרי המיזוג יכולה <b>לשלב</b> בין מידע מ-3×3 ל-5×5 תוך ניצול סמיכות מרחבית</li>
+            <li>וקטור הפיצ'רים הסופי בד״כ <b class="good">קטן משמעותית</b>, בעיקר עם <code>MaxPooling2D</code></li>
+            <li>פחות פרמטרים ב-Dense ⇒ פחות סיכון ל-overfitting</li>
+          </ul>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ להוסיף גם raw input?</button>
+        <div class="expand-content">
+          <div class="card">
+            <p style="font-size:13.5px;line-height:1.7;margin:0;">
+            אם רוצים לשמר גם את הלוח הגולמי (כמו ב-<code>flat_input</code> בגישה 1) — אפשר להוסיף אותו כערוץ נוסף:
+            </p>
+            <pre style="margin-top:10px;"><code class="language-python">merged = Concatenate(axis=-1)([inputs, conv1, conv2])</code></pre>
+            <p style="font-size:18px;color:var(--text-dim);margin-top:8px;">בתנאי ש-<code>inputs</code> ו-conv1/conv2 חולקים אותו H×W — מובטח כאן הודות ל-<code>padding='same'</code>.</p>
+          </div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div style="text-align:center;">
+          <div style="font-size:18px;color:var(--text-dim);margin-bottom:10px;">Inception-style block</div>
+          <div class="flow">
+            <div class="box input">Input</div>
+            <div class="row">
+              <div class="box c1">1×1</div>
+              <div class="box c2">3×3</div>
+              <div class="box c2" style="border-color:var(--accent-3)">5×5</div>
+              <div class="box" style="border-color:var(--text-dim)">pool</div>
+            </div>
+            <div class="arrow">↓</div>
+            <div class="box merge">Concat (channels)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: APPROACH 3 CODE -->
+  <section class="slide">
+    <div class="eyebrow">גישה 3 מתוך 3</div>
+    <h1><span class="approach3">שרשור טורי</span></h1>
+    <h2 class="sub">פלט conv1 הופך לקלט של conv2 — לא הסתעפות, אלא עומק</h2>
+    <div class="content">
+      <div class="col">
+        <pre style="flex:1"><code class="language-python">from tensorflow.keras.layers import Input, Conv2D
+from tensorflow.keras.models import Model
+
+inputs = Input(shape=x_train.shape[1:])
+
+conv1 = Conv2D(32, (3,3), padding='same', activation='relu')(inputs)
+
+# שימו לב: הקלט הוא conv1, לא inputs!
+conv2 = Conv2D(32, (5,5), padding='same', activation='relu')(conv1)
+
+# conv2 "רואה" גרסה שכבר סוננה ע"י conv1 —
+# לא את הפיקסלים המקוריים</code></pre>
+        <div class="card">
+          <h3>ההבדל התפיסתי</h3>
+          <ul>
+            <li>גישות 1-2 עונות: <i>"איך רואים את אותה תמונה בכמה קני-מידה בו-זמנית?"</i> (רוחב)</li>
+            <li>גישה 3 עונה: <i>"איך בונים ייצוגים מורכבים יותר, שלב אחר שלב?"</i> (עומק)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="diagram">
+          <div class="flow">
+            <div class="box input">inputs</div>
+            <div class="arrow">↓</div>
+            <div class="box c1">conv1 3×3 (receptive field 3×3)</div>
+            <div class="arrow">↓</div>
+            <div class="box c2">conv2 5×5 (מעל conv1!)</div>
+            <div class="arrow" style="color:var(--accent-3);">↓ שדה קליטה מצטבר ≈ 7×7</div>
+            <div class="box dense">ייצוג היררכי, עמוק יותר</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>מחיר</h3>
+          <ul>
+            <li>conv2 <b class="bad">לא רואה בכלל</b> את הפיקסלים המקוריים — רק את מה ש-conv1 "החליט" להעביר אחרי ReLU</li>
+            <li>אם conv1 איפס מידע חשוב (ReLU) — conv2 לא יכול לשחזר אותו</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide">
+    <div class="eyebrow">סיכום ביניים</div>
+    <h1>טבלת השוואה — שלוש הגישות</h1>
+    <h2 class="sub">כל הקריטריונים במקום אחד</h2>
+    <div class="content" style="flex-direction:column;">
+      <div class="table-wrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>קריטריון</th>
+              <th class="a1">גישה 1: מקבילי + Flatten מוקדם</th>
+              <th class="a2">גישה 2: מקבילי + מיזוג במרחב</th>
+              <th class="a3">גישה 3: טורי</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="crit">קלט ל-conv2</td>
+              <td>inputs הגולמי</td>
+              <td>inputs הגולמי</td>
+              <td>פלט conv1</td>
+            </tr>
+            <tr>
+              <td class="crit">שימור מבנה מרחבי</td>
+              <td class="bad">❌ נהרס מיד ב-Flatten</td>
+              <td class="good">✅ נשמר — טנזור (H,W,64)</td>
+              <td class="good">✅ נשמר לאורך כל השרשרת</td>
+            </tr>
+            <tr>
+              <td class="crit">עיבוד spatially אחרי המיזוג</td>
+              <td class="bad">❌ לא רלוונטי — כבר שטוח</td>
+              <td class="good">✅ אפשר עוד Conv2D</td>
+              <td class="good">✅ זה המנגנון הטבעי (conv3, conv4...)</td>
+            </tr>
+            <tr>
+              <td class="crit">גודל הפיצ'רים לפני Dense</td>
+              <td class="bad">גדול מאוד: H·W·C_in + 2·H·W·32</td>
+              <td class="good">קטן משמעותית (בעיקר עם MaxPooling)</td>
+              <td>תלוי בעומק/pooling — בד״כ קטן-בינוני</td>
+            </tr>
+            <tr>
+              <td class="crit">שדה קליטה (receptive field)</td>
+              <td>5×5 לכל היותר</td>
+              <td>5×5 לכל היותר (אלא אם ממשיכים)</td>
+              <td class="good">מצטבר — כ-7×7 ומעלה</td>
+            </tr>
+            <tr>
+              <td class="crit">מספר פרמטרים</td>
+              <td>32+32 קרנלים, שניהם על ערוצי inputs</td>
+              <td>זהה + שכבות נוספות אחרי המיזוג</td>
+              <td>conv2 פועל על 32 ערוצים (לא ערוצי input)</td>
+            </tr>
+            <tr>
+              <td class="crit">תלות בין הענפים/שכבות</td>
+              <td>אין — בלתי-תלויים</td>
+              <td>אין — בלתי-תלויים</td>
+              <td class="bad">מלאה — conv2 תלוי ב-conv1</td>
+            </tr>
+            <tr>
+              <td class="crit">שימור raw input</td>
+              <td class="good">✅ דרך flat_input</td>
+              <td>⚠️ אפשר להוסיף בקלות</td>
+              <td class="bad">❌ conv2 לא רואה פיקסלים מקוריים</td>
+            </tr>
+            <tr>
+              <td class="crit">דמיון לארכיטקטורות מוכרות</td>
+              <td>חלקי — Inception, מיזוג שגוי</td>
+              <td class="good">קרוב מאוד ל-Inception אמיתי</td>
+              <td>CNN קלאסי טורי (LeNet, VGG)</td>
+            </tr>
+            <tr>
+              <td class="crit">סיכון ל-overfitting</td>
+              <td class="bad">גבוה יותר</td>
+              <td class="good">נמוך יותר</td>
+              <td>תלוי בעומק הכולל</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: TAKEAWAY -->
+  <section class="slide">
+    <div class="eyebrow">סיכום</div>
+    <h1>רוחב מול עומק — לא חייבים לבחור</h1>
+    <h2 class="sub">רשתות state-of-the-art (Inception, ResNet, EfficientNet) משלבות את שני העקרונות יחד</h2>
+    <div class="content">
+      <div class="col">
+        <div class="card">
+          <h3>מה למדנו</h3>
+          <ul>
+            <li><span class="approach1">גישה 1</span> — קלה לכתיבה, אך ה-Flatten המוקדם <b class="bad">סוגר דלת</b> לעיבוד מרחבי נוסף</li>
+            <li><span class="approach2">גישה 2</span> — <b>multi-scale אמיתי</b> (רוחב) בסגנון Inception, שומר מבנה מרחבי הכי הרבה זמן</li>
+            <li><span class="approach3">גישה 3</span> — <b>עומק</b>, מאפשר שדה קליטה מצטבר וייצוגים היררכיים</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>לשאלה בכיתה</h3>
+          <p style="font-size:18px;line-height:1.7;margin:0;">
+          "האם קוד שרץ בהצלחה = קוד טוב?" — גישה 1 <b>רצה</b> בלי בעיה, אבל מבזבזת חלק מהפוטנציאל של הקונבולוציה. זו דוגמה מצוינת להבחין בין <i>קוד שעובד</i> לבין <i>קוד שמנוצל היטב</i>.
+          </p>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="flow">
+          <div style="font-size:18px;color:var(--text-dim);">בפועל: גם רוחב, גם עומק</div>
+          <div class="row">
+            <div class="box c1">3×3</div>
+            <div class="box c2">5×5</div>
+            <div class="box" style="border-color:var(--text-dim)">pool</div>
+          </div>
+          <div class="box merge">Concat</div>
+          <div class="arrow">↓ בלוק נוסף בטור</div>
+          <div class="row">
+            <div class="box c1">3×3</div>
+            <div class="box c2">5×5</div>
+          </div>
+          <div class="box merge">Concat</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="nav">
+  <button class="nav-btn" id="prevBtn" onclick="goPrev()">→ הקודם</button>
+  <div id="progress">
+    <div id="dots"></div>
+    <span id="counter">1 / 10</span>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="goNext()">הבא ←</button>
+</div>
+
+<script>
+// הדגשת תחביר קלה ועצמאית (בלי תלות ב-CDN חיצוני) — מונעת כשל אם הרשת חסומה
+function highlightPython(code){
+  const escaped = code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = escaped.split('\n').map(line => {
+    // הערות
+    const commentMatch = line.match(/(#.*)$/);
+    let codePart = commentMatch ? line.slice(0, commentMatch.index) : line;
+    let commentPart = commentMatch ? commentMatch[1] : '';
+    // מחרוזות
+    codePart = codePart.replace(/('([^'\\]|\\.)*'|"([^"\\]|\\.)*")/g, m => `<span class="tok-str">${m}</span>`);
+    // מספרים
+    codePart = codePart.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>');
+    // מילות מפתח
+    codePart = codePart.replace(/\b(from|import|def|class|return|if|else|elif|for|while|as|in|True|False|None)\b/g, '<span class="tok-kw">$1</span>');
+    // שמות מחלקות נפוצים (Keras)
+    codePart = codePart.replace(/\b(Input|Conv2D|Flatten|Concatenate|Dense|MaxPooling2D|Model)\b/g, '<span class="tok-cls">$1</span>');
+    if(commentPart){
+      codePart += `<span class="tok-com">${commentPart}</span>`;
+    }
+    return codePart;
+  });
+  return lines.join('\n');
+}
+
+function highlightAllCode(){
+  document.querySelectorAll('pre code').forEach(el => {
+    if(!el.dataset.highlighted){
+      el.innerHTML = highlightPython(el.textContent);
+      el.dataset.highlighted = 'true';
+    }
+  });
+}
+
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+const total = slides.length;
+
+const dotsContainer = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.onclick = () => goTo(i);
+  dotsContainer.appendChild(d);
+});
+
+function render(){
+  slides.forEach((s, i) => s.classList.toggle('active', i === current));
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  document.getElementById('counter').textContent = (current+1) + ' / ' + total;
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === total - 1;
+  highlightAllCode();
+}
+
+function goNext(){ if(current < total - 1){ current++; render(); } }
+function goPrev(){ if(current > 0){ current--; render(); } }
+function goTo(i){ current = i; render(); }
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowLeft'){ goNext(); }       // RTL: שמאלה = הבא
+  else if(e.key === 'ArrowRight'){ goPrev(); } // RTL: ימינה = הקודם
+  else if(e.key === ' '){ e.preventDefault(); goNext(); }
+});
+
+function toggleExpand(btn){
+  const content = btn.nextElementSibling;
+  content.classList.toggle('open');
+  btn.textContent = content.classList.contains('open') ? '▴ הסתר' : btn.dataset.label || '▾ עוד פרטים';
+  if(!btn.dataset.label){ btn.dataset.label = btn.textContent === '▴ הסתר' ? '▾ עוד פרטים' : btn.textContent; }
+  if(content.classList.contains('open')){
+    highlightAllCode();
+  }
+}
+
+function answerQuiz(btn, isCorrect){
+  const opts = btn.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.disabled = true);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    opts.forEach(o => { if(o.onclick.toString().includes('true')) o.classList.add('correct'); });
+  }
+  btn.parentElement.querySelector('.quiz-feedback').classList.add('show');
+}
+
+render();
+</script>
+
+</body>
+</html>

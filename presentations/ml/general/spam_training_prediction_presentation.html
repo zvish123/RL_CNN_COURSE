@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>גילוי Spam: משלב האימון ועד שלב החיזוי</title>
+<style>
+  :root{
+    --bg-0:#0a0e0f;
+    --bg-2:#141c1e;
+    --panel:#101718;
+    --border:#1f3336;
+    --accent:#4ee2c4;
+    --accent-2:#ff9f5a;
+    --accent-3:#7aa2ff;
+    --danger:#ff6b6b;
+    --good:#63e6a4;
+    --text:#dbe7e6;
+    --text-dim:#7f9997;
+    --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:radial-gradient(circle at 20% 10%, #0f1a1b 0%, var(--bg-0) 55%);
+    color:var(--text);
+    font-family:var(--mono);
+    overflow:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(78,226,196,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,226,196,0.025) 1px, transparent 1px);
+    background-size:36px 36px;
+    pointer-events:none;
+    z-index:0;
+  }
+  #deck{position:relative;width:100%;height:100vh;z-index:1;}
+  .slide{
+    position:absolute;inset:0;
+    display:none;flex-direction:column;
+    padding:38px 60px 90px 60px;
+    opacity:0;transform:translateX(-24px);
+    transition:opacity .35s ease, transform .35s ease;
+  }
+  .slide.active{display:flex;opacity:1;transform:translateX(0);}
+  .eyebrow{color:var(--accent);font-size:18px;letter-spacing:2px;text-transform:uppercase;opacity:.85;margin-bottom:5px;}
+  h1{font-size:29px;margin:0 0 4px 0;color:#f2fbf9;letter-spacing:.3px;}
+  h1 span.train{color:var(--accent-2);}
+  h1 span.pred{color:var(--accent-3);}
+  h1 span.core{color:var(--accent);}
+  h2.sub{font-size:18px;color:var(--text-dim);margin:0 0 16px 0;font-weight:400;}
+  .content{flex:1;display:flex;gap:22px;overflow:hidden;}
+  .col{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:auto;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card h3{margin:0 0 8px 0;font-size:18px;color:var(--accent);letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
+  .card h3::before{content:"▸";color:var(--accent-2);}
+  ul{margin:0;padding-right:18px;font-size:18px;line-height:1.7;color:var(--text);}
+  li{margin-bottom:3px;}
+  li b{color:#fff;}
+  .bad{color:var(--danger);}
+  .good{color:var(--good);}
+  code.inline{background:var(--bg-2);padding:1px 6px;border-radius:4px;color:var(--accent);font-size:18px;}
+  pre{margin:0;border-radius:8px;overflow:auto;font-size:18px;max-height:100%;border:1px solid var(--border);background:#0d1315;}
+  pre code{display:block;padding:12px 14px;direction:ltr;text-align:left;color:#dbe7e6;white-space:pre;}
+  .tok-kw{color:#c586c0;}
+  .tok-fn{color:#4ee2c4;}
+  .tok-str{color:#e6c07b;}
+  .tok-num{color:#ff9f5a;}
+  .tok-com{color:#7f9997;font-style:italic;}
+  .tok-cls{color:#7aa2ff;}
+
+  .param-table{width:100%;border-collapse:collapse;font-size:18px;}
+  .param-table th,.param-table td{border:1px solid var(--border);padding:6px 8px;text-align:right;vertical-align:top;line-height:1.5;}
+  .param-table th{background:var(--bg-2);color:#fff;}
+  .param-table td.pname{color:var(--accent);white-space:nowrap;font-family:var(--mono);}
+
+  .example-box{
+    background:linear-gradient(135deg, rgba(78,226,196,0.06), rgba(122,162,255,0.04));
+    border:1px dashed var(--accent-3);
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:18px;
+  }
+  .example-box .ex-label{color:var(--accent-3);font-weight:700;margin-bottom:6px;display:block;font-size:18px;letter-spacing:1px;}
+  .arrow-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:18px;}
+  .arrow-flow .stepbox{background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;white-space:nowrap;}
+  .arrow-flow .arr{color:var(--text-dim);}
+
+  .expand-btn{
+    align-self:flex-start;background:transparent;border:1px solid var(--accent);color:var(--accent);
+    font-family:var(--mono);font-size:18px;padding:5px 13px;border-radius:20px;cursor:pointer;margin-top:4px;
+    transition:background .2s, color .2s;
+  }
+  .expand-btn:hover{background:var(--accent);color:#04211c;}
+  .expand-content{max-height:0;overflow:hidden;transition:max-height .4s ease, margin .3s ease;}
+  .expand-content.open{max-height:700px;margin-top:8px;}
+
+  .quiz-opt{
+    display:block;width:100%;text-align:right;background:var(--bg-2);border:1px solid var(--border);color:var(--text);
+    font-family:var(--mono);font-size:18px;padding:10px 14px;border-radius:8px;margin-bottom:8px;cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{border-color:var(--good);background:rgba(99,230,164,0.1);color:var(--good);}
+  .quiz-opt.wrong{border-color:var(--danger);background:rgba(255,107,107,0.1);color:var(--danger);}
+  .quiz-feedback{margin-top:10px;font-size:18px;color:var(--text-dim);display:none;}
+  .quiz-feedback.show{display:block;}
+
+  .slide.stop .content{border:2px dashed var(--accent-2);border-radius:12px;padding:22px;}
+  .stop-tag{display:inline-block;background:var(--accent-2);color:#241000;font-weight:700;font-size:18px;padding:4px 12px;border-radius:20px;margin-bottom:12px;letter-spacing:1px;}
+
+  .pipeline{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+  .pnode{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--bg-2);min-width:110px;text-align:center;
+  }
+  .pnode .t{font-size:18px;color:#fff;}
+  .pnode .d{font-size:18px;color:var(--text-dim);}
+  .pnode.train{border-color:var(--accent-2);}
+  .pnode.pred{border-color:var(--accent-3);}
+  .pnode.core{border-color:var(--accent);}
+  .parr{color:var(--text-dim);font-size:18px;}
+
+  table.cmp{width:100%;border-collapse:collapse;font-size:18px;}
+  table.cmp th,table.cmp td{border:1px solid var(--border);padding:7px 9px;text-align:right;vertical-align:top;line-height:1.5;}
+  table.cmp th{background:var(--bg-2);color:#fff;position:sticky;top:0;}
+  table.cmp th.tr{color:var(--accent-2);}
+  table.cmp th.pr{color:var(--accent-3);}
+  .table-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:10px;}
+
+  #nav{
+    position:fixed;bottom:0;left:0;right:0;height:60px;
+    display:flex;align-items:center;justify-content:space-between;padding:0 36px;
+    background:linear-gradient(0deg, rgba(10,14,15,0.95), rgba(10,14,15,0.0));
+    z-index:5;
+  }
+  .nav-btn{
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    font-family:var(--mono);font-size:18px;padding:8px 16px;border-radius:8px;cursor:pointer;
+    display:flex;align-items:center;gap:6px;transition:border-color .2s, color .2s;
+  }
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .nav-btn:disabled{opacity:.3;cursor:default;}
+  #progress{display:flex;align-items:center;gap:10px;font-size:18px;color:var(--text-dim);}
+  #dots{display:flex;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .2s, transform .2s;}
+  .dot.active{background:var(--accent);transform:scale(1.3);}
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide">
+    <div class="eyebrow">Machine Learning · Spam Detection</div>
+    <h1>מ-<span class="train">אימון</span> ועד <span class="pred">חיזוי</span>: איך מכונה לומדת מזהה Spam</h1>
+    <h2 class="sub">מסלול מלא מטקסט גולמי, דרך עיבוד, אימון מודל — ועד סיווג מייל חדש</h2>
+    <div class="content" style="align-items:center;justify-content:center;">
+      <div class="pipeline">
+        <div class="pnode"><div class="t">📧 טקסט מייל</div></div>
+        <div class="parr">←</div>
+        <div class="pnode core"><div class="t">עיבוד מקדים</div><div class="d">משותף לשני המסלולים</div></div>
+        <div class="parr">←</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="pnode train"><div class="t">🎓 אימון</div><div class="d">fit על נתונים מתויגים</div></div>
+          <div class="pnode pred"><div class="t">🔮 חיזוי</div><div class="d">predict על מייל חדש</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: TWO PATHS OVERVIEW -->
+  <section class="slide">
+    <div class="eyebrow">מפת דרכים</div>
+    <h1>שני מסלולים, אותה נקודת פתיחה</h1>
+    <h2 class="sub">חשוב להפריד בראש: מסלול אימון (פעם אחת) לעומת מסלול חיזוי (על כל מייל חדש)</h2>
+    <div class="content">
+      <div class="col">
+        <div class="card" style="border-color:var(--accent-2);">
+          <h3 style="color:var(--accent-2);">🎓 מסלול האימון — קורה פעם אחת</h3>
+          <ul>
+            <li>יש לנו <b>אלפי מיילים מתויגים</b> מראש (spam / לא spam)</li>
+            <li>מעבדים את כולם, בונים אוצר מילים, מלמדים את המודל</li>
+            <li>שומרים את המודל המוכן לשימוש חוזר</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:var(--accent-3);">
+          <h3 style="color:var(--accent-3);">🔮 מסלול החיזוי — קורה על כל מייל חדש</h3>
+          <ul>
+            <li>מגיע מייל <b>בודד, לא מתויג</b> — לא יודעים אם הוא spam</li>
+            <li>מעבדים אותו <b>באותה שיטה בדיוק</b> כמו באימון</li>
+            <li>שואלים את המודל <b>המוכן מראש</b> "מה דעתך?"</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="example-box" style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+          <span class="ex-label">דוגמה מלווה שנעקוב אחריה לאורך המצגת</span>
+          <p style="margin:0 0 10px 0;">נניח שקיבלנו מייל חדש עם הנושא:</p>
+          <div style="background:var(--bg-2);border-radius:8px;padding:10px 14px;font-size:18px;direction:ltr;text-align:left;color:#fff;">
+            "Free money now!!! Click here today"
+          </div>
+          <p style="margin:12px 0 0 0;">נעקוב איך המשפט הזה עובר תהליך עד שהמכונה מחליטה spam / not spam.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: PREPROCESSING OVERVIEW -->
+  <section class="slide">
+    <div class="eyebrow">שלב 1 — משותף לשני המסלולים</div>
+    <h1>עיבוד מקדים <span class="core">(Preprocessing)</span></h1>
+    <h2 class="sub">לפני שמכונה יכולה "לחשוב" על טקסט, צריך להפוך אותו לצורה נקייה ואחידה</h2>
+    <div class="content">
+      <div class="col">
+        <div class="pipeline" style="flex-direction:column;align-items:stretch;">
+          <div class="pnode core" style="width:100%;"><div class="t">1. הסרת סימני פיסוק + Stopwords</div><div class="d">process_text()</div></div>
+          <div style="text-align:center;color:var(--text-dim);">↓</div>
+          <div class="pnode core" style="width:100%;"><div class="t">2. Stemming — שורש המילה</div><div class="d">stemming()</div></div>
+          <div style="text-align:center;color:var(--text-dim);">↓</div>
+          <div class="pnode core" style="width:100%;"><div class="t">3. המרה לווקטור מספרי</div><div class="d">CountVectorizer</div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="example-box">
+          <span class="ex-label">איך המשפט שלנו נראה אחרי כל שלב</span>
+          <div class="arrow-flow" style="flex-direction:column;align-items:flex-start;gap:10px;">
+            <div><span style="color:var(--text-dim);">מקור:</span> <code class="inline" style="direction:ltr;display:inline-block;">"Free money now!!! Click here today"</code></div>
+            <div><span style="color:var(--accent);">אחרי ניקוי:</span> <code class="inline" style="direction:ltr;display:inline-block;">"Free money click today"</code></div>
+            <div><span style="color:var(--accent-2);">אחרי Stemming:</span> <code class="inline" style="direction:ltr;display:inline-block;">"free money click today"</code></div>
+            <div><span style="color:var(--accent-3);">אחרי וקטוריזציה:</span> <code class="inline" style="direction:ltr;display:inline-block;">[0,1,0,1,1,0,...,1]</code></div>
+          </div>
+        </div>
+        <div class="card">
+          <p style="margin:0;font-size:18px;line-height:1.7;">בשלושת השקפים הבאים נעבור על כל שלב בנפרד — הפונקציה, הפרמטרים, ולמה זה נחוץ.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4: process_text -->
+  <section class="slide">
+    <div class="eyebrow">עיבוד מקדים — שלב 1</div>
+    <h1><span class="core">process_text()</span> — ניקוי הטקסט</h1>
+    <h2 class="sub">מסירים כל מה שלא תורם משמעות לקלסיפיקציה</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">def process_text(text):
+    from nltk.corpus import stopwords
+
+    no_punc = [char for char in text if char not in string.punctuation]
+    no_punc = ''.join(no_punc)
+
+    return ' '.join([word for word in no_punc.split()
+                      if word.lower() not in stopwords.words('english')])</code></pre>
+        <div class="card">
+          <h3>מה קורה כאן, שורה-שורה</h3>
+          <ul>
+            <li><b>שורה 1</b> — מייבאים <code class="inline">stopwords</code> מ-nltk: רשימה מוכנה מראש של מילות קישור באנגלית</li>
+            <li><b>no_punc</b> — סינון תו-תו: משאירים רק תווים שאינם בתוך <code class="inline">string.punctuation</code> (הרשימה הסטנדרטית של סימני פיסוק ב-Python: <code class="inline">!"#$%&'()...</code>)</li>
+            <li><b>השורה האחרונה</b> — מפצלים למילים ומסננים כל מילה שנמצאת ברשימת ה-stopwords (למשל <code class="inline">the, is, a, to</code>)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <table class="param-table">
+          <tr><th>פרמטר / אובייקט</th><th>מה הוא עושה</th></tr>
+          <tr><td class="pname">string.punctuation</td><td>קבוע מוכן ב-Python: כל סימני הפיסוק (בלי צורך להגדיר בעצמנו)</td></tr>
+          <tr><td class="pname">stopwords.words('english')</td><td>הפרמטר <code class="inline">'english'</code> קובע את השפה — nltk תומך גם בעברית ושפות נוספות אם מורידים את הדאטה המתאים</td></tr>
+        </table>
+        <div class="example-box">
+          <span class="ex-label">דוגמה חיה</span>
+          <div style="direction:ltr;text-align:left;font-size:18px;">
+            <div>קלט: <code class="inline">"Free money now!!! Click here today"</code></div>
+            <div style="margin-top:6px;">אחרי הסרת פיסוק: <code class="inline">"Free money now Click here today"</code></div>
+            <div style="margin-top:6px;">אחרי הסרת stopwords (<code class="inline">"here"</code> נחשבת stopword): <code class="inline">"Free money now Click today"</code></div>
+          </div>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ נקודה לביקורתיות</button>
+        <div class="expand-content">
+          <div class="card">
+            <p style="margin:0;font-size:18px;line-height:1.7;">
+            הסרת סימני פיסוק גורפת מוותרת גם על מידע שיכול היה לעזור — למשל <code class="inline">!!!</code> הוא סיגנל חזק מאוד לזיהוי spam בפועל, אך כאן הוא נעלם לגמרי מהניתוח.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5: stemming -->
+  <section class="slide">
+    <div class="eyebrow">עיבוד מקדים — שלב 2</div>
+    <h1><span class="core">stemming()</span> — צמצום לשורש המילה</h1>
+    <h2 class="sub">מילים שונות דקדוקית עם אותה משמעות בסיסית → אותה מילה</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">def stemming(text):
+    from nltk.stem import PorterStemmer
+
+    stemmer = PorterStemmer()
+    return ''.join([stemmer.stem(word) for word in text])</code></pre>
+        <div class="card">
+          <h3>מה זה PorterStemmer</h3>
+          <ul>
+            <li>אלגוריתם כללים לחיתוך סיומות ("running" → "run", "studies" → "studi")</li>
+            <li>אין לו פרמטרים חובה — נוצר עם <code class="inline">PorterStemmer()</code> ריק, ומפעילים <code class="inline">.stem(word)</code> על כל מילה</li>
+            <li>מקטין את אוצר המילים הכולל, ולכן מפשט את המודל</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="example-box">
+          <span class="ex-label">דוגמה חיה</span>
+          <div style="direction:ltr;text-align:left;font-size:18px;">
+            <div><code class="inline">stemmer.stem("running")</code> → <code class="inline">"run"</code></div>
+            <div style="margin-top:4px;"><code class="inline">stemmer.stem("studies")</code> → <code class="inline">"studi"</code></div>
+            <div style="margin-top:4px;color:var(--text-dim);">(שימו לב — התוצאה לא תמיד מילה אמיתית! "studi" זו לא מילה באנגלית, וזה תקין — המטרה היא עקביות, לא נכונות לשונית)</div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--danger);">
+          <h3 style="color:var(--danger);">⚠️ באג עדין שכדאי לשים לב אליו</h3>
+          <p style="margin:0;font-size:18px;line-height:1.7;">
+          <code class="inline">''.join([...])</code> מדביק את המילים <b>ללא רווח מפריד</b> ביניהן! התוצאה בפועל היא מחרוזת דבוקה כמו <code class="inline" style="direction:ltr;display:inline-block;">"freemoneyclicktoday"</code> ולא <code class="inline" style="direction:ltr;display:inline-block;">"free money click today"</code>.
+          כנראה נועד <code class="inline">' '.join(...)</code> (עם רווח). דוגמה טובה לכך שקוד שרץ בלי שגיאה לא בהכרח עושה את מה שהתכוונו.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6: STOP quiz on stemming -->
+  <section class="slide stop">
+    <div class="eyebrow">תחנת עצירה</div>
+    <h1>בדיקת הבנה</h1>
+    <div class="content">
+      <div class="col" style="max-width:660px;margin:0 auto;justify-content:center;">
+        <span class="stop-tag">עצרו כאן</span>
+        <div class="card">
+          <h3>למה בכלל עושים Stemming לפני שממירים את הטקסט לווקטור?</h3>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">כדי להוסיף עוד מידע למודל ולהגדיל את אוצר המילים</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,true)">כדי לאחד גרסאות דקדוקיות שונות של אותה מילה לצורה אחת, ולצמצם את אוצר המילים</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">כדי לתקן שגיאות כתיב במייל</button>
+          <div class="quiz-feedback">
+            💡 נכון! בלי Stemming, המילים "run", "running", "runs" היו נספרות כשלוש מילים שונות לגמרי בווקטור — מה שמפזר את המידע וגם מגדיל מיותר את מספר המימדים. עם Stemming, שלושתן הופכות לאיבר אחד משותף.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7: CountVectorizer -->
+  <section class="slide">
+    <div class="eyebrow">עיבוד מקדים — שלב 3 (המרכזי ביותר)</div>
+    <h1><span class="core">CountVectorizer</span> — מטקסט לווקטור מספרים</h1>
+    <h2 class="sub">Bag-of-Words: מודל שסופר כמה פעמים כל מילה מופיעה בכל שורה</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">from sklearn.feature_extraction.text import CountVectorizer
+
+vectorizer = CountVectorizer()
+message_bow = vectorizer.fit_transform(df['text'])</code></pre>
+        <div class="card">
+          <h3>מה קורה כאן</h3>
+          <ul>
+            <li>ה-vectorizer עובר על <b>כל</b> העמודה <code class="inline">text</code> ובונה "מילון" של כל מילה ייחודית שמופיעה בכלל הנתונים</li>
+            <li>לכל מילה במילון מוקצית "עמודה" קבועה בווקטור</li>
+            <li>עבור כל שורה, נספר כמה פעמים כל מילה מהמילון מופיעה בה</li>
+          </ul>
+        </div>
+        <div class="example-box">
+          <span class="ex-label">דוגמה שהוצגה בתרגיל המקורי</span>
+          <div style="font-size:18px;direction:ltr;text-align:left;">
+            <div>אוצר מילים: <code class="inline">["הלך", "ישב", "ראה", "אתמול", "לאט"]</code></div>
+            <div style="margin-top:6px;">שורה: <code class="inline">"הלך אתמול לאט לאט"</code></div>
+            <div style="margin-top:6px;">וקטור: <code class="inline">[1, 0, 0, 1, 2]</code></div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <table class="param-table">
+          <tr><th>מתודה</th><th>פרמטר</th><th>מתי משתמשים</th></tr>
+          <tr><td class="pname">fit_transform(data)</td><td>data — קורפוס הטקסטים</td><td><b class="good">רק באימון</b>: לומד את אוצר המילים <i>וגם</i> ממיר לווקטורים</td></tr>
+          <tr><td class="pname">transform(data)</td><td>data — טקסט חדש</td><td><b class="pred" style="color:var(--accent-3);">בחיזוי</b>: משתמש באוצר מילים <i>קיים</i>, לא לומד חדש</td></tr>
+        </table>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ למה ההבדל בין fit_transform ל-transform קריטי?</button>
+        <div class="expand-content">
+          <div class="card" style="border-color:var(--accent-3);">
+            <p style="margin:0;font-size:18px;line-height:1.7;">
+            <code class="inline">fit_transform</code> בונה אוצר מילים <b>חדש</b> מהטקסט שהוזן לו. אם נריץ אותו שוב על מייל בודד וחדש, ניצור אוצר מילים אחר לגמרי, שלא תואם את מה שהמודל אומן עליו — הווקטור לא יתאים בממדים למודל. לכן על מייל חדש חייבים <code class="inline">transform</code> בלבד, עם ה-vectorizer <b>שכבר קיים</b> משלב האימון.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8: Train/Test split -->
+  <section class="slide">
+    <div class="eyebrow">שלב אימון — 1</div>
+    <h1><span class="train">train_test_split</span> — חלוקת הנתונים</h1>
+    <h2 class="sub">שומרים חלק מהנתונים "בצד" כדי לבדוק את המודל אחרי שהוא כבר מוכן</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    message_bow, df['spam'], test_size=0.20
+)</code></pre>
+        <div class="card">
+          <h3>מדוע חייבים לחלק?</h3>
+          <ul>
+            <li>אם נבדוק את המודל על אותם נתונים שעליהם אומן — הוא "יזכור" אותם ולא נדע האם הוא באמת מכליל לנתונים חדשים</li>
+            <li><code class="inline">X_train</code> / <code class="inline">y_train</code> — לאימון בלבד</li>
+            <li><code class="inline">X_test</code> / <code class="inline">y_test</code> — נשמרים "עיוורים" למודל, לבדיקה בלבד</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <table class="param-table">
+          <tr><th>פרמטר</th><th>ערך בקוד</th><th>משמעות</th></tr>
+          <tr><td class="pname">message_bow</td><td>ה-X</td><td>הווקטורים המספריים (הפיצ'רים) שהתקבלו מ-CountVectorizer</td></tr>
+          <tr><td class="pname">df['spam']</td><td>ה-y</td><td>התיוג האמיתי — 1 אם spam, 0 אם לא</td></tr>
+          <tr><td class="pname">test_size</td><td>0.20</td><td>20% מהנתונים ילכו לבדיקה, 80% לאימון</td></tr>
+        </table>
+        <div class="example-box">
+          <span class="ex-label">בהמשך לדוגמה שלנו</span>
+          <p style="margin:0;font-size:18px;">מתוך ~5600 מיילים בקובץ, כ-4480 ישמשו לאימון (80%) וכ-1120 יישמרו לבדיקה (20%) — בדיוק כמו שרואים בדוח שהתקבל: <code class="inline">support 1146</code> בקטגוריות יחד.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9: MultinomialNB fit -->
+  <section class="slide">
+    <div class="eyebrow">שלב אימון — 2 (הלב של האימון)</div>
+    <h1><span class="train">MultinomialNB</span> — האלגוריתם הלומד</h1>
+    <h2 class="sub">מה בדיוק קורה כש-nb.fit() רץ?</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">from sklearn.naive_bayes import MultinomialNB
+
+nb = MultinomialNB()
+nb.fit(X_train, y_train)</code></pre>
+        <div class="card">
+          <h3>מה .fit() באמת עושה "מבפנים"</h3>
+          <ul>
+            <li>עבור <b>כל מילה</b> באוצר המילים, המודל סופר: כמה פעמים היא הופיעה במיילי spam לעומת מיילים רגילים</li>
+            <li>מזה מחושבת הסתברות: <code class="inline">P(מילה | spam)</code> לעומת <code class="inline">P(מילה | not spam)</code></li>
+            <li>נלמד גם ה-<b>Prior</b> — ההסתברות הכללית שמייל אקראי הוא spam, לפי היחס בנתוני האימון</li>
+          </ul>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ למה "Naive" (תמים)?</button>
+        <div class="expand-content">
+          <div class="card">
+            <p style="margin:0;font-size:18px;line-height:1.7;">
+            האלגוריתם מניח שכל המילים <b>בלתי-תלויות סטטיסטית</b> זו בזו — מתעלם לגמרי מסדר המילים והקשר. זו הנחה שגויה בלשנית ("not free" ≠ "free"), אך בפועל עובדת מספיק טוב למשימת spam-detection, וזולה מאוד חישובית.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="example-box" style="flex:1;">
+          <span class="ex-label">איך זה בא לידי ביטוי על המשפט שלנו</span>
+          <p style="font-size:18px;">המודל למד (משורות אימון קודמות) ש:</p>
+          <div style="direction:ltr;text-align:left;font-size:18px;">
+            <div><code class="inline">P("free" | spam)</code> גבוהה יחסית</div>
+            <div style="margin-top:4px;"><code class="inline">P("money" | spam)</code> גבוהה יחסית</div>
+            <div style="margin-top:4px;"><code class="inline">P("today" | spam)</code> נמוכה יחסית (נפוצה גם במיילים רגילים)</div>
+          </div>
+          <p style="font-size:18px;margin-top:10px;">משפט בייס מכפיל את ההסתברויות של כל המילים בשורה יחד, ומשווה: איזו קטגוריה (spam / not spam) יצאה עם הסתברות גבוהה יותר?</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10: Evaluation -->
+  <section class="slide">
+    <div class="eyebrow">שלב אימון — 3 (הערכה, לא חיזוי אמיתי)</div>
+    <h1>בדיקת <span class="train">איכות המודל</span></h1>
+    <h2 class="sub">מריצים על X_test — נתונים שהמודל מעולם לא ראה באימון</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">y_pred = nb.predict(X_test)
+
+from sklearn.metrics import classification_report
+print(classification_report(y_test, y_pred))
+
+from sklearn.model_selection import KFold, cross_val_score
+kfold = KFold(n_splits=5, shuffle=True)
+print("Accuracy using Cross Validation is :",
+      np.mean(cross_val_score(nb, message_bow, df_spam,
+                               cv=kfold, scoring="accuracy")) * 100, "%")</code></pre>
+      </div>
+      <div class="col">
+        <table class="param-table">
+          <tr><th>פונקציה / פרמטר</th><th>משמעות</th></tr>
+          <tr><td class="pname">nb.predict(X_test)</td><td>מפעיל את המודל המאומן על נתוני הבדיקה, מחזיר תחזית 0/1 לכל שורה</td></tr>
+          <tr><td class="pname">classification_report</td><td>מציג precision, recall, f1-score לכל קטגוריה בנפרד</td></tr>
+          <tr><td class="pname">n_splits=5</td><td>ב-KFold — מחלקים את הנתונים ל-5 חלקים, ובודקים 5 פעמים עם חלוקה שונה בכל פעם</td></tr>
+          <tr><td class="pname">scoring="accuracy"</td><td>הקריטריון להערכה — אחוז התשובות הנכונות</td></tr>
+        </table>
+        <div class="card" style="border-color:var(--accent-2);">
+          <h3 style="color:var(--accent-2);">⚠️ נקודה לגישה סקפטית</h3>
+          <p style="margin:0;font-size:18px;line-height:1.7;">
+          דיוק (Accuracy) של 99% מרשים, אך הנתונים לא מאוזנים (כ-3:1 בין not-spam ל-spam). לכן חשוב להסתכל גם על recall בקטגוריית ה-spam בנפרד — לוודא שהמודל לא רק "מנחש תמיד not-spam" ומצליח כי הרוב הגדול באמת לא spam.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11: STOP — practice/discussion -->
+  <section class="slide stop">
+    <div class="eyebrow">תחנת עצירה</div>
+    <h1>עכשיו אתם: חשבו והסבירו</h1>
+    <div class="content">
+      <div class="col" style="max-width:700px;margin:0 auto;justify-content:center;">
+        <span class="stop-tag">עצרו כאן</span>
+        <div class="card">
+          <h3>שאלה לדיון בזוגות (2 דקות)</h3>
+          <p style="font-size:18px;line-height:1.8;margin:0 0 10px 0;">
+          קיבלנו מייל חדש לגמרי, שאף פעם לא היה בקובץ הנתונים. אילו <b>שני</b> שלבים מהמצגת עד כה חייבים לרוץ עליו לפני שהמודל בכלל יכול לתת תשובה — ומה ההבדל הקריטי בשלב השלישי (הווקטוריזציה) לעומת מה שראינו באימון?
+          </p>
+          <p style="font-size:18px;color:var(--text-dim);margin:0;">(רמז: חשבו על ההבדל בין <code class="inline">fit_transform</code> ל-<code class="inline">transform</code> ששאלנו עליו קודם)</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12: Prediction path on new email -->
+  <section class="slide">
+    <div class="eyebrow">שלב החיזוי — על מייל חדש</div>
+    <h1>עכשיו זה <span class="pred">אמיתי</span>: מייל חדש שלא ראינו</h1>
+    <h2 class="sub">אותה צנרת עיבוד, אבל עם transform בלבד — לא fit_transform</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python"># מייל חדש שהגיע עכשיו
+new_email = "Free money now!!! Click here today"
+
+# שלב 1+2: אותו עיבוד מקדים בדיוק כמו באימון
+clean_text = process_text(new_email)
+stemmed_text = stemming(clean_text)
+
+# שלב 3: transform בלבד! משתמשים באוצר המילים הקיים
+# (ולא fit_transform, שהיה בונה אוצר מילים חדש)
+new_vector = vectorizer.transform([stemmed_text])
+
+# שלב 4: שואלים את המודל המאומן
+prediction = nb.predict(new_vector)
+print("spam" if prediction[0] == 1 else "not spam")</code></pre>
+      </div>
+      <div class="col">
+        <div class="card" style="border-color:var(--danger);">
+          <h3 style="color:var(--danger);">למה אי אפשר סתם fit_transform מחדש?</h3>
+          <ul>
+            <li><code class="inline">fit_transform</code> על מייל בודד ייצור אוצר מילים חדש לגמרי, שגודלו תלוי רק במילים של המייל הזה</li>
+            <li>הווקטור שיתקבל לא יתאים בממדים למודל שאומן על אוצר המילים המלא</li>
+            <li>מילים חדשות שלא היו בנתוני האימון — <b class="bad">"נעלמות"</b> מהווקטור; אין להן עמודה במודל</li>
+          </ul>
+        </div>
+        <div class="example-box">
+          <span class="ex-label">חזרה לדוגמה המלווה</span>
+          <p style="font-size:18px;margin:0;">
+          "Free money now!!! Click here today" עובר עיבוד לאותה צורה שראינו בשקף 3 — ואז <code class="inline">vectorizer.transform</code> (עם ה-vectorizer שכבר "מכיר" מילים כמו free ו-money מנתוני האימון) יוצר וקטור בגודל הנכון, שה-<code class="inline">nb.predict</code> יודע לקרוא.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13: COMPARISON TABLE -->
+  <section class="slide">
+    <div class="eyebrow">סיכום ביניים</div>
+    <h1>אימון מול חיזוי — טבלת השוואה</h1>
+    <h2 class="sub">אותם שלבי עיבוד, אך שימוש שונה לגמרי בפונקציות המפתח</h2>
+    <div class="content" style="flex-direction:column;">
+      <div class="table-wrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>קריטריון</th>
+              <th class="tr">🎓 שלב האימון</th>
+              <th class="pr">🔮 שלב החיזוי</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="pname" style="color:var(--text-dim);">מתי קורה</td><td>פעם אחת, על כל הדאטהסט</td><td>בכל פעם שמגיע מייל חדש</td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">כמות נתונים</td><td>אלפי מיילים מתויגים</td><td>מייל בודד, לא מתויג</td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">process_text + stemming</td><td>רץ על כל השורות</td><td>רץ על המייל הבודד — <b>אותה פונקציה בדיוק</b></td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">CountVectorizer</td><td><code class="inline">fit_transform</code> — בונה אוצר מילים חדש</td><td><code class="inline">transform</code> בלבד — משתמש באוצר קיים</td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">MultinomialNB</td><td><code class="inline">nb.fit(X_train, y_train)</code> — לומד הסתברויות</td><td><code class="inline">nb.predict(new_vector)</code> — משתמש במה שכבר נלמד</td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">מטרה</td><td>לבנות ולהעריך את המודל (train/test split, classification_report)</td><td>לקבל תשובה אחת: spam / not spam</td></tr>
+            <tr><td class="pname" style="color:var(--text-dim);">מה נשמר בסוף</td><td>המודל (<code class="inline">pickle.dump(nb,...)</code>) וה-vectorizer</td><td>תוצאה בודדת — התחזית</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14: SUMMARY -->
+  <section class="slide">
+    <div class="eyebrow">סיכום</div>
+    <h1>המסלול המלא — מקצה לקצה</h1>
+    <h2 class="sub">מה שקרה בפועל, ברצף אחד</h2>
+    <div class="content">
+      <div class="col">
+        <div class="pipeline" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <div class="pnode core" style="width:100%;"><div class="t">1. process_text — הסרת פיסוק + stopwords</div></div>
+          <div class="pnode core" style="width:100%;"><div class="t">2. stemming — צמצום לשורש המילה</div></div>
+          <div class="pnode train" style="width:100%;"><div class="t">3א. [אימון] vectorizer.fit_transform — בניית אוצר מילים</div></div>
+          <div class="pnode pred" style="width:100%;"><div class="t">3ב. [חיזוי] vectorizer.transform — שימוש באוצר קיים</div></div>
+          <div class="pnode train" style="width:100%;"><div class="t">4א. [אימון] nb.fit — לימוד הסתברויות לכל מילה</div></div>
+          <div class="pnode pred" style="width:100%;"><div class="t">4ב. [חיזוי] nb.predict — קבלת תשובה על מייל חדש</div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h3>שלוש נקודות מפתח לזכור</h3>
+          <ul>
+            <li>עיבוד הטקסט חייב להיות <b>זהה לחלוטין</b> בין אימון לחיזוי — אחרת המודל "מדבר שפה אחרת"</li>
+            <li>ה-vectorizer נלמד <b>פעם אחת בלבד</b> באימון (<code class="inline">fit</code>), ומשמש שוב ושוב בחיזוי (<code class="inline">transform</code>) — לעולם לא ההפך</li>
+            <li>Naive Bayes "תמים" — מתעלם מסדר מילים והקשר, אך יעיל מספיק למשימה הזו</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:var(--accent-2);">
+          <h3 style="color:var(--accent-2);">לחשיבה נוספת</h3>
+          <p style="margin:0;font-size:18px;line-height:1.7;">האם אפשר לקחת קובץ מיילים חדש לגמרי ולהריץ עליו רק <code class="inline">predict</code> בלי לאמן מחדש? מה חייב להישאר זהה, ומה עלול להשתבש אם המילים במייל החדש שונות לגמרי מאוצר המילים המקורי?</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="nav">
+  <button class="nav-btn" id="prevBtn" onclick="goPrev()">→ הקודם</button>
+  <div id="progress">
+    <div id="dots"></div>
+    <span id="counter">1 / 14</span>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="goNext()">הבא ←</button>
+</div>
+
+<script>
+// הדגשת תחביר קלה ועצמאית (ללא תלות ב-CDN חיצוני)
+function highlightPython(code){
+  const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = escaped.split('\n').map(line => {
+    const commentMatch = line.match(/(#.*)$/);
+    let codePart = commentMatch ? line.slice(0, commentMatch.index) : line;
+    let commentPart = commentMatch ? commentMatch[1] : '';
+    codePart = codePart.replace(/('([^'\\]|\\.)*'|"([^"\\]|\\.)*")/g, m => `<span class="tok-str">${m}</span>`);
+    codePart = codePart.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>');
+    codePart = codePart.replace(/\b(from|import|def|class|return|if|else|elif|for|while|as|in|True|False|None|print)\b/g, '<span class="tok-kw">$1</span>');
+    codePart = codePart.replace(/\b(CountVectorizer|MultinomialNB|PorterStemmer|KFold|classification_report|train_test_split|cross_val_score)\b/g, '<span class="tok-cls">$1</span>');
+    if(commentPart){ codePart += `<span class="tok-com">${commentPart}</span>`; }
+    return codePart;
+  });
+  return lines.join('\n');
+}
+
+function highlightAllCode(){
+  document.querySelectorAll('pre code').forEach(el => {
+    if(!el.dataset.highlighted){
+      el.innerHTML = highlightPython(el.textContent);
+      el.dataset.highlighted = 'true';
+    }
+  });
+}
+
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+const total = slides.length;
+
+const dotsContainer = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.onclick = () => goTo(i);
+  dotsContainer.appendChild(d);
+});
+
+function render(){
+  slides.forEach((s, i) => s.classList.toggle('active', i === current));
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  document.getElementById('counter').textContent = (current+1) + ' / ' + total;
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === total - 1;
+  highlightAllCode();
+}
+
+function goNext(){ if(current < total - 1){ current++; render(); } }
+function goPrev(){ if(current > 0){ current--; render(); } }
+function goTo(i){ current = i; render(); }
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowLeft'){ goNext(); }
+  else if(e.key === 'ArrowRight'){ goPrev(); }
+  else if(e.key === ' '){ e.preventDefault(); goNext(); }
+});
+
+function toggleExpand(btn){
+  const content = btn.nextElementSibling;
+  content.classList.toggle('open');
+  const isOpen = content.classList.contains('open');
+  if(!btn.dataset.label){ btn.dataset.label = btn.textContent; }
+  btn.textContent = isOpen ? '▴ הסתר' : btn.dataset.label;
+  if(isOpen){ highlightAllCode(); }
+}
+
+function answerQuiz(btn, isCorrect){
+  const opts = btn.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.disabled = true);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    opts.forEach(o => { if(o.getAttribute('onclick').includes('true')) o.classList.add('correct'); });
+  }
+  btn.parentElement.querySelector('.quiz-feedback').classList.add('show');
+}
+
+render();
+</script>
+
+</body>
+</html>

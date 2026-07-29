@@ -55,10 +55,10 @@
   .content{flex:1;display:flex;gap:22px;overflow:hidden;}
   .col{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:auto;}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
-  .card h3{margin:0 0 8px 0;font-size:18px;color:var(--accent);letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
+  .card h3{margin:0 0 8px 0;font-size:13.5px;color:var(--accent);letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
   .card h3::before{content:"▸";color:var(--accent-2);}
-  ul{margin:0;padding-right:18px;font-size:18px;line-height:1.7;color:var(--text);}
-  li{margin-bottom:3px;}
+  ul{margin:0;padding-right:18px;font-size:13.5px;line-height:1.7;color:var(--text);}
+  li{margin-bottom:3px;font-size:18px;}
   li b{color:#fff;}
   .bad{color:var(--danger);}
   .good{color:var(--good);}
@@ -478,6 +478,130 @@ nb.fit(X_train, y_train)</code></pre>
     </div>
   </section>
 
+  <!-- 9b: Vectorization deep-dive -->
+  <section class="slide">
+    <div class="eyebrow">מבט לעומק — Vectorization</div>
+    <h1>מה קורה <span class="core">בפועל</span> בתוך fit_transform</h1>
+    <h2 class="sub">שני שלבים נפרדים שמתחבאים בקריאה אחת</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python"># fit_transform = fit + transform, בקריאה אחת
+vectorizer = CountVectorizer()
+
+# שלב 1: fit — בניית אוצר המילים
+vectorizer.fit(df['text'])
+print(vectorizer.vocabulary_)
+# {'free': 1523, 'money': 2891, 'click': 743, ...}
+
+# שלב 2: transform — בניית המטריצה
+message_bow = vectorizer.transform(df['text'])
+print(message_bow.shape)
+# (5729, 4800)  -->  (מספר מיילים, גודל אוצר המילים)</code></pre>
+        <div class="card">
+          <h3>מה קורה בכל שלב</h3>
+          <ul>
+            <li><b>fit</b> — עובר על <b>כל</b> הקורפוס, מפצל למילים (ברירת מחדל: רק רצפי 2+ תווים), הופך לאותיות קטנות, ואוסף כל מילה ייחודית לאינדקס עמודה קבוע ב-<code class="inline">vocabulary_</code></li>
+            <li><b>transform</b> — לכל מייל, סופר כמה פעמים כל מילה מהמילון מופיעה בו, ובונה שורה במטריצה</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="border-color:var(--accent-3);">
+          <h3 style="color:var(--accent-3);">Sparse Matrix — לא מטריצה "רגילה"</h3>
+          <p style="margin:0 0 8px 0;font-size:18px;line-height:1.7;">
+          רוב הערכים במטריצה הם 0 — כל מייל מכיל רק חלק זעיר מכלל אוצר המילים (4,800 עמודות, אבל מייל ממוצע מכיל אולי 15 מילים ייחודיות). לכן <code class="inline">CountVectorizer</code> מחזיר <code class="inline">scipy.sparse.csr_matrix</code>, ששומרת רק את הערכים השונים מ-0 — חוסך זיכרון עצום.
+          </p>
+          <pre style="max-height:none;"><code class="language-python">print(type(message_bow))
+# <class 'scipy.sparse.csr_matrix'>
+print(message_bow.toarray()[0])
+# [0 0 1 0 0 0 2 0 0 ... 0]  ברובו אפסים</code></pre>
+        </div>
+        <div class="example-box">
+          <span class="ex-label">חזרה לדוגמה המלווה</span>
+          <p style="margin:0;font-size:18px;">המשפט "free money click today" (אחרי עיבוד) מקבל וקטור באורך 4,800 — כאשר רק 4 עמודות שוות ל-1 (אחת לכל מילה שנמצאה), וכל השאר 0.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9c: Parameter counting -->
+  <section class="slide">
+    <div class="eyebrow">מבט לעומק — מה המודל שומר בזיכרון</div>
+    <h1>כמה <span class="train">פרמטרים</span> נלמדים בפועל?</h1>
+    <h2 class="sub">חשוב להבחין בין גודל מטריצת הקלט לבין כמות הפרמטרים הנלמדים במודל</h2>
+    <div class="content">
+      <div class="col">
+        <pre><code class="language-python">nb.fit(X_train, y_train)
+
+print(nb.class_log_prior_.shape)
+# (n_classes,)          -->  (2,)
+
+print(nb.feature_log_prob_.shape)
+# (n_classes, n_features) -->  (2, 4800)  לדוגמה</code></pre>
+        <table class="param-table">
+          <tr><th>תכונה</th><th>צורה</th><th>מייצגת</th></tr>
+          <tr><td class="pname">class_log_prior_</td><td>(n_classes,)</td><td>log-Prior לכל קטגוריה — נלמד מהיחס spam/not-spam בנתוני האימון</td></tr>
+          <tr><td class="pname">feature_log_prob_</td><td>(n_classes, n_features)</td><td>לכל מילה ולכל קטגוריה — log-הסתברות שהמילה תופיע בהינתן הקטגוריה</td></tr>
+        </table>
+        <div class="card">
+          <h3>הנוסחה הכוללת</h3>
+          <p style="margin:0;font-size:13.5px;direction:ltr;text-align:left;">n_classes × (n_features + 1)</p>
+          <p style="margin:8px 0 0 0;font-size:18px;">עם n_classes=2 ו-n_features=5000: <code class="inline">2 × (5000+1) = 10,002</code> פרמטרים</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="border-color:var(--accent-2);">
+          <h3 style="color:var(--accent-2);">⚠️ נקודה קריטית: לא תלוי בכמות המיילים!</h3>
+          <ul>
+            <li>גודל <code class="inline">X_train.shape</code> = <code class="inline">(n_samples, n_features)</code> — תלוי גם במספר המיילים וגם באוצר המילים</li>
+            <li>מספר הפרמטרים הנלמדים = <code class="inline">n_classes × (n_features+1)</code> — תלוי <b>רק</b> באוצר המילים, לא במספר המיילים!</li>
+            <li>1,000 מיילים או 100,000 מיילים — <b class="good">אותה כמות פרמטרים</b> בדיוק, כל עוד אוצר המילים זהה. מה שמשתפר עם יותר דוגמאות הוא הדיוק הסטטיסטי של כל פרמטר, לא כמותם</li>
+          </ul>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(this)">▾ מהו alpha, ולמה הוא לא "פרמטר נלמד"?</button>
+        <div class="expand-content">
+          <div class="card">
+            <p style="margin:0 0 8px 0;font-size:18px;line-height:1.7;">
+            <code class="inline">MultinomialNB(alpha=1.0)</code> — זהו <b>hyperparameter</b> (נקבע מראש, לא נלמד), הידוע כ-Laplace smoothing. בלעדיו, מילה שמעולם לא הופיעה בקטגוריה מסוימת באימון תקבל הסתברות 0 — וכפל ב-0 "יהרוג" את כל החישוב עבור מייל עתידי שמכיל אותה. alpha מוסיף ספירה מדומה קטנה לכל מילה, כדי שאף הסתברות לא תהיה אפס מוחלט.
+            </p>
+            <pre style="max-height:none;"><code class="language-python">print("גודל אוצר המילים:", len(vectorizer.vocabulary_))
+print("סה״כ פרמטרים:",
+      nb.feature_log_prob_.size + nb.class_log_prior_.size)</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9d: STOP quiz on vectorization + parameters -->
+  <section class="slide stop">
+    <div class="eyebrow">תחנת עצירה</div>
+    <h1>בדיקת הבנה</h1>
+    <div class="content">
+      <div class="col" style="max-width:680px;margin:0 auto;justify-content:center;">
+        <span class="stop-tag">עצרו כאן</span>
+        <div class="card">
+          <h3>שאלה 1: אם נגדיל את מספר המיילים באימון פי 10 (בלי לשנות את אוצר המילים), מה יקרה למספר הפרמטרים ב-feature_log_prob_?</h3>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">יגדל פי 10, כי יש יותר נתונים לעבד</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,true)">יישאר זהה — הוא תלוי רק בגודל אוצר המילים ומספר הקטגוריות</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">יגדל, אבל לא באופן ליניארי</button>
+          <div class="quiz-feedback">
+            💡 נכון! מספר הפרמטרים = n_classes × (n_features+1) — לא מופיע בנוסחה מספר המיילים בכלל. יותר מיילים משפרים את <b>הדיוק הסטטיסטי</b> של כל הסתברות, אבל לא את כמות הפרמטרים עצמם.
+          </div>
+        </div>
+        <div class="card">
+          <h3>שאלה 2: למה CountVectorizer מחזיר sparse matrix ולא מערך NumPy רגיל?</h3>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">כי sparse matrix מהירה יותר לאימון המודל</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,true)">כי רוב הערכים הם 0, ושמירתם כמערך מלא הייתה מבזבזת זיכרון עצום</button>
+          <button class="quiz-opt" onclick="answerQuiz(this,false)">כי scikit-learn לא תומך במערכי NumPy</button>
+          <div class="quiz-feedback">
+            💡 נכון! כל מייל מכיל רק חלק זעיר מאוצר המילים הכולל (למשל 15 מילים מתוך 4,800). אחסון מטריצה מלאה עם כמעט כולה אפסים היה מבזבז זיכרון פי אלפים — sparse matrix שומרת רק את הערכים שאינם אפס.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- 10: Evaluation -->
   <section class="slide">
     <div class="eyebrow">שלב אימון — 3 (הערכה, לא חיזוי אמיתי)</div>
@@ -641,7 +765,7 @@ print("spam" if prediction[0] == 1 else "not spam")</code></pre>
   <button class="nav-btn" id="prevBtn" onclick="goPrev()">→ הקודם</button>
   <div id="progress">
     <div id="dots"></div>
-    <span id="counter">1 / 14</span>
+    <span id="counter">1 / 17</span>
   </div>
   <button class="nav-btn" id="nextBtn" onclick="goNext()">הבא ←</button>
 </div>

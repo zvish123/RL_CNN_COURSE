@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מגמת הסייבר | תיכון בליך</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #090d16;
+    --bg-panel: #121a2b;
+    --line: #253147;
+    --cyan: #26e0ff;
+    --amber: #ffb020;
+    --text: #e9eef6;
+    --text-dim: #8b97ad;
+    --success: #2ee6a6;
+    --danger: #ff5b7a;
+    --font-display: 'Heebo', sans-serif;
+    --font-body: 'Heebo', sans-serif;
+    --font-mono: 'Fira Code', monospace;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  html,body{
+    height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    overflow: hidden;
+  }
+
+  body{
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(38,224,255,0.06), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,176,32,0.05), transparent 45%);
+  }
+
+  /* faint grid backdrop, subject-appropriate (circuit / network feel) */
+  body::before{
+    content:"";
+    position: fixed; inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+    opacity: 0.10;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .deck{
+    position: relative;
+    width:100vw; height:100vh;
+    z-index:1;
+  }
+
+  .slide{
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    padding: 6vh 8vw 10vh 8vw;
+    opacity:0;
+    transition: opacity .35s ease;
+  }
+  .slide.active{ display:flex; opacity:1; }
+
+  .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 0.02em;
+    margin-bottom: 14px;
+  }
+
+  h1{
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.2rem, 5vw, 4rem);
+    line-height: 1.15;
+    text-align:center;
+  }
+
+  h2{
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.8rem, 3.6vw, 3rem);
+    margin-bottom: 0.8em;
+    text-align:center;
+  }
+
+  p.lead{
+    font-size: clamp(1.05rem, 1.6vw, 1.4rem);
+    color: var(--text-dim);
+    max-width: 720px;
+    text-align:center;
+    line-height:1.7;
+    margin: 0 auto 1.4em auto;
+  }
+
+  .slide-body{
+    width:100%;
+    max-width: 1100px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  /* ---------- Slide 1 : Title ---------- */
+  #slide-1 .badge{
+    font-family: var(--font-mono);
+    color: var(--amber);
+    font-size: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 18px;
+    margin-bottom: 28px;
+    background: rgba(255,176,32,0.06);
+  }
+  #slide-1 h1{
+    background: linear-gradient(90deg, var(--cyan), #8fe9ff 40%, var(--text) 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #slide-1 .sub{
+    font-family: var(--font-mono);
+    font-size: clamp(3rem, 1.6vw, 1.3rem);
+    color: var(--text-dim);
+    margin-top: 18px;
+    min-height: 1.6em;
+  }
+  #slide-1 .sub .cursor{
+    display:inline-block;
+    width: 0.55em; height:1em;
+    background: var(--cyan);
+    margin-right: 4px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  #slide-1 .tagline{
+    margin-top: 46px;
+    font-size: clamp(1.1rem, 1.8vw, 1.6rem);
+    color: var(--text);
+  }
+  #slide-1 .tagline b{ color: var(--cyan); }
+  #slide-1 .start-hint{
+    position:absolute; bottom: 8vh;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  /* ---------- generic cards ---------- */
+  .card-row{
+    display:flex;
+    gap: 22px;
+    width:100%;
+    justify-content:center;
+    flex-wrap: wrap;
+  }
+  .build-hint{
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    text-align:center;
+  }
+  .build-item{
+    opacity: 0;
+    transform: translateY(16px);
+    pointer-events: none;
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .build-item.revealed{
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .card{
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 24px;
+    flex: 1 1 260px;
+    max-width: 320px;
+    transition: border-color .25s ease, transform .25s ease;
+  }
+  .card:hover{ border-color: var(--cyan); transform: translateY(-3px); }
+  .card .icon{ font-size: 1.8rem; margin-bottom: 10px; display:block; }
+  .card h3{
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+    color: var(--cyan);
+  }
+  .card p{ color: var(--text-dim); font-size: 0.95rem; line-height:1.6; }
+
+  /* ---------- expand button ---------- */
+  .expand-btn{
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--amber);
+    background: transparent;
+    border: 1px solid var(--amber);
+    border-radius: 8px;
+    padding: 6px 14px;
+    margin-top: 12px;
+    cursor:pointer;
+    transition: background .2s ease, color .2s ease;
+  }
+  .expand-btn:hover{ background: var(--amber); color: #1a1200; }
+  .expand-panel{
+    display:grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .35s ease;
+    width:100%;
+  }
+  .expand-panel.open{ grid-template-rows: 1fr; }
+  .expand-panel > div{ overflow:hidden; }
+  .expand-inner{
+    padding-top: 10px;
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  /* ---------- diagram slide 2 : venn ---------- */
+  .venn-wrap{
+    width: 100%;
+    max-width: 460px;
+    margin: 6px 0 4px 0;
+  }
+  .venn-svg{ width:100%; height:auto; overflow: visible; }
+  .venn-circle{
+    fill: rgba(38,224,255,0.07);
+    stroke: var(--cyan);
+    stroke-width: 1.4;
+    mix-blend-mode: screen;
+  }
+  .venn-glow{
+    animation: vennPulse 3.5s ease-in-out infinite;
+  }
+  @keyframes vennPulse{
+    0%, 100%{ opacity: 0.55; }
+    50%{ opacity: 0.9; }
+  }
+  .venn-label{
+    font-family: var(--font-mono);
+    font-size: 19px;
+    fill: var(--text);
+    text-anchor: middle;
+  }
+  .venn-center{
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 24px;
+    fill: var(--amber);
+    text-anchor: middle;
+  }
+
+  /* ---------- slide 3 list ---------- */
+  .example-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width:100%;
+    max-width: 760px;
+  }
+  .example-grid .ex{
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 10px;
+    text-align:center;
+    font-size: 0.95rem;
+  }
+  .example-grid .ex .icon{ font-size: 1.6rem; display:block; margin-bottom:6px; }
+
+  /* ---------- cipher slide ---------- */
+  .cipher-box{
+    font-family: var(--font-mono);
+    font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+    letter-spacing: 0.12em;
+    color: var(--amber);
+    background: #05070c;
+    border: 1px solid var(--amber);
+    border-radius: 10px;
+    padding: 18px 26px;
+    margin: 18px 0;
+    text-align:center;
+  }
+  .cipher-row{
+    display:flex; gap:10px; align-items:center; justify-content:center;
+    flex-wrap:wrap; margin-top: 10px;
+  }
+  .cipher-row input{
+    font-family: var(--font-mono);
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1rem;
+    width: 260px;
+    text-align:center;
+  }
+  .cipher-row input:focus{ outline:none; border-color: var(--cyan); }
+  .btn{
+    font-family: var(--font-mono);
+    background: var(--cyan);
+    color: #041018;
+    border:none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor:pointer;
+    transition: filter .2s ease;
+  }
+  .btn:hover{ filter: brightness(1.15); }
+  .btn.ghost{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .feedback{
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    min-height: 1.4em;
+  }
+  .feedback.ok{ color: var(--success); }
+  .feedback.no{ color: var(--danger); }
+
+  /* ---------- timeline slide 6 ---------- */
+  .timeline{
+    display:flex;
+    gap: 18px;
+    width:100%;
+    justify-content:center;
+    align-items:stretch;
+  }
+  .tl-year{
+    flex:1; max-width: 320px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--cyan);
+    border-radius: 10px;
+    padding: 18px 18px;
+  }
+  .tl-year h4{
+    font-family: var(--font-mono);
+    color: var(--cyan);
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+  }
+  .tl-year ul{ list-style:none; }
+  .tl-year li{
+    font-size: 0.92rem;
+    color: var(--text-dim);
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .tl-year li:last-child{ border-bottom:none; }
+
+  /* ---------- lab slide ---------- */
+  .lab-illustration{
+    width: 100%;
+    max-width: 640px;
+    height: 220px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background:
+      repeating-linear-gradient(90deg, rgba(38,224,255,0.05) 0 2px, transparent 2px 60px),
+      linear-gradient(160deg, #0d1524, #182238 60%, #0d1524);
+    position: relative;
+    overflow:hidden;
+    margin-bottom: 10px;
+  }
+  .lab-illustration .screen{
+    position:absolute;
+    width: 70px; height: 46px;
+    background: #06101a;
+    border: 2px solid var(--cyan);
+    border-radius: 4px;
+    box-shadow: 0 0 14px rgba(38,224,255,0.35);
+  }
+  .lab-illustration .screen::after{
+    content:"";
+    position:absolute; inset: 6px;
+    background: repeating-linear-gradient(0deg, var(--cyan) 0 2px, transparent 2px 5px);
+    opacity: 0.5;
+  }
+  .quote-strip{
+    font-family: var(--font-mono);
+    color: var(--amber);
+    font-size: 2rem;
+    text-align:center;
+  }
+
+  /* ---------- skills slide ---------- */
+  .skills-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width:100%;
+    max-width: 940px;
+  }
+  .skills-grid .card{ max-width:none; }
+
+  /* ---------- quiz self-check ---------- */
+  .quiz-list{
+    width:100%; max-width: 620px;
+    display:flex; flex-direction:column; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .quiz-item{
+    display:flex; align-items:center; gap: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor:pointer;
+    transition: border-color .2s ease;
+  }
+  .quiz-item:hover{ border-color: var(--cyan); }
+  .quiz-item input{ width: 18px; height:18px; accent-color: var(--cyan); }
+  .quiz-item span{ font-size: 0.98rem; }
+  .quiz-result{
+    font-family: var(--font-mono);
+    text-align:center;
+    color: var(--cyan);
+    font-size: 1.05rem;
+    min-height: 1.6em;
+  }
+
+  /* ---------- paths slide ---------- */
+  .paths{
+    display:flex; gap: 20px; width:100%; justify-content:center; flex-wrap:wrap;
+  }
+
+  /* ---------- students say ---------- */
+  .quote-grid{
+    display:flex; gap: 20px; width:100%; justify-content:center; flex-wrap:wrap;
+  }
+  .quote-card{
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-right: 3px solid var(--amber);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 300px;
+    font-size: 0.98rem;
+    line-height:1.6;
+    font-style: normal;
+  }
+
+  /* ---------- join requirements slide ---------- */
+  .two-col{
+    display:flex; gap: 34px; width:100%; max-width: 820px; flex-wrap:wrap; justify-content:center;
+  }
+  .two-col .col{ flex: 1 1 320px; }
+  .two-col h4{
+    font-family: var(--font-mono);
+    color: var(--cyan);
+    margin-bottom: 12px;
+    font-size: 1rem;
+  }
+  .two-col ol, .two-col ul{ padding-inline-start: 20px; }
+  .two-col li{ color: var(--text-dim); padding: 5px 0; font-size: 0.95rem; }
+
+  /* ---------- closing slide ---------- */
+  #slide-14 .contact{
+    font-family: var(--font-mono);
+    text-align:center;
+    color: var(--text-dim);
+    margin-top: 26px;
+    line-height: 2;
+  }
+  #slide-14 .contact b{ color: var(--cyan); }
+
+  /* ---------- navigation chrome ---------- */
+  .nav-btn{
+    position: fixed;
+    bottom: 4vh;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    color: var(--cyan);
+    font-size: 1.3rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    z-index: 20;
+    transition: border-color .2s ease, transform .15s ease;
+  }
+  .nav-btn:hover{ border-color: var(--cyan); transform: scale(1.06); }
+  .nav-btn:focus-visible{ outline: 2px solid var(--cyan); outline-offset:2px; }
+  #btn-next{ left: 5vw; }   /* RTL: next = left side */
+  #btn-prev{ right: 5vw; }  /* RTL: prev = right side */
+
+  .counter{
+    position: fixed; bottom: 4vh; left:50%; transform: translateX(-50%);
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    z-index: 20;
+  }
+
+  .dots{
+    position: fixed; top: 3vh; left:50%; transform: translateX(-50%);
+    display:flex; gap: 7px; z-index: 20;
+  }
+  .dot{
+    width: 8px; height:8px; border-radius:50%;
+    background: var(--line);
+    cursor:pointer;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .dot.active{ background: var(--cyan); transform: scale(1.3); }
+
+  @media (max-width: 820px){
+    .example-grid{ grid-template-columns: repeat(2,1fr); }
+    .skills-grid{ grid-template-columns: repeat(2,1fr); }
+    .timeline{ flex-direction:column; align-items:center; }
+    .tl-year{ max-width: 420px; width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dots" id="dots"></div>
+<div class="deck" id="deck">
+
+  <!-- Slide 1: Title -->
+  <div class="slide active" id="slide-1">
+    <div class="badge">מגמת מדעי המחשב | הסייבר</div>
+    <h1>כותבים את הקוד שמריץ את העולם</h1>
+    <div class="sub"><span id="typed"></span><span class="cursor"></span></div>
+    <p class="tagline">מגמת הסייבר בתיכון <b>בליך</b> — היכרות קצרה, לפני שאתם בוחרים.</p>
+    <br>
+    <img src="https://lh3.googleusercontent.com/d/1ieQ7KSzsPG0SAOUj1wCVhbnMEBW99slJ" alt="תמונה של כותבים את העולם" width="500">
+    <div class="start-hint">לחצו על החץ למטה, או על מקש הרווח, כדי להתחיל ›</div>
+  </div>
+
+  <!-- Slide 2: What is cyber -->
+  <div class="slide" id="slide-2">
+    <div class="eyebrow">שקף 2</div>
+    <h2>אז מה זה בכלל "סייבר"?</h2>
+    <p class="lead">המרחב הקיברנטי (Cyber Space) הוא המקום שבו נפגשים שלושה עולמות לתוך מרחב אחד.</p>
+    <div class="venn-wrap">
+      <svg viewBox="0 0 520 420" class="venn-svg" role="img" aria-label="דיאגרמת מפגש בין מחשבים, תקשורת וטכנולוגיה במרחב הסייבר">
+        <defs>
+          <radialGradient id="glowCyan" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#26e0ff" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#26e0ff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle class="venn-glow" cx="260" cy="210" r="150" fill="url(#glowCyan)"/>
+        <circle class="venn-circle" cx="200" cy="150" r="130"/>
+        <circle class="venn-circle" cx="320" cy="150" r="130"/>
+        <circle class="venn-circle" cx="260" cy="260" r="130"/>
+        <text class="venn-label" x="140" y="90">מחשבים</text>
+        <text class="venn-label" x="330" y="90">תקשורת</text>
+        <text class="venn-label" x="260" y="360">טכנולוגיה</text>
+        <text class="venn-center" x="260" y="205">מרחב</text>
+        <text class="venn-center" x="260" y="232">הסייבר</text>
+      </svg>
+    </div>
+    <div class="slide-body" style="align-items:center;">
+      <button class="expand-btn" data-target="p2">עוד פרטים ›</button>
+      <div class="expand-panel" id="p2"><div><div class="expand-inner" style="max-width:560px; text-align:center; margin:0 auto;">
+        המרחב הזה הוא הרבה יותר מאתרי אינטרנט. זה כל מקום שבו מחשב "מדבר" עם מחשב אחר — הרכב שלכם, השעון החכם, הבית החכם, ואפילו המקרר. וכל דבר שמדבר — אפשר גם לתקוף, וגם להגן עליו.
+      </div></div></div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Everyday relevance -->
+  <div class="slide" id="slide-3">
+    <div class="eyebrow">שקף 3</div>
+    <h2>תחשבו רגע על היום שלכם</h2>
+    <p class="lead">כל אחד מהדברים האלה הוא קוד שמישהו כתב. אולי אתם, בעוד שלוש שנים?</p>
+    <div class="example-grid">
+      <div class="ex"><span class="icon">💬</span>הודעות ורשתות חברתיות</div>
+      <div class="ex"><span class="icon">🏦</span>אפליקציית הבנק</div>
+      <div class="ex"><span class="icon">🚗</span>הרכב האוטונומי</div>
+      <div class="ex"><span class="icon">🎮</span>המשחקים האונליין</div>
+      <div class="ex"><span class="icon">⌚</span>השעון והבית החכם</div>
+      <div class="ex"><span class="icon">🛰️</span>מערכות ניווט ולוויין</div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Interactive Caesar cipher -->
+  <div class="slide" id="slide-4">
+    <div class="eyebrow">שקף 4 · תחנת עצירה</div>
+    <h2>רגע לפני שממשיכים — בואו תנסו בעצמכם</h2>
+   <img src="https://lh3.googleusercontent.com/d/1FJaS6hDKUMI-Ac7lF1r3D1ga41NfCm1r" alt="תמונה של כותבים את העולם" width="200">
+    <p class="lead">ההודעה הבאה הוצפנה ב"צופן קיסר" — כל אות באנגלית הוזזה 3 מקומות קדימה באלף-בית.</p>
+    <div class="cipher-box" id="cipherText"></div>
+    <div class="cipher-row">
+      <input type="text" id="cipherGuess" placeholder="כתבו כאן את הפענוח שלכם...">
+      <button class="btn" id="checkBtn">בדקו אותי</button>
+      <button class="btn ghost" id="revealBtn">הראו לי את הפתרון</button>
+    </div>
+    <div class="feedback" id="cipherFeedback"></div>
+  </div>
+
+  <!-- Slide 5: Why now -->
+  <div class="slide build-slide" id="slide-5">
+    <div class="eyebrow">שקף 5</div>
+    <h2>למה דווקא עכשיו?</h2>
+    <p class="build-hint">(לחצו על "הבא" / רווח כדי לחשוף כל ריבוע בנפרד)</p>
+    <div class="card-row">
+      <div class="card build-item">
+        <span class="icon">🌐</span>
+        <h3>עולם שרץ על קוד</h3>
+        <p>כמעט כל מוצר, שירות ותשתית היום מתבססים על תוכנה — וכל תוכנה צריכה גם מי שיודע להגן עליה.</p>
+      </div>
+      <div class="card build-item">
+        <span class="icon">📈</span>
+        <h3>תחום שרק גדל</h3>
+        <p>נושא מתקדם וחם, שנמצא בחזית ההתפתחויות הטכנולוגיות בעולם ההיי-טק.</p>
+      </div>
+      <div class="card build-item">
+        <span class="icon">🎯</span>
+        <h3>ביקוש אמיתי לכישורים</h3>
+        <p>מהצבא ועד ההיי-טק, מחפשים בדיוק את מי שיודע להבין מערכות לעומק.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 6: 3-year roadmap -->
+  <div class="slide build-slide" id="slide-6">
+    <div class="eyebrow">שקף 6</div>
+    <h2>מה לומדים? מסלול בן 3 שנים</h2>
+    <p class="build-hint">(לחצו על "הבא" / רווח כדי לחשוף כל שנה בנפרד)</p>
+    <div class="timeline">
+      <div class="tl-year build-item">
+        <h4>שנה א׳ · כיתה י׳</h4>
+        <ul>
+          <li>קריפטוגרפיה / פייתון</li>
+          <li>יסודות המחשב — #C</li>
+        </ul>
+      </div>
+      <div class="tl-year build-item">
+        <h4>שנה ב׳ · כיתה י״א</h4>
+        <ul>
+          <li>רשתות תקשורת</li>
+          <li>מבנה נתונים ו-OOP</li>
+          <li>2 בחינות בגרות</li>
+        </ul>
+      </div>
+      <div class="tl-year build-item">
+        <h4>שנה ג׳ · כיתה י״ב</h4>
+        <ul>
+          <li>מערכות הפעלה</li>
+          <li>פרויקט סיום — 5 יח"ל</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 7: Learning methods -->
+  <div class="slide" id="slide-7">
+    <div class="eyebrow">שקף 7</div>
+    <h2>איך באמת לומדים במגמה?</h2>
+    <div class="card-row">
+      <div class="card">
+        <span class="icon">🎭</span>
+        <h3>למידה חווייתית</h3>
+        <p>משחקי בריחה לסיכום חומר, הפעלות אינטראקטיביות, וחיבור בין תחומים.</p>
+        <button class="expand-btn" data-target="p7a">עוד ›</button>
+        <div class="expand-panel" id="p7a"><div><div class="expand-inner">לא מקשיבים רק להרצאות — פותרים, בונים ומגלים.</div></div></div>
+      </div>
+      <div class="card">
+        <span class="icon">🔄</span>
+        <h3>כיתה הפוכה</h3>
+        <p>סרטוני הדרכה בבית, עיסוק מעמיק בכיתה, ולמידה עצמית בקצב אישי.</p>
+        <button class="expand-btn" data-target="p7b">עוד ›</button>
+        <div class="expand-panel" id="p7b"><div><div class="expand-inner">הזמן בכיתה מוקדש לתרגול ולפתרון בעיות אמיתיות, לא להעתקה מהלוח.</div></div></div>
+      </div>
+      <div class="card">
+        <span class="icon">👥</span>
+        <h3>עבודה בקבוצות</h3>
+        <p>פרויקטים משותפים, עבודת צוות אמיתית, הכנה לעולם ההיי-טק.</p>
+        <button class="expand-btn" data-target="p7c">עוד ›</button>
+        <div class="expand-panel" id="p7c"><div><div class="expand-inner">בדיוק כמו בעולם האמיתי — לא לומדים לבד, בונים יחד.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 8: The lab -->
+  <div class="slide" id="slide-8">
+    <div class="eyebrow">שקף 8</div>
+    <img src="https://lh3.googleusercontent.com/d/1nACtwaPbydVnI7vfPFX16nsB9OAcP5YU" alt="תמונה של כותבים את העולם" width="500">
+    <h2>המעבדה החדשה בבליך</h2>
+<!--    <div class="lab-illustration">-->
+<!--&lt;!&ndash;      <div class="screen" style="top:40px; right:60px;"></div>&ndash;&gt;-->
+<!--&lt;!&ndash;      <div class="screen" style="top:90px; right:200px;"></div>&ndash;&gt;-->
+<!--&lt;!&ndash;      <div class="screen" style="top:60px; right:340px;"></div>&ndash;&gt;-->
+<!--&lt;!&ndash;      <div class="screen" style="top:120px; right:460px;"></div>&ndash;&gt;-->
+<!--    </div>-->
+    <p class="quote-strip">"המעבדה החדשה מדהימה — מרגיש כמו חברת הייטק!"</p>
+  </div>
+
+  <!-- Slide 9: Life skills -->
+  <div class="slide" id="slide-9">
+    <div class="eyebrow">שקף 9</div>
+    <h2>לא רק קוד — מיומנויות לחיים</h2>
+    <div class="skills-grid">
+      <div class="card"><span class="icon">💡</span><h3>חשיבה יצירתית</h3><p>פתרון בעיות מורכבות ויישום ידע בהקשרים חדשים.</p></div>
+      <div class="card"><span class="icon">🤝</span><h3>עבודת צוות</h3><p>פרויקטים משותפים, Code Review, מצגות והצגות.</p></div>
+      <div class="card"><span class="icon">📚</span><h3>למידה עצמית</h3><p>חיפוש מידע עצמאי והכוונה עצמית לאורך הדרך.</p></div>
+      <div class="card"><span class="icon">⏱️</span><h3>ניהול זמן</h3><p>עמידה בלוחות זמנים, אבני דרך, ואחריות אישית.</p></div>
+    </div>
+  </div>
+
+  <!-- Slide 10: Self-check quiz -->
+  <div class="slide" id="slide-10">
+    <div class="eyebrow">שקף 10 · תחנת עצירה</div>
+    <h2>האם המגמה מתאימה לכם?</h2>
+    <p class="lead">סמנו את מה שמתאר אתכם — ותראו מה יוצא.</p>
+    <div class="quiz-list" id="quizList">
+      <label class="quiz-item"><input type="checkbox"><span>אני אוהב/ת חשיבה לוגית ופתרון חידות</span></label>
+      <label class="quiz-item"><input type="checkbox"><span>מוכנים להשקיע — גם בבית, לא רק בכיתה</span></label>
+      <label class="quiz-item"><input type="checkbox"><span>סקרן/ית לדעת איך דברים עובדים "מבפנים"</span></label>
+      <label class="quiz-item"><input type="checkbox"><span>לא מפחד/ת לטעות בדרך לפתרון</span></label>
+    </div>
+    <div class="quiz-result" id="quizResult">סמנו לפחות משפט אחד כדי לראות תוצאה</div>
+  </div>
+
+  <!-- Slide 11: After graduation -->
+  <div class="slide" id="slide-11">
+    <div class="eyebrow">שקף 11</div>
+    <h2>מה מחכה לכם אחרי הבגרות?</h2>
+    <div class="paths">
+      <div class="card">
+        <span class="icon">🎖️</span>
+        <h3>בצבא</h3>
+        <p>מיונים מיוחדים לתפקידי סייבר, יחידות מובחרות בתוכנה, וניסיון מעשי אמיתי.</p>
+      </div>
+      <div class="card">
+        <span class="icon">💼</span>
+        <h3>בהיי-טק</h3>
+        <p>כישורי תכנות ברמה גבוהה, הבנת מערכות מורכבות, וניסיון בפרויקטים אמיתיים.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🎓</span>
+        <h3>באקדמיה</h3>
+        <p>בסיס מצוין למדעי המחשב, ויתרון משמעותי בתחילת הלימודים.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 12: What students say -->
+  <div class="slide" id="slide-12">
+    <div class="eyebrow">שקף 12</div>
+    <h2>מה אומרים התלמידים?</h2>
+    <div class="quote-grid">
+      <div class="quote-card">"הפעילויות קיבלו משובים חיוביים — זה ממש עוזר להבין!"</div>
+      <div class="quote-card">"המעבדה החדשה מדהימה — מרגיש כמו חברת הייטק!"</div>
+      <div class="quote-card">"המורה תמיד זמין ומעודד אותנו לנסות ולא לפחד לטעות."</div>
+    </div>
+  </div>
+
+  <!-- Slide 13: Requirements & process -->
+  <div class="slide" id="slide-13">
+    <div class="eyebrow">שקף 13</div>
+    <h2>איך מצטרפים? תהליך הקבלה</h2>
+    <div class="two-col">
+      <div class="col">
+        <h4>דרישות קבלה</h4>
+        <ul>
+          <li>ציון 90 ומעלה במתמטיקה ב-5 יח"ל</li>
+          <li>מבחן חשיבה לוגית</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>שלבי התהליך</h4>
+        <ol>
+          <li>הגשת מועמדות</li>
+          <li>בדיקת ציוני מתמטיקה</li>
+          <li>הגעה למבחן חשיבה לוגית</li>
+          <li>קבלת החלטה</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 14: Closing / contact -->
+  <div class="slide" id="slide-14">
+    <div class="eyebrow">שקף 14</div>
+    <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem);">השאלה היא לא אם אתם מוכנים לעולם הזה.<br>השאלה היא אם אתם רוצים לעצב אותו.</h1>
+    <img src="https://lh3.googleusercontent.com/d/1XdaKNnZRAkRNuikInFUUrX5XSvc9hBXF" alt="תמונה של כותבים את העולם" width="500">
+    <div class="contact">
+      רכז המגמה: <b>צבי שירן</b> · 052-5522640<br>
+      אתר בית הספר: <b>blich.co.il</b><br>
+      בואו לבקר אותנו במעבדה
+    </div>
+  </div>
+
+</div>
+
+<button class="nav-btn" id="btn-next" aria-label="הבא">›</button>
+<button class="nav-btn" id="btn-prev" aria-label="הקודם">‹</button>
+<div class="counter" id="counter"></div>
+
+<script>
+(function(){
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let current = 0;
+
+  const dotsWrap = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i, 'all'));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+  const counter = document.getElementById('counter');
+
+  function render(){
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    dots.forEach((d, i) => d.classList.toggle('active', i === current));
+    counter.textContent = 'שקף ' + (current + 1) + ' מתוך ' + total;
+  }
+
+  function resetBuildItems(slide){
+    slide.querySelectorAll('.build-item').forEach(it => it.classList.remove('revealed'));
+  }
+  function revealAllBuildItems(slide){
+    slide.querySelectorAll('.build-item').forEach(it => it.classList.add('revealed'));
+  }
+
+  // reveal: 'all' shows every build-item immediately (used when jumping to a
+  // slide directly, e.g. dots or going backward). 'reset' hides them again
+  // so the teacher can click through them one at a time (used when arriving
+  // by stepping forward). Omit to leave the slide's build state untouched.
+  function goTo(i, reveal){
+    current = Math.max(0, Math.min(total - 1, i));
+    const slide = slides[current];
+    if (slide.classList.contains('build-slide')){
+      if (reveal === 'all') revealAllBuildItems(slide);
+      else if (reveal === 'reset') resetBuildItems(slide);
+    }
+    render();
+  }
+
+  function next(){
+    const slide = slides[current];
+    if (slide.classList.contains('build-slide')){
+      const hidden = slide.querySelector('.build-item:not(.revealed)');
+      if (hidden){ hidden.classList.add('revealed'); return; }
+    }
+    goTo(current + 1, 'reset');
+  }
+  function prev(){ goTo(current - 1, 'all'); }
+
+  document.getElementById('btn-next').addEventListener('click', next);
+  document.getElementById('btn-prev').addEventListener('click', prev);
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA'){ return; }
+    if (e.key === 'ArrowLeft'){ e.preventDefault(); next(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); prev(); }
+    else if (e.key === ' '){ e.preventDefault(); next(); }
+  });
+
+  render();
+
+  // ---- Slide 1: typing effect ----
+  const typedEl = document.getElementById('typed');
+  const typedText = 'לכתוב, לפרוץ (באתיקה), ולהגן.';
+  let ti = 0;
+  function typeStep(){
+    if (ti <= typedText.length){
+      typedEl.textContent = typedText.slice(0, ti);
+      ti++;
+      setTimeout(typeStep, 55);
+    }
+  }
+  typeStep();
+
+  // ---- expand buttons ----
+  document.querySelectorAll('.expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.dataset.target);
+      const opening = !panel.classList.contains('open');
+      panel.classList.toggle('open');
+      btn.textContent = opening ? 'הסתירו ⌃' : 'עוד פרטים ›';
+    });
+  });
+
+  // ---- Caesar cipher challenge ----
+  function caesarEncode(str, shift){
+    return str.replace(/[a-zA-Z]/g, (ch) => {
+      const base = ch === ch.toUpperCase() ? 65 : 97;
+      return String.fromCharCode((ch.charCodeAt(0) - base + shift) % 26 + base);
+    });
+  }
+  const plain = 'WELCOME HACKERS';
+  const shift = 3;
+  const cipherText = caesarEncode(plain, shift);
+  document.getElementById('cipherText').textContent = cipherText;
+
+  const guessInput = document.getElementById('cipherGuess');
+  const cipherFeedback = document.getElementById('cipherFeedback');
+  function checkGuess(){
+    const guess = guessInput.value.trim().toUpperCase();
+    if (guess === plain){
+      cipherFeedback.textContent = '✓ נכון! פיצחתם את הצופן.';
+      cipherFeedback.className = 'feedback ok';
+    } else {
+      cipherFeedback.textContent = 'עדיין לא — נסו להזיז כל אות 3 מקומות אחורה באלף-בית.';
+      cipherFeedback.className = 'feedback no';
+    }
+  }
+  document.getElementById('checkBtn').addEventListener('click', checkGuess);
+  guessInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); checkGuess(); }
+  });
+  document.getElementById('revealBtn').addEventListener('click', () => {
+    cipherFeedback.textContent = 'הפתרון: "' + plain + '" — כל אות בקוד המקורי הוזזה 3 מקומות קדימה כדי להצפין אותה.';
+    cipherFeedback.className = 'feedback ok';
+  });
+
+  // ---- self-check quiz ----
+  const quizChecks = document.querySelectorAll('#quizList input[type=checkbox]');
+  const quizResult = document.getElementById('quizResult');
+  const messages = [
+    'סמנו לפחות משפט אחד כדי לראות תוצאה',
+    'התחלה טובה — אולי כדאי לבוא לשמוע ולהתנסות בעצמכם ביום הפתוח.',
+    'נשמע שיש כאן חיבור אמיתי למגמה — שווה לבדוק לעומק.',
+    'זה מתחיל להישמע מאוד מתאים לכם!',
+    'זה נשמע כאילו כתבתם את הפרופיל של תלמיד/ת המגמה בעצמכם 🎯'
+  ];
+  function updateQuiz(){
+    let count = 0;
+    quizChecks.forEach(c => { if (c.checked) count++; });
+    quizResult.textContent = messages[count];
+  }
+  quizChecks.forEach(c => c.addEventListener('change', updateQuiz));
+
+})();
+</script>
+</body>
+</html>

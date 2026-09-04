@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דף בדיקה למורה | מבדק WebSec - אתר הפיצה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0d10; --bg-panel:#15171c; --bg-panel2:#1c1f26; --border:#2a2e38;
+    --gold:#d4a017; --gold-bright:#f2c744; --text:#e8e6e1; --text-dim:#9aa0ab;
+    --red:#e0554f; --green:#4caf6d; --orange:#e0a13a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:radial-gradient(circle at 20% 0%, #1a1c22 0%, var(--bg) 55%); color:var(--text); font-family:'Heebo',sans-serif; line-height:1.6; padding:0 0 60px;}
+  header.top{background:linear-gradient(135deg,#141519,#1c1e24); border-bottom:2px solid var(--gold); padding:30px 6vw 24px;}
+  header.top h1{margin:0 0 8px; font-size:clamp(20px,3vw,28px); font-weight:800; color:var(--gold-bright);}
+  header.top .sub{color:var(--text-dim); font-size:14px;}
+
+  main{max-width:1000px; margin:0 auto; padding:0 6vw;}
+
+  .panel{background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:22px 24px; margin:26px 0;}
+  .panel h2{margin-top:0; color:var(--gold-bright); font-size:17px;}
+
+  .drop{
+    border:2px dashed var(--border); border-radius:12px; padding:34px 20px; text-align:center; cursor:pointer;
+    transition:border-color .15s, background .15s; background:var(--bg-panel2);
+  }
+  .drop:hover, .drop.drag{border-color:var(--gold); background:#20220f;}
+  .drop input{display:none;}
+  .drop .icon{font-size:34px; margin-bottom:8px;}
+  .drop .txt{color:var(--text-dim); font-size:14px;}
+  .drop .txt b{color:var(--gold);}
+
+  #fileStatus{margin-top:14px; font-size:13px; color:var(--text-dim);}
+  #fileStatus .err{color:var(--red); display:block; margin-top:4px;}
+
+  table{width:100%; border-collapse:collapse; margin-top:6px; font-size:14px;}
+  th, td{padding:10px 12px; text-align:right; border-bottom:1px solid var(--border);}
+  th{color:var(--gold); font-size:13px; background:var(--bg-panel2); position:sticky; top:0;}
+  tr:hover td{background:#1a1c22;}
+  .score-cell{font-weight:800;}
+  .score-high{color:var(--green);}
+  .score-mid{color:var(--orange);}
+  .score-low{color:var(--red);}
+  .dup-flag{font-size:11px; color:var(--orange); border:1px solid var(--orange); border-radius:999px; padding:1px 8px; margin-right:6px;}
+  .warn-flag{font-size:11px; color:var(--red); border:1px solid var(--red); border-radius:999px; padding:1px 8px; margin-right:6px;}
+
+  .stats-bar{display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px;}
+  .stat-chip{background:var(--bg-panel2); border:1px solid var(--border); border-radius:10px; padding:12px 18px; text-align:center; min-width:120px;}
+  .stat-chip .num{font-size:22px; font-weight:800; color:var(--gold-bright);}
+  .stat-chip .lbl{font-size:12px; color:var(--text-dim); margin-top:2px;}
+
+  .actions{display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;}
+  button.btn{
+    background:var(--gold); color:#141414; border:none; font-weight:700; font-size:13.5px;
+    padding:10px 22px; border-radius:999px; cursor:pointer;
+  }
+  button.btn.secondary{background:transparent; color:var(--text-dim); border:1px solid var(--border);}
+  button.btn:hover{filter:brightness(1.08);}
+
+  .empty-state{color:var(--text-dim); font-size:14px; text-align:center; padding:20px;}
+
+  details.qbreak{margin-top:6px;}
+  details.qbreak summary{cursor:pointer; color:var(--gold); font-size:12.5px;}
+  .qgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(46px,1fr)); gap:4px; margin-top:8px;}
+  .qcell{font-size:10.5px; text-align:center; padding:3px 0; border-radius:4px; background:var(--bg-panel2); border:1px solid var(--border);}
+  .qcell.right{border-color:var(--green); color:var(--green);}
+  .qcell.wrong{border-color:var(--red); color:var(--red);}
+  .qcell.blank{border-color:var(--text-dim); color:var(--text-dim);}
+
+  footer{text-align:center; color:var(--text-dim); font-size:12px; margin-top:40px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>🔑 דף בדיקה למורה — מבדק WebSec (אתר הפיצה)</h1>
+  <div class="sub">טעינת קובצי JSON שהתלמידים שלחו, בדיקה אוטומטית מול מפתח התשובות, ואיסוף הציונים של כל הכיתה</div>
+</header>
+
+<main>
+
+  <div class="panel">
+    <h2>1. טענו את קובצי ההגשה</h2>
+    <label class="drop" id="dropZone">
+      <div class="icon">📁</div>
+      <div class="txt">גררו לכאן קובצי JSON, או <b>לחצו לבחירה</b> (ניתן לבחור כמה קבצים יחד)</div>
+      <input type="file" id="fileInput" accept="application/json,.json" multiple>
+    </label>
+    <div id="fileStatus"></div>
+  </div>
+
+  <div class="panel" id="resultsPanel">
+    <h2>2. תוצאות הכיתה</h2>
+    <div id="statsArea"></div>
+    <div id="tableArea"><div class="empty-state">עדיין לא נטענו קבצים.</div></div>
+    <div class="actions" id="actionsArea" style="display:none;">
+      <button class="btn" onclick="exportCSV()">⬇️ ייצוא טבלת ציונים כ-CSV</button>
+      <button class="btn secondary" onclick="clearAll()">🗑️ נקה הכל</button>
+    </div>
+  </div>
+
+</main>
+
+<footer>דף בדיקה — מבדק WebSec | הבדיקה מתבצעת כולה בדפדפן, שום קובץ לא נשלח לשרת חיצוני</footer>
+
+<script>
+// ===== Answer key: must match the student exam file exactly (id -> {correct, points}) =====
+const ANSWER_KEY = {
+  a1:{correct:3, points:4},
+  a2:{correct:1, points:4},
+  a3:{correct:2, points:4},
+  b1:{correct:3, points:4},
+  b2:{correct:1, points:4},
+  b3:{correct:2, points:4},
+  c1:{correct:1, points:4},
+  c2:{correct:3, points:4},
+  c3:{correct:2, points:4},
+  d1:{correct:0, points:4},
+  d2:{correct:1, points:4},
+  d3:{correct:0, points:4},
+  d4:{correct:1, points:4},
+  d5:{correct:2, points:4},
+  d6:{correct:1, points:4},
+  e1:{correct:2, points:4},
+  e2:{correct:2, points:4},
+  e3:{correct:0, points:4},
+  e4:{correct:3, points:4},
+  e5:{correct:3, points:4},
+  f1:{correct:0, points:4},
+  f2:{correct:0, points:4},
+  f3:{correct:3, points:8},
+  f4:{correct:0, points:4},
+};
+const TOTAL_POINTS = Object.values(ANSWER_KEY).reduce((s,q)=>s+q.points,0);
+const EXPECTED_EXAM_ID = "websec-pizza-mc-exam-v1";
+
+let roster = []; // {name, submittedAt, score, pct, perQuestion:{id:{selected,correct,ok}}, examIdMatch, fileName}
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileStatus = document.getElementById('fileStatus');
+
+['dragover','dragenter'].forEach(evt=>{
+  dropZone.addEventListener(evt, e=>{ e.preventDefault(); dropZone.classList.add('drag'); });
+});
+['dragleave','drop'].forEach(evt=>{
+  dropZone.addEventListener(evt, e=>{ e.preventDefault(); dropZone.classList.remove('drag'); });
+});
+dropZone.addEventListener('drop', e=>{
+  const files = e.dataTransfer.files;
+  handleFiles(files);
+});
+fileInput.addEventListener('change', e=>{
+  handleFiles(e.target.files);
+  fileInput.value = '';
+});
+
+function handleFiles(fileList){
+  const files = Array.from(fileList).filter(f => f.name.endsWith('.json') || f.type === 'application/json');
+  if(files.length === 0){
+    fileStatus.innerHTML = '<span class="err">⚠ לא נבחרו קובצי JSON תקינים.</span>';
+    return;
+  }
+  let loaded = 0, errors = [];
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        addSubmission(data, file.name);
+      }catch(err){
+        errors.push(file.name + ': קובץ JSON לא תקין');
+      }
+      loaded++;
+      if(loaded === files.length){
+        renderAll();
+        fileStatus.innerHTML = `נטענו ${files.length} קבצים בהצלחה` + (errors.length ? '<br>' + errors.map(e=>'<span class="err">⚠ '+e+'</span>').join('<br>') : '');
+      }
+    };
+    reader.onerror = ()=>{
+      errors.push(file.name + ': שגיאת קריאה');
+      loaded++;
+      if(loaded === files.length){ renderAll(); fileStatus.innerHTML = errors.map(e=>'<span class="err">⚠ '+e+'</span>').join('<br>'); }
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function addSubmission(data, fileName){
+  if(!data || typeof data !== 'object' || !data.answers){
+    roster.push({ name: (data && data.studentName) || fileName, submittedAt:'-', score:0, pct:0, perQuestion:{}, examIdMatch:false, invalid:true, fileName });
+    return;
+  }
+  const examIdMatch = data.examId === EXPECTED_EXAM_ID;
+  let score = 0;
+  const perQuestion = {};
+  Object.keys(ANSWER_KEY).forEach(qid=>{
+    const key = ANSWER_KEY[qid];
+    const selected = (data.answers[qid] !== undefined) ? data.answers[qid] : null;
+    const ok = selected !== null && parseInt(selected,10) === key.correct;
+    if(ok) score += key.points;
+    perQuestion[qid] = { selected, correct: key.correct, ok, points: key.points };
+  });
+  roster.push({
+    name: data.studentName || '(ללא שם)',
+    submittedAt: data.submittedAt || '-',
+    score,
+    pct: Math.round((score / TOTAL_POINTS) * 1000) / 10,
+    perQuestion,
+    examIdMatch,
+    invalid:false,
+    fileName
+  });
+}
+
+function scoreClass(pct){
+  if(pct >= 80) return 'score-high';
+  if(pct >= 60) return 'score-mid';
+  return 'score-low';
+}
+
+function renderAll(){
+  const statsArea = document.getElementById('statsArea');
+  const tableArea = document.getElementById('tableArea');
+  const actionsArea = document.getElementById('actionsArea');
+
+  if(roster.length === 0){
+    statsArea.innerHTML = '';
+    tableArea.innerHTML = '<div class="empty-state">עדיין לא נטענו קבצים.</div>';
+    actionsArea.style.display = 'none';
+    return;
+  }
+
+  actionsArea.style.display = 'flex';
+
+  const valid = roster.filter(r=>!r.invalid);
+  const avg = valid.length ? (valid.reduce((s,r)=>s+r.score,0)/valid.length) : 0;
+  const max = valid.length ? Math.max(...valid.map(r=>r.score)) : 0;
+  const min = valid.length ? Math.min(...valid.map(r=>r.score)) : 0;
+
+  // duplicate name detection
+  const nameCounts = {};
+  roster.forEach(r=>{ nameCounts[r.name] = (nameCounts[r.name]||0)+1; });
+
+  statsArea.innerHTML = `
+    <div class="stats-bar">
+      <div class="stat-chip"><div class="num">${roster.length}</div><div class="lbl">הגשות</div></div>
+      <div class="stat-chip"><div class="num">${avg.toFixed(1)}</div><div class="lbl">ממוצע (מתוך ${TOTAL_POINTS})</div></div>
+      <div class="stat-chip"><div class="num">${max}</div><div class="lbl">ציון מקסימלי</div></div>
+      <div class="stat-chip"><div class="num">${min}</div><div class="lbl">ציון מינימלי</div></div>
+    </div>
+  `;
+
+  let rows = roster.map((r,idx)=>{
+    if(r.invalid){
+      return `<tr>
+        <td>${escapeHtml(r.name)} <span class="warn-flag">קובץ לא תקין</span></td>
+        <td>-</td><td>-</td>
+        <td class="score-cell score-low">-</td>
+        <td>${escapeHtml(r.fileName)}</td>
+      </tr>`;
+    }
+    const dupFlag = nameCounts[r.name] > 1 ? `<span class="dup-flag">כפילות שם</span>` : '';
+    const examFlag = !r.examIdMatch ? `<span class="warn-flag">מזהה מבדק שונה</span>` : '';
+    const qCells = Object.keys(r.perQuestion).map(qid=>{
+      const q = r.perQuestion[qid];
+      const cls = q.selected === null ? 'blank' : (q.ok ? 'right':'wrong');
+      const label = q.selected === null ? '—' : q.selected;
+      return `<div class="qcell ${cls}" title="${qid}: נבחר ${label}, נכון ${q.correct}">${qid}</div>`;
+    }).join('');
+    return `<tr>
+      <td>${escapeHtml(r.name)} ${dupFlag}${examFlag}</td>
+      <td>${formatDate(r.submittedAt)}</td>
+      <td>${r.pct}%</td>
+      <td class="score-cell ${scoreClass(r.pct)}">${r.score} / ${TOTAL_POINTS}</td>
+      <td>
+        <details class="qbreak">
+          <summary>פירוט שאלות</summary>
+          <div class="qgrid">${qCells}</div>
+        </details>
+      </td>
+    </tr>`;
+  }).join('');
+
+  tableArea.innerHTML = `
+    <div style="overflow-x:auto;">
+    <table>
+      <thead><tr><th>שם תלמיד/ה</th><th>נשלח בתאריך</th><th>אחוז</th><th>ציון</th><th>פירוט</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatDate(iso){
+  if(iso === '-' || !iso) return '-';
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString('he-IL');
+  }catch(e){ return iso; }
+}
+
+function exportCSV(){
+  if(roster.length === 0) return;
+  const header = ['שם תלמיד/ה','נשלח בתאריך','ציון','מתוך','אחוז','קובץ'];
+  const lines = [header.join(',')];
+  roster.forEach(r=>{
+    if(r.invalid){
+      lines.push([csvEsc(r.name),'-','-','-','-',csvEsc(r.fileName)].join(','));
+    } else {
+      lines.push([csvEsc(r.name), csvEsc(formatDate(r.submittedAt)), r.score, TOTAL_POINTS, r.pct+'%', csvEsc(r.fileName)].join(','));
+    }
+  });
+  const csv = '\uFEFF' + lines.join('\n'); // BOM for Hebrew Excel support
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ציוני_מבדק_websec.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function csvEsc(s){
+  s = String(s);
+  if(s.includes(',') || s.includes('"') || s.includes('\n')){
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+  return s;
+}
+
+function clearAll(){
+  if(!confirm('לנקות את כל התוצאות שנטענו?')) return;
+  roster = [];
+  renderAll();
+  fileStatus.innerHTML = '';
+}
+
+renderAll();
+</script>
+
+</body>
+</html>

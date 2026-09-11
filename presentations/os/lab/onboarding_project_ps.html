@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פרויקט: מערכת קליטת עובד חדש | PowerShell</title>
+<style>
+  :root{
+    --bg: #0a0e14;
+    --bg-panel: #121826;
+    --bg-card: #161e2e;
+    --border: #26334d;
+    --neon: #39ff9c;
+    --neon-dim: #1fae6c;
+    --cyan: #4ad9ff;
+    --amber: #ffb454;
+    --red: #ff5c72;
+    --text: #d6e2f0;
+    --text-dim: #8ea0bd;
+    --mono: 'Consolas','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI', Arial, sans-serif; line-height:1.65;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(57,255,156,0.05), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(74,217,255,0.06), transparent 40%);
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:28px 20px 80px;}
+
+  header{
+    background:linear-gradient(135deg, #0d1420, #161f33);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:26px 28px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:repeating-linear-gradient(0deg, rgba(57,255,156,0.035) 0px, rgba(57,255,156,0.035) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+  }
+  .kicker{color:var(--neon); font-family:var(--mono); font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;}
+  h1{margin:0 0 10px; font-size:27px; color:#fff;}
+  .subtitle{color:var(--text-dim); font-size:15px; max-width:680px;}
+
+  .scenario{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px; margin-bottom:22px; font-size:14.5px;
+  }
+  .scenario b{color:#fff;}
+  .scenario .problem{
+    margin-top:10px; padding:10px 14px; background:rgba(255,92,114,0.06);
+    border-right:3px solid var(--red); border-radius:8px; color:#ffd0d6; font-size:14px;
+  }
+  .scenario .goal{
+    margin-top:10px; padding:10px 14px; background:rgba(57,255,156,0.06);
+    border-right:3px solid var(--neon); border-radius:8px; color:#c9ffe0; font-size:14px;
+  }
+
+  .info-box{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:10px;
+    padding:16px 20px; margin-bottom:26px; font-size:14px; color:var(--text-dim);
+  }
+  .info-box b{color:var(--text);}
+  .info-box ul{margin:8px 0 0; padding-inline-start:20px;}
+
+  .toc{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:10px;
+    padding:14px 20px; margin-bottom:26px; font-size:13.5px;
+  }
+  .toc a{color:var(--cyan); text-decoration:none;}
+  .toc a:hover{text-decoration:underline;}
+  .toc-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; margin-top:8px;}
+
+  .part{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:24px;
+    overflow:hidden;
+    scroll-margin-top:16px;
+  }
+  .part-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:16px 22px;
+    background:rgba(57,255,156,0.04);
+    border-bottom:1px solid var(--border);
+  }
+  .part-head-left{display:flex; align-items:center; gap:12px;}
+  .part-letter{
+    width:34px; height:34px; border-radius:8px;
+    background:rgba(57,255,156,0.12); border:1px solid var(--neon-dim);
+    color:var(--neon); font-family:var(--mono); font-weight:bold;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .part-head h2{margin:0; font-size:18px; color:#fff;}
+  .points-badge{
+    font-family:var(--mono); font-size:13px; color:var(--amber);
+    border:1px solid rgba(255,180,84,0.35); background:rgba(255,180,84,0.08);
+    border-radius:20px; padding:3px 14px; white-space:nowrap;
+  }
+  .part-body{padding:20px 22px 24px;}
+
+  .task-block{margin-bottom:18px;}
+  .task-block:last-child{margin-bottom:0;}
+  .task-title{font-size:15px; font-weight:600; color:#fff; margin-bottom:8px;}
+  .task-title .subpoints{color:var(--amber); font-family:var(--mono); font-size:12px; margin-inline-start:8px;}
+
+  code, .code-inline{
+    font-family:var(--mono); background:#0d1420; color:var(--neon);
+    padding:1px 6px; border-radius:4px; font-size:13.5px; direction:ltr; display:inline-block;
+  }
+  pre{
+    font-family:var(--mono); background:#0a0f18; border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; overflow-x:auto; color:#9be8b8;
+    font-size:13.5px; direction:ltr; text-align:left; margin:8px 0;
+  }
+  .screen-mock{
+    font-family:var(--mono); background:#0a0f18; border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; color:#9be8b8; font-size:13px;
+    direction:ltr; text-align:left; margin:10px 0; white-space:pre;
+  }
+  .tree{
+    font-family:var(--mono); background:#0a0f18; border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; color:#cdeeff; font-size:13.5px;
+    direction:ltr; text-align:left; margin:10px 0; white-space:pre;
+  }
+
+  .checklist{margin-top:6px;}
+  .checklist label{
+    display:flex; align-items:flex-start; gap:8px; margin:7px 0; font-size:14px; cursor:pointer;
+  }
+  .checklist input{margin-top:3px; flex-shrink:0;}
+  .checklist label.done span{color:var(--text-dim); text-decoration:line-through;}
+
+  .tip{
+    margin-top:10px;
+    border-right:3px solid var(--cyan);
+    background:rgba(74,217,255,0.05);
+    border-radius:8px;
+    padding:10px 16px;
+  }
+  .tip .tag{font-family:var(--mono); font-size:11px; color:var(--cyan); letter-spacing:1.5px; text-transform:uppercase; display:block; margin-bottom:4px;}
+
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:13.5px;}
+  th, td{border:1px solid var(--border); padding:7px 10px; text-align:right;}
+  th{background:rgba(57,255,156,0.06); color:var(--neon);}
+  tr.total td{font-weight:bold; color:#fff; background:rgba(57,255,156,0.04);}
+
+  .pass-line{
+    margin-top:10px; font-family:var(--mono); font-size:13.5px; color:var(--amber);
+    text-align:center;
+  }
+
+  /* Submission */
+  .submit-section{
+    background:var(--bg-card);
+    border:1px solid var(--neon-dim);
+    box-shadow:0 0 0 1px rgba(57,255,156,0.08), 0 0 30px rgba(57,255,156,0.06);
+    border-radius:14px;
+    padding:22px 24px;
+    margin-top:10px;
+  }
+  .submit-section h2{margin-top:0; font-size:19px; color:#fff;}
+  .disclaimer{
+    background:rgba(255,180,84,0.06); border:1px solid rgba(255,180,84,0.3);
+    border-radius:8px; padding:10px 14px; font-size:13px; color:#e8d3a8; margin-bottom:18px;
+  }
+  .slot{
+    background:#0a0f18; border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px; margin-bottom:12px;
+  }
+  .slot-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .slot-title{font-size:14px; font-weight:600; color:#fff;}
+  .slot-title .req{color:var(--red); font-size:12px; margin-inline-start:6px;}
+  .slot-title .opt{color:var(--text-dim); font-size:12px; margin-inline-start:6px;}
+  .slot-hint{font-size:12.5px; color:var(--text-dim); margin-top:2px;}
+  .slot input[type=file]{
+    margin-top:10px; font-size:13px; color:var(--text-dim); width:100%;
+  }
+  .slot-status{margin-top:8px; font-size:13px; font-family:var(--mono);}
+  .slot-status.ok{color:var(--neon);}
+  .slot-status.bad{color:var(--red);}
+  .slot-status.pending{color:var(--text-dim);}
+
+  input[type=text].rtl-text{
+    width:100%; background:#0a0f18; border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px; margin-top:8px;
+    direction:rtl; text-align:right; font-family:'Segoe UI', Arial, sans-serif;
+  }
+  input[type=text].rtl-text:focus{outline:none; border-color:var(--neon-dim);}
+
+  .btn{
+    background:var(--neon-dim); color:#04160c; border:none; border-radius:8px;
+    padding:11px 26px; font-size:15px; font-weight:700; cursor:pointer; margin-top:14px;
+  }
+  .btn:hover{background:var(--neon);}
+  .btn:disabled{background:#2a3548; color:#5a6b85; cursor:not-allowed;}
+  .btn.secondary{background:transparent; border:1px solid var(--border); color:var(--text-dim); font-weight:600; padding:9px 20px; font-size:13.5px;}
+  .btn.secondary:hover{border-color:var(--cyan); color:var(--cyan);}
+
+  .submit-feedback{
+    margin-top:16px; padding:14px 18px; border-radius:10px; font-size:14px; display:none;
+  }
+  .submit-feedback.show{display:block;}
+  .submit-feedback.ok{background:rgba(57,255,156,0.1); border:1px solid var(--neon-dim); color:#c9ffe0;}
+  .submit-feedback.bad{background:rgba(255,92,114,0.1); border:1px solid var(--red); color:#ffd0d6;}
+
+  .receipt-box{margin-top:14px;}
+
+  footer{text-align:center; color:var(--text-dim); font-size:12.5px; margin-top:40px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">TechStart Solutions // IT Automation Project</div>
+    <h1>⚙️ מערכת קליטת עובד חדש — PowerShell</h1>
+    <div class="subtitle">פרויקט אישי: בניית סקריפט PowerShell שמאוטמט את תהליך קליטת עובדים חדשים בחברה — מקבלת פרמטרים ועד דוח סיכום מלא.</div>
+  </header>
+
+  <div class="scenario">
+    <p><b>הרקע:</b> חברת "TechStart Solutions" היא חברת פיתוח תוכנה עם 50 עובדים. כל חודש מצטרפים 2–3 עובדים חדשים, ואיש ה-IT מבלה כ־3 שעות על הכנת כל מחשב חדש. התהליך כולל יצירת תיקיות עבודה, העתקת קבצי תבנית, בדיקת קישוריות לשרתים, והכנת קבצי הדרכה.</p>
+    <div class="problem"><b>הבעיה:</b> התהליך הידני ארוך, משעמם, וגורם לאיש ה-IT לפספס לפעמים צעדים חשובים.</div>
+    <div class="goal"><b>המשימה שלכם:</b> לכתוב סקריפט PowerShell (<code>Onboarding.ps1</code>) שמקצר את התהליך מ־3 שעות ל־5 דקות — אוטומטית, בלחיצת כפתור.</div>
+  </div>
+
+  <div class="info-box">
+    <b>לפני שמתחילים:</b>
+    <ul>
+      <li>זהו פרויקט מסכם — משלב את כל מה שלמדתם: פרמטרים, משתנים, pipeline, קבצים ותיקיות, משתני סביבה, מבני בקרה, ואובייקטים.</li>
+      <li>עבדו ב-PowerShell ISE או VS Code, לא בקונסולה — תצטרכו לשמור, להריץ ולתקן שוב ושוב.</li>
+      <li>לפני ההרצה הראשונה — הכינו את קבצי הבסיס (ראו "הכנה לעבודה" בתחתית הדף).</li>
+      <li>בתחתית הדף תמצאו את מנגנון ההגשה — קראו את ההנחיות שם, יש בו הבהרה חשובה.</li>
+    </ul>
+  </div>
+
+  <div class="toc">
+    <b>ניווט מהיר:</b>
+    <div class="toc-grid">
+      <a href="#partA">חלק א׳ — פרמטרים ומסך פתיחה (20)</a>
+      <a href="#partB">חלק ב׳ — מבנה תיקיות (25)</a>
+      <a href="#partC">חלק ג׳ — העתקת קבצי תבניות (20)</a>
+      <a href="#partD">חלק ד׳ — בדיקת קישוריות (20)</a>
+      <a href="#partE">חלק ה׳ — קובץ WELCOME (10)</a>
+      <a href="#partF">חלק ו׳ — דוח סיכום (15)</a>
+      <a href="#partG">חלק ז׳ — לוגים בסיסיים (10)</a>
+      <a href="#grading">טבלת ציונים</a>
+      <a href="#prep">הכנה לעבודה</a>
+      <a href="#submit">הגשה</a>
+    </div>
+  </div>
+
+  <!-- ============ PART A ============ -->
+  <div class="part" id="partA">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">א׳</div><h2>פרמטרים ומסך פתיחה</h2></div>
+      <div class="points-badge">20 נקודות</div>
+    </div>
+    <div class="part-body">
+
+      <div class="task-block">
+        <div class="task-title">1. פרמטרים נדרשים <span class="subpoints">(10 נק׳)</span></div>
+        <p>הסקריפט <code>Onboarding.ps1</code> יקבל שני פרמטרים:</p>
+        <pre>.\Onboarding.ps1 "David Cohen" Development</pre>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>הגדר את הפרמטרים באמצעות בלוק <code>param()</code> בראש הסקריפט: <code>$EmployeeName</code> ו-<code>$Department</code></span></label>
+          <label><input type="checkbox"><span>בדוק שהתקבלו באמת שני ערכים — אם אחד מהם חסר או ריק, הצג שגיאה ברורה עם דוגמת שימוש, ועצור את הסקריפט (<code>exit</code>)</span></label>
+          <label><input type="checkbox"><span>שמור את הערכים במשתנים ברורים לשימוש בהמשך הסקריפט</span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>param(
+    [string]$EmployeeName,
+    [string]$Department
+)
+
+if ([string]::IsNullOrWhiteSpace($EmployeeName) -or [string]::IsNullOrWhiteSpace($Department)) {
+    Write-Host "שגיאה: חסרים פרמטרים!" -ForegroundColor Red
+    Write-Host "שימוש: .\Onboarding.ps1 ""שם עובד"" מחלקה"
+    exit
+}</pre>
+        </div>
+      </div>
+
+      <div class="task-block">
+        <div class="task-title">2. מסך פתיחה <span class="subpoints">(10 נק׳)</span></div>
+        <p>בעת הרצת הסקריפט, המסך הראשון שהמשתמש רואה:</p>
+        <div class="screen-mock">====================================================
+TechStart Solutions - Employee Onboarding
+====================================================
+Employee: [שם]
+Department: [מחלקה]
+Date: [תאריך ושעה]
+====================================================
+Starting onboarding process...
+====================================================</div>
+        <p>דרישות:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>השתמש ב-<code>Write-Host</code> ליצירת המסגרת והכותרות</span></label>
+          <label><input type="checkbox"><span>הצג תאריך ושעה נוכחיים באמצעות <code>Get-Date</code> (לא טקסט קבוע)</span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>Write-Host "===================================================="
+Write-Host "TechStart Solutions - Employee Onboarding"
+Write-Host "===================================================="
+Write-Host "Employee: $EmployeeName"
+Write-Host "Department: $Department"
+Write-Host "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+Write-Host "===================================================="</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PART B ============ -->
+  <div class="part" id="partB">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ב׳</div><h2>יצירת מבנה תיקיות</h2></div>
+      <div class="points-badge">25 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">3. בניית מבנה התיקיות</div>
+        <p>צור את המבנה הבא עבור העובד החדש:</p>
+        <div class="tree">.\Work\[שם_עובד]\
+├── Projects\
+│   ├── Current\
+│   └── Archive\
+├── Documents\
+│   ├── Templates\
+│   └── Personal\
+└── Logs\</div>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>צור את כל התיקיות באמצעות <code>New-Item -ItemType Directory</code></span></label>
+          <label><input type="checkbox"><span>בדוק אם תיקייה כבר קיימת <b>לפני</b> שאתה יוצר אותה, עם <code>Test-Path</code></span></label>
+          <label><input type="checkbox"><span>עבור כל תיקייה <b>חדשה</b> — הדפס: <code>"✓ Created: [נתיב]"</code></span></label>
+          <label><input type="checkbox"><span>עבור תיקייה <b>שכבר קיימת</b> — הדפס: <code>"→ Already exists: [נתיב]"</code></span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>$folderPath = ".\Work\$EmployeeName\Projects\Current"
+
+if (-not (Test-Path $folderPath)) {
+    New-Item -Path $folderPath -ItemType Directory -Force | Out-Null
+    Write-Host "✓ Created: $folderPath" -ForegroundColor Green
+} else {
+    Write-Host "→ Already exists: $folderPath" -ForegroundColor Yellow
+}
+
+# חזור על הבלוק הזה (או עטוף בלולאה על רשימת נתיבים) לכל תיקייה במבנה</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PART C ============ -->
+  <div class="part" id="partC">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ג׳</div><h2>העתקת קבצי תבניות</h2></div>
+      <div class="points-badge">20 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">4. העתקת קבצים לפי מחלקה</div>
+        <p>הנחה: בתיקייה <code>.\Company\Templates\</code> יש תת-תיקייה לכל מחלקה: <code>Development</code>, <code>Marketing</code>, <code>Sales</code>, וגם <code>General</code> (קבצים לכולם).</p>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>זהה את המחלקה של העובד (מהפרמטר שקיבלת)</span></label>
+          <label><input type="checkbox"><span>העתק קבצים מ-<code>.\Company\Templates\[מחלקה]\</code> אל <code>.\Work\[שם]\Documents\Templates\</code></span></label>
+          <label><input type="checkbox"><span>העתק גם את תוכן <code>General</code> (רלוונטי לכולם)</span></label>
+          <label><input type="checkbox"><span>הדפס כמה קבצים הועתקו בסה"כ</span></label>
+          <label><input type="checkbox"><span>אם תיקיית המחלקה לא קיימת — הדפס אזהרה, והעתק <b>רק</b> את <code>General</code></span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>$deptPath = ".\Company\Templates\$Department"
+$destPath = ".\Work\$EmployeeName\Documents\Templates"
+
+if (Test-Path $deptPath) {
+    Copy-Item -Path "$deptPath\*" -Destination $destPath -Recurse -Force
+} else {
+    Write-Host "⚠ Warning: no templates found for department '$Department'" -ForegroundColor Yellow
+}
+
+Copy-Item -Path ".\Company\Templates\General\*" -Destination $destPath -Recurse -Force
+
+$copiedCount = (Get-ChildItem -Path $destPath -Recurse -File).Count
+Write-Host "Copied $copiedCount template files"</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PART D ============ -->
+  <div class="part" id="partD">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ד׳</div><h2>בדיקת קישוריות</h2></div>
+      <div class="points-badge">20 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">5. בדיקת חיבור לשרתים</div>
+        <p>קובץ <code>company_servers.txt</code> מכיל:</p>
+        <pre>portal.techstart.local
+files.techstart.local
+mail.techstart.local</pre>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>קרא את הקובץ שורה-שורה</span></label>
+          <label><input type="checkbox"><span>בצע בדיקת חיבור (ping בודד) לכל שרת</span></label>
+          <label><input type="checkbox"><span>הדפס: <code>"✓ [שרת] - Accessible"</code> או <code>"✗ [שרת] - NOT accessible"</code></span></label>
+          <label><input type="checkbox"><span>צור קובץ <code>connectivity_report.txt</code> עם התוצאות</span></label>
+          <label><input type="checkbox"><span>ספור כמה שרתים נגישים בסה"כ</span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ — ב-PowerShell משתמשים ב-Test-Connection ולא בקריאה ל-ping.exe</span>
+<pre>$servers = Get-Content ".\company_servers.txt"
+$results = @()
+$accessibleCount = 0
+
+foreach ($server in $servers) {
+    if (Test-Connection -ComputerName $server -Count 1 -Quiet) {
+        Write-Host "✓ $server - Accessible" -ForegroundColor Green
+        $results += "✓ $server - Accessible"
+        $accessibleCount++
+    } else {
+        Write-Host "✗ $server - NOT accessible" -ForegroundColor Red
+        $results += "✗ $server - NOT accessible"
+    }
+}
+
+$results | Out-File -FilePath ".\connectivity_report.txt"
+Write-Host "Servers accessible: $accessibleCount / $($servers.Count)"</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PART E ============ -->
+  <div class="part" id="partE">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ה׳</div><h2>קובץ ברוכים הבאים</h2></div>
+      <div class="points-badge">10 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">6. יצירת קובץ WELCOME</div>
+        <p>צור את <code>.\Work\[שם]\Desktop\WELCOME.txt</code>:</p>
+        <div class="screen-mock">Welcome to TechStart Solutions!
+================================
+Employee: [שם]
+Department: [מחלקה]
+Start Date: [תאריך]
+
+Your workspace is ready!
+Location: C:\Users\[שם]\Work\
+
+Important Links:
+- Internal Portal: http://portal.techstart.local
+- IT Support: support@techstart.com
+
+First Steps:
+1. Change your temporary password
+2. Complete security training
+3. Join your department's Slack channel
+
+Need help? Contact IT at extension 555</div>
+        <div class="tip">
+          <span class="tag">טיפ — מחרוזת מרובת-שורות (here-string) עם שילוב משתנים</span>
+<pre>$welcomeText = @"
+Welcome to TechStart Solutions!
+================================
+Employee: $EmployeeName
+Department: $Department
+Start Date: $(Get-Date -Format 'yyyy-MM-dd')
+
+Your workspace is ready!
+Location: C:\Users\$EmployeeName\Work\
+"@
+
+Set-Content -Path ".\Work\$EmployeeName\Desktop\WELCOME.txt" -Value $welcomeText</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PART F ============ -->
+  <div class="part" id="partF">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ו׳</div><h2>דוח סיכום</h2></div>
+      <div class="points-badge">15 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">7. יצירת דוח קליטה</div>
+        <p>צור את <code>.\Work\[שם]\Logs\onboarding_report_[תאריך].txt</code> הכולל:</p>
+        <div class="screen-mock">TechStart Solutions - Onboarding Report
+========================================
+Employee: [שם]
+Department: [מחלקה]
+Date: [תאריך ושעה]
+Duration: [זמן בשניות]
+
+FOLDER STRUCTURE
+----------------
+Directories created: [מספר]
+Directories existing: [מספר]
+
+FILES COPIED
+------------
+Templates from [מחלקה]: [מספר] files
+General files: [מספר] files
+
+NETWORK CONNECTIVITY
+--------------------
+Servers accessible: [מספר]/[סה"כ]
+[רשימת שרתים לא נגישים]
+
+SUMMARY
+-------
+Status: ✓ SUCCESS / ⚠ COMPLETED WITH WARNINGS
+========================================</div>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>צור את הדוח עם כל המידע — כולל <b>משך הזמן</b> שלקח לסקריפט לרוץ (השתמש ב-<code>Get-Date</code> בתחילת הסקריפט ובסופו, וחשב את ההפרש)</span></label>
+          <label><input type="checkbox"><span>שמור את הדוח תחת <code>Logs\</code> בתיקיית העובד</span></label>
+          <label><input type="checkbox"><span>הדפס למסך הודעה עם מיקום הדוח שנוצר</span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>$startTime = Get-Date
+# ... כל שאר הסקריפט רץ כאן ...
+$endTime = Get-Date
+$duration = [math]::Round(($endTime - $startTime).TotalSeconds, 1)
+
+Write-Host "Onboarding completed in $duration seconds"</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PART G ============ -->
+  <div class="part" id="partG">
+    <div class="part-head">
+      <div class="part-head-left"><div class="part-letter">ז׳</div><h2>לוגים בסיסיים</h2></div>
+      <div class="points-badge">10 נקודות</div>
+    </div>
+    <div class="part-body">
+      <div class="task-block">
+        <div class="task-title">8. תיעוד פעולות</div>
+        <p>צור קובץ <code>.\Work\[שם]\Logs\onboarding_[תאריך-שעה].log</code> עם שורה לכל פעולה עיקרית:</p>
+        <div class="screen-mock">[09:15:32] Starting onboarding for David Cohen
+[09:15:33] Created 7 directories
+[09:15:45] Copied 12 template files
+[09:16:02] Checked 3 servers - 2 accessible
+[09:16:15] Onboarding completed</div>
+        <p>משימתך:</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span>תעד כל פעולה עיקרית עם שעה נוכחית (<code>Get-Date -Format "HH:mm:ss"</code>)</span></label>
+          <label><input type="checkbox"><span>שמור את קובץ הלוג תחת <code>Logs\</code> בתיקיית העובד</span></label>
+        </div>
+        <div class="tip">
+          <span class="tag">טיפ</span>
+<pre>$logFile = ".\Work\$EmployeeName\Logs\onboarding_$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+
+Add-Content -Path $logFile -Value "[$(Get-Date -Format 'HH:mm:ss')] Starting onboarding for $EmployeeName"
+# ... הוסיפו שורת Add-Content דומה אחרי כל שלב עיקרי בסקריפט</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GRADING TABLE ============ -->
+  <div class="part" id="grading">
+    <div class="part-head"><div class="part-head-left"><div class="part-letter">📊</div><h2>טבלת ציונים</h2></div></div>
+    <div class="part-body">
+      <table>
+        <tr><th>סעיף</th><th>נושא</th><th>ניקוד</th></tr>
+        <tr><td>1</td><td>פרמטרים</td><td>10</td></tr>
+        <tr><td>2</td><td>מסך פתיחה</td><td>10</td></tr>
+        <tr><td>3</td><td>מבנה תיקיות</td><td>25</td></tr>
+        <tr><td>4</td><td>העתקת קבצים</td><td>20</td></tr>
+        <tr><td>5</td><td>בדיקת קישוריות</td><td>20</td></tr>
+        <tr><td>6</td><td>קובץ WELCOME</td><td>10</td></tr>
+        <tr><td>7</td><td>דוח סיכום</td><td>15</td></tr>
+        <tr><td>8</td><td>לוגים</td><td>10</td></tr>
+        <tr class="total"><td colspan="2">סה"כ</td><td>120</td></tr>
+      </table>
+      <div class="pass-line">ציון עובר: 70 נקודות (58%)</div>
+    </div>
+  </div>
+
+  <!-- ============ PREP ============ -->
+  <div class="part" id="prep">
+    <div class="part-head"><div class="part-head-left"><div class="part-letter">🛠</div><h2>הכנה לעבודה</h2></div></div>
+    <div class="part-body">
+      <p>לפני שאתם מתחילים לכתוב את <code>Onboarding.ps1</code>, הכינו את סביבת הבדיקה:</p>
+
+      <div class="task-block">
+        <div class="task-title">1. צרו תיקיית תבניות</div>
+        <pre>New-Item -Path ".\Company\Templates\Development" -ItemType Directory -Force
+New-Item -Path ".\Company\Templates\Marketing" -ItemType Directory -Force
+New-Item -Path ".\Company\Templates\Sales" -ItemType Directory -Force
+New-Item -Path ".\Company\Templates\General" -ItemType Directory -Force</pre>
+      </div>
+
+      <div class="task-block">
+        <div class="task-title">2. צרו קבצי דמה</div>
+        <pre>Set-Content -Path ".\Company\Templates\Development\code_sample.py" -Value "Sample"
+Set-Content -Path ".\Company\Templates\General\handbook.pdf" -Value "Sample"</pre>
+      </div>
+
+      <div class="task-block">
+        <div class="task-title">3. צרו קובץ שרתים</div>
+        <pre>Set-Content -Path ".\company_servers.txt" -Value @"
+portal.techstart.local
+files.techstart.local
+mail.techstart.local
+"@</pre>
+      </div>
+
+      <p style="font-size:13.5px; color:var(--text-dim); margin-top:14px;">קובץ עזר נוסף להתקנה ראשונית של הסביבה: <code>environment_setup.ps1</code> (יימסר בנפרד אם צריך).</p>
+
+      <div class="task-block" style="margin-top:16px;">
+        <div class="task-title">רשימת בדיקה סופית — לפני ההגשה</div>
+        <div class="checklist">
+          <label><input type="checkbox"><span>הסקריפט רץ ללא שגיאות</span></label>
+          <label><input type="checkbox"><span>כל התיקיות נוצרות</span></label>
+          <label><input type="checkbox"><span>קבצים מועתקים</span></label>
+          <label><input type="checkbox"><span>בדיקת <code>Test-Connection</code> עובדת</span></label>
+          <label><input type="checkbox"><span>דוח נוצר בהצלחה</span></label>
+          <label><input type="checkbox"><span>לוג מתעד פעולות</span></label>
+          <label><input type="checkbox"><span>הערות (<code>#</code>) והודעות בעברית לאורך הקוד</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SUBMISSION ============ -->
+  <div class="submit-section" id="submit">
+    <h2>📤 הגשת הפרויקט</h2>
+    <div class="disclaimer">
+      <b>שימו לב:</b> העמוד הזה הוא דף סטטי בדפדפן — הוא <b>לא</b> שולח קבצים לאף שרת. הוא בודק שצירפתם את כל הקבצים הנדרשים, ובסוף מפיק "קבלת הגשה" להורדה. את הקבצים עצמם עדיין צריך להעלות בנפרד למערכת ההגשות של בית הספר (לפי הנחיית המורה).
+    </div>
+
+    <input type="text" id="student-name" class="rtl-text" placeholder="שם מלא (לצורך הקבלה)">
+
+    <div class="slot" id="slot-script">
+      <div class="slot-head">
+        <div><div class="slot-title">קובץ הסקריפט <span class="req">חובה</span></div><div class="slot-hint">Onboarding.ps1 — קובץ ה-PowerShell עצמו</div></div>
+      </div>
+      <input type="file" accept=".ps1" onchange="checkSlot('slot-script', ['.ps1'])">
+      <div class="slot-status pending" id="status-slot-script">טרם צורף קובץ</div>
+    </div>
+
+    <div class="slot" id="slot-report">
+      <div class="slot-head">
+        <div><div class="slot-title">דוח הקליטה <span class="req">חובה</span></div><div class="slot-hint">onboarding_report_[תאריך].txt — הפלט שנוצר מהרצת הסקריפט</div></div>
+      </div>
+      <input type="file" accept=".txt" onchange="checkSlot('slot-report', ['.txt'])">
+      <div class="slot-status pending" id="status-slot-report">טרם צורף קובץ</div>
+    </div>
+
+    <div class="slot" id="slot-log">
+      <div class="slot-head">
+        <div><div class="slot-title">קובץ לוג <span class="req">חובה</span></div><div class="slot-hint">onboarding_[תאריך-שעה].log — תיעוד הפעולות</div></div>
+      </div>
+      <input type="file" accept=".log,.txt" onchange="checkSlot('slot-log', ['.log','.txt'])">
+      <div class="slot-status pending" id="status-slot-log">טרם צורף קובץ</div>
+    </div>
+
+    <div class="slot" id="slot-connectivity">
+      <div class="slot-head">
+        <div><div class="slot-title">דוח קישוריות <span class="opt">מומלץ</span></div><div class="slot-hint">connectivity_report.txt</div></div>
+      </div>
+      <input type="file" accept=".txt" onchange="checkSlot('slot-connectivity', ['.txt'])">
+      <div class="slot-status pending" id="status-slot-connectivity">טרם צורף קובץ</div>
+    </div>
+
+    <div class="slot" id="slot-welcome">
+      <div class="slot-head">
+        <div><div class="slot-title">קובץ WELCOME <span class="opt">מומלץ</span></div><div class="slot-hint">WELCOME.txt</div></div>
+      </div>
+      <input type="file" accept=".txt" onchange="checkSlot('slot-welcome', ['.txt'])">
+      <div class="slot-status pending" id="status-slot-welcome">טרם צורף קובץ</div>
+    </div>
+
+    <button class="btn" id="submit-btn" onclick="trySubmit()">📩 הגש עבודה</button>
+    <button class="btn secondary" id="download-btn" style="display:none;" onclick="downloadReceipt()">⬇ הורד קבלת הגשה</button>
+
+    <div class="submit-feedback" id="submit-feedback"></div>
+  </div>
+
+  <footer>TechStart Solutions IT Automation Project · PowerShell Onboarding · לשימוש פנימי בכיתה</footer>
+</div>
+
+<script>
+var slotFiles = {};
+
+function checkSlot(slotId, allowedExts){
+  var input = document.querySelector('#' + slotId + ' input[type=file]');
+  var statusEl = document.getElementById('status-' + slotId);
+  var file = input.files[0];
+  if(!file){
+    statusEl.textContent = "טרם צורף קובץ";
+    statusEl.className = "slot-status pending";
+    delete slotFiles[slotId];
+    return;
+  }
+  var name = file.name.toLowerCase();
+  var matches = allowedExts.some(function(ext){ return name.endsWith(ext); });
+  if(matches){
+    statusEl.textContent = "✓ צורף: " + file.name + " (" + Math.round(file.size/1024) + " KB)";
+    statusEl.className = "slot-status ok";
+    slotFiles[slotId] = file.name;
+  } else {
+    statusEl.textContent = "✗ סוג קובץ לא תואם (" + file.name + ") — צפוי: " + allowedExts.join(", ");
+    statusEl.className = "slot-status bad";
+    delete slotFiles[slotId];
+  }
+}
+
+function trySubmit(){
+  var fb = document.getElementById('submit-feedback');
+  var requiredSlots = ['slot-script','slot-report','slot-log'];
+  var missing = requiredSlots.filter(function(id){ return !slotFiles[id]; });
+
+  fb.classList.remove('ok','bad');
+  fb.classList.add('show');
+
+  if(missing.length > 0){
+    fb.classList.add('bad');
+    fb.innerHTML = "✗ חסרים קבצי חובה: " + missing.map(function(id){
+      return document.querySelector('#'+id+' .slot-title').textContent.replace('חובה','').trim();
+    }).join(', ') + ".";
+    document.getElementById('download-btn').style.display = 'none';
+    return;
+  }
+
+  var name = document.getElementById('student-name').value.trim();
+  if(!name){
+    fb.classList.add('bad');
+    fb.textContent = "✗ נא למלא שם מלא לפני ההגשה.";
+    document.getElementById('download-btn').style.display = 'none';
+    return;
+  }
+
+  fb.classList.add('ok');
+  fb.innerHTML = "✓ כל קבצי החובה צורפו בהצלחה! לחצו על \"הורד קבלת הגשה\", ואז העלו את הקבצים בפועל (יחד עם הקבלה) למערכת ההגשות של בית הספר.";
+  document.getElementById('download-btn').style.display = 'inline-block';
+}
+
+function downloadReceipt(){
+  var name = document.getElementById('student-name').value.trim() || "לא צוין";
+  var now = new Date();
+  var lines = [
+    "TechStart Solutions - Onboarding Project - קבלת הגשה",
+    "========================================================",
+    "שם התלמיד/ה: " + name,
+    "תאריך ושעת הגשה: " + now.toLocaleString('he-IL'),
+    "",
+    "קבצים שצורפו:"
+  ];
+  Object.keys(slotFiles).forEach(function(id){
+    var label = document.querySelector('#'+id+' .slot-title').textContent.replace('חובה','').replace('מומלץ','').trim();
+    lines.push("  - " + label + ": " + slotFiles[id]);
+  });
+  lines.push("");
+  lines.push("קבלה זו מאשרת שהקבצים צוינו לעיל בעת ההגשה בדפדפן.");
+  lines.push("יש לוודא שהקבצים בפועל הועלו גם למערכת ההגשות הרשמית של בית הספר.");
+
+  var blob = new Blob([lines.join("\n")], {type:"text/plain;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = "receipt_" + name.replace(/\s+/g,'_') + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Checklist strike-through UX
+document.querySelectorAll('.checklist input[type=checkbox]').forEach(function(cb){
+  cb.addEventListener('change', function(){
+    cb.closest('label').classList.toggle('done', cb.checked);
+  });
+});
+</script>
+
+</body>
+</html>

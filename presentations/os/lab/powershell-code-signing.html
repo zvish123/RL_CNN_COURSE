@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>יצירת תעודת חתימה לסקריפט PowerShell</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/night-owl.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/powershell.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-panel:#10151d;
+    --border:#1e2733;
+    --text:#dce3ea;
+    --text-dim:#7d8a99;
+    --accent:#39ff88;
+    --accent-dim:#1f9b57;
+    --cyan:#5ee7ff;
+    --amber:#ffb86c;
+    --danger:#ff5f56;
+    --mono:'Consolas','SFMono-Regular',Menlo,Monaco,monospace;
+    --sans:'Segoe UI',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg);color:var(--text);
+    font-family:var(--sans);
+    overflow:hidden;
+  }
+  body{
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(57,255,136,0.05), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(94,231,255,0.05), transparent 40%);
+  }
+  .deck{position:relative;width:100vw;height:100vh;}
+  .slide{
+    position:absolute;inset:0;
+    display:none;
+    flex-direction:column;
+    padding:5vh 8vw;
+    opacity:0;
+    transition:opacity .35s ease;
+  }
+  .slide.active{display:flex;opacity:1;}
+  .eyebrow{
+    font-family:var(--mono);
+    color:var(--accent);
+    font-size:.85rem;
+    letter-spacing:.15em;
+    text-transform:uppercase;
+    margin-bottom:.6rem;
+  }
+  h1{font-size:2.3rem;margin:0 0 .3rem 0;color:#fff;}
+  h2{font-size:1.9rem;margin:0 0 1rem 0;color:#fff;}
+  h3{font-size:1.25rem;color:var(--cyan);margin:1.2rem 0 .5rem 0;}
+  p,li{font-size:1.15rem;line-height:1.65;color:var(--text);}
+  .lead{font-size:1.3rem;color:var(--text);}
+  .content{flex:1;overflow-y:auto;padding-left:.5rem;}
+  .content::-webkit-scrollbar{width:8px;}
+  .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+  code{font-family:var(--mono);background:#1a2230;padding:.15em .4em;border-radius:4px;color:var(--cyan);font-size:.95em;}
+  pre{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-right:3px solid var(--accent);
+    border-radius:8px;
+    padding:1rem 1.2rem;
+    overflow-x:auto;
+    direction:ltr;text-align:left;
+    margin:.8rem 0;
+  }
+  pre code{background:none;padding:0;font-size:.95rem;line-height:1.5;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+  .card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:1.2rem 1.4rem;
+  }
+  .card.accent{border-color:var(--accent-dim);}
+  .card h3{margin-top:0;}
+  .badge{
+    display:inline-block;
+    font-family:var(--mono);font-size:.75rem;
+    padding:.15em .6em;border-radius:20px;
+    border:1px solid currentColor;
+    margin-bottom:.8rem;
+  }
+  .badge.green{color:var(--accent);}
+  .badge.cyan{color:var(--cyan);}
+  .badge.amber{color:var(--amber);}
+  .badge.danger{color:var(--danger);}
+
+  /* checkpoint / student activity slide */
+  .slide.checkpoint{background:linear-gradient(180deg,rgba(57,255,136,0.06),transparent 30%);}
+  .slide.checkpoint .content{border-right:4px solid var(--accent);padding-right:1.5rem;}
+  .checkpoint-tag{
+    font-family:var(--mono);color:#0a0e14;background:var(--accent);
+    display:inline-block;padding:.3em .9em;border-radius:6px;
+    font-weight:bold;letter-spacing:.05em;margin-bottom:1rem;
+  }
+
+  /* teacher notes slide */
+  .slide.teacher{background:linear-gradient(180deg,rgba(255,184,108,0.07),transparent 30%);}
+  .slide.teacher .content{border-right:4px solid var(--amber);padding-right:1.5rem;}
+  .teacher-tag{
+    font-family:var(--mono);color:#0a0e14;background:var(--amber);
+    display:inline-block;padding:.3em .9em;border-radius:6px;
+    font-weight:bold;letter-spacing:.05em;margin-bottom:1rem;
+  }
+
+  /* reveal button */
+  .reveal-btn{
+    font-family:var(--mono);
+    background:transparent;border:1px solid var(--accent);color:var(--accent);
+    padding:.5em 1.1em;border-radius:6px;cursor:pointer;font-size:.95rem;
+    transition:background .2s ease,color .2s ease;
+  }
+  .reveal-btn:hover{background:var(--accent);color:#0a0e14;}
+  .hidden-content{
+    max-height:0;overflow:hidden;opacity:0;
+    transition:max-height .4s ease, opacity .4s ease, margin .4s ease;
+    margin-top:0;
+  }
+  .hidden-content.open{max-height:800px;opacity:1;margin-top:1rem;}
+
+  .qa-item{
+    border:1px solid var(--border);border-radius:8px;
+    padding:.9rem 1.1rem;margin-bottom:.7rem;background:var(--bg-panel);
+  }
+  .qa-q{display:flex;justify-content:space-between;align-items:center;gap:1rem;}
+  .qa-q span{font-size:1.05rem;}
+  .qa-a{color:var(--accent);font-size:1rem;margin-top:.6rem;line-height:1.55;}
+
+  .status-ok{color:var(--accent);font-weight:bold;}
+  .status-bad{color:var(--danger);font-weight:bold;}
+
+  /* nav */
+  .nav-ui{
+    position:fixed;bottom:1.4rem;left:0;right:0;
+    display:flex;align-items:center;justify-content:center;gap:1.2rem;
+    font-family:var(--mono);z-index:50;
+  }
+  .nav-btn{
+    background:var(--bg-panel);border:1px solid var(--border);color:var(--text);
+    width:44px;height:44px;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .nav-btn:disabled{opacity:.25;cursor:default;}
+  .nav-counter{color:var(--text-dim);font-size:.9rem;min-width:80px;text-align:center;}
+  .dots{position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:50;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .2s;}
+  .dot.active{background:var(--accent);}
+  .progress-label{position:fixed;top:1.2rem;right:2rem;font-family:var(--mono);color:var(--text-dim);font-size:.85rem;z-index:50;}
+</style>
+</head>
+<body>
+
+<div class="dots" id="dots"></div>
+<div class="progress-label" id="progressLabel"></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1: TITLE -->
+  <div class="slide active">
+    <div class="content" style="justify-content:center;display:flex;flex-direction:column;">
+      <div class="eyebrow">מסלול סייבר • כיתה יא'</div>
+      <h1 style="font-size:3rem;">יצירת תעודת חתימה לסקריפט PowerShell</h1>
+      <p class="lead" style="color:var(--text-dim);">מ-Get-ExecutionPolicy להבנת אמון דיגיטלי בפועל: PKI, Authenticode וחתימת קוד</p>
+    </div>
+  </div>
+
+  <!-- 2: מטרות למידה -->
+  <div class="slide">
+    <div class="eyebrow">01 • מטרות למידה</div>
+    <h2>בסוף השיעור התלמיד יוכל...</h2>
+    <div class="content">
+      <ul>
+        <li>להסביר מהי חתימת קוד דיגיטלית (Authenticode) ומה ההבדל בינה לבין הצפנה.</li>
+        <li>ליצור תעודת חתימת קוד עצמית (self-signed) ולהוסיף אותה ל-Trusted Root באמצעות PowerShell.</li>
+        <li>לחתום על סקריפט PowerShell באמצעות <code>Set-AuthenticodeSignature</code> ולאמת את החתימה.</li>
+        <li>להסביר מדוע כל שינוי בקובץ חתום שובר את החתימה (<code>HashMismatch</code>), ומה זה אומר על שלמות (integrity) מול אמינות (authenticity).</li>
+        <li>להצביע על ההבדל המעשי בין תעודה עצמית-חתומה לתעודה מ-CA מהימן, ומתי כל אחת מתאימה.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3: סיפור פתיחה -->
+  <div class="slide">
+    <div class="eyebrow">02 • סיפור פתיחה</div>
+    <h2>הסקריפט ש"עבד מצוין" עד שהוא לא</h2>
+    <div class="content">
+      <p>מנהל רשת בארגון בינוני מקבל סקריפט PowerShell בקובץ מצורף למייל, כביכול מ"מחלקת ה-IT הראשית", שאמור לעדכן הגדרות VPN בכל התחנות. הוא מריץ אותו - המדיניות במחשב שלו היא <code>RemoteSigned</code>, אז כל עוד הוא "לא הוריד את זה מהאינטרנט ישירות" (הקובץ הגיע כקובץ מצורף, לא הורדה ישירה מדפדפן) - Windows לא חוסם אותו ולא מזהיר.</p>
+      <p>הסקריפט אכן שינה הגדרות VPN - אבל גם פתח חיבור יוצא לשרת חיצוני. איש לא חתם על הסקריפט, איש לא יכול להוכיח מי כתב אותו, ואף אחד לא ידע שהוא שונה בדרך.</p>
+      <p style="color:var(--cyan);">השאלה שמניעה את השיעור: איך יוצרים מנגנון שבו אפשר לדעת <b>בוודאות</b> שסקריפט מסוים באמת הגיע ממי שהוא טוען שהגיע ממנו - ושהוא לא שונה בדרך, ולו בתו אחד?</p>
+    </div>
+  </div>
+
+  <!-- 4: הסבר מקצועי א -->
+  <div class="slide">
+    <div class="eyebrow">03 • הסבר מקצועי - חלק א'</div>
+    <h2>מה זה בכלל "חתימת קוד"?</h2>
+    <div class="content">
+      <p>חתימה דיגיטלית על קוד (הטכנולוגיה של Microsoft נקראת <b>Authenticode</b>) עונה על שתי שאלות, ולא יותר:</p>
+      <div class="grid2">
+        <div class="card accent">
+          <h3>Authenticity - מיהות</h3>
+          <p>מי חתם על הקובץ? התעודה מקשרת בין החתימה לזהות (Subject) שנרשמה בה.</p>
+        </div>
+        <div class="card accent">
+          <h3>Integrity - שלמות</h3>
+          <p>האם הקובץ השתנה מאז שנחתם? החתימה מבוססת על hash (טביעת אצבע) של תוכן הקובץ בדיוק כפי שהיה ברגע החתימה.</p>
+        </div>
+      </div>
+      <h3>מה חתימת קוד <span style="color:var(--danger);">לא</span> עושה</h3>
+      <ul>
+        <li>היא <b>לא מצפינה</b> את הקוד - כל אחד עדיין יכול לקרוא את הסקריפט כטקסט רגיל.</li>
+        <li>היא <b>לא מבטיחה שהקוד "טוב"</b> - קוד זדוני יכול להיות חתום בדיוק כמו קוד תמים, אם התוקף הצליח להשיג תעודה (זה בדיוק מה שקורה בהתקפות אספקה - supply chain attacks).</li>
+      </ul>
+      <p>חתימה עונה על "מי" ו"האם שונה" - לא על "האם זה בטוח". זו נקודה שקל לפספס.</p>
+    </div>
+  </div>
+
+  <!-- 5: הסבר מקצועי ב -->
+  <div class="slide">
+    <div class="eyebrow">03 • הסבר מקצועי - חלק ב'</div>
+    <h2>איך זה עובד: PKI במינימום ההכרחי</h2>
+    <div class="content">
+      <p>תעודת חתימת קוד בנויה על תשתית מפתחות ציבוריים (<b>PKI - Public Key Infrastructure</b>):</p>
+      <ul>
+        <li><b>זוג מפתחות</b>: מפתח פרטי (private key) שנשאר סודי אצל החותם, ומפתח ציבורי (public key) שכל אחד יכול לקבל.</li>
+        <li><b>תהליך החתימה</b>: המחשב מחשב hash של הקובץ, ואז מצפין את ה-hash הזה עם המפתח <b>הפרטי</b>. זו ה"חתימה".</li>
+        <li><b>תהליך האימות</b>: מי שמקבל את הקובץ מפענח את החתימה עם המפתח <b>הציבורי</b>, מקבל את ה-hash המקורי, מחשב hash חדש מהקובץ שבידיו, ומשווה. אם הם שווים - הקובץ לא שונה.</li>
+        <li><b>מי מאשר שהמפתח הציבורי באמת שייך לחותם?</b> גוף שנקרא <b>CA (Certificate Authority)</b> - הוא זה שחותם על התעודה עצמה ומאשר "כן, אני מוודא שהמפתח הזה שייך לישות הזו".</li>
+        <li><b>Chain of Trust</b>: Windows סומך על רשימה של CA-ים ("Trusted Root") מראש. אם התעודה שלך לא נחתמה על ידי אחד מהם (או שהיא לא נמצאת שם בעצמה) - היא לא תיחשב מהימנה, גם אם כל המתמטיקה תקינה.</li>
+      </ul>
+      <button class="reveal-btn" onclick="toggleReveal(this)">הראה לי למה זה חשוב במיוחד לתעודה עצמית-חתומה</button>
+      <div class="hidden-content">
+        <p>תעודה עצמית-חתומה (self-signed) פירושה שאתה <b>גם</b> החותם <b>וגם</b> ה-CA - אין גוף שלישי מהימן שמאשר את הזהות. לכן Windows לא סומך עליה אוטומטית: צריך להוסיף אותה ידנית ל-Trusted Root באותו מחשב ספציפי. זה בדיוק מה שנעשה בהדגמה הבאה - וזו הסיבה שהתעודה תעבוד <b>רק על המחשב שהוספתם אליו</b>, לא על מחשב של חבר לכיתה.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6: הסבר מקצועי ג -->
+  <div class="slide">
+    <div class="eyebrow">03 • הסבר מקצועי - חלק ג'</div>
+    <h2><code>Get-ExecutionPolicy</code> - כל הרמות</h2>
+    <div class="content">
+      <p><code>Get-ExecutionPolicy</code> מציגה מדיניות שקובעת אילו סקריפטים (<code>.ps1</code>) מותר להריץ - זו "רשת בטיחות" מפני הרצה בשוגג, לא הגנה אמיתית מפני משתמש זדוני נחוש (אפשר לעקוף אותה, למשל ע"י <code>-ExecutionPolicy Bypass</code>).</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:.5rem;font-size:1rem;">
+        <tr style="color:var(--cyan);text-align:right;">
+          <th style="padding:.45em;border-bottom:1px solid var(--border);">רמה</th>
+          <th style="padding:.45em;border-bottom:1px solid var(--border);">מה היא מאפשרת</th>
+        </tr>
+        <tr><td style="padding:.45em;"><code>Restricted</code></td><td style="padding:.45em;">ברירת מחדל נפוצה. אף סקריפט לא רץ - רק פקודות אינטראקטיביות בקונסולה.</td></tr>
+        <tr><td style="padding:.45em;"><code>AllSigned</code></td><td style="padding:.45em;"><b>כל</b> סקריפט - גם כזה שכתבתם בעצמכם - חייב חתימה דיגיטלית תקינה.</td></tr>
+        <tr><td style="padding:.45em;"><code>RemoteSigned</code></td><td style="padding:.45em;">סקריפט מקומי רץ בלי חתימה; סקריפט שהורד מהרשת (Zone.Identifier) חייב חתימה.</td></tr>
+        <tr><td style="padding:.45em;"><code>Unrestricted</code></td><td style="padding:.45em;">כל הסקריפטים רצים, אך כאלה שהורדו מהרשת יציגו אזהרה לפני ההרצה.</td></tr>
+        <tr><td style="padding:.45em;"><code>Bypass</code></td><td style="padding:.45em;">שום חסימה, שום אזהרה. נפוץ בסקריפטי אוטומציה/CI, לא לשימוש רגיל.</td></tr>
+        <tr><td style="padding:.45em;"><code>Undefined</code></td><td style="padding:.45em;">אין מדיניות ברמה הנוכחית - נופלים חזרה לרמה הגבוהה יותר בהיררכיה.</td></tr>
+      </table>
+      <h3>Scope - איפה המדיניות בפועל "מנצחת"</h3>
+      <p>המדיניות מוגדרת בכמה רמות (<code>MachinePolicy</code>, <code>UserPolicy</code>, <code>Process</code>, <code>CurrentUser</code>, <code>LocalMachine</code>) שנערמות זו על זו - רמה ארגונית (GPO) יכולה "לנצח" הגדרה אישית:</p>
+      <pre><code class="language-powershell">Get-ExecutionPolicy -List</code></pre>
+      <button class="reveal-btn" onclick="toggleReveal(this)">איך זה מתחבר לחתימת קוד?</button>
+      <div class="hidden-content">
+        <p><code>AllSigned</code> היא הרמה שבה חתימת קוד הופכת מ"נחמד לדעת" ל<b>הכרחית</b> - בלעדיה, אף סקריפט - אפילו שלכם - לא ירוץ. זו המדיניות שבה נעבוד בהמשך השיעור כדי לראות את האפקט של החתימה בבירור.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6b: הסבר מקצועי ד -->
+  <div class="slide">
+    <div class="eyebrow">03 • הסבר מקצועי - חלק ד'</div>
+    <h2>תעודה עצמית מול תעודה מ-CA מהימן</h2>
+    <div class="content">
+      <table style="width:100%;border-collapse:collapse;margin-top:.5rem;">
+        <tr style="color:var(--cyan);text-align:right;">
+          <th style="padding:.5em;border-bottom:1px solid var(--border);">היבט</th>
+          <th style="padding:.5em;border-bottom:1px solid var(--border);">Self-signed</th>
+          <th style="padding:.5em;border-bottom:1px solid var(--border);">CA מסחרי</th>
+        </tr>
+        <tr><td style="padding:.5em;">עלות</td><td style="padding:.5em;">חינם</td><td style="padding:.5em;">בתשלום</td></tr>
+        <tr><td style="padding:.5em;">אמון אוטומטי</td><td style="padding:.5em;">רק במחשב שהוגדר ידנית</td><td style="padding:.5em;">בכל מחשב Windows, מובנה</td></tr>
+        <tr><td style="padding:.5em;">שימוש טיפוסי</td><td style="padding:.5em;">פיתוח/בדיקות/שימוש פנים-ארגוני עם GPO</td><td style="padding:.5em;">הפצה חיצונית/מסחרית</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 7: הדגמת קוד א -->
+  <div class="slide">
+    <div class="eyebrow">04 • הדגמת קוד - שלב א'</div>
+    <h2>יצירת תעודת חתימה עצמית</h2>
+    <div class="content">
+      <p>יוצרים תעודה מסוג <code>CodeSigningCert</code> וממקמים אותה בחנות התעודות האישית של המשתמש:</p>
+      <pre><code class="language-powershell">$cert = New-SelfSignedCertificate `
+    -Subject "CN=Blich-CyberLab" `
+    -Type CodeSigningCert `
+    -CertStoreLocation Cert:\CurrentUser\My `
+    -NotAfter (Get-Date).AddYears(1)
+
+$cert | Format-List Subject, Thumbprint, NotAfter</code></pre>
+      <p>בשלב הזה התעודה <b>קיימת</b> אך <b>לא מהימנה</b> עדיין. צריך להוסיף אותה ל-Trusted Root של אותו משתמש:</p>
+      <pre><code class="language-powershell">$rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+    "Root", "CurrentUser"
+)
+$rootStore.Open("ReadWrite")
+$rootStore.Add($cert)
+$rootStore.Close()</code></pre>
+      <button class="reveal-btn" onclick="toggleReveal(this)">מה קורה אם מדלגים על שלב ה-Trusted Root?</button>
+      <div class="hidden-content">
+        <p>הסקריפט עדיין <b>ייחתם</b> בהצלחה טכנית, אך כשתריצו <code>Get-AuthenticodeSignature</code> תקבלו <code>Status: UnknownError</code> או <code>NotTrusted</code> במקום <code>Valid</code> - כי Windows לא מזהה את מי שחתם כגורם מהימן. זו טעות נפוצה מאוד.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8: הדגמת קוד ב -->
+  <div class="slide">
+    <div class="eyebrow">04 • הדגמת קוד - שלב ב'</div>
+    <h2>חתימה על הסקריפט</h2>
+    <div class="content">
+      <p>ניצור סקריפט פשוט לבדיקה:</p>
+      <pre><code class="language-powershell">'Write-Host "Hello from a signed script"' | Out-File .\hello.ps1</code></pre>
+      <p>ונחתום עליו עם <code>Set-AuthenticodeSignature</code>:</p>
+      <pre><code class="language-powershell">Set-AuthenticodeSignature -FilePath .\hello.ps1 -Certificate $cert `
+    -TimestampServer "http://timestamp.digicert.com"</code></pre>
+      <button class="reveal-btn" onclick="toggleReveal(this)">למה יש שם -TimestampServer?</button>
+      <div class="hidden-content">
+        <p>תעודה תמיד פגה בסוף (כאן - אחרי שנה, ראו <code>-NotAfter</code>). בלי חותמת זמן, ברגע שהתעודה פגה - כל סקריפט שנחתם איתה נחשב שוב "לא חתום" תקף. עם Timestamp Server, ה-חתימה נשארת תקפה כי יש הוכחה חיצונית מתי בדיוק היא נוצרה - "זה נחתם בזמן שהתעודה עוד הייתה בתוקף", גם שנים אחר כך.</p>
+      </div>
+      <p>אחרי החתימה, אם תפתחו את <code>hello.ps1</code> בעורך טקסט - תראו בתחתית הקובץ בלוק כזה (לא קובץ נפרד, אלא טקסט מקודד שנוסף לקובץ):</p>
+      <pre><code># SIG # Begin signature block
+# MIIF...(בלוק Base64 ארוך)...
+# SIG # End signature block</code></pre>
+    </div>
+  </div>
+
+  <!-- 9: הדגמת קוד ג -->
+  <div class="slide">
+    <div class="eyebrow">04 • הדגמת קוד - שלב ג'</div>
+    <h2>אימות - ומבחן העיוות (Tamper Test)</h2>
+    <div class="content">
+      <p>בודקים את סטטוס החתימה:</p>
+      <pre><code class="language-powershell">Get-AuthenticodeSignature -FilePath .\hello.ps1 |
+    Select-Object Status, StatusMessage</code></pre>
+      <p>תוצאה צפויה: <span class="status-ok">Status : Valid</span></p>
+      <h3>עכשיו - שוברים את זה בכוונה</h3>
+      <p>פותחים את <code>hello.ps1</code> בעורך טקסט, מוסיפים <b>רווח בודד</b> בכל מקום מעל בלוק החתימה, שומרים, ומריצים שוב את אותה בדיקה:</p>
+      <pre><code class="language-powershell">Get-AuthenticodeSignature -FilePath .\hello.ps1 |
+    Select-Object Status, StatusMessage</code></pre>
+      <p>תוצאה עכשיו: <span class="status-bad">Status : HashMismatch</span></p>
+      <p style="color:var(--cyan);">זו ההוכחה החיה ל-Integrity: תו בודד שינה את ה-hash של הקובץ, ולכן החתימה שחושבה על ה-hash הישן כבר לא תואמת. אין דרך "לתקן" קובץ שנחתם - צריך לחתום מחדש.</p>
+    </div>
+  </div>
+
+  <!-- 10: פעילות תלמידים א -->
+  <div class="slide checkpoint">
+    <div class="eyebrow">05 • פעילות תלמידים</div>
+    <div class="checkpoint-tag">⏸ תחנת עצירה - עכשיו אתם</div>
+    <h2>משימה עיקרית (20 דק')</h2>
+    <div class="content">
+      <ol>
+        <li>צרו תעודת חתימה עצמית עם <code>-Subject "CN=&lt;שם-פרטי&gt;-Lab"</code> משלכם.</li>
+        <li>הוסיפו אותה ל-Trusted Root של המשתמש שלכם (לא לדלג!).</li>
+        <li>כתבו סקריפט <code>myinfo.ps1</code> שמדפיס את השם שלכם ואת התאריך הנוכחי.</li>
+        <li>חתמו עליו, ואמתו ש-<code>Status</code> הוא <code>Valid</code>.</li>
+        <li>שנו את מדיניות ההרצה שלכם ל-<code>AllSigned</code> (<code>Set-ExecutionPolicy AllSigned -Scope CurrentUser</code>), ונסו להריץ סקריפט <b>לא חתום</b> - תעדו מה קורה.</li>
+        <li>הריצו את <code>myinfo.ps1</code> החתום שלכם - ודאו שהוא כן רץ.</li>
+      </ol>
+      <p><b>קריטריון הצלחה:</b> צילום מסך של <code>Get-AuthenticodeSignature</code> על הסקריפט שלכם עם <code>Status: Valid</code>, ותיעוד קצר של מה קרה כשניסיתם להריץ סקריפט לא חתום תחת <code>AllSigned</code>.</p>
+    </div>
+  </div>
+
+  <!-- 11: פעילות תלמידים ב - בונוס -->
+  <div class="slide checkpoint">
+    <div class="eyebrow">05 • פעילות תלמידים</div>
+    <div class="checkpoint-tag">⏸ תחנת עצירה - בונוס</div>
+    <h2>אתגר: שברו את זה, ואז הסבירו למה</h2>
+    <div class="content">
+      <ol>
+        <li>קחו את <code>myinfo.ps1</code> החתום שלכם, ובצעו את מבחן העיוות (הוסיפו רווח, שמרו, בדקו סטטוס).</li>
+        <li>נסו להריץ את הקובץ הפגום תחת מדיניות <code>AllSigned</code> - מה קורה? למה זה שונה מסתם "סטטוס לא תקין"?</li>
+        <li>חתמו על הקובץ מחדש ("תקנו" אותו) - האם זה משחזר את הגרסה הישנה, או יוצר משהו חדש?</li>
+        <li><b>שאלת חשיבה:</b> אם תוקף היה גונב את המפתח הפרטי שלכם (לא רק את הקובץ <code>.ps1</code>), מה הוא היה יכול לעשות שהוא לא יכול לעשות היום?</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 12: שימוש נכון ב-AI -->
+  <div class="slide">
+    <div class="eyebrow">06 • שימוש נכון ב-AI</div>
+    <h2>הפרוטוקול: חשוב - כתוב - בדוק - שאל</h2>
+    <div class="content">
+      <div class="grid2">
+        <div class="card"><h3>1. חשוב</h3><p>לפני שאתם פותחים כלי AI - נסחו לעצמכם: מה בדיוק אתם מנסים לעשות? יצירת תעודה? חתימה? אימות?</p></div>
+        <div class="card"><h3>2. כתוב</h3><p>נסו לכתוב את הפקודה בעצמכם קודם, גם אם אתם לא בטוחים ב-100%. השתמשו במה שראיתם בהדגמה.</p></div>
+        <div class="card"><h3>3. בדוק</h3><p>הריצו בפועל. <code>Get-AuthenticodeSignature</code> הוא כלי אימות בעצמו - תמיד תבדקו את הסטטוס בפועל, אל תניחו.</p></div>
+        <div class="card"><h3>4. שאל</h3><p>רק אחרי שניסיתם ונתקעתם - שאלו AI על השגיאה הספציפית שקיבלתם, לא "תן לי פתרון מלא".</p></div>
+      </div>
+      <p style="color:var(--danger);margin-top:1rem;"><b>אזהרה חשובה במיוחד לנושא הזה:</b> אל תבצעו פקודות שמוסיפות תעודות ל-Trusted Root, או שמשנות Execution Policy, מבלי להבין מה הן עושות - במיוחד אם קיבלתם אותן מ-AI ולא ממקור שאתם סומכים עליו. זה בדיוק הפער שהתקפות אמיתיות מנצלות: מישהו מדביק פקודה שהוא לא הבין, במחשב שבו הוא סומך על עצמו.</p>
+    </div>
+  </div>
+
+  <!-- 13: שאלות הבנה -->
+  <div class="slide">
+    <div class="eyebrow">07 • שאלות הבנה</div>
+    <h2>בדקו את עצמכם</h2>
+    <div class="content">
+      <div class="qa-item">
+        <div class="qa-q"><span>1. מהו ההבדל בין <code>RemoteSigned</code> ל-<code>AllSigned</code>?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">ב-RemoteSigned רק סקריפטים שהורדו מהרשת חייבים חתימה; סקריפטים מקומיים רצים חופשי. ב-AllSigned - גם סקריפט שכתבתם בעצמכם באותו מחשב חייב חתימה תקינה.</p></div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q"><span>2. מדוע תעודה עצמית-חתומה לא עובדת אוטומטית אצל תלמיד אחר?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">כי אין CA חיצוני מהימן שמאשר אותה - היא הוספה ידנית רק ל-Trusted Root של המחשב/משתמש הספציפי. אצל תלמיד אחר, Windows פשוט לא מזהה אותה כמהימנה.</p></div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q"><span>3. למה עריכת תו בודד בקובץ חתום גורמת ל-<code>HashMismatch</code>?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">החתימה מבוססת על hash שחושב מתוכן הקובץ המדויק ברגע החתימה. כל שינוי, ולו זעיר, מייצר hash שונה לחלוטין - וההשוואה בין ה-hash החדש לזה שבחתימה נכשלת.</p></div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q"><span>4. מה תפקיד ה-Timestamp Server?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">הוא מספק הוכחה חיצונית שהחתימה נוצרה בזמן שהתעודה עוד הייתה בתוקף - כך שהחתימה נשארת תקפה גם אחרי שהתעודה עצמה פגה.</p></div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q"><span>5. תרחיש: מפתח פרטי של תעודת חתימת קוד ארגונית נגנב. מה המשמעות, ומה עושים?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">התוקף יכול לחתום קוד זדוני שיזוהה כ"מהימן"/"מקורי מהארגון". יש לבטל (revoke) את התעודה מול ה-CA, להפיץ רשימת ביטול (CRL) או להשתמש ב-OCSP, ולחדש תעודה עם מפתח חדש.</p></div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-q"><span>6. למה ארגון גדול לא יסתפק בתעודה עצמית-חתומה להפצה חיצונית?</span><button class="reveal-btn" onclick="toggleReveal(this)">תשובה</button></div>
+        <div class="hidden-content"><p class="qa-a">כי היא לא מהימנה אוטומטית על אף מחשב חיצוני - כל לקוח היה צריך להוסיף אותה ידנית ל-Trusted Root שלו, מה שלא סביר בקנה מידה. תעודה מ-CA מהימן כבר "מוכרת" מראש לכל מחשב Windows.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14: רפלקציה -->
+  <div class="slide">
+    <div class="eyebrow">08 • רפלקציה</div>
+    <h2>לחשוב רגע לפני שממשיכים</h2>
+    <div class="content">
+      <ul>
+        <li>איפה בחיי היום-יום שלכם, מחוץ לעולם ה-IT, אתם נתקלים במנגנון "אמון" דומה (למשל: מנעול ב-HTTPS בדפדפן, "אפליקציה מאומתת" בחנות אפליקציות)?</li>
+        <li>האם ההבנה שחתימה דיגיטלית <b>לא</b> מבטיחה "קוד בטוח" - רק "קוד שלא שונה ומגיע ממקור ידוע" - שינתה משהו בתפיסה שלכם לגבי מה זה "אבטחה"?</li>
+        <li>אילו הנחות שגויות היו לכם, לפני השיעור, לגבי המשמעות של "קובץ חתום"?</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-ui">
+  <button class="nav-btn" id="prevBtn" title="הקודם (חץ ימינה)">→</button>
+  <span class="nav-counter" id="counter"></span>
+  <button class="nav-btn" id="nextBtn" title="הבא (חץ שמאלה / רווח)">←</button>
+</div>
+
+<script>
+hljs.highlightAll();
+
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+const dotsWrap = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.addEventListener('click', () => goTo(i));
+  dotsWrap.appendChild(d);
+});
+const dots = document.querySelectorAll('.dot');
+
+function render(){
+  slides.forEach((s, i) => s.classList.toggle('active', i === current));
+  dots.forEach((d, i) => d.classList.toggle('active', i === current));
+  document.getElementById('counter').textContent = `שקף ${current + 1} מתוך ${total}`;
+  document.getElementById('progressLabel').textContent = `${current + 1} / ${total}`;
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === total - 1;
+}
+
+function goTo(i){
+  current = Math.max(0, Math.min(total - 1, i));
+  render();
+}
+function next(){ goTo(current + 1); }
+function prev(){ goTo(current - 1); }
+
+document.getElementById('nextBtn').addEventListener('click', next);
+document.getElementById('prevBtn').addEventListener('click', prev);
+
+// RTL navigation: left arrow = next, right arrow = previous, space = next
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') { next(); }
+  else if (e.key === 'ArrowRight') { prev(); }
+  else if (e.code === 'Space') { e.preventDefault(); next(); }
+});
+
+function toggleReveal(btn){
+  const box = btn.nextElementSibling;
+  if (!btn.dataset.label) { btn.dataset.label = btn.textContent; }
+  const opening = !box.classList.contains('open');
+  box.classList.toggle('open');
+  btn.textContent = opening ? 'הסתר' : btn.dataset.label;
+}
+
+render();
+</script>
+</body>
+</html>

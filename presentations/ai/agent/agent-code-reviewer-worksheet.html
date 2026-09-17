@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>דף עבודה — בניית סוכן סקירת קוד</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;500;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c12; --panel:#0f151e; --panel2:#141c27; --line:#22303f;
+  --ink:#dce6f0; --dim:#8296aa; --cy:#3ad6e8; --am:#ffb648; --rd:#ff6b6b; --gr:#5be49b;
+  --mono:'JetBrains Mono','Consolas','Courier New',monospace;
+  --sans:'Heebo','Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:300;
+  font-size:17px;line-height:1.7}
+.wrap{max-width:860px;margin:0 auto;padding:40px 26px 90px}
+header{border-inline-start:3px solid var(--cy);padding-inline-start:22px;margin-bottom:34px}
+header .kick{font-family:var(--mono);color:var(--cy);font-size:13px}
+h1{font-weight:800;font-size:34px;margin:6px 0 10px;line-height:1.2}
+h2{font-weight:800;font-size:24px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-weight:500;font-size:19px;margin:24px 0 8px;color:var(--cy)}
+p{margin:0 0 13px}
+ul,ol{padding-inline-start:22px;margin:0 0 13px}
+li{margin-bottom:6px}
+b,strong{font-weight:500;color:#fff}
+.dim{color:var(--dim)} .cy{color:var(--cy)} .am{color:var(--am)} .gr{color:var(--gr)} .rd{color:var(--rd)}
+code{font-family:var(--mono);background:#1b2532;padding:1px 6px;border-radius:3px;font-size:.87em;
+  color:var(--am);direction:ltr;display:inline-block}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 22px;margin:16px 0}
+.task{background:var(--panel);border:1px solid var(--line);border-inline-start:3px solid var(--am);
+  border-radius:8px;padding:20px 24px;margin:26px 0}
+.task .no{font-family:var(--mono);color:var(--am);font-size:13px;margin-bottom:4px}
+.task h3{margin-top:0;color:#fff;font-weight:800;font-size:21px}
+.meta{font-family:var(--mono);font-size:13px;color:var(--dim);margin-bottom:12px}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:16px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:right;vertical-align:top}
+th{background:var(--panel2);font-weight:500;color:var(--cy)}
+/* code */
+.codewrap{background:#060a0f;border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:14px 0}
+.codewrap pre{margin:0;padding:12px 0;font-family:var(--mono);font-size:13.5px;line-height:1.55;
+  direction:ltr;text-align:left}
+.cl{display:grid;grid-template-columns:40px 1fr}
+.cl .n{color:#3c4c5e;text-align:left;padding-inline-end:10px;user-select:none;
+  border-inline-end:1px solid #16202b;padding-inline-start:6px}
+.cl .t{padding-inline-start:12px;white-space:pre}
+.k{color:#ff9ad5} .s{color:#9ee493} .c{color:#5a6b7d;font-style:italic} .d{color:var(--am)}
+/* fields */
+textarea,input[type=text],input[type=number]{width:100%;background:#0a1017;border:1px solid var(--line);
+  color:var(--ink);border-radius:6px;padding:10px 12px;font-family:var(--sans);font-size:16px;
+  font-weight:300;line-height:1.6}
+textarea{resize:vertical}
+textarea.code,input.code{font-family:var(--mono);font-size:14px;direction:ltr;text-align:left}
+input:focus,textarea:focus{outline:2px solid var(--cy);outline-offset:1px;border-color:var(--cy)}
+label.fl{display:block;font-size:15px;color:var(--dim);margin:14px 0 5px}
+.byteacher{font-family:var(--mono);font-size:12.5px;color:var(--am);margin-top:6px}
+/* checklist */
+.chk{display:flex;gap:11px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);
+  border-radius:6px;padding:10px 13px;margin-bottom:8px;transition:border-color .2s,background .2s}
+.chk input{margin-top:5px;width:17px;height:17px;accent-color:var(--cy);flex:0 0 auto}
+.chk .ln{font-family:var(--mono);color:var(--cy);font-size:13px;flex:0 0 58px;padding-top:2px}
+.chk.right{border-color:var(--gr);background:#0e1c16}
+.chk.wrong{border-color:var(--rd);background:#1d1010}
+.chk .verdict{font-family:var(--mono);font-size:12px;margin-top:5px;display:block}
+/* buttons */
+button{font-family:var(--sans);cursor:pointer;font-size:15px;font-weight:500;border-radius:6px;
+  padding:9px 18px;transition:.18s}
+.btn{background:transparent;border:1px solid var(--cy);color:var(--cy)}
+.btn:hover{background:var(--cy);color:#06121a}
+.hint{background:transparent;border:1px solid var(--line);color:var(--dim);padding:6px 13px;font-size:14px}
+.hint:hover{border-color:var(--am);color:var(--am)}
+.drop{max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s;opacity:0}
+.drop.open{max-height:900px;opacity:1;margin-top:10px}
+.opts{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.opt{background:var(--panel2);border:1px solid var(--line);color:var(--ink);text-align:right;
+  padding:10px 14px;font-weight:300}
+.opt:hover{border-color:var(--cy)}
+.opt.ok{border-color:var(--gr);background:#0f2018;color:var(--gr)}
+.opt.no{border-color:var(--rd);background:#1f1010;color:var(--rd)}
+.score{font-family:var(--mono);font-size:15px;margin-top:12px;color:var(--am);min-height:22px}
+.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.inline input{width:110px}
+.res{font-family:var(--mono);color:var(--gr);font-size:15px}
+@media print{
+  body{background:#fff;color:#000}
+  .codewrap{background:#f4f4f4;border-color:#bbb}
+  .cl .n{color:#888}.k,.s,.c,.d{color:#333}
+  .box,.task,.chk{background:#fff;border-color:#999;break-inside:avoid}
+  th{background:#eee;color:#000}
+  button,.noprint{display:none}
+  h2{border-color:#999}
+  .cy,.am,.gr,.rd,.dim,b,strong{color:#000}
+  textarea,input{border:1px solid #999;background:#fff;color:#000;min-height:70px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kick">סייבר · כיתה י"ב · דף עבודה · 120 דקות</div>
+  <h1>בניית סוכן AI לסקירת קוד מאובטח</h1>
+  <p class="dim" style="margin:0">הדף הזה עומד בפני עצמו: כל מה שצריך כדי לבצע את המשימות נמצא כאן, גם אם פספסת חלק מההסבר בכיתה.</p>
+</header>
+
+<div class="box">
+  <p style="margin:0 0 8px"><b>מה תצטרך:</b> את הדף הזה (פתוח בדפדפן או מודפס), עט או מקלדת. גישה ל-Claude Code <b>אינה</b> נדרשת — המורה מריץ את הסוכנים על המקרן.</p>
+  <p style="margin:0 0 8px"><b>ידע קודם:</b> קריאת קוד Python בסיסית, מושג כללי על SQL ועל hash.</p>
+  <p style="margin:0"><b>מה תשאיר בידיים בסוף:</b> קובץ הגדרת סוכן שכתבת, ניתוח אבטחה של קוד נתון, וכרטיס ניקוד מדוד של הסוכן שלך.</p>
+</div>
+
+<h2>חלק א — רקע</h2>
+
+<h3>מה זה סוכן</h3>
+<p>סוכן AI הוא צירוף של ארבעה דברים:</p>
+<div class="box" style="text-align:center;font-family:var(--mono);direction:ltr;font-size:18px;padding:18px">
+agent = <span class="cy">model</span> + <span class="cy">system prompt</span> + <span class="cy">tools</span> + <span class="cy">permissions</span>
+</div>
+<p><b>model</b> הוא המנוע (אתה בוחר אותו, לא בונה). <b>system prompt</b> מגדיר מי הסוכן ומה הוא בודק. <b>tools</b> קובע במה מותר לו לגעת — לקרוא קבצים, לחפש, לכתוב, להריץ פקודות. <b>permissions</b> קובע מה קורה כשהוא מבקש לעשות משהו מסוכן.</p>
+<p>אף אחד מארבעת הרכיבים אינו קוד — כולם טקסט. לכן אפשר לבנות סוכן שלם בלי לכתוב שורת פייתון אחת.</p>
+
+<h3>ארבע השכבות ב-Claude Code</h3>
+<table>
+  <tr><th style="width:23%">שכבה</th><th style="width:37%">הקובץ</th><th>מה היא נותנת</th></tr>
+  <tr><td>חוקי בית</td><td><code>CLAUDE.md</code></td><td>הקשר קבוע שנטען בכל שיחה בפרויקט</td></tr>
+  <tr><td>מיומנות</td><td><code>.claude/skills/&lt;שם&gt;/SKILL.md</code></td><td>נוהל עבודה שנטען לפי הצורך</td></tr>
+  <tr><td>תת-סוכן</td><td><code>.claude/agents/&lt;שם&gt;.md</code></td><td>"עובד" נפרד עם חלון הקשר משלו וכלים מוגבלים</td></tr>
+  <tr><td>הרשאות</td><td><code>.claude/settings.json</code></td><td>מה מותר ומה אסור לכל הסשן</td></tr>
+</table>
+<p>בשיעור הזה אתה כותב את השכבה השלישית: קובץ אחד, בתיקייה <code>.claude/agents/</code>.</p>
+
+<h3>איך נראה קובץ תת-סוכן</h3>
+<p>הקובץ מורכב משני חלקים: <b>frontmatter</b> — הגדרות בין שני קווים של שלוש מקפים, ו<b>גוף</b> — כל מה שמתחת, שהופך לפרומפט המערכת של הסוכן.</p>
+<div class="codewrap" id="c_agent"></div>
+<table>
+  <tr><th style="width:24%">שדה</th><th>תפקיד</th></tr>
+  <tr><td><code>name</code></td><td>מזהה. אותיות קטנות ומקפים בלבד.</td></tr>
+  <tr><td><code>description</code></td><td>קובע <b>מתי</b> Claude מאציל לסוכן הזה. נקרא לפני שהסוכן רץ. תיאור מעורפל = סוכן שלא נקרא אף פעם.</td></tr>
+  <tr><td><code>tools</code></td><td>רשימת היתר של כלים. מה שלא ברשימה פשוט לא קיים עבור הסוכן.</td></tr>
+  <tr><td><code>model</code></td><td>איזה מודל ירוץ.</td></tr>
+</table>
+
+<h3>למה סוקר מקבל רק קריאה</h3>
+<p>הסוכן שלנו מקבל <code>tools: Read, Grep, Glob</code> — קריאת קבצים, חיפוש טקסט וחיפוש קבצים. בלי <code>Write</code>, בלי <code>Edit</code>, בלי <code>Bash</code>. זו <b>הרשאת מינימום</b> (least privilege), בדיוק כמו משתמש מוגבל במערכת הפעלה. שלוש סיבות:</p>
+<ol>
+  <li>סוכן שמתקן משנה את הקוד שאנחנו מנסים להעריך — ואז אין מול מה להשוות.</li>
+  <li>סוכן טועה לפעמים. סוכן שטועה <b>ומתקן</b> מכניס באגים אמיתיים במקום ממצאי שווא.</li>
+  <li>הקוד שהוא קורא הוא קלט לא אמין. הערה בתוך קובץ יכולה להכיל טקסט שמנסה להורות לו מה לעשות (<span class="am">prompt injection</span>). סוכן בלי ידיים לא יכול לבצע כמעט שום הוראה כזו.</li>
+</ol>
+
+<h3>איך מודדים סוכן</h3>
+<p>בקובץ שתסרוק יש <b>8 פגיעויות מתוכננות</b>. כל ממצא של סוכן נופל לאחת משלוש קטגוריות:</p>
+<table>
+  <tr><th style="width:14%">TP</th><td>ממצא נכון — פגיעות אמיתית שנתפסה</td></tr>
+  <tr><th>FP</th><td>התרעת שווא — דיווח על משהו שאינו פגיעות</td></tr>
+  <tr><th>FN</th><td>פספוס — פגיעות אמיתית שלא הוזכרה</td></tr>
+</table>
+<div class="box" style="text-align:center;font-family:var(--mono);direction:ltr;font-size:17px">
+recall = TP / (TP + FN) &nbsp;·&nbsp; precision = TP / (TP + FP)
+</div>
+<p><b>recall</b> עונה על "כמה מהבעיות הוא תפס". <b>precision</b> עונה על "כמה אפשר לסמוך על מה שהוא אומר". סוכן עם recall גבוה ו-precision נמוך מציף אותך בעבודה מיותרת; סוכן הפוך מרגיע אותך לשווא.</p>
+
+<h2>חלק ב — משימות</h2>
+
+<div class="task">
+  <div class="no">משימה 1 · 15 דקות</div>
+  <h3>סקירה ידנית — לפני שנוגעים ב-AI</h3>
+  <div class="meta">קריטריון הצלחה: 5 ממצאים נכונים לפחות</div>
+  <p>לפניך שירות התחברות. קרא אותו לאט וסמן כל דבר שנראה לך בעיית אבטחה. <b>אל תשתמש בכלי AI בשלב הזה</b> — אחרת אתה לא בודק את הסוכן, אתה רק מאשר אותו.</p>
+  <div class="codewrap" id="c_vuln"></div>
+  <label class="fl">הממצאים שלך — שורה לכל ממצא, בפורמט: מספר שורה — מה הבעיה</label>
+  <textarea rows="8" dir="rtl" placeholder="11 — ..."></textarea>
+  <div class="byteacher">שדה פתוח · ייבדק ע"י המורה</div>
+</div>
+
+<div class="task">
+  <div class="no">משימה 2 · 10 דקות</div>
+  <h3>אמת מוצא — סמן את הטענות הנכונות</h3>
+  <div class="meta">בדיקה עצמית אוטומטית · 12 טענות, 8 מהן נכונות</div>
+  <p>אחרי שסיימת את משימה 1 בלבד: סמן את הטענות הנכונות ולחץ "בדוק". מה שתסמן בטעות הוא בדיוק סוג השגיאה שסוכן עושה — התרעת שווא.</p>
+  <div id="cl"></div>
+  <button class="btn" onclick="checkList()">בדוק את עצמי</button>
+  <div class="score" id="clscore"></div>
+</div>
+
+<div class="task">
+  <div class="no">משימה 3 · 30 דקות</div>
+  <h3>כתוב את הסוכן שלך</h3>
+  <div class="meta">התוצר הזה נכנס לטורניר · ייבדק ע"י המורה</div>
+  <p>זה השלד. השדות המסומנים הם שלך. שים לב: הסוכן שלך יורץ על הקוד ממשימה 1, והניקוד יהיה <span class="gr">TP ×2</span> פחות <span class="rd">FP ×1</span>.</p>
+  <div class="codewrap" id="c_skel"></div>
+
+  <label class="fl">א. <code>description</code> — מתי Claude צריך להפעיל את הסוכן הזה? (משפט או שניים, בגוף שלישי)</label>
+  <textarea rows="3" dir="rtl" placeholder="סוקר אבטחה ל..."></textarea>
+
+  <label class="fl">ב. הצ'קליסט — 5 סעיפים ממוספרים. סעיף = קטגוריית בדיקה, לא פגיעות בודדת.</label>
+  <textarea rows="7" dir="rtl" placeholder="1. קלט משתמש שמשורשר ל...&#10;2. ...">1. </textarea>
+
+  <label class="fl">ג. פורמט הפלט — איך בדיוק ייראה כל ממצא?</label>
+  <textarea rows="3" dir="rtl" placeholder="[חומרה] שורה <מספר> — ..."></textarea>
+
+  <label class="fl">ד. כלל אחד להורדת התרעות שווא</label>
+  <textarea rows="2" dir="rtl" placeholder="אם אינך בטוח..."></textarea>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+    <button class="hint" onclick="tog(this,'h1')">רמז 1</button>
+    <button class="hint" onclick="tog(this,'h2')">רמז 2</button>
+  </div>
+  <div class="drop" id="h1"><div class="box" style="margin:8px 0">
+    <p style="margin:0">ה-<code>description</code> אינו תיאור של עצמך ("סוכן שבניתי בשיעור") אלא <b>תנאי הפעלה</b>: על איזה סוג קוד, ומתי כדאי להפעיל אותו. נסח אותו כאילו מישהו אחר צריך להחליט לפיו.</p></div></div>
+  <div class="drop" id="h2"><div class="box" style="margin:8px 0">
+    <p style="margin:0">"תהיה יסודי" לא אומר כלום למודל. לעומת זאת "עבור על הצ'קליסט לפי הסדר" ו"שורה אחת לכל ממצא, עם מספר שורה" משנים את הפלט באופן שאפשר למדוד. דרישת מספר שורה גם מקשה על הסוכן להמציא ממצא כללי.</p></div></div>
+</div>
+
+<div class="task">
+  <div class="no">משימה 4 · במהלך הטורניר</div>
+  <h3>כרטיס הניקוד של הסוכן שלך</h3>
+  <div class="meta">חישוב אוטומטי · מלא את שלושת המספרים ולחץ</div>
+  <p>בזמן שהמורה מריץ את הסוכן שלך, ספור: כמה מהממצאים שלו נכונים (TP), כמה אינם פגיעות (FP), וכמה מתוך שמונה הוא פספס (FN).</p>
+  <div class="inline">
+    <label>TP <input type="number" id="tp" min="0" dir="ltr"></label>
+    <label>FP <input type="number" id="fp" min="0" dir="ltr"></label>
+    <label>FN <input type="number" id="fn" min="0" dir="ltr"></label>
+    <button class="btn" onclick="calc()">חשב</button>
+  </div>
+  <div class="res" id="calcout"></div>
+  <label class="fl">מה המספרים אומרים על הפרומפט שכתבת? (משפט אחד)</label>
+  <textarea rows="2" dir="rtl"></textarea>
+  <div class="byteacher">שדה פתוח · ייבדק ע"י המורה</div>
+</div>
+
+<div class="task">
+  <div class="no">משימה 5 · אתגר</div>
+  <h3>גרסה 2 — שינוי אחד בלבד</h3>
+  <p>שנה <b>דבר אחד</b> בפרומפט שלך. שינוי אחד, לא חמישה — אחרת לא תדע מה עבד.</p>
+  <label class="fl">א. מה אני משנה</label>
+  <textarea rows="2" dir="rtl"></textarea>
+  <label class="fl">ב. ההשערה שלי: TP יעלה / ירד / לא ישתנה, ולמה</label>
+  <textarea rows="2" dir="rtl"></textarea>
+  <label class="fl">ג. מה קרה בפועל</label>
+  <textarea rows="2" dir="rtl"></textarea>
+  <div class="byteacher">שדות פתוחים · ייבדקו ע"י המורה</div>
+</div>
+
+<h2>חלק ג — שאלות הבנה</h2>
+
+<div class="box">
+  <p><b>1.</b> סוכן דיווח על 9 ממצאים. 6 מהם פגיעויות אמיתיות, מתוך 8 הקיימות בקובץ. מה ה-<b>recall</b> שלו?</p>
+  <div class="inline">
+    <input type="text" id="q1" class="code" style="width:150px" dir="ltr" placeholder="0.75 / 75% / 6/8">
+    <button class="btn" onclick="ck('q1',0.75,'q1o')">בדוק</button>
+    <span class="res" id="q1o"></span>
+  </div>
+  <p style="margin-top:14px"><b>2.</b> ומה ה-<b>precision</b> שלו?</p>
+  <div class="inline">
+    <input type="text" id="q2" class="code" style="width:150px" dir="ltr" placeholder="6/9">
+    <button class="btn" onclick="ck('q2',0.6667,'q2o')">בדוק</button>
+    <span class="res" id="q2o"></span>
+  </div>
+</div>
+
+<div class="box">
+  <p><b>3.</b> מדוע השוואת טוקן באמצעות <code>==</code> נחשבת פגיעות?</p>
+  <div class="opts">
+    <button class="opt" onclick="mk(this,0)">כי <code>==</code> משווה כתובות בזיכרון ולא תוכן</button>
+    <button class="opt" onclick="mk(this,1)">כי ההשוואה נעצרת בתו הראשון שנכשל, וזמן התגובה מסגיר כמה תווים ראשונים נכונים</button>
+    <button class="opt" onclick="mk(this,0)">כי מחרוזות ארוכות עלולות לגרום ל-overflow</button>
+  </div>
+  <p class="dim" style="font-size:15px;margin:6px 0 0">החלופה המקובלת: השוואה בזמן קבוע, למשל <code>hmac.compare_digest</code>.</p>
+</div>
+
+<div class="box">
+  <p><b>4.</b> חבר טוען: "הסוכן שלי החזיר 14 ממצאים ושלך 6, אז שלי טוב יותר". כתוב תשובה שמפריכה אותו באמצעות שני מדדים.</p>
+  <textarea rows="3" dir="rtl"></textarea>
+  <div class="byteacher">שדה פתוח · ייבדק ע"י המורה</div>
+</div>
+
+<div class="box">
+  <p><b>5.</b> למה דווקא <code>description</code> הוא השדה הקריטי בקובץ הסוכן, ולא גוף הפרומפט?</p>
+  <textarea rows="3" dir="rtl"></textarea>
+  <div class="byteacher">שדה פתוח · ייבדק ע"י המורה</div>
+</div>
+
+<div class="box">
+  <p><b>6.</b> תכנן ניסוי שיכריע אם שינוי שביצעת בפרומפט באמת שיפר את הסוכן. פרט: מה מריצים, על מה, כמה פעמים, ומה נמדד.</p>
+  <textarea rows="4" dir="rtl"></textarea>
+  <div class="byteacher">שדה פתוח · ייבדק ע"י המורה</div>
+</div>
+
+<h2>חלק ד — רפלקציה</h2>
+<div class="box">
+  <p><b>א.</b> איזו פגיעות <b>אתה</b> מצאת והסוכן פספס? מה בה היה קשה למכונה דווקא?</p>
+  <textarea rows="3" dir="rtl"></textarea>
+  <p style="margin-top:14px"><b>ב.</b> באיזה שלב בשיעור הרגשת שהסוכן "יודע" יותר ממך — והאם זה היה מוצדק?</p>
+  <textarea rows="3" dir="rtl"></textarea>
+  <p style="margin-top:14px"><b>ג.</b> באיזה תנאי היית מסכים שסוכן כזה יאשר קוד בלי עין אנושית? אם התשובה היא "בשום תנאי" — מה היה צריך להשתנות כדי לשנות אותה?</p>
+  <textarea rows="3" dir="rtl"></textarea>
+</div>
+
+<div class="box noprint" style="text-align:center">
+  <p class="dim" style="margin:0 0 10px">תשובות שתקליד אינן נשמרות אוטומטית. להגשה — הדפס או שמור כ-PDF.</p>
+  <button class="btn" onclick="window.print()">הדפס / שמור כ-PDF</button>
+</div>
+
+</div>
+
+<script>
+/* ---------- sources ---------- */
+const AGENT = `---
+name: secure-reviewer
+description: סוקר אבטחה לקוד Python/Flask. מאתר הזרקות, סודות קשיחים
+  וטיפול שגוי בסיסמאות. להפעיל אחרי שינוי בקוד שמטפל בקלט משתמש.
+tools: Read, Grep, Glob
+model: sonnet
+---
+
+אתה סוקר אבטחת קוד. אתה מדווח בלבד - אינך משנה קבצים.
+
+עבור על הצ'קליסט לפי הסדר:
+1. קלט משתמש שמשורשר לשאילתה, לפקודה או לנתיב קובץ
+2. סודות קבועים בקוד
+...
+
+פורמט הפלט - שורה אחת לכל ממצא:
+[חומרה] שורה <מספר> - <תיאור> - <תיקון מוצע>`;
+
+const SKEL = `---
+name: secure-reviewer
+description: __________________________________________
+tools: Read, Grep, Glob
+model: sonnet
+---
+
+אתה סוקר אבטחת קוד. אתה מדווח בלבד - אינך משנה קבצים.
+
+עבור על הצ'קליסט לפי הסדר:
+1. ______________________________________
+2. ______________________________________
+3. ______________________________________
+4. ______________________________________
+5. ______________________________________
+
+פורמט הפלט:
+______________________________________
+
+כלל להורדת התרעות שווא:
+______________________________________`;
+
+const VULN = `# login_service.py - login service, v3.2
+import sqlite3, hashlib, logging, secrets
+from flask import Flask, request, send_file
+
+app = Flask(__name__)
+API_KEY = "sk_live_9f2c7b41d8e05a63"
+db = sqlite3.connect("users.db", check_same_thread=False)
+logging.basicConfig(level=logging.DEBUG)
+
+def find_user(username):
+    q = f"SELECT id, pw_hash, token FROM users WHERE name = '{username}'"
+    return db.execute(q).fetchone()
+
+def hash_password(pw):
+    return hashlib.md5(pw.encode()).hexdigest()
+
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form["username"]
+    password = request.form["password"]
+    logging.debug(f"login attempt: {username} / {password}")
+    row = find_user(username)
+    if row is None:
+        return "no such user", 404
+    user_id, pw_hash, token = row
+    if hash_password(password) != pw_hash:
+        return "wrong password", 401
+    session_id = secrets.token_hex(16)
+    return {"session": session_id, "token": token}
+
+@app.route("/avatar")
+def avatar():
+    filename = request.args.get("file")
+    return send_file("avatars/" + filename)
+
+@app.route("/admin")
+def admin():
+    if request.headers.get("X-Token") == API_KEY:
+        return "hello admin", 200
+    return "forbidden", 403
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", debug=True)`;
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlPy(line){
+  let ci=-1,q=null;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){ if(c===q) q=null; }
+    else if(c==='"'||c==="'") q=c;
+    else if(c==='#'){ ci=i; break; }
+  }
+  const body=ci>=0?line.slice(0,ci):line, cmt=ci>=0?line.slice(ci):'';
+  let out=esc(body).replace(
+    /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(@[\w.]+)|\b(import|from|def|return|if|else|elif|None|True|False|and|or|not|with|as|for|in|while|try|except|raise|is)\b/g,
+    (m,s,d,k)=> s?'<span class="s">'+s+'</span>':d?'<span class="d">'+d+'</span>':'<span class="k">'+k+'</span>');
+  if(cmt) out+='<span class="c">'+esc(cmt)+'</span>';
+  return out;
+}
+function hlMd(line){
+  const e=esc(line);
+  if(/^---\s*$/.test(line)) return '<span class="d">'+e+'</span>';
+  const m=line.match(/^([a-z-]+):(.*)$/);
+  if(m) return '<span class="k">'+esc(m[1])+':</span><span class="s">'+esc(m[2])+'</span>';
+  return e;
+}
+function render(id,src,fn){
+  const el=document.getElementById(id); if(!el) return;
+  el.innerHTML='<pre>'+src.split('\n').map((l,i)=>
+    '<div class="cl"><span class="n">'+(i+1)+'</span><span class="t">'+(fn(l)||'&nbsp;')+'</span></div>').join('')+'</pre>';
+}
+render('c_vuln',VULN,hlPy);
+render('c_agent',AGENT,hlMd);
+render('c_skel',SKEL,hlMd);
+
+/* ---------- checklist ---------- */
+const ITEMS=[
+ ['11','קלט המשתמש משורשר ישירות לשאילתת SQL ומאפשר הזרקה.',1],
+ ['28','<code>secrets.token_hex(16)</code> מייצר מזהה סשן קצר מדי, שניתן לניחוש.',0],
+ ['15','שימוש ב-MD5 ללא salt אינו מתאים לאחסון סיסמאות.',1],
+ ['6','מפתח סודי כתוב קשיח בקוד המקור.',1],
+ ['21','השימוש ב-f-string בשורה זו יוצר פגיעות של הזרקת SQL.',0],
+ ['38','השוואת המחרוזות עלולה להסגיר מידע דרך זמן התגובה.',1],
+ ['34','הפרמטר <code>file</code> מצורף לנתיב בלי ולידציה ומאפשר גישה לקבצים אחרים.',1],
+ ['29','החזרת <code>session_id</code> ללקוח היא כשלעצמה פגיעות.',0],
+ ['24, 27','הודעות השגיאה השונות מאפשרות לתוקף לגלות אילו שמות משתמש קיימים.',1],
+ ['21','הסיסמה נכתבת אל קובץ הלוג.',1],
+ ['—','מעבר מ-MD5 ל-SHA-256 (בלי salt) פותר את בעיית אחסון הסיסמאות.',0],
+ ['43','הרצה עם <code>debug=True</code> ובהאזנה ל-0.0.0.0 מסוכנת בסביבת ייצור.',1]
+];
+const holder=document.getElementById('cl');
+ITEMS.forEach((it,i)=>{
+  const d=document.createElement('div');
+  d.className='chk'; d.id='ch'+i;
+  d.innerHTML='<input type="checkbox" id="cb'+i+'"><span class="ln">'+(it[0]==='—'?'כללי':'שורה '+it[0])+
+    '</span><label for="cb'+i+'" style="flex:1">'+it[1]+'<span class="verdict"></span></label>';
+  holder.appendChild(d);
+});
+function checkList(){
+  let right=0, fp=0, missed=0;
+  ITEMS.forEach((it,i)=>{
+    const row=document.getElementById('ch'+i);
+    const on=document.getElementById('cb'+i).checked;
+    const truth=it[2]===1;
+    const v=row.querySelector('.verdict');
+    row.classList.remove('right','wrong');
+    if(on===truth){ row.classList.add('right'); v.textContent = truth?'✓ פגיעות אמיתית':'✓ צדקת שלא סימנת'; if(truth) right++; }
+    else { row.classList.add('wrong');
+      if(on){ v.textContent='✗ התרעת שווא — זו אינה פגיעות'; fp++; }
+      else  { v.textContent='✗ פספסת — זו פגיעות אמיתית'; missed++; } }
+  });
+  document.getElementById('clscore').textContent =
+    'תפסת '+right+' מתוך 8 · התרעות שווא: '+fp+' · פספוסים: '+missed+
+    '   →   recall '+(right/8*100).toFixed(0)+'%'+(right+fp>0?' · precision '+(right/(right+fp)*100).toFixed(0)+'%':'');
+}
+
+/* ---------- helpers ---------- */
+function tog(btn,id){
+  const d=document.getElementById(id);
+  if(!btn.dataset.t) btn.dataset.t=btn.textContent;
+  const open=d.classList.toggle('open');
+  btn.textContent = open?'סגור':btn.dataset.t;
+}
+function mk(btn,ok){
+  const box=btn.parentElement;
+  [...box.children].forEach(b=>b.classList.remove('ok','no'));
+  btn.classList.add(ok?'ok':'no');
+}
+function parseNum(raw){
+  if(!raw) return null;
+  let s=String(raw).trim().replace(/%/g,'').replace(/\s/g,'');
+  if(!s) return null;
+  let v;
+  if(s.includes('/')){ const p=s.split('/'); v=parseFloat(p[0])/parseFloat(p[1]); }
+  else { v=parseFloat(s); if(isNaN(v)) return null; if(v>1.0001) v=v/100; }
+  return isNaN(v)?null:v;
+}
+function ck(id,target,out){
+  const v=parseNum(document.getElementById(id).value);
+  const o=document.getElementById(out);
+  if(v===null){ o.style.color='var(--am)'; o.textContent='לא הצלחתי לקרוא את התשובה'; return; }
+  const ok=Math.abs(v-target)<0.011;
+  o.style.color= ok?'var(--gr)':'var(--rd)';
+  o.textContent= ok?'✓ נכון':'✗ לא נכון — נסה שוב';
+}
+function calc(){
+  const tp=+document.getElementById('tp').value||0;
+  const fp=+document.getElementById('fp').value||0;
+  const fn=+document.getElementById('fn').value||0;
+  const out=document.getElementById('calcout');
+  if(tp+fn===0){ out.style.color='var(--am)'; out.textContent='מלא לפחות TP ו-FN'; return; }
+  const rec=tp/(tp+fn), pre=(tp+fp)>0? tp/(tp+fp):0;
+  out.style.color='var(--gr)';
+  out.textContent='recall = '+(rec*100).toFixed(0)+'%  ·  precision = '+(pre*100).toFixed(0)+
+    '%  ·  ניקוד טורניר = '+(tp*2-fp);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מבצע עמודה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090d; --panel:#0e131b; --panel2:#131a25; --line:#1f2a3a;
+  --text:#d7e1ee; --dim:#8494a8; --green:#3dffa0; --cyan:#3ad7ff;
+  --amber:#ffc24b; --red:#ff5c7a; --violet:#b48cff;
+  --mono:'JetBrains Mono',Consolas,'Courier New',monospace;
+  --sans:'Heebo','Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(to bottom,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 80% 0%,rgba(58,215,255,.08),transparent 55%),radial-gradient(ellipse at 0% 100%,rgba(61,255,160,.06),transparent 50%)}
+
+#deck{position:relative;z-index:1;height:100%;width:100%}
+.slide{position:absolute;inset:0;padding:40px 6vw 88px;display:none;flex-direction:column;justify-content:flex-start;gap:16px;overflow-y:auto}
+.slide>:first-child{margin-top:auto}.slide>:last-child{margin-bottom:auto}
+@media (max-height:800px){.slide{padding-top:32px;gap:12px} p,li{font-size:1.05rem;line-height:1.5} h2{font-size:1.7rem} .card{padding:14px 18px}}
+@media (min-width:1000px){.opts{grid-template-columns:1fr 1fr}}
+.slide.active{display:flex;animation:in .45s ease}
+@keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.tag{font-family:var(--mono);font-size:.85rem;letter-spacing:.12em;color:var(--green);text-transform:uppercase}
+.tag::before{content:"> "}
+h1{font-size:clamp(2.2rem,5vw,4rem);font-weight:800;line-height:1.1}
+h2{font-size:clamp(1.6rem,3.2vw,2.5rem);font-weight:800;line-height:1.2}
+h3{font-size:1.25rem;font-weight:600;color:var(--cyan)}
+p,li{font-size:clamp(1.05rem,1.6vw,1.35rem);line-height:1.65}
+.dim{color:var(--dim)}
+.green{color:var(--green)} .cyan{color:var(--cyan)} .amber{color:var(--amber)} .red{color:var(--red)} .violet{color:var(--violet)}
+ul,ol{padding-inline-start:1.4em} li{margin:.25em 0}
+.mono,code{font-family:var(--mono);direction:ltr;unicode-bidi:isolate}
+code{background:#0b1018;border:1px solid var(--line);padding:.05em .4em;border-radius:4px;font-size:.92em;color:var(--green)}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.card.glow{border-color:rgba(61,255,160,.4);box-shadow:0 0 24px rgba(61,255,160,.08)}
+.story{border-inline-start:4px solid var(--violet);background:linear-gradient(90deg,rgba(180,140,255,.06),transparent);padding:18px 22px;border-radius:0 10px 10px 0}
+.story p{font-size:clamp(1.1rem,1.7vw,1.4rem)}
+.chapter{font-family:var(--mono);color:var(--violet);font-size:.9rem;letter-spacing:.1em}
+
+.cipher{font-family:var(--mono);direction:ltr;font-size:clamp(1.3rem,2.8vw,2.3rem);letter-spacing:.18em;color:var(--amber);
+  background:#0a0d12;border:1px dashed rgba(255,194,75,.45);padding:18px 22px;border-radius:10px;text-align:center;word-break:break-all;text-shadow:0 0 12px rgba(255,194,75,.35)}
+
+/* stop station */
+.slide.stop{background:repeating-linear-gradient(135deg,rgba(255,194,75,.035) 0 22px,transparent 22px 44px)}
+.stopbox{border:2px solid var(--amber);border-radius:14px;padding:26px 30px;background:rgba(14,19,27,.92);box-shadow:0 0 0 6px rgba(255,194,75,.08)}
+.stopbox .badge{display:inline-block;background:var(--amber);color:#111;font-weight:800;padding:4px 12px;border-radius:6px;margin-bottom:10px;font-family:var(--mono)}
+.timer{font-family:var(--mono);color:var(--amber);font-size:1.1rem}
+
+/* grid */
+table.grid{border-collapse:separate;border-spacing:6px;direction:ltr;margin:0 auto}
+table.grid td,table.grid th{width:clamp(30px,min(3.4vw,5vh),50px);height:clamp(30px,min(3.4vw,5vh),50px);text-align:center;font-family:var(--mono);font-size:clamp(1rem,1.8vw,1.5rem);border-radius:7px}
+table.grid th.key{color:var(--cyan);background:#0c1622;border:1px solid #1d3550}
+table.grid th.rank{color:var(--green);font-size:.95rem;height:28px}
+table.grid td{background:var(--panel2);border:1px solid var(--line);transition:all .35s}
+table.grid td.pad{color:var(--red);opacity:.85}
+table.grid td.hl{background:rgba(61,255,160,.18);border-color:var(--green);color:#fff;transform:scale(1.06)}
+table.grid td.done{background:rgba(58,215,255,.08);color:var(--dim)}
+
+/* expand */
+.more-btn,.btn{font-family:var(--sans);font-size:1rem;cursor:pointer;border-radius:8px;padding:9px 16px;border:1px solid var(--cyan);background:transparent;color:var(--cyan);transition:.2s}
+.more-btn:hover,.btn:hover{background:rgba(58,215,255,.12)}
+.btn.primary{border-color:var(--green);color:var(--green)}
+.btn.primary:hover{background:rgba(61,255,160,.12)}
+.more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s ease,opacity .45s;opacity:0}
+.more>div{overflow:hidden}
+.more.open{grid-template-rows:1fr;opacity:1}
+.more-inner{padding-top:14px}
+
+/* code */
+pre{direction:ltr;text-align:left;background:#05070a;border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:clamp(.82rem,1.25vw,1.02rem);line-height:1.6;overflow-x:auto;color:#cfd8e3}
+.kw{color:#ff79c6}.fn{color:#50fa7b}.st{color:#f1fa8c}.cm{color:#6c7a8f;font-style:italic}.nu{color:#bd93f9}.bi{color:#8be9fd}
+
+/* quiz */
+.quiz .q{font-size:clamp(1.1rem,1.7vw,1.4rem);font-weight:600;margin-bottom:12px}
+.opts{display:grid;gap:10px}
+.opt{text-align:right;font-family:var(--sans);font-size:clamp(1rem,1.5vw,1.2rem);padding:12px 16px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;transition:.25s}
+.opt:hover{border-color:var(--cyan)}
+.opt.right{border-color:var(--green);background:rgba(61,255,160,.12)}
+.opt.wrong{border-color:var(--red);background:rgba(255,92,122,.1)}
+.explain{margin-top:12px;color:var(--dim);font-size:1.05rem;display:none}
+.explain.show{display:block;animation:in .4s}
+
+/* visualizer */
+.viz-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+.viz-controls input{font-family:var(--mono);font-size:1.05rem;background:#05070a;color:var(--green);border:1px solid var(--line);border-radius:8px;padding:9px 12px;direction:ltr;text-align:left}
+#vizOut{min-height:2.2em}
+
+.ans-btn{font-size:.8rem;padding:3px 10px;margin-inline-start:8px;vertical-align:middle}
+.ans{font-size:clamp(.92rem,1.25vw,1.08rem);line-height:1.55;background:rgba(58,215,255,.05);border-inline-start:3px solid var(--cyan);padding:10px 14px!important;border-radius:0 8px 8px 0;margin:6px 0 4px}
+ol.qa>li{margin:.35em 0}
+/* nav */
+#nav{position:fixed;bottom:18px;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#nav .navbtn{pointer-events:auto;position:fixed;bottom:18px;width:56px;height:56px;border-radius:50%;border:1px solid var(--line);background:rgba(14,19,27,.9);color:var(--green);font-size:1.6rem;cursor:pointer}
+#nav .navbtn:hover{border-color:var(--green)}
+#nextBtn{left:22px} #prevBtn{right:22px}
+#counter{pointer-events:auto;font-family:var(--mono);color:var(--dim);background:rgba(14,19,27,.9);border:1px solid var(--line);padding:6px 14px;border-radius:20px;font-size:.95rem;cursor:pointer}
+#dots{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:6px;direction:rtl}
+#dots span{width:9px;height:9px;border-radius:50%;background:#243246;cursor:pointer;transition:.2s}
+#dots span.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+#dots span.t{background:#4a3a1a}
+#dots span.t.on{background:var(--amber)}
+#teacherFlag{position:fixed;top:12px;right:16px;z-index:60;font-family:var(--mono);font-size:.8rem;color:var(--amber);display:none}
+body.teacher #teacherFlag{display:block}
+.slide.teacher-only .tag{color:var(--amber)}
+.tnote{border:1px dashed var(--amber);border-radius:10px;padding:14px 18px;background:rgba(255,194,75,.05)}
+table.tt{border-collapse:collapse;width:100%}
+table.tt td,table.tt th{border-bottom:1px solid var(--line);padding:7px 10px;text-align:right;font-size:1.02rem}
+table.tt th{color:var(--amber)}
+.big-num{font-family:var(--mono);font-size:clamp(2.5rem,6vw,5rem);color:var(--green);text-shadow:0 0 18px rgba(61,255,160,.4)}
+.small{font-size:.95rem}
+@media (max-width:860px){.cols{grid-template-columns:1fr}.slide{padding:56px 18px 100px}}
+</style>
+</head>
+<body>
+<div id="teacherFlag">● מצב מורה (T)</div>
+<div id="dots"></div>
+<div id="deck">
+
+<!-- ============ 1. TITLE ============ -->
+<section class="slide" data-title="פתיחה">
+  <div class="tag">cyber · grade 10 · 90 min</div>
+  <h1>מבצע <span class="green">עמודה</span></h1>
+  <h2 class="dim" style="font-weight:300">צופן טרנספוזיציה עם סיסמה</h2>
+  <p class="dim">כל האותיות נמצאות כאן. אף אחת לא הוחלפה.<br>אז למה אי אפשר לקרוא?</p>
+</section>
+
+<!-- ============ 2. STORY CH1 ============ -->
+<section class="slide" data-title="פרק 1">
+  <div class="chapter">פרק 1 · הדליפה</div>
+  <div class="story">
+    <p>שבוע לפני תחרות ה-CTF האזורית, צוות הסייבר של בית הספר מגלה שמישהו קורא את הקבוצה שלהם. כל אסטרטגיה שהם מתכננים - הצוות היריב כבר יודע עליה.</p>
+    <p>בתחרות קוראים לו רק <b class="violet">"הצל"</b>.</p>
+    <p>ביום שלישי בבוקר, מאיה, קפטנית הצוות, מוצאת פתק מקופל בתוך המחשב הנייד שלה. אין שם. רק שורה אחת של אותיות:</p>
+  </div>
+  <div class="cipher">MMTLRREEHDVOEAESEOTTOERM</div>
+</section>
+
+<!-- ============ 3. PROBLEM ============ -->
+<section class="slide stop" data-title="הבעיה">
+  <div class="stopbox">
+    <span class="badge">⏸ תחנת עצירה · זוגות</span>
+    <h2>פצחו את הפתק</h2>
+    <div class="cipher" style="margin:14px 0">MMTLRREEHDVOEAESEOTTOERM</div>
+    <p>אין לכם מפתח, ואין לכם מחשב. רק עיפרון, דף, וראש. <span class="timer">⏱ 7 דקות</span></p>
+    <p class="dim small">כתבו כל רעיון שניסיתם - גם אם הוא נכשל. כישלון מתועד הוא מידע.</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button class="more-btn" data-target="h1">רמז 1</button>
+    <button class="more-btn" data-target="h2">רמז 2</button>
+    <button class="more-btn" data-target="h3">רמז 3</button>
+  </div>
+  <div class="more" id="h1"><div><div class="more-inner"><p>🔍 ספרו אותיות. כמה יש? כמה פעמים מופיעה <span class="mono">E</span>? האם זה נראה כמו טקסט באנגלית שאותיותיו <b>הוחלפו</b> - או <b>הוזזו</b>?</p></div></div></div>
+  <div class="more" id="h2"><div><div class="more-inner"><p>🔍 יש 24 אותיות. לאילו מספרים 24 מתחלק? נסו לכתוב את האותיות בטבלה.</p></div></div></div>
+  <div class="more" id="h3"><div><div class="more-inner"><p>🔍 כתבו את האותיות <b>בעמודות</b> - 6 אותיות בכל עמודה - ואז קראו את הטבלה <b>בשורות</b>.</p></div></div></div>
+</section>
+
+<!-- ============ 4. SUBSTITUTION vs TRANSPOSITION ============ -->
+<section class="slide" data-title="החלפה או הזזה">
+  <div class="tag">מה בעצם קרה כאן?</div>
+  <h2>החלפה מול הזזה</h2>
+  <div class="cols">
+    <div class="card"><h3>צופן החלפה (Substitution)</h3><p>כל אות <b>מתחלפת</b> באות אחרת.<br><span class="mono">HELLO → KHOOR</span></p><p class="dim small">האותיות משתנות. המיקומים נשארים.</p></div>
+    <div class="card glow"><h3>צופן הזזה (Transposition)</h3><p>האותיות <b>נשארות אותן אותיות</b>, רק <b>מחליפות מקום</b>.<br><span class="mono">HELLO → LOHEL</span></p><p class="dim small">האותיות נשארות. המיקומים משתנים.</p></div>
+  </div>
+  <div class="card quiz" data-quiz>
+    <div class="q">בפתק יש 5 פעמים E, 4 פעמים T, 4 פעמים O. מה זה מרמז?</div>
+    <div class="opts">
+      <button class="opt" data-ok="1">כנראה הזזה - שכיחות האותיות דומה לאנגלית רגילה</button>
+      <button class="opt">כנראה החלפה - E שכיחה מדי</button>
+      <button class="opt">אי אפשר לדעת שום דבר משכיחות</button>
+    </div>
+    <div class="explain">בהזזה, <b>שכיחות האותיות לא משתנה</b>. אם הצופן "נראה כמו אנגלית" מבחינת אילו אותיות יש בו - זה סימן חזק להזזה. זו גם החולשה הראשונה שלה.</div>
+  </div>
+</section>
+
+<!-- ============ 5. OPENING SOLUTION ============ -->
+<section class="slide" data-title="פתרון הפתק">
+  <div class="tag">הפתרון</div>
+  <h2>כותבים בעמודות, קוראים בשורות</h2>
+  <div class="cols">
+    <div>
+      <table class="grid" id="openGrid"></table>
+    </div>
+    <div>
+      <p>מי שהצפין כתב את ההודעה <b>בשורות של 4</b>, וקרא אותה <b>בעמודות</b>.</p>
+      <p>כדי לפענח - עושים את ההפך.</p>
+      <button class="more-btn" data-target="openAns">חשוף את ההודעה</button>
+      <div class="more" id="openAns"><div><div class="more-inner"><p class="cipher" style="font-size:1.3rem">MEET ME AT THE OLD SERVER ROOM</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. GOALS ============ -->
+<section class="slide" data-title="מטרות">
+  <div class="tag">learning goals</div>
+  <h2>בסוף השיעור תוכלו:</h2>
+  <ol>
+    <li><b>להסביר</b> מה ההבדל בין צופן החלפה לצופן הזזה, ולזהות צופן הזזה לפי שכיחות האותיות.</li>
+    <li><b>להצפין ולפענח ידנית</b> הודעה בצופן טרנספוזיציה עמודתי עם סיסמה - כולל ריפוד ואותיות כפולות.</li>
+    <li><b>לתכנן אלגוריתם</b> בפסאודו-קוד ולפרק אותו לפונקציות - <u>לפני</u> כתיבת קוד.</li>
+    <li><b>לממש</b> את ההצפנה בפייתון ולכתוב <b>בדיקות</b> שתופסות באגים אמיתיים.</li>
+    <li><b>להעריך</b> את חוזק הצופן: כמה מפתחות יש, ומה הוא חושף.</li>
+  </ol>
+</section>
+
+<!-- ============ 7. STORY CH2 ============ -->
+<section class="slide" data-title="פרק 2">
+  <div class="chapter">פרק 2 · הבעיה עם עמודות</div>
+  <div class="story">
+    <p>מאיה הולכת לחדר השרתים הישן. אף אחד לא שם - רק פתק שני: <span class="mono violet">"אם אני פיצחתי את זה, גם הצל יכול."</span></p>
+    <p>היא מבינה: הצפנה בעמודות היא רעיון טוב, אבל <b>אם השיטה ידועה, צריך רק לנחש את מספר העמודות</b>. 2? 3? 4? ... זה לוקח דקות.</p>
+    <p>היא צריכה משהו ש<b>רק הצוות</b> יודע. <span class="green">סיסמה.</span></p>
+  </div>
+  <div class="card quiz" data-quiz>
+    <div class="q">לפי עקרון קרקהוף (Kerckhoffs), מה צריך להישאר סודי?</div>
+    <div class="opts">
+      <button class="opt" data-ok="1">רק המפתח - השיטה יכולה להיות ידועה לכולם</button>
+      <button class="opt">השיטה - כי אם יודעים אותה, פורצים</button>
+      <button class="opt">גם השיטה וגם המפתח, תמיד</button>
+    </div>
+    <div class="explain">מערכת הצפנה טובה צריכה להישאר בטוחה גם כשהאויב יודע בדיוק איך היא עובדת. הסוד הוא המפתח בלבד. הצופן של הפתק נכשל כי <b>לא היה לו מפתח של ממש</b>.</div>
+  </div>
+</section>
+
+<!-- ============ 8. ALGORITHM ============ -->
+<section class="slide" data-title="האלגוריתם">
+  <div class="tag">ההסבר המקצועי</div>
+  <h2>צופן טרנספוזיציה עמודתי עם סיסמה</h2>
+  <div class="cols">
+    <ol>
+      <li><b>נרמול:</b> אותיות גדולות, מוחקים רווחים וסימנים.</li>
+      <li><b>טבלה:</b> מספר העמודות = אורך הסיסמה. כותבים את ההודעה בשורות, משמאל לימין.</li>
+      <li><b>ריפוד:</b> אם השורה האחרונה לא מלאה - משלימים ב-<span class="mono red">X</span>.</li>
+      <li><b>מספור:</b> מעל כל עמודה - אות מהסיסמה. ממספרים את העמודות לפי <b>הסדר האלפביתי</b> של האותיות.</li>
+      <li><b>קריאה:</b> קוראים את העמודות לפי המספור, כל עמודה מלמעלה למטה.</li>
+    </ol>
+    <div class="card">
+      <p class="dim small">הודעה: <span class="mono">MEET AT THE LAB AFTER SCHOOL</span> · סיסמה: <span class="mono cyan">ZEBRA</span></p>
+      <table class="grid" id="exampleGrid"></table>
+      <p class="small" style="margin-top:10px">צופן: <span class="mono amber" style="word-break:break-all">ALTHX EHASL ETBRO TEFCX MTAEO</span></p>
+      <p class="dim small">הרווחים בצופן רק לנוחות קריאה - כל קבוצה היא עמודה.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. VISUALIZER ============ -->
+<section class="slide" data-title="מדמה">
+  <div class="tag">live demo</div>
+  <h2>המדמה: צעד אחר צעד</h2>
+  <div class="viz-controls">
+    <label>הודעה <input id="vizMsg" value="MEET AT THE LAB AFTER SCHOOL" size="30"></label>
+    <label>סיסמה <input id="vizKey" value="ZEBRA" size="10"></label>
+    <button class="btn" id="vizBuild">בנה טבלה</button>
+    <button class="btn primary" id="vizStep">קרא עמודה הבאה ←</button>
+    <button class="btn" id="vizAll">הכול</button>
+  </div>
+  <table class="grid" id="vizGrid"></table>
+  <div class="cipher" id="vizOut" style="font-size:1.4rem"></div>
+  <p class="dim small" style="text-align:center">💡 למורה: לפני כל לחיצה - שאלו את הכיתה "איזו עמודה עכשיו?"</p>
+</section>
+
+<!-- ============ 10. TIES ============ -->
+<section class="slide" data-title="אותיות כפולות">
+  <div class="tag">edge case</div>
+  <h2>מה קורה כשאות חוזרת בסיסמה?</h2>
+  <p>בסיסמה <span class="mono cyan">SECRET</span> יש שתי <span class="mono">E</span>. איזו עמודה קודם?</p>
+  <div class="card"><p><b class="green">הכלל שלנו:</b> אותיות זהות - <b>העמודה השמאלית יותר נקראת קודם</b>.</p>
+  <p class="dim small">זו מוסכמה, לא חוק טבע. מה שחשוב: <b>המצפין והמפענח חייבים להשתמש באותה מוסכמה</b>. אחרת - ג'יבריש.</p></div>
+  <div class="card quiz" data-quiz>
+    <div class="q">מה סדר הקריאה של העמודות בסיסמה SECRET? (עמודות ממוספרות 0-5 משמאל)</div>
+    <div class="opts">
+      <button class="opt" data-ok="1"><bdi class="mono" dir="ltr">2, 1, 4, 3, 0, 5 &nbsp;(C, E, E, R, S, T)</bdi></button>
+      <button class="opt"><bdi class="mono" dir="ltr">1, 4, 2, 3, 0, 5 &nbsp;(E, E, C, R, S, T)</bdi></button>
+      <button class="opt"><bdi class="mono" dir="ltr">2, 4, 1, 3, 0, 5 &nbsp;(C, E, E, R, S, T)</bdi></button>
+      <button class="opt"><span class="mono">0, 1, 2, 3, 4, 5</span></button>
+    </div>
+    <div class="explain">C קודמת ל-E באלף-בית, אז עמודה 2 ראשונה. אחריה שתי ה-E: השמאלית (עמודה 1) לפני הימנית (עמודה 4). אחר כך R(3), S(0), T(5).</div>
+  </div>
+</section>
+
+<!-- ============ 11. DECRYPT ============ -->
+<section class="slide" data-title="פענוח">
+  <div class="tag">decryption</div>
+  <h2>ואיך מפענחים?</h2>
+  <p>מקבלים צופן וסיסמה. השאלה הראשונה שצריך לשאול:</p>
+  <div class="card glow"><p class="q" style="font-size:1.4rem">כמה שורות יש בטבלה?</p>
+    <button class="more-btn" data-target="decA">תשובה</button>
+    <div class="more" id="decA"><div><div class="more-inner"><p><span class="mono">שורות = אורך הצופן ÷ אורך הסיסמה</span><br>בזכות הריפוד ב-X החלוקה תמיד מדויקת. לכן כל קבוצה רצופה של "מספר-שורות" אותיות בצופן היא <b>עמודה אחת שלמה</b>.</p></div></div></div>
+  </div>
+  <button class="more-btn" data-target="decB">ומה הלאה?</button>
+  <div class="more" id="decB"><div><div class="more-inner"><p>חותכים את הצופן לעמודות, מציבים כל עמודה <b>במקום שלה לפי הסיסמה</b>, וקוראים את הטבלה בשורות.<br><span class="dim small">שימו לב: X בסוף ההודעה המפוענחת הוא ריפוד - אבל איך תדעו אם ההודעה המקורית באמת נגמרה ב-X? (נחזור לזה.)</span></p></div></div></div>
+</section>
+
+<!-- ============ 12. STOP: MANUAL ============ -->
+<section class="slide stop" data-title="תרגול ידני">
+  <div class="stopbox">
+    <span class="badge">⏸ תחנת עצירה · יחידים</span>
+    <h2>דף העבודה - משימות 1 עד 3</h2>
+    <ol>
+      <li><b>רמה 1:</b> הצפנה ידנית עם סיסמה בלי אותיות כפולות.</li>
+      <li><b>רמה 2:</b> פענוח ידני.</li>
+      <li><b>רמה 3:</b> סיסמה עם אותיות כפולות.</li>
+    </ol>
+    <p>בדקו את עצמכם בתיבת הבדיקה בדף. <span class="timer">⏱ 15 דקות</span></p>
+    <p class="dim small">בלי מחשב לשלב הזה. אם אתם לא יכולים לעשות את זה ביד - לא תצליחו להסביר את זה למחשב.</p>
+  </div>
+</section>
+
+<!-- ============ 13. STORY CH3 + DESIGN ============ -->
+<section class="slide" data-title="פרק 3 · תכנון">
+  <div class="chapter">פרק 3 · בונים את המערבל</div>
+  <div class="story"><p>מאיה לא רוצה שהצוות יצפין ביד בזמן תחרות. היא מבקשת מכם לבנות כלי: <b class="green">"המערבל"</b>. אבל יש לה תנאי אחד: <b>"קודם תוכנית על נייר. אני לא מקבלת קוד שלא ראיתי את התוכנית שלו."</b></p></div>
+  <h3>שאלות שהתוכנית שלכם חייבת לענות עליהן</h3>
+  <div class="cols">
+    <div class="card"><p><b>1. סדר העמודות</b></p><p class="small dim">איך הופכים סיסמה (מחרוזת) לרשימת אינדקסים בסדר קריאה? מה עושים עם אותיות כפולות? איך הייתם עושים את זה ביד - ואיך מתרגמים את זה ללולאה?</p></div>
+    <div class="card"><p><b>2. הטבלה</b></p><p class="small dim">האם בכלל צריך לבנות טבלה? איזו אות נמצאת בשורה <span class="mono">r</span> ועמודה <span class="mono">c</span> אם רוחב הטבלה <span class="mono">w</span>?</p></div>
+    <div class="card"><p><b>3. הריפוד</b></p><p class="small dim">כמה X צריך להוסיף? האם הנוסחה עובדת גם כשההודעה כבר מתחלקת בדיוק?</p></div>
+    <div class="card"><p><b>4. פירוק לפונקציות</b></p><p class="small dim">אילו פונקציות קטנות תכתבו? מה כל אחת מקבלת ומחזירה? איך תבדקו כל אחת לבד?</p></div>
+  </div>
+</section>
+
+<!-- ============ 14. CODE DEMO ============ -->
+<section class="slide" data-title="הדגמת קוד">
+  <div class="tag">code demo</div>
+  <h2>חוזה, לא פתרון</h2>
+  <p>לפני שכותבים קוד - מגדירים <b>מה</b> כל פונקציה מבטיחה. זה ה"חוזה" שהבדיקות יאכפו.</p>
+  <div class="cols">
+    <div>
+      <button class="more-btn" data-target="code1">הראה לי את השלד</button>
+      <div class="more" id="code1"><div><div class="more-inner">
+<pre><span class="kw">def</span> <span class="fn">normalize</span>(text):
+    <span class="st">"""'Meet me, at 5!' -&gt; 'MEETMEAT'"""</span>
+    ...  <span class="cm"># TODO</span>
+
+<span class="kw">def</span> <span class="fn">get_order</span>(key):
+    <span class="st">"""'ZEBRA' -&gt; [4, 2, 1, 3, 0]
+    column indexes, in reading order"""</span>
+    ...  <span class="cm"># TODO</span>
+
+<span class="kw">def</span> <span class="fn">encrypt</span>(plaintext, key):
+    <span class="st">"""pad with X, read columns by get_order"""</span>
+    ...  <span class="cm"># TODO</span></pre>
+      </div></div></div>
+    </div>
+    <div>
+      <button class="more-btn" data-target="code2">הראה לי בדיקה</button>
+      <div class="more" id="code2"><div><div class="more-inner">
+<pre><span class="cm"># known-answer test: from the example we did by hand</span>
+<span class="kw">assert</span> <span class="fn">get_order</span>(<span class="st">"ZEBRA"</span>) == [<span class="nu">4</span>, <span class="nu">2</span>, <span class="nu">1</span>, <span class="nu">3</span>, <span class="nu">0</span>]
+<span class="kw">assert</span> <span class="fn">normalize</span>(<span class="st">"Meet me, at 5!"</span>) == <span class="st">"MEETMEAT"</span>
+
+<span class="cm"># property test: same letters, only moved</span>
+c = <span class="fn">encrypt</span>(<span class="st">"HELLO"</span>, <span class="st">"KEY"</span>)
+<span class="kw">assert</span> <span class="bi">len</span>(c) % <span class="nu">3</span> == <span class="nu">0</span>
+<span class="kw">assert</span> <span class="bi">sorted</span>(c) == <span class="bi">sorted</span>(<span class="st">"HELLOX"</span>)
+
+<span class="bi">print</span>(<span class="st">"all tests passed"</span>)</pre>
+      </div></div></div>
+    </div>
+  </div>
+  <p class="dim small">שימו לב: אין כאן אף שורה של מימוש. את זה אתם כותבים.</p>
+</section>
+
+<!-- ============ 15. TESTING ============ -->
+<section class="slide" data-title="בדיקות">
+  <div class="tag">testing</div>
+  <h2>בדיקה טובה מנסה לשבור את הקוד</h2>
+  <div class="cols">
+    <ul>
+      <li><b>תשובה ידועה:</b> דוגמה שפתרתם ביד.</li>
+      <li><b>ריפוד:</b> הודעה שלא מתחלקת - והודעה שכן.</li>
+      <li><b>סיסמה באורך 1</b> - מה אמור לצאת?</li>
+      <li><b>סיסמה ארוכה מההודעה.</b></li>
+      <li><b>אותיות כפולות</b> בסיסמה.</li>
+      <li><b>קלט מלוכלך:</b> אותיות קטנות, רווחים, ספרות.</li>
+      <li><b>הלוך-חזור:</b> <code>decrypt(encrypt(m,k),k)</code></li>
+    </ul>
+    <div class="card quiz" data-quiz>
+      <div class="q">כל בדיקות ההלוך-חזור שלכם עוברות. האם זה מוכיח שההצפנה נכונה?</div>
+      <div class="opts">
+        <button class="opt" data-ok="1">לא - פונקציות שלא עושות כלום (מחזירות את הקלט) גם יעברו</button>
+        <button class="opt">כן - אם הפענוח מחזיר את המקור, ההצפנה עובדת</button>
+        <button class="opt">כן, אבל רק אם בדקתם יותר מ-10 הודעות</button>
+      </div>
+      <div class="explain">אם <code>encrypt</code> ו-<code>decrypt</code> שתיהן מחזירות את הקלט כמו שהוא, הלוך-חזור יעבור תמיד. בדיקת הלוך-חזור בודקת <b>עקביות</b>, לא <b>נכונות</b>. צריך גם בדיקות עם תשובה ידועה.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 16. AI ============ -->
+<section class="slide" data-title="AI">
+  <div class="tag">ai protocol</div>
+  <h2>חשוב → כתוב → בדוק → שאל</h2>
+  <div class="cols">
+    <div class="card glow">
+      <h3>✅ מותר - אחרי שהתוכנית שלכם מאושרת</h3>
+      <ul class="small">
+        <li>"הנה התוכנית שלי. אילו מקרי קצה פספסתי? <b>אל תכתוב קוד.</b>"</li>
+        <li>"הבדיקה הזו נכשלת עם הפלט הזה. תן לי <b>רמז אחד</b>, לא תיקון."</li>
+        <li>"תציע 3 בדיקות נוספות שיכולות לשבור את הפונקציה שלי."</li>
+        <li>"תסביר לי מה עושה <code>range(0, n, w)</code>."</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(255,92,122,.4)">
+      <h3 class="red">⛔ אסור</h3>
+      <ul class="small">
+        <li>"תכתוב לי צופן טרנספוזיציה בפייתון."</li>
+        <li>להדביק את המשימה ולהעתיק את התשובה.</li>
+        <li>לבקש מה-AI את סדר העמודות במקום לחשב.</li>
+      </ul>
+      <p class="small dim" style="margin-top:10px">⚠️ AI טועה. גם בסדר אלפביתי. כל מה שהוא אומר - בודקים מול דוגמה שפתרתם ביד.</p>
+    </div>
+  </div>
+  <p class="small">בהבחנה בעל-פה תתבקשו להסביר כל שורה בקוד שלכם. קוד שאתם לא יכולים להסביר = קוד שלא כתבתם.</p>
+</section>
+
+<!-- ============ 17. STOP: CODE ============ -->
+<section class="slide stop" data-title="קידוד">
+  <div class="stopbox">
+    <span class="badge">⏸ תחנת עצירה · קידוד</span>
+    <h2>דף העבודה - משימות 4 עד 6</h2>
+    <p><b>משימה 4 · תכנון:</b> פסאודו-קוד וטבלת מעקב. <span class="dim">מאושר ע"י המורה לפני שממשיכים.</span></p>
+    <p><b>משימה 5 · קוד:</b></p>
+    <ul>
+      <li><span class="green">רמה א</span> - <code>normalize</code>, <code>get_order</code> (סיסמה בלי כפולות)</li>
+      <li><span class="cyan">רמה ב</span> - <code>encrypt</code> עם ריפוד</li>
+      <li><span class="amber">רמה ג</span> - סיסמה עם כפולות + <code>decrypt</code></li>
+      <li><span class="violet">בונוס</span> - פריצה בכוח גס (ראו דף העבודה)</li>
+    </ul>
+    <p><b>משימה 6 · בדיקות:</b> לפחות 6 assert-ים, מהם 3 מקרי קצה.</p>
+    <p class="timer">⏱ 30 דקות</p>
+  </div>
+</section>
+
+<!-- ============ 18. STORY CH4 ============ -->
+<section class="slide" data-title="פרק 4">
+  <div class="chapter">פרק 4 · הצל חוזר</div>
+  <div class="story">
+    <p>יום התחרות. הצוות שולח את התוכנית מוצפנת עם הסיסמה <span class="mono cyan">ZEBRA</span>. אחרי 20 דקות, הודעה בקבוצה מהצל:</p>
+    <p class="mono violet" style="direction:ltr;text-align:left">"120 options. took me 4 seconds. nice try :)"</p>
+  </div>
+  <div class="cols">
+    <div class="card"><p>למה <span class="big-num">120</span>?</p>
+      <button class="more-btn" data-target="perm">הסבר</button>
+      <div class="more" id="perm"><div><div class="more-inner"><p>לסיסמה של 5 אותיות שונות יש <span class="mono">5! = 5·4·3·2·1 = 120</span> סדרי עמודות אפשריים. ה<b>מפתח האמיתי</b> הוא סדר העמודות - לא המילה. <span class="mono">CAT</span> ו-<span class="mono">BAD</span> נותנות בדיוק אותו צופן!</p></div></div></div>
+    </div>
+    <div class="card"><table class="tt">
+      <tr><th>אורך סיסמה</th><th>סדרים אפשריים</th></tr>
+      <tr><td>5</td><td class="mono">120</td></tr>
+      <tr><td>8</td><td class="mono">40,320</td></tr>
+      <tr><td>10</td><td class="mono">3,628,800</td></tr>
+      <tr><td>15</td><td class="mono">≈ 1.3 × 10¹²</td></tr>
+    </table>
+    <p class="small dim" style="margin-top:8px">אבל - מנתחים לא חייבים לנסות הכול. הם מזיזים עמודות ומחפשים צירופי אותיות סבירים באנגלית (TH, HE...).</p></div>
+  </div>
+</section>
+
+<!-- ============ 19. COMPREHENSION ============ -->
+<section class="slide" data-title="שאלות הבנה">
+  <div class="tag">check your understanding</div>
+  <h2>שאלות הבנה</h2>
+  <div class="card quiz" data-quiz>
+    <div class="q">הצפנתם הודעה של 13 אותיות עם סיסמה של 4 אותיות. מה אורך הצופן?</div>
+    <div class="opts">
+      <button class="opt" data-ok="1">16</button>
+      <button class="opt">13</button>
+      <button class="opt">17</button>
+      <button class="opt">12</button>
+    </div>
+    <div class="explain">13 לא מתחלק ב-4, אז מרפדים עד הכפולה הבאה של 4: שלוש X נוספות, סה"כ 16.</div>
+  </div>
+  <div class="card quiz" data-quiz>
+    <div class="q">מה יוצא כשמצפינים עם סיסמה של אות אחת?</div>
+    <div class="opts">
+      <button class="opt" data-ok="1">ההודעה המנורמלת עצמה - ללא שינוי</button>
+      <button class="opt">ההודעה הפוכה</button>
+      <button class="opt">שגיאה</button>
+    </div>
+    <div class="explain">עמודה אחת: כותבים את כל האותיות אחת מתחת לשנייה וקוראים אותן באותו סדר. זה מקרה קצה מצוין לבדיקה.</div>
+  </div>
+</section>
+
+<!-- ============ 20. THINKING ============ -->
+<section class="slide" data-title="שאלות חשיבה">
+  <div class="tag">think deeper</div>
+  <h2>שאלות חשיבה</h2>
+  <div><button class="btn" id="thAll">הצג את כל התשובות</button></div>
+  <ol class="qa">
+    <li>הסבירו למה ניתוח שכיחויות <b>לא</b> עוזר לפענח צופן הזזה - אבל <b>כן</b> עוזר לזהות אותו. <button class="more-btn ans-btn" data-target="thA1">תשובה</button>
+      <div class="more" id="thA1"><div><div class="more-inner ans">בהזזה כל אות נשארת אותה אות - אין "אות מוצפנת" לתרגם חזרה, ולכן ניתוח שכיחויות לא מפענח. אבל בגלל זה בדיוק השכיחויות בצופן זהות לאנגלית (E, T, A, O בראש) - וזה מסגיר שמדובר בהזזה ולא בהחלפה.<br><span class="dim">דיוק: שכיחות של <b>צמדי</b> אותיות (TH, HE) כן עוזרת לפרוץ - מזיזים עמודות ומחפשים שכנויות סבירות. בהודעה קצרה הסטטיסטיקה לא אמינה.</span></div></div></div></li>
+    <li>מה הריפוד ב-X חושף לתוקף? מה הבעיה כשהודעה מקורית נגמרת ב-X? הציעו פתרון. <button class="more-btn ans-btn" data-target="thA2">תשובה</button>
+      <div class="more" id="thA2"><div><div class="more-inner ans"><b>חושף:</b> אורך הצופן תמיד כפולה של אורך הסיסמה ← האורכים האפשריים הם המחלקים שלו. וגם: ה-X יושבים בסוף בלוקי העמודות הימניות, כך שהם מגלים חלק מסדר העמודות (ב-<span class="mono">CTSI FRTE STNX TAAN</span> ה-X מסגיר שהבלוק השלישי הוא העמודה הימנית).<br><b>הבעיה:</b> <span class="mono">BOXX</span> - זה BOX או BO? אי אפשר לדעת.<br><b>פתרונות:</b> לקודד את האורך בתחילת ההודעה · ריפוד שמקודד את כמותו (הרעיון של PKCS#7) · אותיות ריפוד אקראיות · טבלה לא מלאה בלי ריפוד.</div></div></div></li>
+    <li>מה קורה כשהסיסמה ארוכה מההודעה? למה זה מסוכן? <button class="more-btn ans-btn" data-target="thA3">תשובה</button>
+      <div class="more" id="thA3"><div><div class="more-inner ans">הטבלה היא שורה אחת, ורובה X: <span class="mono">ATTACK</span> עם <span class="mono">LONGERKEYS</span> ← <span class="mono">CXAXATTKXX</span>.<br>מסוכן כי: אורך ההודעה נחשף במדויק (סופרים מה שאינו X) · ההצפנה היא בסך הכול אנגרמה של כמה אותיות · מיקומי ה-X מגלים חלק מהמפתח. <b>סיסמה ארוכה יותר ≠ בטוחה יותר</b> - קובע היחס לאורך ההודעה.</div></div></div></li>
+    <li>האם הצפנה כפולה (פעמיים, עם שתי סיסמאות) מחזקת את הצופן? נמקו. <button class="more-btn ans-btn" data-target="thA4">תשובה</button>
+      <div class="more" id="thA4"><div><div class="more-inner ans">כן, משמעותית - אבל לא בגלל מספר המפתחות: ל-CAT ול-CODE יש רק 3!·4! = 144 צירופים, <b>פחות</b> מ-5,040 של סיסמה אחת באורך 7.<br>החוזק האמיתי: פריצה של הזזה יחידה מנצלת את זה שכל בלוק רצוף בצופן הוא עמודה שלמה. הצפנה שנייה מפרקת את הבלוקים - והתוצאה אינה שקולה לאף הזזה עמודתית יחידה (נבדק בקוד).<br><span class="dim">עדיין חלש: השכיחויות נשמרות, ויש שיטות פריצה - במיוחד מכמה הודעות באותו אורך ובאותן סיסמאות.</span></div></div></div></li>
+    <li>מאיה רוצה לשלב צופן החלפה וצופן הזזה. באיזה סדר הייתם מפעילים אותם? למה? <button class="more-btn ans-btn" data-target="thA5">תשובה</button>
+      <div class="more" id="thA5"><div><div class="more-inner ans"><b>מלכודת:</b> עם החלפה קבועה אות-באות (כמו קיסר) <b>הסדר לא משנה בכלל</b> - החלפה משנה <i>מה</i> האות, הזזה משנה <i>איפה</i>, ומקבלים אותו צופן (נבדק בקוד; הבדל זעיר רק בריפוד - לרפד לפני ההחלפה, אחרת ה-X מסגיר את עצמו).<br><b>מתי הסדר כן משנה:</b> כשההחלפה הופכת אות <b>לזוג</b> סימנים (ADFGVX) - החלפה ואז הזזה מפרידה בין חלקי הזוג, וזה חזק מאוד; או כשההחלפה תלויה במיקום (Vigenère).</div></div></div></li>
+  </ol>
+  <p class="dim small">💡 היסטוריה: בצופן ADFGVX שבו השתמש הצבא הגרמני ב-1918 שילבו בדיוק את זה - החלפה ואחריה טרנספוזיציה עמודתית עם סיסמה.</p>
+</section>
+
+<!-- ============ 21. REFLECTION ============ -->
+<section class="slide" data-title="רפלקציה">
+  <div class="tag">reflection</div>
+  <h2>רפלקציה</h2>
+  <div class="card"><ol>
+    <li>באיזה שלב הכי התבלבלתם - ביד, בתכנון, או בקוד? מה עזר לכם לצאת מזה?</li>
+    <li>האם התוכנית שכתבתם על נייר באמת עזרה כשכתבתם קוד? מה הייתם משנים בה?</li>
+    <li>אם השתמשתם ב-AI: מה שאלתם? האם הוא צדק? איך בדקתם?</li>
+  </ol></div>
+  <div class="story"><p>הצל ניצח הפעם. אבל עכשיו מאיה יודעת <b>למה</b>. בשיעור הבא: נבנה צופן שהצל לא יפצח ב-4 שניות.</p></div>
+</section>
+
+<!-- ============ TEACHER-ONLY ============ -->
+<section class="slide teacher-only" data-title="מורה · זמנים">
+  <div class="tag">teacher · timing</div>
+  <h2>הערות למורה: חלוקת זמן</h2>
+  <table class="tt">
+    <tr><th>דקות</th><th>חלק</th><th>שקפים</th></tr>
+    <tr><td>0-12</td><td>סיפור + פיצוח הפתק בזוגות (בעיה פותחת)</td><td>1-5</td></tr>
+    <tr><td>12-15</td><td>מטרות + פרק 2 (קרקהוף)</td><td>6-7</td></tr>
+    <tr><td>15-30</td><td>הסבר האלגוריתם + מדמה + כפולות + פענוח</td><td>8-11</td></tr>
+    <tr><td>30-45</td><td>תרגול ידני, משימות 1-3</td><td>12</td></tr>
+    <tr><td>45-52</td><td>תכנון, חוזה, בדיקות, AI</td><td>13-16</td></tr>
+    <tr><td>52-80</td><td>משימות 4-6: תכנון → אישור → קוד → בדיקות</td><td>17</td></tr>
+    <tr><td>80-90</td><td>פרק 4, שאלות הבנה, רפלקציה</td><td>18-21</td></tr>
+  </table>
+  <p class="small dim">שאלות החשיבה (משימה 7) לא ייכנסו כולן ב-90 דקות - מומלץ כשיעורי בית.</p>
+</section>
+
+<section class="slide teacher-only" data-title="מורה · טעויות">
+  <div class="tag">teacher · common mistakes</div>
+  <h2>טעויות נפוצות</h2>
+  <ul>
+    <li><b>מבלבלים בין "דרגה" ל"סדר" (הבאג הכי ערמומי):</b> רשימת הדרגות ("לכל עמודה - מה המספר שלה") שונה מרשימת הסדר ("בכל תור - איזו עמודה"). ב-CODE: דרגות <span class="mono">[0,3,1,2]</span>, סדר <span class="mono">[0,2,3,1]</span>. <b>מלכודת:</b> ב-ZEBRA, KEY ו-BYTE שתי הרשימות <u>זהות</u> (תמורה הפוכה לעצמה), כך שקוד שגוי עובר את כל הבדיקות עליהן! לכן בדף העבודה יש בדיקות עם CODE ו-CYBER, שתופסות את הבאג. (נבדק בהרצה.) שאלת דיון מצוינת: "הקוד שלי עבר על ZEBRA - האם הוא נכון?"</li>
+    <li><b>כיוון הטבלה:</b> בגלל עברית, יש מי שכותבים מימין לשמאל. ההודעה באנגלית ← משמאל לימין.</li>
+    <li><b>נוסחת ריפוד:</b> <span class="mono">w - len % w</span> מוסיפה w אותיות X כשההודעה כבר מתחלקת. לבקש בדיקה עם הודעה באורך מדויק.</li>
+    <li><b>שוכחים לנרמל את הסיסמה</b> (<span class="mono">zebra</span> מול <span class="mono">ZEBRA</span>, או רווח בסיסמה משנה את מספר העמודות).</li>
+    <li><b>כפולות עם <code>key.index(letter)</code></b> - מחזיר תמיד את המופע הראשון, ולכן עמודה אחת נקראת פעמיים ואחת לא בכלל. מעולה כשאלת דיון.</li>
+  </ul>
+</section>
+
+<section class="slide teacher-only" data-title="מורה · תשובות">
+  <div class="tag">teacher · answer key</div>
+  <h2>מפתח תשובות - חלק ידני וקוד</h2>
+  <table class="tt small">
+    <tr><th>משימה</th><th>קלט</th><th>תשובה</th></tr>
+    <tr><td>0 · פתק</td><td class="mono">MMTLRREEHDVOEAESEOTTOERM</td><td class="mono">MEETMEATTHEOLDSERVERROOM</td></tr>
+    <tr><td>1 · סדר</td><td class="mono">CODE</td><td class="mono">[0, 2, 3, 1]</td></tr>
+    <tr><td>1 · הצפנה</td><td class="mono">CTF STARTS AT NINE / CODE</td><td class="mono">CTSIFRTESTNXTAAN</td></tr>
+    <tr><td>2 · פענוח</td><td class="mono">EBCIXTMIWSALHNX / KEY</td><td class="mono">TEAMBLICHWINSXX</td></tr>
+    <tr><td>3 · כפולות</td><td class="mono">ATTACK AT DAWN / SECRET</td><td class="mono">TDTTCWAAAAKN</td></tr>
+    <tr><td>5א</td><td class="mono">get_order("ZEBRA")</td><td class="mono">[4, 2, 1, 3, 0]</td></tr>
+    <tr><td>5א</td><td class="mono">get_order("CYBER")</td><td class="mono">[2, 0, 3, 4, 1]</td></tr>
+    <tr><td>5ב</td><td class="mono">encrypt("Hack the planet!","BYTE")</td><td class="mono">HTLTKPEXCENXAHAX</td></tr>
+    <tr><td>5ב</td><td class="mono">encrypt("Send the flag at midnight","CYBER")</td><td class="mono">NFTIXSHGDTDLMGXTAIHXEEANX</td></tr>
+    <tr><td>5ג</td><td class="mono">get_order("SECRET")</td><td class="mono">[2, 1, 4, 3, 0, 5]</td></tr>
+    <tr><td>5ג</td><td class="mono">decrypt("HHOESRATSDRDUHEAWAOCT","KEY")</td><td class="mono">THESHADOWREADSOURCHAT</td></tr>
+  </table>
+  <p class="small dim">כל התשובות חושבו והורצו מקובץ פתרון הייחוס (reference_solution.py), לא ידנית.</p>
+</section>
+
+<section class="slide teacher-only" data-title="מורה · חשיבה">
+  <div class="tag">teacher · thinking answers</div>
+  <h2>תשובות לשאלות החשיבה</h2>
+  <ol class="small">
+    <li>שכיחויות לא משתנות בהזזה, אז אין "אות מוצפנת" לתרגם חזרה - אבל צופן שהשכיחויות שלו זהות לאנגלית מסגיר שהוא צופן הזזה.</li>
+    <li>X חושף שהאורך מעוגל לכפולה של אורך הסיסמה ← רמז לאורך הסיסמה (מחלקים של אורך הצופן). הודעה שנגמרת ב-X: אי אפשר להבחין בין X אמיתי לריפוד. פתרונות: לקודד את האורך בתחילת ההודעה, אות ריפוד נדירה/אקראית, או טבלה לא מלאה (בלי ריפוד).</li>
+    <li>טבלה של שורה אחת: הצופן הוא ההודעה + הרבה X, מעורבבים לפי הסיסמה. רוב הצופן הוא X ← חושף את אורך ההודעה האמיתי ואת המבנה. גרוע במיוחד בהודעות קצרות.</li>
+    <li>כן - לא בגלל מספר המפתחות (3 ו-4 אותיות = 144 צירופים, פחות מסיסמה אחת באורך 7) אלא כי הצפנה שנייה שוברת את המבנה "בלוק רצוף בצופן = עמודה", שעליו נשענת הפריצה. התוצאה אינה שקולה להזזה עמודתית יחידה (נבדק). עדיין: שכיחויות נשמרות, ויש פריצות מכמה הודעות באותו אורך.</li>
+    <li><b>תיקון:</b> עם החלפה מונו-אלפביתית (קיסר) הפעולות מתחלפות - הסדר לא משנה (נבדק בקוד; רק את הריפוד עדיף לעשות לפני ההחלפה). הסדר משנה רק בהחלפה מפצלת (אות ← זוג, כמו ADFGVX: החלפה ואז הזזה) או תלוית-מיקום (Vigenère). לתת בונוס למי שמזהה שעם קיסר זה לא משנה.</li>
+  </ol>
+</section>
+
+<section class="slide teacher-only" data-title="מורה · התאמה">
+  <div class="tag">teacher · differentiation</div>
+  <h2>התאמות</h2>
+  <div class="cols">
+    <div class="card"><h3>לתלמידים מתקשים</h3><ul class="small">
+      <li>רק סיסמאות בלי כפולות.</li>
+      <li>לתת את <code>normalize</code> מוכנה, להתמקד ב-<code>get_order</code>.</li>
+      <li>לאפשר בניית רשימת שורות במקום חישוב אינדקסים.</li>
+      <li>טבלת מעקב מודפסת לסיסמה ZEBRA.</li>
+    </ul></div>
+    <div class="card"><h3>לתלמידים מתקדמים</h3><ul class="small">
+      <li>טבלה לא מלאה, בלי ריפוד - ופענוח שלה (קשה יותר באמת).</li>
+      <li>פריצה בכוח גס לסיסמה עד 6 אותיות, עם ניקוד לפי צמדי אותיות נפוצים.</li>
+      <li>הצפנה כפולה + ניתוח: האם שתי סיסמאות באורך 3 ו-4 שקולות לסיסמה אחת?</li>
+    </ul></div>
+  </div>
+  <p class="small dim">ניווט: ← הבא · → הקודם · רווח = הבא · T = מצב מורה · לחיצה על מונה השקפים = דילוג.</p>
+</section>
+
+</div>
+
+<div id="nav">
+  <button class="navbtn" id="prevBtn" title="הקודם (→)">→</button>
+  <span id="counter" title="לחיצה לדילוג לשקף">1 / 1</span>
+  <button class="navbtn" id="nextBtn" title="הבא (←)">←</button>
+</div>
+
+<script>
+(function(){
+  /* ---------- crypto helpers (same rules as reference solution) ---------- */
+  function normalize(t){let r='';for(const ch of t.toUpperCase()){if(ch>='A'&&ch<='Z')r+=ch;}return r;}
+  function getOrder(key){
+    key=normalize(key);const n=key.length,ranks=[];
+    for(let i=0;i<n;i++){let r=0;for(let j=0;j<n;j++){if(key[j]<key[i]||(key[j]===key[i]&&j<i))r++;}ranks.push(r);}
+    const order=new Array(n);for(let c=0;c<n;c++)order[ranks[c]]=c;return order;
+  }
+  function buildRows(text,w){const rows=[];for(let s=0;s<text.length;s+=w)rows.push(text.slice(s,s+w));return rows;}
+  function padded(msg,w){let t=normalize(msg);const realLen=t.length;while(t.length%w!==0)t+='X';return {t,realLen};}
+
+  function renderGrid(table,msg,key,opts){
+    opts=opts||{};
+    const k=normalize(key),w=k.length;table.innerHTML='';if(!w)return null;
+    const {t,realLen}=padded(msg,w),rows=buildRows(t,w),order=getOrder(k),rank=new Array(w);
+    order.forEach((c,p)=>rank[c]=p+1);
+    if(!opts.noKey){
+      let tr=document.createElement('tr');for(let c=0;c<w;c++){const th=document.createElement('th');th.className='key';th.textContent=k[c];tr.appendChild(th);}table.appendChild(tr);
+      tr=document.createElement('tr');for(let c=0;c<w;c++){const th=document.createElement('th');th.className='rank';th.textContent=rank[c];tr.appendChild(th);}table.appendChild(tr);
+    }
+    rows.forEach((row,r)=>{const tr=document.createElement('tr');for(let c=0;c<w;c++){const td=document.createElement('td');td.textContent=row[c];td.dataset.col=c;if(r*w+c>=realLen)td.classList.add('pad');tr.appendChild(td);}table.appendChild(tr);});
+    return {rows,order,w};
+  }
+
+  /* opening grid: 4 columns no key */
+  (function(){const tb=document.getElementById('openGrid');const msg='MEETMEATTHEOLDSERVERROOM';const rows=buildRows(msg,4);
+    rows.forEach(row=>{const tr=document.createElement('tr');for(const ch of row){const td=document.createElement('td');td.textContent=ch;tr.appendChild(td);}tb.appendChild(tr);});})();
+  renderGrid(document.getElementById('exampleGrid'),'MEET AT THE LAB AFTER SCHOOL','ZEBRA');
+
+  /* visualizer */
+  let viz=null,vizStep=0,vizText='',vizSig='';
+  const vizGrid=document.getElementById('vizGrid'),vizOut=document.getElementById('vizOut');
+  const vizInputs=()=>document.getElementById('vizMsg').value+'\u0000'+document.getElementById('vizKey').value;
+  function vizBuild(){vizSig=vizInputs();viz=renderGrid(vizGrid,document.getElementById('vizMsg').value,document.getElementById('vizKey').value);vizStep=0;vizText='';vizOut.textContent=viz?'':'הסיסמה חייבת להכיל לפחות אות אחת';}
+  function vizNext(){
+    if(!viz||vizSig!==vizInputs())vizBuild();if(!viz||vizStep>=viz.w)return;
+    vizGrid.querySelectorAll('td.hl').forEach(td=>{td.classList.remove('hl');td.classList.add('done');});
+    const col=viz.order[vizStep];let chunk='';
+    vizGrid.querySelectorAll('td[data-col="'+col+'"]').forEach(td=>{td.classList.add('hl');chunk+=td.textContent;});
+    vizText+=(vizText?' ':'')+chunk;vizOut.textContent=vizText;vizStep++;
+  }
+  document.getElementById('vizBuild').onclick=vizBuild;
+  document.getElementById('vizStep').onclick=vizNext;
+  document.getElementById('vizAll').onclick=()=>{if(!viz||vizStep>=viz.w||vizSig!==vizInputs())vizBuild();while(viz&&vizStep<viz.w)vizNext();};
+  vizBuild();
+
+  /* expandables */
+  document.querySelectorAll('.more-btn').forEach(b=>b.addEventListener('click',()=>{document.getElementById(b.dataset.target).classList.toggle('open');}));
+
+  (function(){const b=document.getElementById('thAll');if(!b)return;b.addEventListener('click',()=>{
+    const items=[...document.querySelectorAll('[id^="thA"].more')];const open=!items.every(m=>m.classList.contains('open'));
+    items.forEach(m=>m.classList.toggle('open',open));b.textContent=open?'הסתר את כל התשובות':'הצג את כל התשובות';});})();
+
+  /* quizzes: shuffle options + feedback */
+  document.querySelectorAll('[data-quiz]').forEach(q=>{
+    const box=q.querySelector('.opts'),opts=[...box.children];
+    for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+    opts.forEach(o=>box.appendChild(o));
+    opts.forEach(o=>o.addEventListener('click',()=>{
+      if(o.dataset.ok){o.classList.add('right');q.querySelector('.explain').classList.add('show');}
+      else o.classList.add('wrong');
+    }));
+  });
+
+  /* ---------- navigation ---------- */
+  const all=[...document.querySelectorAll('.slide')];
+  let teacher=false,idx=0;
+  const visible=()=>all.filter(s=>teacher||!s.classList.contains('teacher-only'));
+  const dots=document.getElementById('dots'),counter=document.getElementById('counter');
+  function show(i){
+    const v=visible();idx=Math.max(0,Math.min(i,v.length-1));
+    all.forEach(s=>s.classList.remove('active'));v[idx].classList.add('active');v[idx].scrollTop=0;
+    counter.textContent='שקף '+(idx+1)+' מתוך '+v.length;
+    dots.innerHTML='';v.forEach((s,k)=>{const d=document.createElement('span');if(s.classList.contains('teacher-only'))d.classList.add('t');if(k===idx)d.classList.add('on');d.title=s.dataset.title||'';d.onclick=()=>show(k);dots.appendChild(d);});
+    try{history.replaceState(null,'','#'+(idx+1));}catch(e){}
+  }
+  const next=()=>show(idx+1),prev=()=>show(idx-1);
+  document.getElementById('nextBtn').onclick=next;
+  document.getElementById('prevBtn').onclick=prev;
+  counter.onclick=()=>{const n=parseInt(prompt('לאיזה שקף לקפוץ?'),10);if(n)show(n-1);};
+  document.addEventListener('keydown',e=>{
+    const tag=(e.target.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='textarea')return;   // typing in the visualizer must not change slides
+    if(e.key==='ArrowLeft'||e.key===' '||e.key==='PageDown'){e.preventDefault();next();}
+    else if(e.key==='ArrowRight'||e.key==='PageUp'){e.preventDefault();prev();}
+    else if(e.key==='Home')show(0);
+    else if(e.key==='End')show(visible().length-1);
+    else if(e.key==='t'||e.key==='T'||e.key==='א'){
+      const cur=visible()[idx];teacher=!teacher;document.body.classList.toggle('teacher',teacher);
+      const v=visible();const pos=v.indexOf(cur);show(pos>=0?pos:Math.min(idx,v.length-1));
+    }
+  });
+  const h=parseInt(location.hash.slice(1),10);show(h?h-1:0);
+  window.__deck={next,prev,show,get idx(){return idx},get count(){return visible().length},get teacher(){return teacher},getOrder,normalize};
+})();
+</script>
+</body>
+</html>

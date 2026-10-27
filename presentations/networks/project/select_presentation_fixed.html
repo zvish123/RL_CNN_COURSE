@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="he"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>select — שרת רב־משתמשים | כיתה י״א</title>
+<style>
+:root{--bg:#0b1222;--card:#17243a;--line:#32455f;--text:#edf4ff;--muted:#b2c5db;--accent:#63d5ed;--good:#77e2b8;--warn:#ffd37d}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,'Segoe UI',sans-serif;line-height:1.62}.wrap{max-width:1080px;margin:auto;padding:20px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px}.top small{color:var(--muted)}.slide{display:none;min-height:65vh;padding:16px 0 45px}.slide.active{display:block}h1{font-size:clamp(32px,5vw,56px);line-height:1.2;margin:22px 0}h2{font-size:clamp(26px,4vw,40px);margin:14px 0 23px;color:var(--accent)}h3{color:var(--warn);font-size:23px;margin:8px 0}.lead{font-size:clamp(20px,2.6vw,29px)}p,li{font-size:clamp(17px,2vw,23px)}.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:13px 0}.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:15px}.btn{background:#125879;color:white;border:1px solid #64d2ed;border-radius:10px;padding:10px 17px;cursor:pointer;font-size:17px;margin:5px}.btn:hover{background:#20799f}.btn:disabled{opacity:.5}.nav{display:flex;justify-content:space-between;align-items:center;position:sticky;bottom:0;background:#0b1222ef;padding:12px 0;border-top:1px solid var(--line)}.progress{height:5px;background:#25374e;border-radius:20px;margin-top:10px}.bar{height:100%;background:var(--accent);width:0;border-radius:20px;transition:width .2s}pre{direction:ltr;text-align:left;overflow:auto;background:#070e19;border:1px solid #42516b;border-radius:12px;padding:15px;color:#caedff;font-size:clamp(14px,1.5vw,19px);line-height:1.55}code{direction:ltr;unicode-bidi:embed}ul{padding-right:28px}.hidden{display:none}.reveal{border-right:4px solid var(--good);padding:10px;background:#17362f;border-radius:6px;margin-top:10px}.diagram{display:flex;align-items:center;justify-content:space-evenly;flex-wrap:wrap;gap:18px;margin:30px 0}.node{border:2px solid #67b8db;border-radius:15px;padding:15px 22px;background:#182e47;text-align:center;font-weight:bold;font-size:22px}.server{border-color:#f7c767}.arrow{font-size:36px;color:var(--accent)}.small{font-size:16px}.tag{display:inline-block;padding:5px 12px;border-radius:30px;background:#23425a;color:#b9edfa;font-size:15px;margin:5px}.simbuttons{display:flex;flex-wrap:wrap;gap:8px}.out{background:#091727;border:1px dashed #6cc2e2;padding:16px;border-radius:9px;direction:ltr;text-align:left;font-family:Consolas,monospace;font-size:19px;min-height:60px}.q button{display:block;width:100%;text-align:right;background:#182d44;color:white;border:1px solid #48617e;padding:13px;border-radius:8px;margin:8px 0;font-size:18px;cursor:pointer}.q button:hover{border-color:#8fdef2}.correct{border-color:#39d89f!important;background:#194a41!important}.incorrect{border-color:#e38d85!important;background:#543038!important}.tip{border-right:4px solid var(--warn);background:#3d3224;padding:14px;border-radius:8px}.footer{color:var(--muted);font-size:14px}table{border-collapse:collapse;width:100%;font-size:18px}td,th{padding:12px;border:1px solid #50657d;text-align:right}th{background:#24415b}@media(max-width:550px){.wrap{padding:12px}.nav .btn{font-size:14px;padding:8px 10px}}
+@media print{.slide{display:block!important;page-break-after:always}.nav{display:none}}
+</style></head><body><main class="wrap"><div class="top"><strong>מגמת סייבר | כיתה י״א</strong><small>פרק 12 · Sockets מתקדם · ריבוי משתמשים</small></div><div class="progress"><div class="bar" id="bar"></div></div>
+<section class="slide active"><span class="tag">פתיחה · 2 דקות</span><h1>שרת אחד.<br/>מספר לקוחות.<br/><span style="color:var(--accent)">איך זה עובד?</span></h1><p class="lead">מ־<code>accept()</code> ו־<code>recv()</code> חוסמים — אל <code>select()</code> ושרת רב־משתמשים.</p><div class="diagram"><div class="node">💻 לקוח 1</div><div class="arrow">⇄</div><div class="node server">🖥️ שרת</div><div class="arrow">⇄</div><div class="node">💻 לקוח 2</div></div><p class="muted">מטרה: להבין ולהפעיל לולאת אירועים של שרת ללא Thread לכל לקוח.</p></section>
+<section class="slide"><span class="tag">שקף 2 · ניבוי</span><h2>מה יקרה ללקוח השני?</h2><div class="card"><pre>client_socket, address = server_socket.accept()
+data = client_socket.recv(1024)</pre><p>הלקוח הראשון מחובר אך אינו שולח שום הודעה. כעת הלקוח השני מנסה להתחבר ולשלוח נתונים.</p></div><button class="btn" onclick="reveal('r2')">הציגו ניבוי ואז חשפו</button><div class="reveal hidden" id="r2">אם הקריאה ל־<code>recv()</code> חוסמת, התוכנית אינה מגיעה לטיפול בלקוח השני. ייתכן שחיבור TCP חדש ימתין בתור החיבורים — אבל קוד השרת אינו מטפל בו עדיין.</div></section>
+<section class="slide"><span class="tag">שקף 3 · הבנה</span><h2>שתי נקודות חסימה</h2><div class="cols"><div class="card"><h3>accept()</h3><p>ממתינה לחיבור חדש כאשר אין חיבור שממתין לקבלה.</p></div><div class="card"><h3>recv()</h3><p>ממתינה לנתונים מלקוח קיים כאשר אין נתונים זמינים.</p></div></div><div class="tip">שאלת כיתה: אם השרת תקוע ב־<code>recv()</code>, כיצד יוכל לקרוא מ־socket של לקוח אחר?</div></section>
+<section class="slide"><span class="tag">שקף 4 · הרעיון</span><h2>ריבוב I/O — Multiplexing</h2><p class="lead"><code>select()</code> שואלת את מערכת ההפעלה: <b>אילו sockets מוכנים לפעולה כעת?</b></p><div class="diagram"><div class="node">socket A<br/><span class="small">אין מידע</span></div><div class="node">socket B<br/><span class="small">יש הודעה</span></div><div class="node">socket C<br/><span class="small">חיבור חדש</span></div></div><div class="card"><p>במקום להמתין ללקוח אחד, השרת ממתין לאירוע באחד מכמה sockets. לאחר ש־<code>select</code> חוזרת, הוא מטפל ברשימה המוכנה.</p></div></section>
+<section class="slide"><span class="tag">שקף 5 · שפת API</span><h2>שלוש רשימות נכנסות, שלוש יוצאות</h2><pre>rlist, wlist, xlist = select.select(
+    read_sockets,
+    write_sockets,
+    exception_sockets
+)</pre><table><tr><th>פלט</th><th>משמעות</th></tr><tr><td><code>rlist</code></td><td>מוכנים לקריאה (או לזיהוי סגירת חיבור)</td></tr><tr><td><code>wlist</code></td><td>מוכנים לניסיון כתיבה ללא חסימה</td></tr><tr><td><code>xlist</code></td><td>מצבי חריגה מסוימים — לא כל השגיאות</td></tr></table><p class="muted small">socket יכול להופיע בכמה רשימות. מוכנות לכתיבה אינה מבטיחה שכל ההודעה תישלח בבת אחת.</p></section>
+<section class="slide"><span class="tag">שקף 6 · פענוח</span><h2>מה בדיוק בודקת השורה?</h2><pre>rlist, wlist, xlist = select.select(
+    [server_socket] + open_client_sockets,
+    [],
+    []
+)</pre><div class="cols"><div class="card"><h3>server_socket</h3><p>מוכן לקריאה ⇒ יש חיבור חדש שניתן לקבל באמצעות <code>accept()</code>.</p></div><div class="card"><h3>open_client_sockets</h3><p>socket של לקוח מוכן לקריאה ⇒ אפשר לקרוא נתונים או לגלות סיום חיבור.</p></div></div><button class="btn" onclick="reveal('r6')">למה שתי רשימות ריקות?</button><div class="reveal hidden" id="r6">בשלב הראשון אנו בודקים רק מוכנות לקריאה. אין עדיין בדיקת מוכנות לכתיבה או חריגה. ללא timeout, הקריאה ממתינה עד שיש אירוע.</div></section>
+<section class="slide"><span class="tag">שקף 7 · הדמיה אינטראקטיבית</span><h2>מי נכנס ל־rlist?</h2><p>לחצו על כמה אירועים לפני לחיצה על "הפעל select".</p><div class="simbuttons"><button class="btn" onclick="addEvent('server_socket')">🔌 לקוח חדש מתחבר</button><button class="btn" onclick="addEvent('client1')">✉️ לקוח 1 שולח</button><button class="btn" onclick="addEvent('client2')">✉️ לקוח 2 שולח</button><button class="btn" onclick="runSim()">▶ הפעל select</button><button class="btn" onclick="resetSim()">↺ איפוס</button></div><div class="card"><p><b>אירועים מוכנים:</b></p><div class="out" id="pending">[]</div><p><b>פלט הקריאה:</b></p><div class="out" id="simout">select is waiting...</div></div><p class="muted small">הדמיה מושגית: התזמון והסדר המדויקים של events תלויים במערכת ההפעלה.</p></section>
+<section class="slide"><span class="tag">שקף 8 · תרשים זרימה</span><h2>איך השרת מחליט מה לעשות?</h2><div class="card" style="text-align:center"><div class="node">select()</div><div class="arrow">↓</div><div class="node">for current_socket in rlist</div><div class="arrow">↓</div><div class="node">current_socket is server_socket ?</div><div class="cols"><div class="card"><h3>כן</h3><p>accept → הוספת לקוח לרשימה</p></div><div class="card"><h3>לא</h3><p>recv → טיפול במידע או ניתוק</p></div></div></div></section>
+<section class="slide"><span class="tag">שקף 9 · שלד קוד</span><h2>בניית שרת — שלב א'</h2><pre>import socket
+import select
+
+server_socket = socket.socket()
+server_socket.bind(('127.0.0.1', 8822))
+server_socket.listen(5)
+open_client_sockets = []
+
+while True:
+    rlist, wlist, xlist = select.select(
+        [server_socket] + open_client_sockets,
+        [], []
+    )
+    for current_socket in rlist:
+        if current_socket is server_socket:
+            new_socket, address = server_socket.accept()
+            open_client_sockets.append(new_socket)
+        else:
+            data = current_socket.recv(1024)
+            # השלימו טיפול בנתונים או בניתוק</pre><p class="muted small">בהדגמה נשתמש ב־localhost ובפורט 8822, בהתאם למצגת המקור.</p></section>
+<section class="slide"><span class="tag">שקף 10 · למידה מטעויות</span><h2>איך מזהים ניתוק?</h2><pre>data = current_socket.recv(1024)
+if data == b'end':
+    open_client_sockets.remove(current_socket)</pre><p>האם הקוד מזהה את <b>כל</b> הדרכים שבהן לקוח מתנתק?</p><button class="btn" onclick="reveal('r10')">חשפו את הבעיה והתיקון</button><div class="reveal hidden" id="r10"><p>לא. <code>b'end'</code> הוא סימן מוסכם בפרוטוקול ולא זיהוי ניתוק TCP. כאשר <code>recv()</code> מחזירה <code>b''</code>, פירוש הדבר סוף זרם.</p><pre>if not data or data == b'end':
+    open_client_sockets.remove(current_socket)
+    current_socket.close()</pre><p class="small">במערכת אמיתית יש לטפל גם בשגיאות תקשורת ולזכור ש־TCP הוא זרם של בתים, ולא של הודעות.</p></div></section>
+<section class="slide"><span class="tag">שקף 11 · שלב ב'</span><h2>לא רק לקבל — גם לענות</h2><p class="lead">המצגת המקורית מציעה תור של הודעות ממתינות לשליחה:</p><pre>messages_to_send = []
+# לאחר קבלת הודעה מלקוח:
+messages_to_send.append(
+    (current_socket, b'Hello, ' + data)
+)</pre><p>בשלב לימודי זה אפשר לחשוב על כל רשומה בתור כ־<code>(socket, bytes)</code>.</p><div class="tip">למה לא לשלוח מיד מתוך ענף הקריאה? כדי להפריד בין קליטת נתונים לבין כתיבתם, ולנסות לשלוח רק כאשר ה־socket מוכן.</div></section>
+<section class="slide"><span class="tag">שקף 12 · wlist</span><h2>מה תפקידה של wlist?</h2><pre>rlist, wlist, xlist = select.select(
+    [server_socket] + open_client_sockets,
+    clients_with_pending_data,
+    []
+)</pre><div class="cols"><div class="card"><h3>תור הודעות</h3><p>מה צריך לשלוח ולמי?</p></div><div class="card"><h3>רשימת כתיבה</h3><p>מי מהלקוחות עם מידע ממתין מוכן כעת לניסיון שליחה?</p></div></div><p class="muted small">הרחבה מקצועית ביחס לקוד המקור: לא כדאי לבדוק מוכנות לכתיבה עבור כל הלקוחות בכל מחזור — בדרך כלל כמעט כולם מוכנים, וכך נוצרת לולאה עמוסה. בנוסף, יש לטפל בשליחה חלקית.</p></section>
+<section class="slide"><span class="tag">שקף 13 · תקלה בקוד</span><h2>מצא את שלוש הבעיות</h2><pre>for message in messages_to_send:
+    client_socket, data = message
+    if client_socket in wlist:
+        client_socket.send(data)
+        messages_to_send.remove(message)</pre><button class="btn" onclick="reveal('r13')">פתרון מוסבר</button><div class="reveal hidden" id="r13"><ol><li>הסרת איברים מהרשימה תוך כדי מעבר עליה יכולה לדלג על הודעות.</li><li><code>send()</code> עשויה לשלוח רק חלק מהבתים.</li><li>נדרש טיפול בלקוח שהתנתק ובנתונים שעוד ממתינים עבורו.</li></ol><p>יישום עמיד משתמש בדרך כלל ב־buffer נפרד לכל לקוח ומקדם את ההיסט לפי מספר הבתים שנשלחו בפועל.</p></div><button class="btn" onclick="reveal('r13code')">הצג / הסתר קוד פתרון</button>
+<div class="reveal hidden" id="r13code"><p><b>פתרון משופר:</b> נשמור לכל לקוח מאגר בתים לשליחה. נמחק רק את הבתים שנשלחו בפועל ולא נשנה רשימה בזמן מעבר עליה.</p><pre>pending = {}  # socket -&gt; bytes waiting to send
+
+# When data arrives and a response is needed:
+pending[current_socket] = (
+    pending.get(current_socket, b'') + b'Hello, ' + data
+)
+
+# Each event-loop iteration:
+read_sockets = [server_socket] + open_client_sockets
+write_sockets = [s for s in pending if pending[s]]
+rlist, wlist, xlist = select.select(
+    read_sockets, write_sockets, open_client_sockets
+)
+
+# Handle sockets ready for writing:
+for client_socket in wlist:
+    try:
+        sent = client_socket.send(pending[client_socket])
+        if sent == 0:
+            raise ConnectionError('Connection closed')
+        pending[client_socket] = pending[client_socket][sent:]
+        if not pending[client_socket]:
+            del pending[client_socket]
+    except (OSError, ConnectionError):
+        pending.pop(client_socket, None)
+        if client_socket in open_client_sockets:
+            open_client_sockets.remove(client_socket)
+        client_socket.close()</pre><p class="muted small">זהו קטע לשילוב בלולאת השרת, לא תוכנית מלאה. בכל ניתוק יש להסיר את הלקוח גם ממאגר השליחה. בפרויקט צ'אט אמיתי יש להוסיף מסגור הודעות ל־TCP.</p></div></section><section class="slide"><span class="tag">שקף 14 · xlist</span><h2>מהי xlist — ומתי משתמשים בה?</h2>
+<p class="lead">הרשימה השלישית של <code>select</code> עוסקת ב<strong>מצבי חריגה של socket</strong>, לא בכל שגיאה בתוכנית.</p>
+<pre>rlist, wlist, xlist = select.select(
+    [server_socket] + open_client_sockets,
+    [],
+    open_client_sockets
+)
+
+for s in xlist:
+    print('Exceptional condition:', s.getpeername())
+    # Handle according to the protocol and OS</pre>
+<div class="cols"><div class="card"><h3>דוגמה אפשרית</h3><p>במערכות מסוימות, <b>נתוני TCP דחופים (out-of-band)</b> עשויים לגרום להופעה ב־<code>xlist</code>. ההתנהגות תלויה במערכת ההפעלה ובהגדרות ה־socket.</p></div><div class="card"><h3>מה xlist לא מבטיחה?</h3><p>היא <b>לא</b> מספקת רשימת שגיאות כללית. ניתוק מסודר מזוהה בדרך כלל כאשר <code>recv()</code> מחזירה <code>b''</code>, ושגיאות רגילות מטופלות באמצעות <code>try/except</code>.</p></div></div>
+<p><b>שאלת חשיבה:</b> לקוח סגר את החלון והשרת מקבל <code>b''</code> מ־<code>recv()</code>. האם חייבים לצפות שהלקוח יופיע ב־<code>xlist</code>?</p>
+<button class="btn" onclick="reveal('r14x')">הצג תשובה והדגמה</button><div class="reveal hidden" id="r14x"><p><b>לא.</b> סוף זרם ב־TCP מזוהה דרך הקריאה מה־socket, ואינו מחייב הופעה ב־<code>xlist</code>.</p><pre># Typical handling in the rlist branch:
+data = current_socket.recv(1024)
+if data == b'':
+    open_client_sockets.remove(current_socket)
+    current_socket.close()</pre><p class="muted small">לתרגיל הראשון אפשר להעביר <code>[]</code> כפרמטר השלישי; בשלב זה חשוב בעיקר להבין מדוע אין להסתמך על xlist לאיתור כל ניתוק.</p></div></section>
+<section class="slide"><span class="tag">שקף 15 · חשיבה מתקדמת</span><h2>האם select יוצרת Threads?</h2><div class="q" id="q1"><button onclick="quiz(this,false,'qans')">כן, Thread חדש לכל לקוח</button><button onclick="quiz(this,true,'qans')">לא, בדרך כלל זו לולאת אירועים ב־Thread אחד</button><button onclick="quiz(this,false,'qans')">כן, אבל רק כשיש הודעה</button></div><div class="reveal hidden" id="qans"></div><p>מה היתרון? ניתן לשרת מספר חיבורים בלי להקצות Thread נפרד לכל אחד — בתנאי שהטיפול באירועים קצר ואינו חוסם.</p></section>
+<section class="slide"><span class="tag">שקף 16 · משימת מעבדה</span><h2>בנו שרת הדפסת שמות</h2><ol><li>הריצו שרת ב־<code>127.0.0.1:8822</code>.</li><li>פתחו שני תהליכי לקוח והתחברו משניהם.</li><li>שלחו מכל לקוח שלושה שמות, לסירוגין.</li><li>ודאו שהשרת מדפיס מי שלח כל שם.</li><li>נתקו לקוח אחד ובדקו שהשני ממשיך לעבוד.</li></ol><div class="card"><b>אתגר רשות:</b> הוסיפו הודעת <code>Hello, &lt;name&gt;</code> ללקוח ששלח. תכננו איך לטפל בתור שליחה, בלי לעצור את הטיפול ביתר הלקוחות.</div></section>
+<section class="slide"><span class="tag">שקף 17 · כרטיס יציאה</span><h2>האם הבנתם את הרעיון?</h2><div class="q"><p>1. מה ההבדל בין <code>server_socket</code> לבין socket של לקוח בתוך <code>rlist</code>?</p><p>2. מה פירוש החזרה של <code>b''</code> מ־<code>recv</code>?</p><p>3. מדוע <code>wlist</code> אינה רשימת ההודעות הממתינות לשליחה?</p></div><button class="btn" onclick="reveal('r16')">תשובות למורה</button><div class="reveal hidden" id="r16"><ol><li>הראשון מצביע על חיבור חדש שממתין ל־accept; השני על מוכנות לקריאת נתונים או סוף זרם.</li><li>סוף זרם TCP — הצד השני סגר את כיוון השליחה.</li><li>wlist מכילה sockets מוכנים לכתיבה; המידע עצמו נשמר בתור או buffer נפרד.</li></ol></div><div class="card"><p><b>השלב הבא:</b> שרת תשובות ללקוחות → תור הודעות → צ'אט מתקדם (תרגיל 12.6).</p></div></section>
+<div class="nav"><button class="btn" id="prev" onclick="go(-1)">→ הקודם</button><span id="count">1 / 17</span><button class="btn" id="next" onclick="go(1)">הבא ←</button></div><p class="footer">מבוסס על "פרק 12 – תכנות Sockets מתקדם, ריבוי משתמשים", עמ' 2–16. הרחבות דיוק טכניות מסומנות כהרחבה או תיקון.</p></main>
+<script>let pos=0;const slides=[...document.querySelectorAll('.slide')];function display(){slides.forEach((s,i)=>s.classList.toggle('active',i===pos));document.getElementById('count').textContent=`${pos+1} / ${slides.length}`;document.getElementById('bar').style.width=`${100*(pos+1)/slides.length}%`;document.getElementById('prev').disabled=pos===0;document.getElementById('next').disabled=pos===slides.length-1;window.scrollTo(0,0)}function go(n){pos=Math.max(0,Math.min(slides.length-1,pos+n));display()}function reveal(id){document.getElementById(id).classList.toggle('hidden')}let pending=[];function addEvent(s){if(!pending.includes(s))pending.push(s);document.getElementById('pending').textContent=JSON.stringify(pending)}function runSim(){document.getElementById('simout').textContent=pending.length?`rlist = [${pending.join(', ')}]\nwlist = []\nxlist = []`:'select is waiting...';pending=[];document.getElementById('pending').textContent='[]'}function resetSim(){pending=[];document.getElementById('pending').textContent='[]';document.getElementById('simout').textContent='select is waiting...'}function quiz(el,correct,id){const all=el.parentElement.querySelectorAll('button');all.forEach(b=>b.disabled=true);el.classList.add(correct?'correct':'incorrect');const d=document.getElementById(id);d.classList.remove('hidden');d.textContent=correct?'נכון. select לא יוצרת threads; קוד השרת עובר בין sockets מוכנים.':'לא. select עצמה אינה יוצרת threads — היא מספקת רשימות sockets מוכנים.'}document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='PageDown')go(1);if(e.key==='ArrowRight'||e.key==='PageUp')go(-1)});display();</script></body></html>
